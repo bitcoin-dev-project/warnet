@@ -1,5 +1,7 @@
-
 .vscode
 __pycache__
 docker-compose.yml
 .venv
+warnet.egg-info
+.python-version
+.env
