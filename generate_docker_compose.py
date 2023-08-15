@@ -9,7 +9,10 @@ def get_architecture():
     try:
         result = subprocess.run(['uname', '-m'], stdout=subprocess.PIPE)
         architecture = result.stdout.decode('utf-8').strip()
+        if architecture == "arm64":
+            architecture = "aarch64"
         return architecture
+
 
     except Exception as e:
         print(f"An error occurred: {e}")
