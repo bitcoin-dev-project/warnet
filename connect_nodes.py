@@ -11,7 +11,7 @@ BITCOIN_GRAPH_FILE = './graphs/basic3.graphml'
 def parse_config():
     with open("config.yaml", "r") as file:
         return yaml.safe_load(file)
-    
+
 def delete_containers():
     """
     Delete all containers with the name "bitcoin-node"
@@ -50,8 +50,8 @@ def get_container_ip(container_name):
     client = docker.from_env()
     container = client.containers.get(container_name)
     container.reload()
-    print(container)
-    return container.attrs["NetworkSettings"]["Networks"]["bitcoin-cluster_default"]["IPAddress"]
+    print(container.attrs["NetworkSettings"]["Networks"])
+    return container.attrs["NetworkSettings"]["Networks"]["bitcoin_sandbox_default"]["IPAddress"]
 
 # def docker_setup():
 #     client = docker.from_env()
@@ -73,8 +73,8 @@ def add_nodes_to_network(graph_file):
     """
     graph = nx.read_graphml(graph_file, node_type=int)
     for edge in graph.edges():
-        source = f"bitcoin-cluster-bitcoin-node-{str(edge[0])}-1"
-        dest = f"bitcoin-cluster-bitcoin-node-{str(edge[1])}-1"
+        source = f"bitcoin_sandbox_bitcoin-node-{str(edge[0])}_1"
+        dest = f"bitcoin_sandbox_bitcoin-node-{str(edge[1])}_1"
         client = docker.from_env()
         source_container = client.containers.get(source)
         logging.info("  Connecting to container")
