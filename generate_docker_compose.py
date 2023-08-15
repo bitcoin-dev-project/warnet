@@ -3,12 +3,6 @@ import yaml
 base_rpc_port = 18000
 base_p2p_port = 18001
 
-
-# def parse_config():
-#     with open("config.yaml", "r") as file:
-#         return yaml.safe_load(file)
-
-
 def generate_docker_compose(version, node_count):
     """
     Generate a docker-compose.yml file for the given graph
@@ -19,6 +13,7 @@ def generate_docker_compose(version, node_count):
     c = 33
     for i in range(node_count):
         services[f"bitcoin-node-{i}"] = {
+            "container_name": f"warnet_{i}",
             "build": {
                 "context": ".",
                 "dockerfile": "Dockerfile",
