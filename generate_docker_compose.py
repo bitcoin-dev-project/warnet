@@ -9,13 +9,12 @@ base_p2p_port = 18001
 #         return yaml.safe_load(file)
 
 
-def generate_docker_compose(version, edge, node_count):
-    # node_count = config.get("node", {}).get("count", 1)
-    # version = config.get("node", {}).get("version", "latest")
-
-    # version is a list of versions
-    # parse the version for the docker-compose file
-
+def generate_docker_compose(version, node_count):
+    """
+    Generate a docker-compose.yml file for the given graph
+    :param version: A list of Bitcoin Core versions
+    :param node_count: The number of nodes in the graph
+    """
     services = {}
     c = 33
     for i in range(node_count):

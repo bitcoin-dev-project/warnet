@@ -13,6 +13,9 @@ def parse_config():
         return yaml.safe_load(file)
     
 def delete_containers():
+    """
+    Delete all containers with the name "bitcoin-node"
+    """
     client = docker.from_env()
     containers = client.containers.list(filters={"name": "bitcoin-node"})
     for container in containers:
@@ -21,6 +24,11 @@ def delete_containers():
 
 
 def run_new_node(graph_file):
+    """
+    Run a new Bitcoin node
+    If there is an existing node, it will be removed
+    :param graph_file: The path to the graph file
+    """
     delete_containers()
     graph = nx.read_graphml(graph_file, node_type=int)
     version = [graph.nodes[node]["version"] for node in graph.nodes()]
@@ -34,6 +42,11 @@ def run_new_node(graph_file):
 
 
 def get_container_ip(container_name):
+    """
+    Get the IP address of a container
+    :param container_name: The name of the container
+    :return: The IP address of the container
+    """
     client = docker.from_env()
     container = client.containers.get(container_name)
     container.reload()
@@ -54,6 +67,10 @@ def get_container_ip(container_name):
 #     return container_ips, container_ports
 
 def add_nodes_to_network(graph_file):
+    """
+    Add nodes to the network
+    :param graph_file: The path to the graph file
+    """
     graph = nx.read_graphml(graph_file, node_type=int)
     for edge in graph.edges():
         source = f"bitcoin-cluster-bitcoin-node-{str(edge[0])}-1"
@@ -66,6 +83,9 @@ def add_nodes_to_network(graph_file):
 
 
 def start_nodes():
+    """
+    Start all nodes in the network
+    """
     import subprocess
     subprocess.run(["docker-compose", "up", "-d"])
 
