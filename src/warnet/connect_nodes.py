@@ -2,8 +2,8 @@ import yaml
 import logging
 import networkx as nx
 import docker
-from generate_docker_compose import generate_docker_compose
-import rpc_utils as bitcoin_cli
+from warnet.generate_docker_compose import generate_docker_compose
+import warnet.rpc_utils as bitcoin_cli
 
 BITCOIN_GRAPH_FILE = './graphs/basic3.graphml'
 
@@ -86,9 +86,11 @@ def start_nodes():
     import subprocess
     subprocess.run(["docker-compose", "up", "-d"])
 
-
-if __name__ == "__main__":
+def main():
     logging.basicConfig(level=logging.INFO)
     run_new_node(BITCOIN_GRAPH_FILE)
     start_nodes()
     add_nodes_to_network(BITCOIN_GRAPH_FILE)
+
+if __name__ == "__main__":
+    main()
