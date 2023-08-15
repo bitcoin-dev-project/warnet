@@ -1,33 +1,38 @@
 import yaml
 import subprocess
+import logging
 
-base_rpc_port = 18000
-base_p2p_port = 18001
+BASE_RPC_PORT = 18000
+BASE_P2P_PORT = 18001
 
+logging.basicConfig(level=logging.INFO)
 
 def get_architecture():
+    """
+    Get the architecture of the machine.
+
+    :return: The architecture of the machine or None if an error occurred
+    """
     try:
         result = subprocess.run(['uname', '-m'], stdout=subprocess.PIPE)
         architecture = result.stdout.decode('utf-8').strip()
         if architecture == "arm64":
             architecture = "aarch64"
         return architecture
-
-
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return None
-
 
 def generate_docker_compose(version, node_count):
     """
-    Generate a docker-compose.yml file for the given graph
+    Generate a docker-compose.yml file for the given graph.
+
     :param version: A list of Bitcoin Core versions
     :param node_count: The number of nodes in the graph
     """
     arch = get_architecture()
     if arch is not None:
-        print(f"Detected architecture: {arch}")
+        logging.info(f"Detected architecture: {arch}")
     else:
         raise Exception("Failed to detect architecture.")
 
@@ -56,5 +61,9 @@ def generate_docker_compose(version, node_count):
         "services": services
     }
 
-    with open("docker-compose.yml", "w") as file:
-        yaml.dump(compose_config, file)
+    try:
+        with open("docker-compose.yml", "w") as file:
+            yaml.dump(compose_config, file)
+    except Exception as e:
+        logging.error(f"An error occurred while writing to docker-compose.yml: {e}")
+
