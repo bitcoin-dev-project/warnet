@@ -1,6 +1,7 @@
 from json import loads
+from warnet.utils import exponential_backoff
 
-
+@exponential_backoff()
 def bitcoin_rpc(container, command, params=[], verbose=False):
     if not isinstance(params, list):
         params = [params]
