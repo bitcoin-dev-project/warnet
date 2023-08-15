@@ -35,7 +35,7 @@ def run_new_node(graph_file):
     # for node in graph.nodes:
     #     version.append(graph.nodes[node]["version"])
     generate_docker_compose(node_count=len(graph.nodes()),
-                            version=version, edge=graph.edges())
+                            version=version)
     logging.info("  Graph file contains {} nodes and {} connections".format(
         len(graph.nodes()), len(graph.edges())))
     logging.info("  Generated docker-compose.yml file")
