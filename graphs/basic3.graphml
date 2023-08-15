@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+<key attr.name="label" attr.type="string" for="node" id="label"/>
+<key attr.name="Edge Label" attr.type="string" for="edge" id="edgelabel"/>
+<key attr.name="weight" attr.type="double" for="edge" id="weight"/>
+<key attr.name="r" attr.type="int" for="node" id="r"/>
+<key attr.name="g" attr.type="int" for="node" id="g"/>
+<key attr.name="b" attr.type="int" for="node" id="b"/>
+<key attr.name="x" attr.type="float" for="node" id="x"/>
+<key attr.name="y" attr.type="float" for="node" id="y"/>
+<key attr.name="size" attr.type="float" for="node" id="size"/>
+<key attr.name="version" attr.type="string" for="node" id="version"/>
+<graph edgedefault="directed">
+<node id="0">
+<data key="size">10.0</data>
+<data key="r">153</data>
+<data key="g">153</data>
+<data key="b">153</data>
+<data key="x">-356.80606</data>
+<data key="y">101.388084</data>
+<data key="version">24.0</data>
+</node>
+<node id="1">
+<data key="size">10.0</data>
+<data key="r">153</data>
+<data key="g">153</data>
+<data key="b">153</data>
+<data key="x">-122.60297</data>
+<data key="y">162.6925</data>
+<data key="version">24.1</data>
+</node>
+<node id="2">
+<data key="size">10.0</data>
+<data key="r">153</data>
+<data key="g">153</data>
+<data key="b">153</data>
+<data key="x">-201.19461</data>
+<data key="y">-73.093735</data>
+<data key="version">25.0</data>
+</node>
+<node id="3">
+<data key="size">10.0</data>
+<data key="r">153</data>
+<data key="g">153</data>
+<data key="b">153</data>
+<data key="x">-201.19461</data>
+<data key="y">-73.093735</data>
+<data key="version">25.0</data>
+</node>
+<edge id="0" source="0" target="1">
+<data key="weight">1.0</data>
+</edge>
+<edge id="1" source="0" target="2">
+<data key="weight">1.0</data>
+</edge>
+<edge id="2" source="0" target="3">
+<data key="weight">1.0</data>
+</edge>
+<edge id="3" source="1" target="2">
+<data key="weight">1.0</data>
+</edge>
+<edge id="4" source="1" target="3">
+<data key="weight">1.0</data>
+</edge>
+<edge id="5" source="2" target="3">
+<data key="weight">1.0</data>
+</edge>
+</graph>
+</graphml>
