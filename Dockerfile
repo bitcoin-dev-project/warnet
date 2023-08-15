@@ -27,15 +27,13 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 # Set arguments for Bitcoin version and download URLs.
+ARG ARCH
+ARG BITCOIN_URL
 ARG BITCOIN_VERSION
-ARG BITCOIN_BIN_URL=https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-aarch64-linux-gnu.tar.gz
-ARG BITCOIN_SIG_URL=https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/SHA256SUMS.asc
 
 # Download, verify, and install Bitcoin Core.
-RUN wget $BITCOIN_BIN_URL && \
-    wget $BITCOIN_SIG_URL && \
-    tar -xzf bitcoin-${BITCOIN_VERSION}-aarch64-linux-gnu.tar.gz -C /usr/local --strip-components=1 && \
-    rm bitcoin-${BITCOIN_VERSION}-aarch64-linux-gnu.tar.gz SHA256SUMS.asc
+RUN wget $BITCOIN_URL && \
+    tar -xzf bitcoin-${BITCOIN_VERSION}-${ARCH}-linux-gnu.tar.gz -C /usr/local --strip-components=1
 
 # Create a directory for Bitcoin data and set it as the working directory.
 RUN mkdir /bitcoin

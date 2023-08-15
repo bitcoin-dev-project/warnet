@@ -1,7 +1,20 @@
 import yaml
+import subprocess
 
 base_rpc_port = 18000
 base_p2p_port = 18001
+
+
+def get_architecture():
+    try:
+        result = subprocess.run(['uname', '-m'], stdout=subprocess.PIPE)
+        architecture = result.stdout.decode('utf-8').strip()
+        return architecture
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
 
 def generate_docker_compose(version, node_count):
     """
@@ -9,6 +22,12 @@ def generate_docker_compose(version, node_count):
     :param version: A list of Bitcoin Core versions
     :param node_count: The number of nodes in the graph
     """
+    arch = get_architecture()
+    if arch is not None:
+        print(f"Detected architecture: {arch}")
+    else:
+        raise Exception("Failed to detect architecture.")
+
     services = {}
     c = 33
     for i in range(node_count):
@@ -18,7 +37,9 @@ def generate_docker_compose(version, node_count):
                 "context": ".",
                 "dockerfile": "Dockerfile",
                 "args": {
-                    "BITCOIN_VERSION": version[i]
+                    "ARCH": arch,
+                    "BITCOIN_VERSION": version[i],
+                    "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{version[i]}/bitcoin-{version[i]}-{arch}-linux-gnu.tar.gz"
                 }
             },
             "ports": [
