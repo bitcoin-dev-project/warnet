@@ -43,8 +43,8 @@ COPY config/bitcoin.conf .
 
 
 # Expose necessary ports for the Bitcoin service.
-EXPOSE 18332 18333
-EXPOSE 8332 8333
+#EXPOSE 18444 18443
+#EXPOSE 8332 8333
 
 # Start the Bitcoin Core daemon.
 # CMD ["/usr/local/bin/bitcoind --datadir=/root/.bitcoin --conf=/root/.bitcoin/bitcoin.conf"]

@@ -60,8 +60,7 @@ def get_containers():
     for container in containers:
         container_names.append(container.name)
     return container_names, containers
-   
-    
+
 
 def add_nodes_to_network(graph_file):
     """

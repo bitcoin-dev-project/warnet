@@ -45,10 +45,6 @@ def generate_docker_compose(version, node_count):
                     "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{version[i]}/bitcoin-{version[i]}-{arch}-linux-gnu.tar.gz"
                 }
             },
-            "ports": [
-                f"183{c}:18332",
-                f"183{c+1}:18333"
-            ],
             "volumes": [
                 f"./config/bitcoin.conf:/root/.bitcoin/bitcoin.conf"
             ]
