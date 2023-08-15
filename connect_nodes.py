@@ -14,10 +14,10 @@ def parse_config():
 
 def delete_containers():
     """
-    Delete all containers with the name "bitcoin-node"
+    Delete all containers with the name "warnet"
     """
     client = docker.from_env()
-    containers = client.containers.list(filters={"name": "bitcoin-node"})
+    containers = client.containers.list(all=True, filters={"name": "warnet"})
     for container in containers:
         container.remove(force=True)
     logging.info("  Removed all containers")
@@ -32,8 +32,6 @@ def run_new_node(graph_file):
     delete_containers()
     graph = nx.read_graphml(graph_file, node_type=int)
     version = [graph.nodes[node]["version"] for node in graph.nodes()]
-    # for node in graph.nodes:
-    #     version.append(graph.nodes[node]["version"])
     generate_docker_compose(node_count=len(graph.nodes()),
                             version=version)
     logging.info("  Graph file contains {} nodes and {} connections".format(
@@ -50,21 +48,20 @@ def get_container_ip(container_name):
     client = docker.from_env()
     container = client.containers.get(container_name)
     container.reload()
-    print(container.attrs["NetworkSettings"]["Networks"])
-    return container.attrs["NetworkSettings"]["Networks"]["bitcoin_sandbox_default"]["IPAddress"]
+    cluster = container.attrs["NetworkSettings"]["Networks"].keys()
+    cluster_name = list(cluster)[0]
 
-# def docker_setup():
-#     client = docker.from_env()
-#     containers = client.containers.list(filters={"name": "bitcoin-node"})
-#     container_ips = []
-#     container_ports = []
-#     for container in containers:
-#         ip_address = container.attrs['NetworkSettings']['IPAddress']
-#         container_ips.append(ip_address)
-#         cmd = f"bitcoin-cli -conf=/root/.bitcoin/bitcoin.conf -netinfo | awk '/port/ {{print $3}}'"
-#         port = containers[0].exec_run(cmd)
-#         container_ports.append(f"{ip_address}:{port}")
-#     return container_ips, container_ports
+    return container.attrs["NetworkSettings"]["Networks"][f"{cluster_name}"]["IPAddress"]
+
+def get_containers():
+    client = docker.from_env()
+    containers = client.containers.list(all=True, filters={"name": "warnet"})
+    container_names = []
+    for container in containers:
+        container_names.append(container.name)
+    return container_names, containers
+   
+    
 
 def add_nodes_to_network(graph_file):
     """
@@ -72,9 +69,10 @@ def add_nodes_to_network(graph_file):
     :param graph_file: The path to the graph file
     """
     graph = nx.read_graphml(graph_file, node_type=int)
+    print(get_containers())
     for edge in graph.edges():
-        source = f"bitcoin_sandbox_bitcoin-node-{str(edge[0])}_1"
-        dest = f"bitcoin_sandbox_bitcoin-node-{str(edge[1])}_1"
+        source = f"warnet_{str(edge[0])}"
+        dest = f"warnet_{str(edge[1])}"
         client = docker.from_env()
         source_container = client.containers.get(source)
         logging.info("  Connecting to container")
@@ -91,7 +89,6 @@ def start_nodes():
 
 
 if __name__ == "__main__":
-    # config = parse_config()
     logging.basicConfig(level=logging.INFO)
     run_new_node(BITCOIN_GRAPH_FILE)
     start_nodes()
