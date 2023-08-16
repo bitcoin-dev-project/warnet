@@ -1,8 +1,25 @@
 # Warnet
 
+## Monitor and analyze the emergent behaviours of Bitcoin networks
+
+### Local Deployment
+
+1. Requirements
+
 Make sure to have docker and docker-compose installed
 
-1. Install the dependencies:
+For macOS, a bridge to the docker subnet is required, such as
+https://github.com/chipmk/docker-mac-net-connect
+
+```bash
+# Install via Homebrew
+brew install chipmk/tap/docker-mac-net-connect
+
+# Run the service and register it to launch at boot
+sudo brew services start chipmk/tap/docker-mac-net-connect
+```
+
+2. Install the dependencies
 
 It is recommended to create a virtual environment, like so:
 
@@ -11,14 +28,33 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-and then install the dependencies from the requirements.txt file:
+and then install the dependencies with `setuptools`:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-2. start the docker containers. (Each container is a node as described in the graph)
+3. Start the docker containers
+
+Each container is a node as described in the graph.
 
 ```bash
-python connect_nodes.py
+warnet
 ```
+
+4. Manually run scenarios
+
+See `/src/scenarios` for examples. Scenarios are written using the Bitcoin Core
+test framework for functional testing with some modifications (most notably that
+`self.nodes[]` represents an array dockerized bitcoind nodes)
+
+Example:
+
+```bash
+# Command one node to generate a wallet and fill 100 blocks with 100 txs each
+python src/scenarios/tx-flood.py
+```
+
+### Remote / Cloud Deployment
+
+`// TODO`
