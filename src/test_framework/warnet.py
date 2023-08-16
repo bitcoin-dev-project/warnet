@@ -5,6 +5,7 @@ from .util import get_rpc_proxy
 def setuptank(fmk):
     d = docker.from_env()
     containers = [c for c in d.containers.list("all") if "warnet" in c.name]
+    containers.sort(key=lambda c: c.name)
     fmk.num_nodes = len(containers)
 
     for i, c in enumerate(containers):

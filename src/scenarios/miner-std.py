@@ -9,7 +9,7 @@ class MinerStd(BitcoinTestFramework):
         pass
 
     def add_options(self, parser):
-        parser.add_argument("--allnodes", dest="allnodes", action="store_true",
+        parser.add_argument("--allnodes", dest="allnodes", default=False, action="store_false",
                             help="When true, generate blocks from all nodes instead of just nodes[0]")
         parser.add_argument("--interval", dest="interval", default=60, type=int,
                             help="Number of seconds between block generation (default 60 seconds)")
