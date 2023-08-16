@@ -52,7 +52,14 @@ def generate_docker_compose(version, node_count):
             },
             "volumes": [
                 f"./config/bitcoin.conf:/root/.bitcoin/bitcoin.conf"
-            ]
+            ],
+            "ports":[
+               "18444",
+               "18443",
+               "8332",
+               "8333",
+               "9051"
+             ]
         }
         c = c + 2
 
