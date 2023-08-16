@@ -58,3 +58,13 @@ python src/scenarios/tx-flood.py
 ### Remote / Cloud Deployment
 
 `// TODO`
+
+### Command-line Tools
+
+```
+      Usage: warnet-cli <command> <arg1> <arg2> ...
+
+      Available commands:
+        log <node number>       Output the bitcoin debug.log file for specified node.
+        stop                    Stop warnet. Stops and removes all containers and networks.
+```
