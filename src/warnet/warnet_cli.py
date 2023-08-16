@@ -15,10 +15,16 @@ def main():
             print("log requires node number")
             exit()
         node = sys.argv[2]
-        return get_debug_log(node)
+        try:
+            return get_debug_log(node)
+        except Exception as e:
+            return f"Could not get debug log for {node}: {e}"
 
     if cmd == "stop":
-        return stop_network()
+        try:
+            return stop_network()
+        except Exception as e:
+            return f"Could not stop warnet_network: {e}"
 
     # default
     help = """
