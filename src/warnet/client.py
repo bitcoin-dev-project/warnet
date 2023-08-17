@@ -8,6 +8,10 @@ def get_debug_log(node):
     out = ""
     for chunk in data:
         out += chunk.decode()
+    # slice off tar archive header
+    out = out[512:]
+    # slice off end padding
+    out = out[:stat["size"]]
     return out
 
 
