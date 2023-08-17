@@ -1,3 +1,4 @@
+import os
 import yaml
 import subprocess
 import logging
@@ -5,6 +6,8 @@ import networkx as nx
 from .prometheus import generate_prometheus_config
 
 logging.basicConfig(level=logging.INFO)
+DOCKER_COMPOSE_FILE = "docker-compose.yml"
+
 
 def get_architecture():
     """
@@ -35,6 +38,15 @@ def generate_docker_compose(graph_file: str):
         logging.info(f"Detected architecture: {arch}")
     else:
         raise Exception("Failed to detect architecture.")
+
+    # Delete any previous existing file
+    # Reason: If the graph file we are importing has any errors,
+    # we want the whole process to fail. Otherwise we may silently
+    # just run with whatever .yml we had created on the last run
+    try:
+        os.remove(DOCKER_COMPOSE_FILE)
+    except:
+        pass
 
     graph = nx.read_graphml(graph_file, node_type=int)
     nodes = [graph.nodes[node] for node in graph.nodes()]
@@ -127,7 +139,7 @@ def generate_docker_compose(graph_file: str):
     }
 
     try:
-        with open("docker-compose.yml", "w") as file:
+        with open(DOCKER_COMPOSE_FILE, "w") as file:
             yaml.dump(compose_config, file)
     except Exception as e:
         logging.error(f"An error occurred while writing to docker-compose.yml: {e}")

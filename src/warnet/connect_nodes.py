@@ -26,4 +26,3 @@ def connect_edges(client: docker.DockerClient, graph_file: str):
             addnode(source_container, get_container_ip(client, dest))
     except Exception as e:
         logging.error(f"An error occurred while setting up the network: {e}")
-
