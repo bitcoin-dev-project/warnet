@@ -2,9 +2,6 @@ import yaml
 import subprocess
 import logging
 
-BASE_RPC_PORT = 18000
-BASE_P2P_PORT = 18001
-
 logging.basicConfig(level=logging.INFO)
 
 def get_architecture():
@@ -52,12 +49,21 @@ def generate_docker_compose(version, node_count):
             },
             "volumes": [
                 f"./config/bitcoin.conf:/root/.bitcoin/bitcoin.conf"
+            ],
+            "networks": [
+                "warnet_network"
             ]
         }
         c = c + 2
 
     compose_config = {
         "version": "3.8",
+        "networks": {
+            "warnet_network": {
+                "name": "warnet_network",
+                "driver": "bridge"
+            }
+        },
         "services": services
     }
 

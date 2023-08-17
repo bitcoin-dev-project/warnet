@@ -21,3 +21,4 @@ dynamic = ["version"]
 
 [project.scripts]
 warnet = "warnet.connect_nodes:main"
+warnet-cli = "warnet.warnet_cli:main"
