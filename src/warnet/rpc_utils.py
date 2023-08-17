@@ -1,4 +1,3 @@
-from json import loads
 import logging
 from .utils import exponential_backoff
 
@@ -25,10 +24,11 @@ def bitcoin_rpc(container, command, params=None):
 
     logging.info(f"[bitcoin-cli]: {container.name}, {command:}")
     rcode, result = container.exec_run(command)
+    result = result.decode()
 
     if rcode in [0, None]:
-        if result not in [None, "", b'']:
-            return loads(result)
+        if result not in [None, ""]:
+            return result
     else:
         raise Exception(result, rcode)
 
