@@ -6,6 +6,11 @@ from scenarios.utils import ensure_miner
 BLOCKS = 100
 TXS = 100
 
+
+def cli_help():
+    return ("Generate 100 blocks with 100 TXs each")
+
+
 class TXFlood(BitcoinTestFramework):
     def set_test_params(self):
         pass
@@ -24,3 +29,4 @@ class TXFlood(BitcoinTestFramework):
 
 if __name__ == '__main__':
     TXFlood().main()
+

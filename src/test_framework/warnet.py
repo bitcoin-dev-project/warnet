@@ -9,7 +9,7 @@ def setuptank(fmk):
     fmk.num_nodes = len(containers)
 
     for i, c in enumerate(containers):
-        ip = c.attrs['NetworkSettings']['Networks']["warnet_default"]['IPAddress']
+        ip = c.attrs['NetworkSettings']['Networks']["warnet_network"]['IPAddress']
         print(f"Adding TestNode {i} named {c.name} with IP {ip}")
         node = TestNode(
             i,
