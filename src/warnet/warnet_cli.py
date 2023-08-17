@@ -41,8 +41,9 @@ def main():
                 body = ""
                 if "body" in m:
                     body = m["body"]
-                out = out + f"{timestamp} {direction} {m['msgtype']} {body}"
-            return out
+                out = out + f"{timestamp} {direction} {m['msgtype']} {body}\n"
+            print(out)
+            return
         except Exception as e:
             return f"Could not get messages between nodes {src}->{dst}: {e}"
 
