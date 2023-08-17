@@ -4,12 +4,17 @@ from time import sleep
 from test_framework.test_framework import BitcoinTestFramework
 from scenarios.utils import ensure_miner
 
+
+def cli_help():
+    return ("Generate blocks over time. Options: [--allnodes | --interval=<number>]")
+
+
 class MinerStd(BitcoinTestFramework):
     def set_test_params(self):
         pass
 
     def add_options(self, parser):
-        parser.add_argument("--allnodes", dest="allnodes", default=False, action="store_false",
+        parser.add_argument("--allnodes", dest="allnodes", action="store_true",
                             help="When true, generate blocks from all nodes instead of just nodes[0]")
         parser.add_argument("--interval", dest="interval", default=60, type=int,
                             help="Number of seconds between block generation (default 60 seconds)")
@@ -27,6 +32,7 @@ class MinerStd(BitcoinTestFramework):
                 if current_miner >= self.num_nodes:
                     current_miner = 0
             sleep(self.options.interval)
+
 
 if __name__ == '__main__':
     MinerStd().main()

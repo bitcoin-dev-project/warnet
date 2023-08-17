@@ -66,6 +66,7 @@ python src/scenarios/tx-flood.py
 
       Available commands:
         log <node number>               Output the bitcoin debug.log file for specified node.
+        run <scnario name> <args...>    Run the specified warnet scenario.
         messages <source> <destination> Output the captured messages between two specified nodes.
         stop                            Stop warnet. Stops and removes all containers and networks.
 ```
