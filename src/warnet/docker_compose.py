@@ -37,7 +37,7 @@ def generate_docker_compose(graph_file: str):
         raise Exception("Failed to detect architecture.")
 
     graph = nx.read_graphml(graph_file, node_type=int)
-    nodes = graph.nodes()
+    nodes = [graph.nodes[node] for node in graph.nodes()]
     generate_prometheus_config(len(nodes))
 
     services = {
@@ -78,8 +78,9 @@ def generate_docker_compose(graph_file: str):
         "grafana-storage": None,
     }
 
-    for i in range(len(nodes)):
-        version = nodes[i]["version"]
+    for i, node in enumerate(nodes):
+        version = node["version"]
+
         services[f"bitcoin-node-{i}"] = {
             "container_name": f"warnet_{i}",
             "build": {
