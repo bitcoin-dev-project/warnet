@@ -1,6 +1,8 @@
 import yaml
 import subprocess
 import logging
+import networkx as nx
+from .prometheus import generate_prometheus_config
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,7 +23,7 @@ def get_architecture():
         return None
 
 
-def generate_docker_compose(version, node_count):
+def generate_docker_compose(graph_file: str):
     """
     Generate a docker-compose.yml file for the given graph.
 
@@ -33,6 +35,10 @@ def generate_docker_compose(version, node_count):
         logging.info(f"Detected architecture: {arch}")
     else:
         raise Exception("Failed to detect architecture.")
+
+    graph = nx.read_graphml(graph_file, node_type=int)
+    nodes = graph.nodes()
+    generate_prometheus_config(len(nodes))
 
     services = {
         "prometheus": {
@@ -72,7 +78,8 @@ def generate_docker_compose(version, node_count):
         "grafana-storage": None,
     }
 
-    for i in range(node_count):
+    for i in range(len(nodes)):
+        version = nodes[i]["version"]
         services[f"bitcoin-node-{i}"] = {
             "container_name": f"warnet_{i}",
             "build": {
@@ -80,8 +87,8 @@ def generate_docker_compose(version, node_count):
                 "dockerfile": "Dockerfile",
                 "args": {
                     "ARCH": arch,
-                    "BITCOIN_VERSION": version[i],
-                    "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{version[i]}/bitcoin-{version[i]}-{arch}-linux-gnu.tar.gz"
+                    "BITCOIN_VERSION": version,
+                    "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{version}/bitcoin-{version}-{arch}-linux-gnu.tar.gz"
                 }
             },
             "volumes": [
@@ -124,46 +131,4 @@ def generate_docker_compose(version, node_count):
     except Exception as e:
         logging.error(f"An error occurred while writing to docker-compose.yml: {e}")
 
-
-def generate_prometheus_config(node_count):
-    """
-    Generate a prometheus.yml file based on the number of Bitcoin nodes.
-
-    :param node_count: The number of Bitcoin nodes
-    """
-    config = {
-        "global": {
-            "scrape_interval": "15s"
-        },
-        "scrape_configs": [
-            {
-                "job_name": "prometheus",
-                "scrape_interval": "5s",
-                "static_configs": [{"targets": ["localhost:9090"]}]
-            },
-            {
-                "job_name": "node-exporter",
-                "scrape_interval": "5s",
-                "static_configs": [{"targets": ["node-exporter:9100"]}]
-            },
-            {
-                "job_name": "cadvisor",
-                "scrape_interval": "5s",
-                "static_configs": [{"targets": ["cadvisor:8080"]}]
-            }
-        ]
-    }
-
-    for i in range(node_count):
-        config["scrape_configs"].append({
-            "job_name": f"bitcoin-node-{i}",
-            "scrape_interval": "5s",
-            "static_configs": [{"targets": [f"exporter-node-{i}:9332"]}]
-        })
-
-    try:
-        with open("prometheus.yml", "w") as file:
-            yaml.dump(config, file)
-    except Exception as e:
-        logging.error(f"An error occurred while writing to prometheus.yml: {e}")
 

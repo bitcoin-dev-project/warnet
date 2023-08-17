@@ -1,6 +1,6 @@
 from json import loads
 import logging
-from warnet.utils import exponential_backoff
+from .utils import exponential_backoff
 
 
 logging.basicConfig(level=logging.INFO)
