@@ -1,14 +1,44 @@
 import docker
+from test_framework.message_capture_parser import process_blob
 
 def get_debug_log(node):
-    node = f"warnet_{node}"
     d = docker.from_env()
-    c = d.containers.get(node)
+    c = d.containers.get(f"warnet_{node}")
     data, stat = c.get_archive("/bitcoin/regtest/debug.log")
     out = ""
     for chunk in data:
         out += chunk.decode()
     return out
+
+
+def get_messages(src, dst):
+    d = docker.from_env()
+    src = d.containers.get(f"warnet_{src}")
+    dst = d.containers.get(f"warnet_{dst}")
+    # start with the IP of the peer
+    dst_ip = dst.attrs["NetworkSettings"]["Networks"]["warnet_network"]["IPAddress"]
+    # find the corresponding message capture folder
+    # (which may include the internal port if connection is inbound)
+    exit_code, dirs = src.exec_run("ls /bitcoin/regtest/message_capture")
+    dirs = dirs.decode().splitlines()
+    messages = []
+    for dir_name in dirs:
+        if dst_ip in dir_name:
+            for file, outbound in [["msgs_recv.dat", False], ["msgs_recv.dat", True]]:
+                data, stat = src.get_archive(f"/bitcoin/regtest/message_capture/{dir_name}/{file}")
+                blob = b''
+                for chunk in data:
+                    blob += chunk
+                # slice off tar archive header
+                blob = blob[512:]
+                # slice off end padding
+                blob = blob[:stat["size"]]
+                # parse
+                json = process_blob(blob, outbound)
+                messages = messages + json
+    messages.sort(key=lambda x: x["time"])
+    return messages
+
 
 def stop_network():
     d = docker.from_env()
