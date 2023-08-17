@@ -1,0 +1,57 @@
+FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    ccache \
+    python3 \
+    vim \
+    build-essential \
+    wget \
+    autotools-dev \
+    libtool \
+    automake \
+    pkg-config \
+    libboost-dev \
+    libevent-dev \
+    libdb5.3++-dev \
+    libminiupnpc-dev \
+    libnatpmp-dev \
+    libzmq3-dev \
+    libqrencode-dev \
+    libsqlite3-dev \
+    git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* 
+
+
+# Build
+ARG REPO
+ARG BRANCH
+RUN mkdir /build
+WORKDIR /build
+RUN git clone --depth 1 --branch master https://github.com/vasild/bitcoin
+WORKDIR /build/bitcoin
+RUN ./autogen.sh && \
+    ./configure \
+    --disable-tests \
+    --without-gui \
+    --disable-bench \
+    --disable-fuzz-binary \
+    --enable-suppress-external-warnings && \
+    make -j$(nproc) && \
+    make install
+
+
+# Create a directory for Bitcoin data and set it as the working directory.
+RUN mkdir /bitcoin
+WORKDIR /bitcoin
+COPY config/bitcoin.conf .
+
+
+# Expose necessary ports for the Bitcoin service.
+#EXPOSE 18444 18443
+#EXPOSE 8332 8333
+
+# Start the Bitcoin Core daemon.
+CMD ["/usr/local/bin/bitcoind", "--datadir=/bitcoin", "--conf=/bitcoin/bitcoin.conf"]
+

@@ -26,7 +26,7 @@
 <data key="b">153</data>
 <data key="x">-122.60297</data>
 <data key="y">162.6925</data>
-<data key="version">24.1</data>
+<data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
 </node>
 <node id="2">
 <data key="size">10.0</data>
