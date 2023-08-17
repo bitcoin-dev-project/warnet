@@ -70,3 +70,23 @@ python src/scenarios/tx-flood.py
         messages <source> <destination> Output the captured messages between two specified nodes.
         stop                            Stop warnet. Stops and removes all containers and networks.
 ```
+
+### Build a Network Graph
+
+`// TODO`
+
+The graphml file MUST have a series of `<node>` objects.
+Each `<node>` object MUST have a version element with one of the following syntax examples:
+
+Official Bitcoin Core release version, available from https://bitcoincore.org/bin
+(The binary will be downloaded and installed):
+
+```
+<data key="version">25.0</data>
+```
+
+A remote branch on GitHub (the branch will be cloned, built, and installed):
+
+```
+<data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
+```

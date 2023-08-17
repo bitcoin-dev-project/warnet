@@ -93,17 +93,33 @@ def generate_docker_compose(graph_file: str):
     for i, node in enumerate(nodes):
         version = node["version"]
 
-        services[f"bitcoin-node-{i}"] = {
-            "container_name": f"warnet_{i}",
-            "build": {
+        if "/" and "#" in version:
+            # it's a git branch, building step is necessary
+            repo, branch = version.split("#")
+            build = {
                 "context": ".",
-                "dockerfile": "Dockerfile",
+                "dockerfile": "Dockerfile_build",
+                "args": {
+                    "REPO": repo,
+                    "BRANCH": branch,
+                }
+            }
+        else:
+            # assume it's a release version, get the binary
+            build = {
+                "context": ".",
+                "dockerfile": "Dockerfile_release",
                 "args": {
                     "ARCH": arch,
                     "BITCOIN_VERSION": version,
                     "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{version}/bitcoin-{version}-{arch}-linux-gnu.tar.gz"
                 }
-            },
+            }
+
+        # TODO: we may need unique service names to bust cache if .yml file changes
+        services[f"bitcoin-node-{i}"] = {
+            "container_name": f"warnet_{i}",
+            "build": build,
             "volumes": [
                 f"./config/bitcoin.conf:/root/.bitcoin/bitcoin.conf"
             ],
@@ -111,6 +127,7 @@ def generate_docker_compose(graph_file: str):
                 "warnet_network"
             ]
         }
+
         services[f"prom-exporter-node-{i}"] = {
             "image": "jvstein/bitcoin-prometheus-exporter",
             "container_name": f"exporter-node-{i}",
