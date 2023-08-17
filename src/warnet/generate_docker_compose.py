@@ -40,7 +40,10 @@ def generate_docker_compose(version, node_count):
             "container_name": "prometheus",
             "ports": ["9090:9090"],
             "volumes": ["./prometheus.yml:/etc/prometheus/prometheus.yml"],
-            "command": ["--config.file=/etc/prometheus/prometheus.yml"]
+            "command": ["--config.file=/etc/prometheus/prometheus.yml"],
+            "networks": [
+                "warnet_network"
+            ]
         },
         "node-exporter": {
             "image": "prom/node-exporter:latest",
@@ -50,13 +53,19 @@ def generate_docker_compose(version, node_count):
                 "/sys:/host/sys:ro",
                 "/:/rootfs:ro"
             ],
-            "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"]
+            "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"],
+            "networks": [
+                "warnet_network"
+            ]
         },
         "grafana": {
             "image": "grafana/grafana:latest",
             "container_name": "grafana",
             "ports": ["3000:3000"],
-            "volumes": ["grafana-storage:/var/lib/grafana"]
+            "volumes": ["grafana-storage:/var/lib/grafana"],
+            "networks": [
+                "warnet_network"
+            ]
         }
     }
     volumes = {
@@ -92,6 +101,9 @@ def generate_docker_compose(version, node_count):
                 "BITCOIN_RPC_PASSWORD": "passwd",
             },
             "ports": [f"{8335 + i}:9332"],
+            "networks": [
+                "warnet_network"
+            ]
         }
 
     compose_config = {
