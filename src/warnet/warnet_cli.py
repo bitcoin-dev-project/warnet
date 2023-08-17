@@ -6,6 +6,7 @@ import os
 import sys
 from warnet.client import (
   get_debug_log,
+  get_bitcoin_cli,
   get_messages,
   stop_network
 )
@@ -15,6 +16,21 @@ def main():
         cmd = "help"
     else:
         cmd = sys.argv[1]
+
+    if cmd == "bcli":
+        if len(sys.argv) < 4:
+            print("`bcli` requires node number and bitcoin-cli command")
+            return None
+        node = sys.argv[2]
+        method = sys.argv[3]
+        params = None
+        if len(sys.argv) > 3:
+            params = sys.argv[4:]
+        try:
+            print(get_bitcoin_cli(node, method, params))
+            return
+        except Exception as e:
+            return f"Could not get bitcoin-cli command for {node}: {e}"
 
     if cmd == "log":
         if len(sys.argv) < 3:
@@ -71,10 +87,11 @@ def main():
       Usage: warnet-cli <command> <arg1> <arg2> ...
 
       Available commands:
-        log <node number>               Output the bitcoin debug.log file for specified node.
-        run <scnario name> <args...>    Run the specified warnet scenario.
-        messages <source> <destination> Output the captured messages between two specified nodes.
-        stop                            Stop warnet. Stops and removes all containers and networks.
+        bcli <node#> <method> <params...> Send a bitcoin-cli command to the specified node.
+        log <node#>                       Output the bitcoin debug.log file for specified node.
+        run <scnario name> <args...>      Run the specified warnet scenario.
+        messages <src:node#> <dest:node#> Output the captured messages between two specified nodes.
+        stop                              Stop warnet. Stops and removes all containers and networks.
     """
     print(help)
     exit()

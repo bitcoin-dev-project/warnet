@@ -65,8 +65,9 @@ python src/scenarios/tx-flood.py
       Usage: warnet-cli <command> <arg1> <arg2> ...
 
       Available commands:
-        log <node number>               Output the bitcoin debug.log file for specified node.
-        run <scnario name> <args...>    Run the specified warnet scenario.
-        messages <source> <destination> Output the captured messages between two specified nodes.
-        stop                            Stop warnet. Stops and removes all containers and networks.
+        bcli <node#> <method> <params...> Send a bitcoin-cli command to the specified node.
+        log <node#>                       Output the bitcoin debug.log file for specified node.
+        run <scnario name> <args...>      Run the specified warnet scenario.
+        messages <src:node#> <dest:node#> Output the captured messages between two specified nodes.
+        stop                              Stop warnet. Stops and removes all containers and networks.
 ```

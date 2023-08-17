@@ -1,5 +1,6 @@
 import docker
 from test_framework.message_capture_parser import process_blob
+from warnet.rpc_utils import bitcoin_rpc
 
 def get_debug_log(node):
     d = docker.from_env()
@@ -13,6 +14,12 @@ def get_debug_log(node):
     # slice off end padding
     out = out[:stat["size"]]
     return out
+
+
+def get_bitcoin_cli(node, method, params=None):
+    d = docker.from_env()
+    c = d.containers.get(f"warnet_{node}")
+    return bitcoin_rpc(c, method, params)
 
 
 def get_messages(src, dst):
