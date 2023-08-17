@@ -2,7 +2,10 @@ import yaml
 import logging
 import networkx as nx
 import docker
-from warnet.generate_docker_compose import generate_docker_compose
+from warnet.generate_docker_compose import (
+    generate_docker_compose,
+    generate_prometheus_config,
+)
 import warnet.rpc_utils as bitcoin_cli
 
 BITCOIN_GRAPH_FILE = './graphs/basic3.graphml'
@@ -47,6 +50,7 @@ def generate_compose(graph_file: str):
         graph = nx.read_graphml(graph_file, node_type=int)
         version = [graph.nodes[node]["version"] for node in graph.nodes()]
         generate_docker_compose(node_count=len(graph.nodes()), version=version)
+        generate_prometheus_config(node_count=len(graph.nodes()))
         logging.info(f"  Graph file contains {len(graph.nodes())} nodes and {len(graph.edges())} connections")
         logging.info("  Generated docker-compose.yml file")
     except Exception as e:

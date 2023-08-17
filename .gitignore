@@ -1,6 +1,7 @@
 .vscode
 __pycache__
 docker-compose.yml
+prometheus.yml
 .venv
 warnet.egg-info
 .python-version
