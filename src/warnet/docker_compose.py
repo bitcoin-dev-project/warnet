@@ -94,7 +94,7 @@ def generate_docker_compose(graph_file: str):
             "volumes": ["./prometheus.yml:/etc/prometheus/prometheus.yml"],
             "command": ["--config.file=/etc/prometheus/prometheus.yml"],
             "networks": [
-                "warnet_network"
+                "warnet"
             ]
         },
         "node-exporter": {
@@ -107,7 +107,7 @@ def generate_docker_compose(graph_file: str):
             ],
             "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"],
             "networks": [
-                "warnet_network"
+                "warnet"
             ]
         },
         "grafana": {
@@ -116,7 +116,7 @@ def generate_docker_compose(graph_file: str):
             "ports": ["3000:3000"],
             "volumes": ["grafana-storage:/var/lib/grafana"],
             "networks": [
-                "warnet_network"
+                "warnet"
             ]
         }
     }
@@ -165,7 +165,7 @@ def generate_docker_compose(graph_file: str):
                 f"{conf_file_path}:/root/.bitcoin/bitcoin.conf"
             ],
             "networks": [
-                "warnet_network"
+                "warnet",
             ]
         }
 
@@ -180,7 +180,7 @@ def generate_docker_compose(graph_file: str):
             },
             "ports": [f"{8335 + i}:9332"],
             "networks": [
-                "warnet_network"
+                "warnet"
             ]
         }
 
@@ -189,9 +189,13 @@ def generate_docker_compose(graph_file: str):
         "services": services,
         "volumes": volumes,
         "networks": {
-            "warnet_network": {
-                "name": "warnet_network",
-                "driver": "bridge"
+            "warnet": {
+                "name": "warnet",
+                "ipam": {
+                    "config": [
+                        {"subnet": "100.0.0.0/8"}
+                    ]
+                }
             }
         }
     }

@@ -45,8 +45,7 @@ def get_container_ip(client: docker.DockerClient, container_name: str):
     try:
         container = client.containers.get(container_name)
         container.reload()
-        return container.attrs["NetworkSettings"]["Networks"][
-            "warnet_network"]["IPAddress"]
+        return container.attrs["NetworkSettings"]["Networks"]["warnet"]["IPAddress"]
     except Exception as e:
         logging.error(f"An error occurred while getting container IP: {e}")
 

@@ -27,7 +27,7 @@ def get_messages(src, dst):
     src = d.containers.get(f"warnet_{src}")
     dst = d.containers.get(f"warnet_{dst}")
     # start with the IP of the peer
-    dst_ip = dst.attrs["NetworkSettings"]["Networks"]["warnet_network"]["IPAddress"]
+    dst_ip = dst.attrs["NetworkSettings"]["Networks"]["warnet"]["IPAddress"]
     # find the corresponding message capture folder
     # (which may include the internal port if connection is inbound)
     exit_code, dirs = src.exec_run("ls /bitcoin/regtest/message_capture")
@@ -53,13 +53,13 @@ def get_messages(src, dst):
 
 def stop_network():
     d = docker.from_env()
-    network = d.networks.get("warnet_network")
+    network = d.networks.get("warnet")
     containers = network.containers
     for c in containers:
         print(f"stopping container: {c.name}")
         c.stop()
         print(f"removing container: {c.name}")
         c.remove()
-    print("removing network: warnet_network")
+    print("removing network: warnet")
     network.remove()
     return True

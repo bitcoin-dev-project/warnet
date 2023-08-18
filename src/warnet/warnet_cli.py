@@ -80,7 +80,7 @@ def main():
         try:
             return stop_network()
         except Exception as e:
-            return f"Could not stop warnet_network: {e}"
+            return f"Could not stop warnet: {e}"
 
     # default / `help`
     help = """
