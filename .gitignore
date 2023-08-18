@@ -6,3 +6,4 @@ prometheus.yml
 warnet.egg-info
 .python-version
 .env
+config/bitcoin.conf.*
