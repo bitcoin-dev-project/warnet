@@ -5,7 +5,7 @@ from warnet.rpc_utils import bitcoin_rpc
 def get_debug_log(node):
     d = docker.from_env()
     c = d.containers.get(f"warnet_{node}")
-    data, stat = c.get_archive("/bitcoin/regtest/debug.log")
+    data, stat = c.get_archive("/root/.bitcoin/regtest/debug.log")
     out = ""
     for chunk in data:
         out += chunk.decode()
@@ -30,13 +30,13 @@ def get_messages(src, dst):
     dst_ip = dst.attrs["NetworkSettings"]["Networks"]["warnet"]["IPAddress"]
     # find the corresponding message capture folder
     # (which may include the internal port if connection is inbound)
-    exit_code, dirs = src.exec_run("ls /bitcoin/regtest/message_capture")
+    exit_code, dirs = src.exec_run("ls /root/.bitcoin/regtest/message_capture")
     dirs = dirs.decode().splitlines()
     messages = []
     for dir_name in dirs:
         if dst_ip in dir_name:
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                data, stat = src.get_archive(f"/bitcoin/regtest/message_capture/{dir_name}/{file}")
+                data, stat = src.get_archive(f"/root/.bitcoin/regtest/message_capture/{dir_name}/{file}")
                 blob = b''
                 for chunk in data:
                     blob += chunk
