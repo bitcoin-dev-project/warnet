@@ -33,7 +33,7 @@
 <data key="y">-73.093735</data>
 <data key="version">25.0</data>
 <data key="bitcoin_config">uacomment=warnet3</data>
-<data key="tc_netem"></data>
+<data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
 </node>
 <edge id="0" source="1" target="0">
 </edge>

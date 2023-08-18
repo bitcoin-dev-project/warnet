@@ -170,7 +170,8 @@ def generate_docker_compose(graph_file: str):
                 "warnet": {
                     "ipv4_address": f"{ip_addr}",
                 }
-            }
+            },
+            "privileged": True,
         }
 
         services[f"prom-exporter-node-{node_id}"] = {
