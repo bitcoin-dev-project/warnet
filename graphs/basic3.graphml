@@ -61,13 +61,13 @@
 <data key="version">25.0</data>
 <data key="bitcoin_config">port=18444</data>
 </node>
-<edge id="0" source="0" target="1">
+<edge id="0" source="1" target="0">
 <data key="weight">1.0</data>
 </edge>
-<edge id="1" source="0" target="2">
+<edge id="1" source="2" target="0">
 <data key="weight">1.0</data>
 </edge>
-<edge id="2" source="0" target="3">
+<edge id="2" source="3" target="0">
 <data key="weight">1.0</data>
 </edge>
 <edge id="3" source="1" target="2">

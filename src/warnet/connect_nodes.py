@@ -2,7 +2,7 @@ import logging
 import docker
 import networkx as nx
 
-from .rpc_utils import addnode
+from .rpc_utils import addpeeraddress
 from .docker_utils import get_container_ip, get_containers
 
 
@@ -23,6 +23,6 @@ def connect_edges(client: docker.DockerClient, graph_file: str):
             dest = f"warnet_{str(edge[1])}"
             source_container = client.containers.get(source)
             logging.info(f"Connecting node {source} to {dest}")
-            addnode(source_container, get_container_ip(client, dest))
+            addpeeraddress(source_container, get_container_ip(client, dest))
     except Exception as e:
         logging.error(f"An error occurred while setting up the network: {e}")
