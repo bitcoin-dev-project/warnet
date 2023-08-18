@@ -40,47 +40,58 @@ def generate_docker_compose(graph_file: str):
     nodes = graph.nodes()
     generate_prometheus_config(len(nodes))
 
-    services = {
-        "prometheus": {
-            "image": "prom/prometheus:latest",
-            "container_name": "prometheus",
-            "ports": ["9090:9090"],
-            "volumes": ["./prometheus.yml:/etc/prometheus/prometheus.yml"],
-            "command": ["--config.file=/etc/prometheus/prometheus.yml"],
-            "networks": [
-                "warnet_network"
-            ]
-        },
-        "node-exporter": {
-            "image": "prom/node-exporter:latest",
-            "container_name": "node-exporter",
-            "volumes": [
-                "/proc:/host/proc:ro",
-                "/sys:/host/sys:ro",
-                "/:/rootfs:ro"
-            ],
-            "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"],
-            "networks": [
-                "warnet_network"
-            ]
-        },
-        "grafana": {
-            "image": "grafana/grafana:latest",
-            "container_name": "grafana",
-            "ports": ["3000:3000"],
-            "volumes": ["grafana-storage:/var/lib/grafana"],
-            "networks": [
-                "warnet_network"
-            ]
-        }
+    compose_config = {
+        "version": "3.8",
+        "networks": {},
+        "services": {},
+        "volumes": {}
     }
-    volumes = {
-        "grafana-storage": None,
+
+    compose_config["networks"]["warnet_network"] = {
+        "name": "warnet_network",
+        "driver": "bridge"
     }
+
+    compose_config["services"]["prometheus"] = {
+        "image": "prom/prometheus:latest",
+        "container_name": "prometheus",
+        "ports": ["9090:9090"],
+        "volumes": ["./prometheus.yml:/etc/prometheus/prometheus.yml"],
+        "command": ["--config.file=/etc/prometheus/prometheus.yml"],
+        "networks": [
+            "warnet_network"
+        ]
+    }
+
+    compose_config["services"]["node-exporter"] = {
+        "image": "prom/node-exporter:latest",
+        "container_name": "node-exporter",
+        "volumes": [
+            "/proc:/host/proc:ro",
+            "/sys:/host/sys:ro",
+            "/:/rootfs:ro"
+        ],
+        "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"],
+        "networks": [
+            "warnet_network"
+        ]
+    }
+
+    compose_config["services"]["grafana"] = {
+        "image": "grafana/grafana:latest",
+        "container_name": "grafana",
+        "ports": ["3000:3000"],
+        "volumes": ["grafana-storage:/var/lib/grafana"],
+        "networks": [
+            "warnet_network"
+        ]
+    }
+
+    compose_config["volumes"]["grafana-storage"] = None
 
     for i in range(len(nodes)):
         version = nodes[i]["version"]
-        services[f"bitcoin-node-{i}"] = {
+        compose_config["services"][f"bitcoin-node-{i}"] = {
             "container_name": f"warnet_{i}",
             "build": {
                 "context": ".",
@@ -98,7 +109,7 @@ def generate_docker_compose(graph_file: str):
                 "warnet_network"
             ]
         }
-        services[f"prom-exporter-node-{i}"] = {
+        compose_config["services"][f"prom-exporter-node-{i}"] = {
             "image": "jvstein/bitcoin-prometheus-exporter",
             "container_name": f"exporter-node-{i}",
             "environment": {
@@ -112,18 +123,6 @@ def generate_docker_compose(graph_file: str):
                 "warnet_network"
             ]
         }
-
-    compose_config = {
-        "version": "3.8",
-        "services": services,
-        "volumes": volumes,
-        "networks": {
-            "warnet_network": {
-                "name": "warnet_network",
-                "driver": "bridge"
-            }
-        }
-    }
 
     try:
         with open("docker-compose.yml", "w") as file:
