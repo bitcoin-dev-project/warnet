@@ -12,6 +12,7 @@ def main():
     warnet.delete_containers(client)
     warnet.generate_docker_compose(BITCOIN_GRAPH_FILE)
     warnet.docker_compose()
+    warnet.apply_network_conditions(client, BITCOIN_GRAPH_FILE)
     warnet.connect_edges(client, BITCOIN_GRAPH_FILE)
 
 

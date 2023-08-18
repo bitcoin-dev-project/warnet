@@ -56,12 +56,12 @@ def get_containers(client: docker.DockerClient,
     Get the names and instances of all containers with the specified name prefix.
 
     :param container_name_prefix: The prefix of the container names to filter.
-    :return: A tuple containing the names and instances of the containers
+    :return: A list of tuples containing the names and instances of the containers
     """
     containers = client.containers.list(
         all=True, filters={"name": container_name_prefix})
-    container_names = [container.name for container in containers]
-    return container_names, containers
+    container_info = [(container.name, container) for container in containers]
+    return container_info
 
 
 def docker_compose():
