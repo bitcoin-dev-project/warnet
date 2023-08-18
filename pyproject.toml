@@ -20,5 +20,4 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-warnet = "warnet.main:main"
-warnet-cli = "warnet.warnet_cli:main"
+warnet = "warnet.main:app"
