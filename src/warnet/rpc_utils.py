@@ -50,6 +50,9 @@ def addnode(container, dest):
     """
     bitcoin_rpc(container, 'addnode', [dest, 'add'])
 
+def addpeeraddress(container, dest):
+    bitcoin_rpc(container, 'addpeeraddress', [dest, 18444])
+
 def getpeerinfo(container):
     """
     Get information about the node's peers.
