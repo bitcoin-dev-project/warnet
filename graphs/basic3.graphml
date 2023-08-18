@@ -55,14 +55,5 @@
 <edge id="2" source="0" target="3">
 <data key="weight">1.0</data>
 </edge>
-<edge id="3" source="1" target="2">
-<data key="weight">1.0</data>
-</edge>
-<edge id="4" source="1" target="3">
-<data key="weight">1.0</data>
-</edge>
-<edge id="5" source="2" target="3">
-<data key="weight">1.0</data>
-</edge>
 </graph>
 </graphml>

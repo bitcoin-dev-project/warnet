@@ -49,7 +49,12 @@ def generate_docker_compose(graph_file: str):
 
     compose_config["networks"]["warnet_network"] = {
         "name": "warnet_network",
-        "driver": "bridge"
+        "driver": "bridge",
+        "ipam": {
+            "config": [
+                {"subnet": "100.0.0.0/8"}
+            ]
+        }
     }
 
     compose_config["services"]["prometheus"] = {
@@ -105,9 +110,11 @@ def generate_docker_compose(graph_file: str):
             "volumes": [
                 f"./config/bitcoin.conf:/root/.bitcoin/bitcoin.conf"
             ],
-            "networks": [
-                "warnet_network"
-            ]
+            "networks": {
+                "warnet_network": {
+                    "ipv4_address": f"100.{i}.1.1"
+                }
+            }
         }
         compose_config["services"][f"prom-exporter-node-{i}"] = {
             "image": "jvstein/bitcoin-prometheus-exporter",
