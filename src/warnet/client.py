@@ -35,7 +35,7 @@ def get_messages(src, dst):
     messages = []
     for dir_name in dirs:
         if dst_ip in dir_name:
-            for file, outbound in [["msgs_recv.dat", False], ["msgs_recv.dat", True]]:
+            for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 data, stat = src.get_archive(f"/bitcoin/regtest/message_capture/{dir_name}/{file}")
                 blob = b''
                 for chunk in data:
