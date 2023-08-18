@@ -1,12 +1,17 @@
 import os
+import sys
 import yaml
 import subprocess
 import logging
+
 import networkx as nx
 from .prometheus import generate_prometheus_config
+from .conf_parser import parse_bitcoin_conf, dump_bitcoin_conf
 
 logging.basicConfig(level=logging.INFO)
 DOCKER_COMPOSE_FILE = "docker-compose.yml"
+DEFAULT_CONF = "config/bitcoin.conf"
+NETWORK = 'regtest'
 
 
 def get_architecture():
@@ -17,13 +22,44 @@ def get_architecture():
     """
     try:
         result = subprocess.run(['uname', '-m'], stdout=subprocess.PIPE)
-        architecture = result.stdout.decode('utf-8').strip()
-        if architecture == "arm64":
-            architecture = "aarch64"
-        return architecture
+        arch = result.stdout.decode('utf-8').strip()
+        if arch == "arm64":
+            arch = "aarch64"
+        if arch is not None:
+            logging.info(f"Detected architecture: {arch}")
+        else:
+            raise Exception("Failed to detect architecture.")
+        return arch
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         return None
+
+
+def write_bitcoin_configs(graph):
+
+    with open(DEFAULT_CONF, 'r') as file:
+        default_bitcoin_conf_content = file.read()
+    default_bitcoin_conf = parse_bitcoin_conf(default_bitcoin_conf_content)
+    print(f'Default conf:\n{default_bitcoin_conf}')
+
+    for node_id, node_data in graph.nodes(data=True):
+        # Start with a copy of the default configuration for each node
+        node_conf = default_bitcoin_conf.copy()
+
+        node_options = node_data.get("bitcoin_config", "").split(",")
+        for option in node_options:
+            option = option.strip()
+            if option:
+                if "=" in option:
+                    key, value = option.split("=")
+                else:
+                    key, value = option, "1"
+                node_conf[NETWORK][key] = value
+
+        node_config_file = dump_bitcoin_conf(node_conf)
+
+        with open(f"config/bitcoin.conf.{node_id}", 'w') as file:
+            file.write(node_config_file)
 
 
 def generate_docker_compose(graph_file: str):
@@ -34,10 +70,6 @@ def generate_docker_compose(graph_file: str):
     :param node_count: The number of nodes in the graph
     """
     arch = get_architecture()
-    if arch is not None:
-        logging.info(f"Detected architecture: {arch}")
-    else:
-        raise Exception("Failed to detect architecture.")
 
     # Delete any previous existing file
     # Reason: If the graph file we are importing has any errors,
@@ -50,6 +82,8 @@ def generate_docker_compose(graph_file: str):
 
     graph = nx.read_graphml(graph_file, node_type=int)
     nodes = [graph.nodes[node] for node in graph.nodes()]
+
+    write_bitcoin_configs(graph)
     generate_prometheus_config(len(nodes))
 
     services = {
@@ -92,6 +126,13 @@ def generate_docker_compose(graph_file: str):
 
     for i, node in enumerate(nodes):
         version = node["version"]
+        conf_file = node.get("conf", "bitcoin.conf")
+        conf_file_path = f"./config/{conf_file}"
+
+        # Check if the configuration file exists
+        if not os.path.isfile(conf_file_path):
+            print(f"Error: Configuration file {conf_file_path} does not exist.")
+            sys.exit(1)  # Exit with an error code
 
         if "/" and "#" in version:
             # it's a git branch, building step is necessary
@@ -121,7 +162,7 @@ def generate_docker_compose(graph_file: str):
             "container_name": f"warnet_{i}",
             "build": build,
             "volumes": [
-                f"./config/bitcoin.conf:/root/.bitcoin/bitcoin.conf"
+                f"{conf_file_path}:/root/.bitcoin/bitcoin.conf"
             ],
             "networks": [
                 "warnet_network"
