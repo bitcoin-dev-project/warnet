@@ -2,12 +2,14 @@
 
 import React, { useRef, useEffect } from "react";
 import * as d3 from "d3";
-import { GraphData, GraphEdge, GraphNode } from "@/types";
-import { CANVAS_HEIGHT, CANVAS_WIDTH, LINK_DISTANCE } from "@/config";
-
-type ForceGraphProps = {
-  setLinks: (link: any) => void;
-} & GraphData;
+import { GraphEdge, GraphNode } from "@/types";
+import {
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  LINK_DISTANCE,
+  NODE_ATTACHMENT_POINT,
+} from "@/config";
+import { useNodeGraphContext } from "@/contexts/node-graph-context";
 
 const color = () => {
   const r = Math.floor(Math.random() * 255);
@@ -17,7 +19,9 @@ const color = () => {
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
+const ForceGraph = () => {
+  const { edges, nodes, setNodeEdges, isDialogOpen, showGraph } =
+    useNodeGraphContext();
   const [selectedNode, setSelectedNode] = React.useState<GraphNode | null>(
     null
   );
@@ -42,7 +46,8 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
           .distance(LINK_DISTANCE)
       )
       .force("charge", d3.forceManyBody().strength(-5))
-      .alphaDecay(0.01);
+      .alphaDecay(0.01)
+      .force("center", d3.forceCenter(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2));
 
     const drag = (simulation: d3.Simulation<GraphNode, undefined>) => {
       function dragstarted(event: any) {
@@ -69,6 +74,8 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
         .on("end", dragended);
     };
 
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
     const link = svg
       .append("g")
       .attr("stroke", "#153")
@@ -77,7 +84,8 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
       .attr("stroke-opacity", 1)
       .selectAll("line")
       .data(edges)
-      .join("line");
+      .enter()
+      .append("line");
 
     const node = svg
       .append("g")
@@ -88,12 +96,20 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
       .join("rect")
       .attr("width", 20)
       .attr("height", 20)
-      .attr("fill", "#153")
+      .attr("fill", (d) => color(d.id.toString()))
       .call(drag(simulation))
       .on("click", (event, d) => {
         if (selectedNode) {
           if (selectedNode !== d) {
-            setLinks([...edges, { source: selectedNode.id, target: d.id }]);
+            // setLinks([...edges, { source: selectedNode.id, target: d.id }]);
+            setNodeEdges([
+              ...edges,
+              {
+                source: selectedNode.id,
+                target: d.id,
+                // id: 1,
+              },
+            ]);
           }
           setSelectedNode(null);
         } else {
@@ -101,14 +117,33 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
         }
       });
 
+    const labels = svg
+      .append("g")
+      .selectAll("text")
+      .data(nodes)
+      .enter()
+      .append("text")
+      .attr("x", (d) => d.x!)
+      .attr("y", (d) => d.y!)
+      .text((d) => d.name!)
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("text-anchor", "middle")
+      .attr("dy", -10);
+
     simulation.on("tick", () => {
       link
-        .attr("x1", (d) => d.source.x)
-        .attr("y1", (d) => d.source.y)
-        .attr("x2", (d) => d.target.x)
-        .attr("y2", (d) => d.target.y);
+        .attr("x1", (d) => d.source.x!)
+        .attr("y1", (d) => d.source.y!)
+        .attr("x2", (d) => d.target.x!)
+        .attr("y2", (d) => d.target.y!);
 
-      node.attr("x", (d) => d.x - 10).attr("y", (d) => d.y - 10);
+      node
+        .attr("x", (d) => d.x! - NODE_ATTACHMENT_POINT)
+        .attr("y", (d) => d.y! - NODE_ATTACHMENT_POINT);
+      labels
+        .attr("x", (d) => d.x! - NODE_ATTACHMENT_POINT)
+        .attr("y", (d) => d.y! - NODE_ATTACHMENT_POINT);
     });
 
     svg
@@ -123,8 +158,8 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
       if (creatingLink) {
         const [x, y] = d3.pointer(event);
         d3.select(tempLinkRef.current)
-          .attr("x1", creatingLink.source.x)
-          .attr("y1", creatingLink.source.y)
+          .attr("x1", creatingLink.source.x!)
+          .attr("y1", creatingLink.source.y!)
           .attr("x2", x)
           .attr("y2", y)
           .style("opacity", 1);
@@ -133,9 +168,6 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
 
     svg.on("mousemove", mouseMoved);
     svg.on("click", () => {
-      console.log({ creatingLink });
-      console.log({ nodes });
-      console.log(tempLinkRef.current);
       if (creatingLink) {
         setCreatingLink(null);
         d3.select(tempLinkRef.current).style("opacity", 0);
@@ -145,11 +177,23 @@ const ForceGraph = ({ nodes, edges, setLinks }: ForceGraphProps) => {
     return () => {
       simulation.stop();
     };
-  }, [nodes, edges, creatingLink, selectedNode, setLinks]);
+  }, [nodes, edges, creatingLink, selectedNode, setNodeEdges]);
 
   React.useEffect(() => {
     console.log("creatingLink", creatingLink);
-  }, [creatingLink]);
+    const edge = edges.map((edge) => {
+      return {
+        ...edge,
+        source: nodes.find((node) => node.id === edge.source.id),
+        target: nodes.find((node) => node.id === edge.target.id),
+      };
+    });
+    console.log("edge", edge);
+  }, [creatingLink, edges, nodes]);
+
+  if (isDialogOpen || !showGraph) {
+    return null;
+  }
 
   return (
     <svg

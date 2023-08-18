@@ -20,12 +20,6 @@ const Sidebar: FC<SidebarProps> = ({ onAddNode }) => {
               {version}
             </button>
           ))}
-          {/* <button
-            className="text-[12px] border rounded-md px-2 py-1"
-            onClick={onAddNode}
-          >
-            24.0
-          </button> */}
         </div>
       </section>
     </aside>
