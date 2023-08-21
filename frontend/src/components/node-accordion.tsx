@@ -17,15 +17,15 @@ const NodeAccordion = () => {
     <Accordion.Root
       className={`bg-mauve6 w-[300px] rounded-md shadow-[0_2px_10px] shadow-black/5 fixed right-[-100%] top-[-50%] bg-white p-5`}
       type="single"
-      defaultValue="item-1"
+      defaultValue="1"
       collapsible
     >
       <div className="fixed left-[50%] top-[35%] w-[100%] h-[1px] bg-white -z-10"></div>
       {nodes.map((node) => {
         return (
-          <AccordionItem value={node.id.toString()} key={node.id}>
+          <AccordionItem value={node?.id!.toString()} key={node.id}>
             <AccordionTrigger>
-              {node.name + " " + `${node.id + 1}`}
+              {node.name + " " + `${node?.id! + 1}`}
             </AccordionTrigger>
             <AccordionContent>
               <div className="flex flex-col gap-y-1">
@@ -52,7 +52,7 @@ const NodeAccordion = () => {
                 <div className="flex justify-between">
                   <p className="text-sm text-black font-light mb-2">peers</p>
                   <p className="text-sm text-black font-light mb-2">
-                    {getNodePeers(node.id, nodes, edges).length}
+                    {getNodePeers(node?.id!, nodes, edges).length}
                   </p>
                 </div>
               </div>
@@ -60,7 +60,7 @@ const NodeAccordion = () => {
           </AccordionItem>
         );
       })}
-      <div className="flex justify-end">
+      <div className="flex justify-end mt-4">
         <button
           onClick={() => {
             closeDialog();

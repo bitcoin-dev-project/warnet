@@ -1,5 +1,5 @@
-const CANVAS_WIDTH = 650 as const;
-const CANVAS_HEIGHT = 650 as const;
+const CANVAS_WIDTH = 700 as const;
+const CANVAS_HEIGHT = 700 as const;
 const LINK_DISTANCE = 150 as const;
 const NODE_ATTACHMENT_POINT = 10 as const;
 

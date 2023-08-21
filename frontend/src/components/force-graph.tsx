@@ -10,6 +10,7 @@ import {
   NODE_ATTACHMENT_POINT,
 } from "@/config";
 import { useNodeGraphContext } from "@/contexts/node-graph-context";
+import Sidebar from "./sidebar";
 
 const color = () => {
   const r = Math.floor(Math.random() * 255);
@@ -96,8 +97,8 @@ const ForceGraph = () => {
       .join("rect")
       .attr("width", 20)
       .attr("height", 20)
-      .attr("fill", (d) => color(d.id.toString()))
-      .call(drag(simulation))
+      .attr("fill", (d) => color(d.id!.toString()))
+      .call(() => drag(simulation))
       .on("click", (event, d) => {
         if (selectedNode) {
           if (selectedNode !== d) {
@@ -149,6 +150,7 @@ const ForceGraph = () => {
     svg
       .append("line")
       .attr("ref", tempLinkRef.current)
+      .attr("fill", "#153")
       .style("stroke", "#153")
       .style("stroke-dasharray", "5,5")
       .style("opacity", 0)
@@ -179,29 +181,32 @@ const ForceGraph = () => {
     };
   }, [nodes, edges, creatingLink, selectedNode, setNodeEdges]);
 
-  React.useEffect(() => {
-    console.log("creatingLink", creatingLink);
-    const edge = edges.map((edge) => {
-      return {
-        ...edge,
-        source: nodes.find((node) => node.id === edge.source.id),
-        target: nodes.find((node) => node.id === edge.target.id),
-      };
-    });
-    console.log("edge", edge);
-  }, [creatingLink, edges, nodes]);
+  // React.useEffect(() => {
+  //   // console.log("creatingLink", creatingLink);
+  //   const edge = edges.map((edge) => {
+  //     return {
+  //       ...edge,
+  //       source: nodes.find((node) => node.id === edge.source.id),
+  //       target: nodes.find((node) => node.id === edge.target.id),
+  //     };
+  //   });
+  //   console.log("edge", edge);
+  // }, [creatingLink, edges, nodes]);
 
   if (isDialogOpen || !showGraph) {
     return null;
   }
 
   return (
-    <svg
-      ref={svgRef}
-      width={CANVAS_WIDTH}
-      height={CANVAS_HEIGHT}
-      className="bg-slate-100 border rounded-md"
-    ></svg>
+    <>
+      <Sidebar />
+      <svg
+        ref={svgRef}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        className={`bg-slate-100 border rounded-md`}
+      ></svg>
+    </>
   );
 };
 

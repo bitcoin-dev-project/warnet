@@ -1,7 +1,7 @@
 import { Steps } from "./contexts/node-graph-context";
 
 export type GraphNode = {
-  id: number;
+  id?: number;
   size: number;
   name?: string;
   version?: string;
@@ -43,12 +43,17 @@ export type NodeGraphContext = {
   openDialog: () => void;
   closeDialog: () => void;
   nodePersonaType: NodePersonaType | null;
-  addNode: (node: GraphNode[]) => void;
+  addNode: (node?: GraphNode[]) => void;
   setNodePersonaFunc: (persona: NodePersonaType) => void;
-  setNodeEdges: (edge: GraphEdge[], selectedNode?: GraphNode, d?: GraphNode) => void;
+  setNodeEdges: (
+    edge: GraphEdge[],
+    selectedNode?: GraphNode,
+    d?: GraphNode
+  ) => void;
   showGraph: boolean;
   setStep: (step: Steps) => void;
   showGraphFunc: () => void;
   showNodePersonaInfo: () => void;
   nodePersona: NodePersona | null;
+  generateNodeGraph: () => void;
 };
