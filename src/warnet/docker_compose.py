@@ -7,6 +7,7 @@ import logging
 import networkx as nx
 from .prometheus import generate_prometheus_config
 from .conf_parser import parse_bitcoin_conf, dump_bitcoin_conf
+from .addr import generate_ip_addr, DEFAULT_SUBNET
 
 logging.basicConfig(level=logging.INFO)
 DOCKER_COMPOSE_FILE = "docker-compose.yml"
@@ -40,7 +41,6 @@ def write_bitcoin_configs(graph):
     with open(DEFAULT_CONF, 'r') as file:
         default_bitcoin_conf_content = file.read()
     default_bitcoin_conf = parse_bitcoin_conf(default_bitcoin_conf_content)
-    print(f'Default conf:\n{default_bitcoin_conf}')
 
     for node_id, node_data in graph.nodes(data=True):
         # Start with a copy of the default configuration for each node
@@ -158,15 +158,19 @@ def generate_docker_compose(graph_file: str):
             }
 
         # TODO: we may need unique service names to bust cache if .yml file changes
+        ip_addr = generate_ip_addr(DEFAULT_SUBNET)
+        logging.debug(f"Using ip addr {ip_addr} for node {i}")
         services[f"bitcoin-node-{i}"] = {
             "container_name": f"warnet_{i}",
             "build": build,
             "volumes": [
                 f"{conf_file_path}:/root/.bitcoin/bitcoin.conf"
             ],
-            "networks": [
-                "warnet",
-            ]
+            "networks": {
+                "warnet": {
+                    "ipv4_address": f"{ip_addr}",
+                }
+            }
         }
 
         services[f"prom-exporter-node-{i}"] = {
