@@ -9,6 +9,7 @@ import {
   NodePersona,
   NodePersonaType,
 } from "@/types";
+import generateGraphML from "@/helpers/generate-graphml";
 
 const defaultNodePersona: NodePersona = {
   id: 0,
@@ -46,12 +47,12 @@ export const NodeGraphProvider = ({
   const [nodePersona, setNodePersona] = useState<NodePersona | null>(
     defaultNodePersona
   );
-  const [steps, setSteps] = React.useState<Steps>(0);
+  const [steps, setSteps] = React.useState<Steps>(-1);
 
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
-    setSteps(0);
+    setSteps(-1);
   };
 
   const setNodePersonaFunc = (persona: NodePersonaType) => {
@@ -75,24 +76,36 @@ export const NodeGraphProvider = ({
     setEdges([...edge]);
   };
 
+  const generateNodeGraph = () => {
+    // const nodeGraph = {
+    //   nodes: nodes,
+    //   edges: edges,
+    // };
+    generateGraphML({ nodes, edges });
+  };
+
   const addNode = (nodeArray?: GraphNode[]) => {
     if (nodeArray) {
       setNodes([...nodes, ...nodeArray]);
       return;
     }
-    const newNode = {
-      id: nodes.length + 1,
-      size: 10,
-      x: CANVAS_WIDTH / 2,
-      y: CANVAS_HEIGHT / 2,
-    };
-    setNodes([...nodes, newNode]);
+    const newNode = [
+      {
+        id: nodes.length,
+        name: "new node",
+        size: 10,
+        x: CANVAS_WIDTH / 2,
+        y: CANVAS_HEIGHT / 2,
+      },
+    ];
+    console.log("newNode", newNode);
+    setNodes([...nodes, ...newNode]);
   };
 
-  // React.useEffect(() => {
-  //   console.log("nodes", nodes);
-  //   console.log("edges", edges);
-  // }, [nodes, edges]);
+  React.useEffect(() => {
+    console.log("nodes", nodes);
+    console.log("edges", edges);
+  }, [nodes, edges]);
 
   return (
     <nodeGraphContext.Provider
@@ -112,6 +125,7 @@ export const NodeGraphProvider = ({
         setNodePersonaFunc,
         showNodePersonaInfo,
         setNodeEdges,
+        generateNodeGraph,
       }}
     >
       {children}

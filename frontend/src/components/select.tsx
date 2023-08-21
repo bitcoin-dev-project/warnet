@@ -9,11 +9,12 @@ import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import * as Select from "@radix-ui/react-select";
 
 const SelectBox = () => {
-  const { setNodePersonaFunc, addNode, setNodeEdges } = useNodeGraphContext();
+  const { nodes, edges, setNodePersonaFunc, addNode, setNodeEdges } =
+    useNodeGraphContext();
 
   const setNodePersona = (value: NodePersonaType) => {
     setNodePersonaFunc(value as NodePersonaType);
-    if (value === "prebuilt") {
+    if (value === "prebuilt" && edges.length === 0 && nodes.length === 0) {
       addNode(defaultNodesData);
       setNodeEdges(defaultEdgesData);
     }

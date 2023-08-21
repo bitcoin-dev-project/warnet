@@ -2,27 +2,13 @@ import React from "react";
 
 import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import { BITCOIN_CORE_BINARY_VERSIONS, NODE_LATENCY } from "@/config";
-import { defaultEdgesData, defaultNodesData } from "@/app/data";
-import AccordionDemo from "./node-accordion";
 
 const NodePersonaInfo = () => {
-  const {
-    nodePersonaType,
-    nodePersona,
-    steps,
-    closeDialog,
-    showGraphFunc,
-  } = useNodeGraphContext();
-
-  if (!nodePersonaType || steps !== 1) {
-    return null;
-  }
+  const { nodePersonaType, nodePersona, steps, closeDialog, showGraphFunc } =
+    useNodeGraphContext();
 
   return (
-    <section
-      className={`fixed right-[-100%] top-[-80%] translate-y-[50%] w-[330px] h-[300px] bg-white rounded-md p-5`}
-    >
-      <div className="fixed left-[-50%] top-[35%] w-[100%] h-[1px] bg-white -z-10"></div>
+    <section className={` w-[330px] h-[300px] bg-white rounded-md p-5`}>
       <p className="text-sm text-black font-light mb-2">core version</p>
       <fieldset className="flex gap-3 mb-4">
         {BITCOIN_CORE_BINARY_VERSIONS.map((version, index) => (
@@ -69,18 +55,6 @@ const NodePersonaInfo = () => {
           ))}
         </div>
       </fieldset>
-      <AccordionDemo />
-      <div className="flex justify-end">
-        <button
-          onClick={() => {
-            closeDialog();
-            showGraphFunc();
-          }}
-          className="bg-green-100 text-green-700 hover:bg-green5 focus:shadow-green7 inline-flex h-[35px] items-center justify-center rounded-[4px] px-[15px] font-medium leading-none focus:shadow-[0_0_0_2px] focus:outline-none"
-        >
-          Next
-        </button>
-      </div>
     </section>
   );
 };

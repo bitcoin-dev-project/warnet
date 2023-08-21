@@ -22,7 +22,7 @@ const DialogBox = () => {
 
   const dialogContentStyles = () => {
     switch (steps) {
-      case 0:
+      case -1:
         return "top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]";
       case 1:
         return "top-[50%] left-[35%] translate-x-[-50%] translate-y-[-50%]";
@@ -46,7 +46,7 @@ const DialogBox = () => {
       <Dialog.Trigger asChild onClick={openDialog}>
         <button
           className={`${
-            isDialogOpen && steps !== -1 && "hidden"
+            steps !== -1 && "hidden"
           } text-black shadow-blackA7 hover:bg-mauve3 inline-flex h-[35px] items-center justify-center rounded-[4px] bg-white px-[15px] font-medium leading-none shadow-[0_2px_10px] focus:shadow-[0_0_0_2px] focus:shadow-black focus:outline-none`}
         >
           Build your node profile
