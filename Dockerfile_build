@@ -28,7 +28,7 @@ ARG REPO
 ARG BRANCH
 RUN mkdir /build
 WORKDIR /build
-RUN git clone --depth 1 --branch master https://github.com/vasild/bitcoin
+RUN git clone --depth 1 --branch ${BRANCH} https://github.com/${REPO}
 WORKDIR /build/bitcoin
 RUN ./autogen.sh && \
     ./configure \
