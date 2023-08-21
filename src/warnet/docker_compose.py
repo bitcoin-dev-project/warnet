@@ -124,10 +124,9 @@ def generate_docker_compose(graph_file: str):
         "grafana-storage": None,
     }
 
-    for i, node in enumerate(nodes):
-        version = node["version"]
-        conf_file = node.get("conf", "bitcoin.conf")
-        conf_file_path = f"./config/{conf_file}"
+    for node_id, node_data in graph.nodes(data=True):
+        version = node_data["version"]
+        conf_file_path = f"./config/bitcoin.conf.{node_id}"
 
         # Check if the configuration file exists
         if not os.path.isfile(conf_file_path):
@@ -159,9 +158,10 @@ def generate_docker_compose(graph_file: str):
 
         # TODO: we may need unique service names to bust cache if .yml file changes
         ip_addr = generate_ip_addr(DEFAULT_SUBNET)
-        logging.debug(f"Using ip addr {ip_addr} for node {i}")
-        services[f"bitcoin-node-{i}"] = {
-            "container_name": f"warnet_{i}",
+        logging.debug(f"Using ip addr {ip_addr} for node {node_id}")
+        services[f"bitcoin-node-{node_id}"] = {
+            "container_name": f"warnet_{node_id}",
+
             "build": build,
             "volumes": [
                 f"{conf_file_path}:/root/.bitcoin/bitcoin.conf"
@@ -173,16 +173,16 @@ def generate_docker_compose(graph_file: str):
             }
         }
 
-        services[f"prom-exporter-node-{i}"] = {
+        services[f"prom-exporter-node-{node_id}"] = {
             "image": "jvstein/bitcoin-prometheus-exporter",
-            "container_name": f"exporter-node-{i}",
+            "container_name": f"exporter-node-{node_id}",
             "environment": {
-                "BITCOIN_RPC_HOST": f"bitcoin-node-{i}",
+                "BITCOIN_RPC_HOST": f"bitcoin-node-{node_id}",
                 "BITCOIN_RPC_PORT": 18443,
                 "BITCOIN_RPC_USER": "btc",
                 "BITCOIN_RPC_PASSWORD": "passwd",
             },
-            "ports": [f"{8335 + i}:9332"],
+            "ports": [f"{8335 + node_id}:9332"],
             "networks": [
                 "warnet"
             ]
