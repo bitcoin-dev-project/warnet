@@ -1,0 +1,32 @@
+version: "3"
+services:
+  db:
+    image: postgres:14.0
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: warnet
+      POSTGRES_USER: warnet
+    networks:
+      - warnet-api
+    volumes:
+      - ./db:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile_api
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api:/app
+    depends_on:
+      - db
+    networks:
+      - warnet-api
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+
+networks:
+  warnet-api:
+    driver: bridge

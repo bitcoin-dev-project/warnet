@@ -7,3 +7,4 @@ warnet.egg-info
 .python-version
 .env
 config/bitcoin.conf.*
+db*

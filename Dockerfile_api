@@ -1,0 +1,13 @@
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10
+
+COPY ./api/requirements.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+RUN useradd --create-home myuser
+USER myuser
+
+WORKDIR /app
+
+COPY ./api /app
+
+EXPOSE 80
