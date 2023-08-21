@@ -4,12 +4,14 @@ def parse_bitcoin_conf(file_content):
 
     Args:
     - file_content (str): The content of the INI-style file.
- 
+
     Returns:
     - dict: A dictionary representation of the file content.
+            Key-value pairs are stored as tuples so one key may have
+            multiple values. Sections are represented as arrays of these tuples.
     """
-    result = {}
     current_section = None
+    result = {current_section: []}
 
     for line in file_content.splitlines():
         line = line.strip()
@@ -18,13 +20,10 @@ def parse_bitcoin_conf(file_content):
 
         if line.startswith('[') and line.endswith(']'):
             current_section = line[1:-1]
-            result[current_section] = {}
+            result[current_section] = []
         elif '=' in line:
             key, value = line.split('=', 1)
-            if current_section is not None:
-                result[current_section][key.strip()] = value.strip()
-            else:
-                result[key.strip()] = value.strip()
+            result[current_section].append((key.strip(), value.strip()))
 
     return result
 
@@ -41,14 +40,19 @@ def dump_bitcoin_conf(conf_dict):
     """
     result = []
 
-    for key, value in conf_dict.items():
-        if isinstance(value, dict):
-            # This is a section
-            result.append(f'[{key}]')
-            for sub_key, sub_value in value.items():
-                result.append(f'{sub_key}={sub_value}')
-        else:
-            # This is a key-value pair at the top level
-            result.append(f'{key}={value}')
+    # Print global section at the top first
+    values = conf_dict[None]
+    for (sub_key, sub_value) in values:
+        result.append(f'{sub_key}={sub_value}')
 
-    return '\n'.join(result)
+    # Then print any named subsections
+    for section, values in conf_dict.items():
+        if section is not None:
+            result.append(f'\n[{section}]')
+        else:
+            continue
+        for (sub_key, sub_value) in values:
+            result.append(f'{sub_key}={sub_value}')
+
+    # Terminate file with newline
+    return '\n'.join(result) + '\n'

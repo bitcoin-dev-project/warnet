@@ -19,18 +19,8 @@
 <data key="x">-356.80606</data>
 <data key="y">101.388084</data>
 <data key="version">24.0</data>
-<data key="bitcoin_config">debug=1</data>
+<data key="bitcoin_config">uacomment=warnet0</data>
 </node>
-<!-- <node id="1"> -->
-<!-- <data key="size">10.0</data> -->
-<!-- <data key="r">153</data> -->
-<!-- <data key="g">153</data> -->
-<!-- <data key="b">153</data> -->
-<!-- <data key="x">-122.60297</data> -->
-<!-- <data key="y">162.6925</data> -->
-<!-- <data key="version">25.0</data> -->
-<!-- <data key="bitcoin_config"></data> -->
-<!-- </node> -->
 <node id="1">
 <data key="size">10.0</data>
 <data key="r">153</data>
@@ -38,8 +28,8 @@
 <data key="b">153</data>
 <data key="x">-122.60297</data>
 <data key="y">162.6925</data>
-<data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
-<data key="bitcoin_config"></data>
+<data key="version">25.0</data>
+<data key="bitcoin_config">uacomment=warnet1</data>
 </node>
 <node id="2">
 <data key="size">10.0</data>
@@ -49,7 +39,7 @@
 <data key="x">-201.19461</data>
 <data key="y">-73.093735</data>
 <data key="version">25.0</data>
-<data key="bitcoin_config"></data>
+<data key="bitcoin_config">uacomment=warnet2</data>
 </node>
 <node id="3">
 <data key="size">10.0</data>
@@ -59,7 +49,7 @@
 <data key="x">-201.19461</data>
 <data key="y">-73.093735</data>
 <data key="version">25.0</data>
-<data key="bitcoin_config">port=18444</data>
+<data key="bitcoin_config">uacomment=warnet3</data>
 </node>
 <edge id="0" source="1" target="0">
 <data key="weight">1.0</data>

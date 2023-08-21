@@ -3,7 +3,7 @@ import sys
 import yaml
 import subprocess
 import logging
-
+from copy import deepcopy
 import networkx as nx
 from .prometheus import generate_prometheus_config
 from .conf_parser import parse_bitcoin_conf, dump_bitcoin_conf
@@ -44,7 +44,7 @@ def write_bitcoin_configs(graph):
 
     for node_id, node_data in graph.nodes(data=True):
         # Start with a copy of the default configuration for each node
-        node_conf = default_bitcoin_conf.copy()
+        node_conf = deepcopy(default_bitcoin_conf)
 
         node_options = node_data.get("bitcoin_config", "").split(",")
         for option in node_options:
@@ -54,7 +54,7 @@ def write_bitcoin_configs(graph):
                     key, value = option.split("=")
                 else:
                     key, value = option, "1"
-                node_conf[NETWORK][key] = value
+                node_conf[NETWORK].append((key, value))
 
         node_config_file = dump_bitcoin_conf(node_conf)
 
