@@ -4,18 +4,33 @@ import scenarios
 import subprocess
 import os
 import sys
-from warnet.client import (
-  get_debug_log,
-  get_bitcoin_cli,
-  get_messages,
-  stop_network
-)
+from warnet.client import get_debug_log, get_bitcoin_cli, get_messages, stop_network
+
+from jsonrpcclient import request, parse, Ok
+import requests
+
+
+def rpc(rpc_method, params=()):
+    try:
+        response = requests.post(
+            "http://localhost:5000/", json=request(rpc_method, params)
+        )
+
+        parsed = parse(response.json())
+        print(parsed.result)
+        return
+    except Exception as e:
+        return f"{e}"
+
 
 def main():
     if len(sys.argv) == 1:
         cmd = "help"
     else:
         cmd = sys.argv[1]
+
+    if cmd == "run_warnet":
+        return rpc("run_warnet")
 
     if cmd == "bcli":
         if len(sys.argv) < 4:
@@ -52,7 +67,9 @@ def main():
             messages = get_messages(src, dst)
             out = ""
             for m in messages:
-                timestamp = datetime.utcfromtimestamp(m["time"] / 1e6).strftime('%Y-%m-%d %H:%M:%S')
+                timestamp = datetime.utcfromtimestamp(m["time"] / 1e6).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
                 direction = ">>>" if m["outbound"] else "<<<"
                 body = ""
                 if "body" in m:
@@ -69,18 +86,15 @@ def main():
             for s in pkgutil.iter_modules(scenarios.__path__):
                 m = pkgutil.resolve_name(f"scenarios.{s.name}")
                 if hasattr(m, "cli_help"):
-                    print(s.name.ljust(20),m.cli_help())
+                    print(s.name.ljust(20), m.cli_help())
             return None
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        mod_path = os.path.join(dir_path, '..', 'scenarios', f"{sys.argv[2]}.py")
+        mod_path = os.path.join(dir_path, "..", "scenarios", f"{sys.argv[2]}.py")
         run_cmd = [sys.executable, mod_path] + sys.argv[3:]
         return subprocess.run(run_cmd)
 
     if cmd == "stop":
-        try:
-            return stop_network()
-        except Exception as e:
-            return f"Could not stop warnet: {e}"
+        return rpc("stop_network")
 
     # default / `help`
     help = """
