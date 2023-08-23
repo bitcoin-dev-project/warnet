@@ -1,4 +1,4 @@
-import { GraphEdge, GraphNode } from "@/types";
+import { GraphEdge, GraphNode, SavedNetworkGraph } from "@/types";
 
 export const defaultEdgesData: GraphEdge[] = [
   {
@@ -93,3 +93,20 @@ export const defaultNodesData: GraphNode[] = [
     baseFee: 0.2,
   },
 ];
+
+export const tempSavednetwork: SavedNetworkGraph[] = [
+  {
+    date: new Date(),
+    type: "prebuilt",
+    nodePersona: {
+      id: 0,
+      name: "Alice",
+      version: "22.0",
+      latency: "10ms",
+      peers: 8,
+      baseFee: 0.5,
+      edges: defaultEdgesData,
+      nodes: defaultNodesData,
+    } 
+  }
+]

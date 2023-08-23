@@ -25,3 +25,10 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+.init_dialog_table_config td, .init_dialog_table_config th {
+  padding: 10px;
+}
+.init_dialog_table_config td {
+  border-bottom: 1px solid var(--text-brand-gray-medium);
+}
