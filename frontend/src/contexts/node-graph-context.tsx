@@ -5,6 +5,7 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
 import {
   GraphEdge,
   GraphNode,
+  NetworkTopology,
   NodeGraphContext,
   NodePersona,
   NodePersonaType,
@@ -22,14 +23,24 @@ const defaultNodePersona: NodePersona = {
   nodes: defaultNodesData,
 };
 
-const userSteps = {
-  "build your node profile": -1,
-  "Select a persona": 0,
-  "Show node persona info": 1,
-  "Add a node": 2,
-} as const;
+// const userSteps = {
+//   "build your node profile": -1,
+//   "Select a persona": 0,
+//   "Show node persona info": 1,
+//   "Add a node": 2,
+// } as const;
 
-export type Steps = (typeof userSteps)[keyof typeof userSteps];
+type NodeInfoDialog = {
+  isOpen: boolean;
+  nodeId: number | null;
+}
+
+const defaultNodeInfoDialog = {
+  isOpen: false,
+  nodeId: null,
+}
+
+// export type Steps = (typeof userSteps)[keyof typeof userSteps];
 
 export const nodeGraphContext = React.createContext<NodeGraphContext>(null!);
 
@@ -47,29 +58,31 @@ export const NodeGraphProvider = ({
   const [nodePersona, setNodePersona] = useState<NodePersona | null>(
     defaultNodePersona
   );
-  const [steps, setSteps] = React.useState<Steps>(-1);
-
+  const [nodeInfoDialog, setnodeInfoDialog] = useState<NodeInfoDialog>(defaultNodeInfoDialog)
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
-    setSteps(-1);
+    // setSteps(-1);
   };
 
-  const setNodePersonaFunc = (persona: NodePersonaType) => {
-    setNodePersonaType(persona), console.log("persona", persona);
+  const setNodePersonaFunc = ({type, nodePersona}: NetworkTopology) => {
+    setNodePersonaType(type)
+    setNodePersona(nodePersona)
+    addNode(nodePersona.nodes)
+    setNodeEdges(nodePersona.edges)
   };
 
   const showGraphFunc = () => {
-    setSteps(2);
+    // setSteps(2);
     setShowGraph(true);
   };
 
-  const setStep = (step: Steps) => {
-    setSteps(step);
-  };
+  // const setStep = (step: Steps) => {
+  //   setSteps(step);
+  // };
 
   const showNodePersonaInfo = () => {
-    setSteps(1);
+    // setSteps(1);
   };
 
   const setNodeEdges = (edge: GraphEdge[]) => {
@@ -110,7 +123,6 @@ export const NodeGraphProvider = ({
   return (
     <nodeGraphContext.Provider
       value={{
-        steps,
         nodes,
         edges,
         nodePersona,
@@ -121,7 +133,6 @@ export const NodeGraphProvider = ({
         openDialog,
         closeDialog,
         addNode,
-        setStep,
         setNodePersonaFunc,
         showNodePersonaInfo,
         setNodeEdges,

@@ -6,8 +6,10 @@ import ForceGraph from "@/components/force-graph";
 import Sidebar from "@/components/sidebar";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
 import { GraphNode } from "@/types";
-import DialogBox from "@/components/dialog";
+// import DialogBox from "@/components/dialog";
+import NetworkDialog from "@/components/init-dialog";
 import { NodeGraphProvider } from "@/contexts/node-graph-context";
+import { NetworkProvider } from "@/contexts/network-context";
 
 export default function Home() {
   // const [nodes, setNodes] = useState<GraphNode[]>([]);
@@ -34,11 +36,13 @@ export default function Home() {
   //   );
   // };
   return (
-    <NodeGraphProvider>
-      <main className="bg-black flex min-h-screen items-center justify-center">
-        <DialogBox />
-        <ForceGraph />
-      </main>
-    </NodeGraphProvider>
+    <NetworkProvider>
+      <NodeGraphProvider>
+        <main className="bg-black flex min-h-screen items-center justify-center">
+          <NetworkDialog />
+          <ForceGraph />
+        </main>
+      </NodeGraphProvider>
+    </NetworkProvider>
   );
 }

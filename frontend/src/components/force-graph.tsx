@@ -98,7 +98,7 @@ const ForceGraph = () => {
       .attr("width", 20)
       .attr("height", 20)
       .attr("fill", (d) => color(d.id!.toString()))
-      .call(() => drag(simulation))
+      .call(drag(simulation))
       .on("click", (event, d) => {
         if (selectedNode) {
           if (selectedNode !== d) {
