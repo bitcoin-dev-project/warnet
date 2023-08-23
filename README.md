@@ -7,6 +7,7 @@ Monitor and analyze the emergent behaviours of Bitcoin networks.
 * Warnet uses docker to launch a bitcoin network of `n` nodes which are connected to each other according to a network topology from a specification file.
 * Nodes are assigned random IP addresses in the 100.0.0.0/8 subnet which ensures randomized `addrman` binning [by Bitcoin Core](https://github.com/bitcoin/bitcoin/blob/8372ab0ea3c88308aabef476e3b9d023ba3fd4b7/src/addrman.h#L66).
 * Nodes can be assigned activities which can be programmed using the Bitcoin Core function test [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
+* Nodes can have traffic shaping parameters assigned to them via the graph using [tc-netem](https://manpages.ubuntu.com/manpages/trusty/man8/tc-netem.8.html) tool.
 * Log files from nodes can be accessed directly
 * Some Bitcoin Core activity is polled and reported via a Graphana dashboard.
 
@@ -23,6 +24,7 @@ The graphml file has the following specification:
 <key attr.name="y" attr.type="float" for="node" id="y"/>
 <key attr.name="version" attr.type="string" for="node" id="version"/>
 <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
+<key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
 <graph edgedefault="directed">
 
 <!-- <nodes> -->
@@ -51,10 +53,11 @@ Nodes can be added to the graph as follows:
 <data key="y">2.5</data>
 <data key="version">24.0</data>
 <data key="bitcoin_config">uacomment=warnet0_v24,debugexclude=libevent</data>
+<data key="tc_netem"></data>
 </node>
 ```
 
-Or for a custom built branch :
+Or for a custom built branch with traffic shaping rules applied:
 
 ```graphml
 <node id="0">
@@ -62,6 +65,7 @@ Or for a custom built branch :
 <data key="y">5.0</data>
 <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
 <data key="bitcoin_config">uacomment=warnet1_custom,debug=1</data>
+<data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
 </node>
 ```
 
