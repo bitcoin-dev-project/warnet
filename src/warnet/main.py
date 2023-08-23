@@ -6,7 +6,7 @@ import warnet
 from warnet import get_bitcoin_cli, get_bitcoin_debug_log, get_messages, stop_network, wipe_network
 from .graphs import read_graph_file
 
-BITCOIN_GRAPH_FILE = './graphs/basic3.graphml'
+BITCOIN_GRAPH_FILE = './templates/example.graphml'
 
 logging.basicConfig(level=logging.INFO)
 warnet_app = typer.Typer()

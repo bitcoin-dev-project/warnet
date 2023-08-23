@@ -11,7 +11,7 @@ from .addr import generate_ip_addr, DEFAULT_SUBNET
 
 logging.basicConfig(level=logging.INFO)
 DOCKER_COMPOSE_FILE = "docker-compose.yml"
-DEFAULT_CONF = "config/bitcoin.conf"
+DEFAULT_CONF = "./templates/bitcoin.conf"
 NETWORK = 'regtest'
 
 
@@ -58,7 +58,7 @@ def write_bitcoin_configs(graph):
 
         node_config_file = dump_bitcoin_conf(node_conf)
 
-        with open(f"config/bitcoin.conf.{node_id}", 'w') as file:
+        with open(f"templates/bitcoin.conf.{node_id}", 'w') as file:
             file.write(node_config_file)
 
 
@@ -125,7 +125,7 @@ def generate_docker_compose(graph: nx.Graph):
 
     for node_id, node_data in graph.nodes(data=True):
         version = node_data["version"]
-        conf_file_path = f"./config/bitcoin.conf.{node_id}"
+        conf_file_path = f"./templates/bitcoin.conf.{node_id}"
 
         # Check if the configuration file exists
         if not os.path.isfile(conf_file_path):
@@ -137,7 +137,7 @@ def generate_docker_compose(graph: nx.Graph):
             repo, branch = version.split("#")
             build = {
                 "context": ".",
-                "dockerfile": "Dockerfile_build",
+                "dockerfile": "templates/Dockerfile",
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
@@ -147,7 +147,7 @@ def generate_docker_compose(graph: nx.Graph):
             # assume it's a release version, get the binary
             build = {
                 "context": ".",
-                "dockerfile": "Dockerfile_release",
+                "dockerfile": "templates/Dockerfile",
                 "args": {
                     "ARCH": arch,
                     "BITCOIN_VERSION": version,
