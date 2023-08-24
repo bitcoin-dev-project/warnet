@@ -11,6 +11,7 @@ import {
 } from "@/config";
 import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import Sidebar from "./sidebar";
+import NodeInfo from "./node-info-dialog";
 
 const color = () => {
   const r = Math.floor(Math.random() * 255);
@@ -193,13 +194,14 @@ const ForceGraph = () => {
   //   console.log("edge", edge);
   // }, [creatingLink, edges, nodes]);
 
-  if (isDialogOpen || !showGraph) {
+  if (!showGraph) {
     return null;
   }
 
   return (
     <>
       <Sidebar />
+      {isDialogOpen && <NodeInfo />}
       <svg
         ref={svgRef}
         width={CANVAS_WIDTH}

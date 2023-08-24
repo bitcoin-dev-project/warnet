@@ -1,6 +1,4 @@
-import React, { useState } from "react";
-
-import { defaultEdgesData, defaultNodesData } from "@/app/data";
+import React, { useState, useEffect } from "react";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
 import {
   GraphEdge,
@@ -11,36 +9,7 @@ import {
   NodePersonaType,
 } from "@/types";
 import generateGraphML from "@/helpers/generate-graphml";
-
-const defaultNodePersona: NodePersona = {
-  id: 0,
-  name: "Alice",
-  version: "22.0",
-  latency: "10ms",
-  peers: 8,
-  baseFee: 0.5,
-  edges: defaultEdgesData,
-  nodes: defaultNodesData,
-};
-
-// const userSteps = {
-//   "build your node profile": -1,
-//   "Select a persona": 0,
-//   "Show node persona info": 1,
-//   "Add a node": 2,
-// } as const;
-
-type NodeInfoDialog = {
-  isOpen: boolean;
-  nodeId: number | null;
-}
-
-const defaultNodeInfoDialog = {
-  isOpen: false,
-  nodeId: null,
-}
-
-// export type Steps = (typeof userSteps)[keyof typeof userSteps];
+import { defaultNodePersona } from "@/app/data";
 
 export const nodeGraphContext = React.createContext<NodeGraphContext>(null!);
 
@@ -58,17 +27,18 @@ export const NodeGraphProvider = ({
   const [nodePersona, setNodePersona] = useState<NodePersona | null>(
     defaultNodePersona
   );
-  const [nodeInfoDialog, setnodeInfoDialog] = useState<NodeInfoDialog>(defaultNodeInfoDialog)
+  const [nodeInfo, setNodeInfo] = useState<GraphNode | null>(null)
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
+    setNodeInfo(null)
     // setSteps(-1);
   };
 
   const setNodePersonaFunc = ({type, nodePersona}: NetworkTopology) => {
     setNodePersonaType(type)
     setNodePersona(nodePersona)
-    addNode(nodePersona.nodes)
+    setNodes(nodePersona.nodes)
     setNodeEdges(nodePersona.edges)
   };
 
@@ -97,23 +67,51 @@ export const NodeGraphProvider = ({
     generateGraphML({ nodes, edges });
   };
 
-  const addNode = (nodeArray?: GraphNode[]) => {
-    if (nodeArray) {
-      setNodes([...nodes, ...nodeArray]);
-      return;
-    }
-    const newNode = [
+  const addNode = () => {
+    const newNode =
       {
         id: nodes.length,
         name: "new node",
         size: 10,
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
-      },
-    ];
-    console.log("newNode", newNode);
-    setNodes([...nodes, ...newNode]);
+      }
+    setNodes([...nodes, newNode]);
+    setNodeInfo(newNode)
+    openDialog()
   };
+
+  const editNode = (node: GraphNode) => {
+    setNodeInfo(node)
+    openDialog()
+  }
+  
+  // const updateNodeInfo = <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => {
+  //   console.log("updateNodeInfo", nodeProperty, value)
+  //   setNodeInfo((node) => (node ? {...node, [nodeProperty]: value} : null))
+  // }
+
+  const updateNodeInfo = <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => {
+    if (!nodeInfo) return
+    const duplNode = {...nodeInfo}
+    duplNode![nodeProperty] = value
+    setNodeInfo(duplNode)
+  }
+
+  const saveEditedNode = () => {
+    if (!nodeInfo) return;
+    const nodeIndex = nodes.findIndex((node) => node.id === nodeInfo?.id)
+    if (nodeIndex !== -1) {
+      const newList = [...nodes]
+      const newEdges = [...edges]
+      newList[nodeIndex] = nodeInfo
+      const strippedNewList = newList.map(({id, size, name, latency, version, baseFee, cpu, ram}) => ({id, size, name, latency, version, baseFee, cpu, ram}))
+      const strippedEdges = newEdges.map(({source, target}) => ({source: source.id, target: target.id}))
+      setNodes(strippedNewList)
+      setEdges(strippedEdges)
+      closeDialog()
+    }
+  }
 
   React.useEffect(() => {
     console.log("nodes", nodes);
@@ -129,6 +127,11 @@ export const NodeGraphProvider = ({
         nodePersonaType,
         isDialogOpen,
         showGraph,
+        nodeInfo,
+        updateNodeInfo,
+        editNode,
+        saveEditedNode,
+        // setNodeInfo,
         showGraphFunc,
         openDialog,
         closeDialog,
