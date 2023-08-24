@@ -1,3 +1,11 @@
 PyYAML
 docker
 networkx
+SQLAlchemy
+fastapi
+uvicorn
+watchgod
+psycopg2
+pydantic
+bcrypt
+python-decouple

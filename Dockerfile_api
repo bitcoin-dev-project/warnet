@@ -1,6 +1,11 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10
 
-COPY ./api/requirements.txt /tmp/
+RUN apt-get update && \
+    apt-get install -y gcc libpq-dev build-essential libffi-dev python-dev-is-python3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./requirements.txt /tmp/
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 RUN useradd --create-home myuser
@@ -8,6 +13,6 @@ USER myuser
 
 WORKDIR /app
 
-COPY ./api /app
+COPY . /app
 
 EXPOSE 80

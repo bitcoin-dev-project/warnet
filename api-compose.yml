@@ -10,8 +10,6 @@ services:
       POSTGRES_USER: warnet
     networks:
       - warnet-api
-    volumes:
-      - ./db:/var/lib/postgresql/data
 
   api:
     build:
@@ -20,12 +18,12 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./api:/app
+      - .:/app
     depends_on:
       - db
     networks:
       - warnet-api
-    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
 
 networks:
   warnet-api:
