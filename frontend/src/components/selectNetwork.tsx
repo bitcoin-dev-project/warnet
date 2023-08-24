@@ -1,27 +1,17 @@
 "use client";
 
-import React, { useRef } from "react";
-
-import { defaultEdgesData, defaultNodesData } from "@/app/data";
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
-import { NetworkTopology, NodePersonaType, SavedNetworkGraph } from "@/types";
+import React from "react";
+import { NetworkTopology} from "@/types";
 import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import * as Select from "@radix-ui/react-select";
-import { useNetworkContext } from "@/contexts/network-context";
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
-
 
 const SelectBox = ({list, value, updateSelection}: {list: NetworkTopology[], value: NetworkTopology, updateSelection: (value: NetworkTopology) => void}) => {
-  const { setNodePersonaFunc } = useNodeGraphContext();
 
   const onSelectChange = (value: string) => {
     const network = list.find(network => network.nodePersona.name === value)
     if (!network) return
     updateSelection(network)
   };
-
-  // const containerRef = useRef<HTMLDivElement>(null)
-  // const [container, setContainer] = React.useState(null);
 
   return (
     <Select.Root
@@ -48,7 +38,6 @@ const SelectBox = ({list, value, updateSelection}: {list: NetworkTopology[], val
           <Select.Viewport className="bg-brand-gray-dark">
             <Select.Group className="flex flex-col bg-brand-gray-dark">
               {list.map((network, idx) => (
-                <>
                   <Select.Item
                     key={network.nodePersona.id}
                     value={network.nodePersona.name}
@@ -61,8 +50,6 @@ const SelectBox = ({list, value, updateSelection}: {list: NetworkTopology[], val
                       <CheckIcon />
                     </Select.ItemIndicator>
                   </Select.Item>
-                  {/* {idx === NetworkTopologyList.length -1 ? null : <Select.Separator className="h-0 border w-[90%] mx-auto border-b-[1px] border-brand-gray-medium" />} */}
-                </>
               ))}
             </Select.Group>
           </Select.Viewport>
