@@ -9,3 +9,5 @@ psycopg2
 pydantic
 bcrypt
 python-decouple
+uuid
+pyjwt[crypto]
