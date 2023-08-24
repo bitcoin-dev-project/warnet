@@ -1,12 +1,15 @@
+import { BITCOIN_CORE_BINARY_VERSIONS, CPU_CORES, NODE_LATENCY, RAM_OPTIONS } from "./config";
 import * as NetworkContextExports from "./contexts/network-context";
 
 export type GraphNode = {
   id?: number;
   size: number;
   name?: string;
-  version?: string;
-  latency?: string;
+  version?: typeof BITCOIN_CORE_BINARY_VERSIONS[number];
+  latency?: typeof NODE_LATENCY[number];
   baseFee?: number;
+  ram?: typeof RAM_OPTIONS[number]
+  cpu?: typeof CPU_CORES[number]
   x?: number;
   y?: number;
 };
@@ -47,7 +50,7 @@ export type NodeGraphContext = {
   openDialog: () => void;
   closeDialog: () => void;
   nodePersonaType: NodePersonaType | null;
-  addNode: (node?: GraphNode[]) => void;
+  addNode: () => void;
   setNodePersonaFunc: ({type, nodePersona}: NetworkTopology) => void;
   setNodeEdges: (
     edge: GraphEdge[],
@@ -59,6 +62,10 @@ export type NodeGraphContext = {
   showNodePersonaInfo: () => void;
   nodePersona: NodePersona | null;
   generateNodeGraph: () => void;
+  nodeInfo: GraphNode | null;
+  editNode: (node: GraphNode) => void;
+  updateNodeInfo: <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => void;
+  saveEditedNode: () => void;
 };
 
 export type NetworkContext = {

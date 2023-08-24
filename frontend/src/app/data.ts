@@ -1,4 +1,4 @@
-import { GraphEdge, GraphNode, SavedNetworkGraph } from "@/types";
+import { GraphEdge, GraphNode, NodePersona, SavedNetworkGraph } from "@/types";
 
 export const defaultEdgesData: GraphEdge[] = [
   {
@@ -38,15 +38,15 @@ export const defaultEdgesData: GraphEdge[] = [
 export const defaultNodesData: GraphNode[] = [
   {
     id: 0,
-    name: "node",
-    version: "22.0",
+    name: "node 0",
+    version: "20.0",
     latency: "10ms",
     size: 10,
     baseFee: 0.5,
   },
   {
     id: 1,
-    name: "node",
+    name: "node 1",
     version: "22.1",
     latency: "20ms",
     size: 10,
@@ -54,7 +54,7 @@ export const defaultNodesData: GraphNode[] = [
   },
   {
     id: 2,
-    name: "miner node",
+    name: "miner node 2",
     version: "21.0",
     latency: "5ms",
     size: 10,
@@ -62,7 +62,7 @@ export const defaultNodesData: GraphNode[] = [
   },
   {
     id: 3,
-    name: "node",
+    name: "node 3",
     version: "20.0",
     latency: "15ms",
     size: 10,
@@ -70,7 +70,7 @@ export const defaultNodesData: GraphNode[] = [
   },
   {
     id: 4,
-    name: "node",
+    name: "node 4",
     version: "22.1",
     latency: "20ms",
     size: 10,
@@ -78,7 +78,7 @@ export const defaultNodesData: GraphNode[] = [
   },
   {
     id: 5,
-    name: "miner node",
+    name: "miner node 5",
     version: "21.0",
     latency: "5ms",
     size: 10,
@@ -86,13 +86,24 @@ export const defaultNodesData: GraphNode[] = [
   },
   {
     id: 6,
-    name: "node",
+    name: "node 6",
     version: "20.0",
     latency: "15ms",
     size: 10,
     baseFee: 0.2,
   },
 ];
+
+export const defaultNodePersona: NodePersona = {
+  id: 0,
+  name: "Alice",
+  version: "22.0",
+  latency: "10ms",
+  peers: 8,
+  baseFee: 0.5,
+  edges: defaultEdgesData,
+  nodes: defaultNodesData,
+};
 
 export const tempSavednetwork: SavedNetworkGraph[] = [
   {
