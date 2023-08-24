@@ -4,6 +4,7 @@ import docker
 from datetime import datetime
 import warnet
 from warnet import get_bitcoin_cli, get_bitcoin_debug_log, get_messages, stop_network, wipe_network
+from .graphs import read_graph_file
 
 BITCOIN_GRAPH_FILE = './graphs/basic3.graphml'
 
@@ -60,15 +61,16 @@ def messages(node_a: int, node_b: int):
 
 
 @run_app.command()
-def from_file(graph_file: str = BITCOIN_GRAPH_FILE):
+def from_file(graph_file: str):
     """
-    Run warnet from a graph file. Options: --graph-file TEXT    Path to the graph file (default: ./graphs/basic3.graphml)
+    Run a warnet with topology loaded from a <graph_file>
     """
     client = docker.from_env()
-    warnet.generate_docker_compose(graph_file)
+    graph = read_graph_file(graph_file)
+    warnet.generate_docker_compose(graph)
     warnet.docker_compose()
-    warnet.apply_network_conditions(client, graph_file)
-    warnet.connect_edges(client, graph_file)
+    warnet.apply_network_conditions(client, graph)
+    warnet.connect_edges(client, graph)
 
 
 @warnet_app.command()
