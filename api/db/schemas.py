@@ -19,10 +19,16 @@ class UserBase(BaseModel):
     email: str
 
 class UserCreate(UserBase):
+    uuid: str 
     password: str
+
+class UserLogin(UserBase):
+    password:str
 
 class User(UserBase):
     id: int
+    uuid: str
+    apiToken: str
     networks: list[Network] = []
 
     class Config:
