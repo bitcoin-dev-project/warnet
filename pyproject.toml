@@ -17,8 +17,11 @@ dependencies = [
     "networkx==3.1",
     "PyYAML==6.0.1",
     "typer[all]==0.9.0",
+    "jsonschema",
+    "jsonrpcserver==5.0.3",
 ]
 dynamic = ["version"]
 
 [project.scripts]
 warnet = "warnet.main:warnet_app"
+warnetd = "warnet.warnetd:run"
