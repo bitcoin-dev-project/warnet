@@ -1,0 +1,11 @@
+{
+  "name": "warnet",
+  "version": "1.0.0",
+  "description": "## Monitor and analyze the emergent behaviours of Bitcoin networks",
+  "main": "index.js",
+  "scripts": {
+    "build": "docker-compose -f api-compose.yml up -d"
+  },
+  "author": "",
+  "license": "ISC"
+}
