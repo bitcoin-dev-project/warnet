@@ -62,7 +62,7 @@ def write_bitcoin_configs(graph):
             file.write(node_config_file)
 
 
-def generate_docker_compose(graph_file: str):
+def generate_docker_compose(graph: nx.Graph):
     """
     Generate a docker-compose.yml file for the given graph.
 
@@ -80,7 +80,6 @@ def generate_docker_compose(graph_file: str):
     except:
         pass
 
-    graph = nx.read_graphml(graph_file, node_type=int)
     nodes = [graph.nodes[node] for node in graph.nodes()]
 
     write_bitcoin_configs(graph)

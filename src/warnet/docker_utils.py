@@ -20,21 +20,6 @@ def delete_containers(client: docker.DockerClient,
         logging.error(f"An error occurred while deleting containers: {e}")
 
 
-def generate_compose(graph_file: str):
-    """
-    Read a graph file and build a docker compose.
-
-    :param graph_file: The path to the graph file
-    """
-    try:
-        logging.info(
-            f"  Graph file contains {len(graph.nodes())} nodes and {len(graph.edges())} connections"
-        )
-        logging.info("  Generated docker-compose.yml file")
-    except Exception as e:
-        logging.error(f"An error occurred while running new node: {e}")
-
-
 def get_container_ip(client: docker.DockerClient, container_name: str):
     """
     Get the IP address of a container.

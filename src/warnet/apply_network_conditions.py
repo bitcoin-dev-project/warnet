@@ -51,8 +51,7 @@ def sanitize_tc_netem_command(command: str) -> bool:
     return True
 
 
-def apply_network_conditions(client, graph):
-    graph = nx.read_graphml(graph, node_type=int)
+def apply_network_conditions(client, graph: nx.Graph):
 
     for container_name, container in get_containers(client):
         parsed_node_id = int(container_name.split('_')[-1])
