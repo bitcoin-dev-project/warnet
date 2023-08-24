@@ -30,12 +30,12 @@ def create_user(db: Session, user: schemas.UserCreate):
         return None
     pwd = user.password.encode('utf-8')
     hashed_password = bcrypt.hashpw(pwd, salt)
-    user.uuid = str(uuid.uuid4());
+    created_user = schemas.UserCreate(uuid=str(uuid.uuid4()),email=user.email,  password=hashed_password.decode('utf-8'))
     db_user = models.User(
-        email=user.email, 
+        email=created_user.email, 
         password=hashed_password.decode('utf-8'), 
-        uuid=user.uuid,
-        apiToken=api_token.create_user_jwttoken(user)
+        uuid=created_user.uuid,
+        api_token=api_token.create_user_jwttoken(created_user)
         )
     db.add(db_user)
     db.commit()

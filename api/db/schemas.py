@@ -28,7 +28,7 @@ class UserLogin(UserBase):
 class User(UserBase):
     id: int
     uuid: str
-    apiToken: str
+    api_token: str
     networks: list[Network] = []
 
     class Config:

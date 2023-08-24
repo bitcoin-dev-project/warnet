@@ -14,7 +14,7 @@ class User(Base):
     password = Column(String)
     createdAt = Column(DateTime, default=datetime.datetime.utcnow)
     updatedAt = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
+    api_token = Column(String, unique=True, index=True)
     networks = relationship("Network", back_populates="owner")
 
 class Network(Base):
