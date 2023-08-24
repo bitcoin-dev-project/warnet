@@ -1,9 +1,10 @@
+import logging
 import docker
 from test_framework.message_capture_parser import process_blob
 from warnet.rpc_utils import bitcoin_rpc
 
 
-def get_node(client: docker.DockerClient, node_id: str, network_name: str):
+def get_node(client: docker.DockerClient, node_id: int, network_name: str):
     """
     Fetch a node (container) from a network by its id.
     """
@@ -16,7 +17,7 @@ def get_node(client: docker.DockerClient, node_id: str, network_name: str):
     raise ValueError(f"Container with name or ID '{node_id}' not found in network '{network_name}'.")
 
 
-def get_debug_log(node: str, network="warnet"):
+def get_bitcoin_debug_log(node: int, network="warnet"):
     d = docker.from_env()
     node = get_node(d, node, network)
     data, stat = node.get_archive("/root/.bitcoin/regtest/debug.log")
@@ -30,13 +31,13 @@ def get_debug_log(node: str, network="warnet"):
     return out
 
 
-def get_bitcoin_cli(node: str , method: str, params=None, network="warnet"):
+def get_bitcoin_cli(node: int , method: str, params=None, network="warnet"):
     d = docker.from_env()
     node = get_node(d, node, network)
     return bitcoin_rpc(node, method, params)
 
 
-def get_messages(src_node: str, dst_node: str, network: str = "warnet"):
+def get_messages(src_node: int, dst_node: int, network: str = "warnet"):
     d = docker.from_env()
     src_node = get_node(d, src_node, network)
     dst_node = get_node(d, dst_node, network)
@@ -70,10 +71,17 @@ def stop_network(network: str = "warnet"):
     network = d.networks.get(network)
     containers = network.containers
     for c in containers:
-        print(f"stopping container: {c.name}")
+        logging.info(f"stopping container: {c.name}")
         c.stop()
-        print(f"removing container: {c.name}")
+    return True
+
+def wipe_network(network: str = "warnet"):
+    d = docker.from_env()
+    network = d.networks.get(network)
+    containers = network.containers
+    for c in containers:
+        logging.warning(f"removing container: {c.name}")
         c.remove()
-    print("removing network: warnet")
+    logging.warning(f"removing docker network: {network}")
     network.remove()
     return True
