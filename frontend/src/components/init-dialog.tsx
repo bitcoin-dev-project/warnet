@@ -1,21 +1,16 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React from "react";
 
 import { useNetworkContext } from "@/contexts/network-context";
 import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Cross2Icon } from "@radix-ui/react-icons";
-
-import { tempSavednetwork } from "@/app/data";
 import SelectBox from "./selectNetwork";
 
 const NetworkDialog = () => {
   const { isDialogOpen, closeDialog, openDialog, steps, networkList, setStep, networkTopologyList, selectedNetwork, setSelectedNetwork } =
     useNetworkContext();
   const {setNodePersonaFunc, showGraphFunc} = useNodeGraphContext()
-
-  const containerRef = useRef<HTMLDivElement>(null)
 
   const graphNextStep = () => {
     setNodePersonaFunc({type: selectedNetwork.type, nodePersona: selectedNetwork.nodePersona})
@@ -102,7 +97,7 @@ const NetworkDialog = () => {
             <fieldset className="flex flex-col gap-2 text-[12px] text-brand-text-dark">
               <label>Select a network topology</label>
               <div>
-                <SelectBox list={networkTopologyList} updateSelection={(data) => {console.log(data); setSelectedNetwork(data)}} value={selectedNetwork} />
+                <SelectBox list={networkTopologyList} updateSelection={setSelectedNetwork} value={selectedNetwork} />
               </div>
               <p>{`Or choose the "start from scratch"`}</p>
             </fieldset>
@@ -120,12 +115,10 @@ const NetworkDialog = () => {
   switch (steps) {
     case -1:
       return <NetworkList />
-      break;
     case 0:
       return <NetworkTopology />
     default:
       return null
-      break;
   }
 };
 
