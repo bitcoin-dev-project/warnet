@@ -1,4 +1,5 @@
 import docker
+import logging
 from .test_node import TestNode
 from .util import get_rpc_proxy
 
@@ -11,7 +12,7 @@ def setuptank(fmk):
 
     for i, c in enumerate(containers):
         ip = c.attrs['NetworkSettings']['Networks']["warnet"]['IPAddress']
-        print(f"Adding TestNode {i} named {c.name} with IP {ip}")
+        logging.info(f"Adding TestNode {i} named {c.name} with IP {ip}")
         node = TestNode(
             i,
             "", # datadir path

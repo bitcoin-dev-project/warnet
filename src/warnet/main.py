@@ -28,9 +28,6 @@ def bcli(node: int, method: str, params: list[str] = typer.Option([]), network: 
     """
     Call bitcoin-cli <method> <params> on <node> in [network]
     """
-    print(f"{node}")
-    print(f"{method}")
-    print(f"{params}")
     try:
         result = get_bitcoin_cli(node, method, params, network)
         typer.echo(result)

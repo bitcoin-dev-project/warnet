@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 from time import sleep
 from test_framework.test_framework import BitcoinTestFramework
 from scenarios.utils import ensure_miner
@@ -26,7 +27,7 @@ class MinerStd(BitcoinTestFramework):
             miner = ensure_miner(self.nodes[current_miner])
             addr = miner.getnewaddress()
             block = self.generatetoaddress(self.nodes[current_miner], 1, addr)
-            print(f"generated block from node {current_miner}: {block}")
+            logging.info(f"generated block from node {current_miner}: {block}")
             if self.options.allnodes:
                 current_miner = current_miner + 1
                 if current_miner >= self.num_nodes:
