@@ -11,3 +11,4 @@ bcrypt
 python-decouple
 uuid
 pyjwt[crypto]
+email-validator

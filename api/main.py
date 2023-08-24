@@ -1,11 +1,13 @@
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from .db import crud, models, schemas, database
+from .validation import email
+
+
 
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
-
 
 
 def get_db():
@@ -20,6 +22,10 @@ def create_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
     """
     Create a new user.
     """
+    result, error = email._validate_email(user.email)
+    if error:
+        raise HTTPException(status_code=400, detail=result)
+    user.email = result
     db_user = crud.create_user(db, user)
     if db_user is None:
         raise HTTPException(status_code=400, detail="Email already registered")
