@@ -1,18 +1,27 @@
 import typer
 import logging
-import docker
 from datetime import datetime
-import warnet
-from warnet import get_bitcoin_cli, get_bitcoin_debug_log, get_messages, stop_network, wipe_network
-from .graphs import read_graph_file
+from templates import TEMPLATES
+from warnet.warnet import Warnet
+from warnet.client import (
+    get_bitcoin_cli,
+    get_bitcoin_debug_log,
+    get_messages,
+    stop_network,
+    wipe_network
+)
 
-BITCOIN_GRAPH_FILE = './templates/example.graphml'
+EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
 
-logging.basicConfig(level=logging.INFO)
 warnet_app = typer.Typer()
 run_app = typer.Typer()
 warnet_app.add_typer(run_app, name="run", help="Run a warnet. `warnet run --help` for more info")
 
+logging.basicConfig(
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.DEBUG
+)
 
 @warnet_app.command()
 def bcli(node: int, method: str, params: list[str] = typer.Option([]), network: str = "warnet"):
@@ -59,19 +68,20 @@ def messages(node_a: int, node_b: int):
     except Exception as e:
         typer.echo(f"Amidst the fog of war, we failed to relay messages between strongholds {node_a} and {node_b}: {e}")
 
-
 @run_app.command()
 def from_file(graph_file: str):
     """
     Run a warnet with topology loaded from a <graph_file>
     """
-    client = docker.from_env()
-    graph = read_graph_file(graph_file)
-    warnet.generate_docker_compose(graph)
-    warnet.docker_compose()
-    warnet.apply_network_conditions(client, graph)
-    warnet.connect_edges(client, graph)
-
+    if graph_file == ".":
+        graph_file = EXAMPLE_GRAPH_FILE
+    wn = Warnet.from_graph_file(graph_file)
+    wn.write_bitcoin_confs()
+    wn.write_docker_compose()
+    wn.write_prometheus_config()
+    wn.docker_compose_up()
+    wn.apply_network_conditions()
+    wn.connect_edges()
 
 @warnet_app.command()
 def stop(network: str = "warnet"):
@@ -99,7 +109,6 @@ def wipe(network: str = "warnet"):
         typer.echo(result)
     except Exception as e:
         typer.echo(f"Error wiping network: {e}")
-
 
 if __name__ == "__main__":
     warnet_app()

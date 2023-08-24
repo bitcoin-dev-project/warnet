@@ -6,17 +6,14 @@
     <node id="0">
       <data key="version">24.0</data>
       <data key="bitcoin_config">uacomment=warnet0</data>
-      <data key="tc_netem"></data>
     </node>
     <node id="1">
       <data key="version">25.0</data>
       <data key="bitcoin_config">uacomment=warnet1</data>
-      <data key="tc_netem"></data>
     </node>
     <node id="2">
       <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
       <data key="bitcoin_config">uacomment=warnet2</data>
-      <data key="tc_netem"></data>
     </node>
     <node id="3">
       <data key="version">25.0</data>
