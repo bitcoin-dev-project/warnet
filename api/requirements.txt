@@ -1,5 +1,0 @@
-SQLAlchemy
-docker
-fastapi
-uvicorn
-watchgod
