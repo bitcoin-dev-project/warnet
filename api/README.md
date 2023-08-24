@@ -2,13 +2,19 @@
 
 To start the server run:
 
-1. Run the docker daemon
+1. Copy environment sample file
+
+```bash
+cp .env.sample .env
+```
+
+2. Run the docker daemon
 
 ```bash
 docker-compose -f api-compose.yml up -d
 ```
 
-2. We use Postgresql as a data store. You can access it locally by using this connection string.
+3. We use Postgresql as a data store. You can access it locally by using this connection string.
 
 ```bash
 postgresql://warnet:password@db:5432/warnet
