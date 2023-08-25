@@ -12,6 +12,3 @@ dns-seed. 300 IN NS dns-seed.
 ; following line likely needs to be changed to the container ip address
 dns-seed. 300 IN A 127.0.0.1
 
-seed.dns-seed.     300 IN  A   100.99.98.97
-seed.dns-seed.     300 IN  A   100.99.98.96
-seed.dns-seed.     300 IN  A   100.99.98.95

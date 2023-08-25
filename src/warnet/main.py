@@ -83,6 +83,15 @@ def list():
             print(s.name.ljust(20),m.cli_help())
 
 @warnet_app.command()
+def gen_compose(graph_file: str):
+    """
+    Generate docker compose but do not start
+    """
+    wn = Warnet.from_graph_file(graph_file)
+    wn.write_bitcoin_confs()
+    wn.write_docker_compose()
+
+@warnet_app.command()
 def run(scenario: str):
     """
     Run <scenario> from the Warnet Test Framework
@@ -103,6 +112,7 @@ def from_file(graph_file: str, network: str = "warnet"):
     wn.write_docker_compose()
     wn.write_prometheus_config()
     wn.docker_compose_up()
+    wn.update_dns_seeds()
     wn.apply_network_conditions()
     wn.connect_edges()
 

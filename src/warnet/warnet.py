@@ -6,6 +6,8 @@ import docker
 import logging
 import networkx
 import subprocess
+import tarfile
+import tempfile
 import yaml
 from pathlib import Path
 from tempfile import mkdtemp
@@ -62,6 +64,32 @@ class Warnet:
         for tank in self.tanks:
             tank.apply_network_conditions()
 
+    def update_dns_seeds(self):
+        """
+        Update dns seed list served by dns-seed.
+
+        Currently this is append only, and has no crawl function.
+        """
+        seeder = self.docker.containers.get("dns-seed")
+        records_list = [f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks]
+
+        # Using a temp file seems to make docker happier?
+        temp_file_path = "/etc/bind/temp_dns_records"
+        seeder.exec_run("dns-seed", f"sh -c '> {temp_file_path}'")
+
+        for record in records_list:
+            command_to_append = f"sh -c 'echo \"{record}\" >> {temp_file_path}'"
+            seeder.exec_run("dns-seed", command_to_append)
+
+        concat_command = f"sh -c 'cat {temp_file_path} >> /etc/bind/dns-seed.zone'"
+        seeder.exec_run("dns-seed", concat_command)
+        delete_temp_command = f"sh -c 'rm {temp_file_path}'"
+        seeder.exec_run("dns-seed", delete_temp_command)
+
+        # Reload bind9 to recognize the changes
+        seeder.exec_run("dns-seed", "rndc reload")
+
+
     def connect_edges(self):
         for edge in self.graph.edges():
             (src, dst) = edge
@@ -79,7 +107,7 @@ class Warnet:
         except Exception as e:
             logging.error(f"An error occurred while executing `{' '.join(command)}` in {self.tmpdir}: {e}")
 
-    def write_docker_compose(self):
+    def write_docker_compose(self, dns=True):
         compose = {
             "version": "3.8",
             "networks": {
@@ -135,21 +163,22 @@ class Warnet:
                 self.docker_network
             ]
         }
-        compose["services"]["dns-seed"] = {
-            "container_name": "dns-seed",
-            "ports": ["15353:53"],
-            "volumes": [
-                f"{str(DNS / 'dns-seed.zone')}:/etc/bind/dns-seed.zone",
-                f"{str(DNS / 'named.conf.local')}:/etc/bind/named.conf.local",
+        if dns:
+            compose["services"]["dns-seed"] = {
+                "container_name": "dns-seed",
+                "ports": ["15353:53"],
+                "volumes": [
+                    f"{str(DNS / 'dns-seed.zone')}:/etc/bind/dns-seed.zone",
+                    f"{str(DNS / 'named.conf.local')}:/etc/bind/named.conf.local",
+                    ],
+                "build": {
+                    "context": ".",
+                    "dockerfile": str(TEMPLATES / "Dockerfile_bind9"),
+                },
+                "networks": [
+                    "warnet"
                 ],
-            "build": {
-                "context": ".",
-                "dockerfile": str(TEMPLATES / "Dockerfile_bind9"),
-            },
-            "networks": [
-                "warnet"
-            ],
-        }
+            }
 
         docker_compose_path = self.tmpdir / "docker-compose.yml"
         try:
