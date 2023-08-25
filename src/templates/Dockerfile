@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y \
         ccache \
         python3 \
         vim \
-        iproute2 \
         build-essential \
         wget \
         iproute2; \

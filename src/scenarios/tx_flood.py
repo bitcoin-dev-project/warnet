@@ -23,9 +23,9 @@ class TXFlood(BitcoinTestFramework):
         for b in range(BLOCKS):
             for t in range(TXS):
                 txid = self.nodes[0].sendtoaddress(address=addr, amount=0.001)
-                logging.debug(f"sending tx {t}/{TXS}: {txid}")
+                logging.info(f"sending tx {t}/{TXS}: {txid}")
             block = self.generate(self.nodes[0], 1)
-            logging.debug(f"generating block {b}/{BLOCKS}: {block}")
+            logging.info(f"generating block {b}/{BLOCKS}: {block}")
 
 
 if __name__ == '__main__':

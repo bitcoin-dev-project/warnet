@@ -19,6 +19,8 @@ CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 class Tank:
     def __init__(self):
         self.warnet = None
+        self.docker_network = "warnet"
+        self.bitcoin_network = "regtest"
         self.index = None
         self.version = "25.0"
         self.conf = ""
@@ -39,6 +41,8 @@ class Tank:
 
         self = cls()
         self.warnet = warnet
+        self.docker_network = warnet.docker_network
+        self.bitcoin_network = warnet.bitcoin_network
         self.index = int(index)
         node = warnet.graph.nodes[index]
         if "version" in node:
@@ -50,10 +54,11 @@ class Tank:
         return self
 
     @classmethod
-    def from_docker_env(cls, index):
+    def from_docker_env(cls, network, index):
         self = cls()
         self.index = int(index)
-        self._ipv4 = self.container.attrs["NetworkSettings"]["Networks"]["warnet"]["IPAddress"]
+        self.docker_network = network
+        self._ipv4 = self.container.attrs["NetworkSettings"]["Networks"][self.docker_network]["IPAddress"]
         return self
 
     @property
@@ -114,7 +119,7 @@ class Tank:
                     key, value = option.split("=")
                 else:
                     key, value = option, "1"
-                conf[self.warnet.network].append((key, value))
+                conf[self.bitcoin_network].append((key, value))
         conf_file = dump_bitcoin_conf(conf)
         path = self.warnet.tmpdir / f"bitcoin.conf.{self.suffix}"
         logging.info(f"Wrote file {path}")
@@ -160,7 +165,7 @@ class Tank:
                 f"{self.conf_file}:/root/.bitcoin/bitcoin.conf"
             ],
             "networks": {
-                "warnet": {
+                self.docker_network: {
                     "ipv4_address": f"{self.ipv4}",
                 }
             },
@@ -179,7 +184,7 @@ class Tank:
             },
             "ports": [f"{8335 + self.index}:9332"],
             "networks": [
-                "warnet"
+                self.docker_network
             ]
         }
 

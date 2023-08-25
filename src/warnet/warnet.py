@@ -15,22 +15,23 @@ from warnet.utils import (
     parse_bitcoin_conf
 )
 
-DEFAULT_SUBNET = "100.0.0.0/8"
 TMPDIR_PREFIX = "warnet_tmp_"
 
 class Warnet:
     def __init__(self):
         self.tmpdir = Path(mkdtemp(prefix=TMPDIR_PREFIX))
         self.docker = docker.from_env()
-        self.network = "regtest"
-        self.subnet = DEFAULT_SUBNET
+        self.bitcoin_network = "regtest"
+        self.docker_network = "warnet"
+        self.subnet = "100.0.0.0/8"
         self.graph = None
         self.tanks = []
         logging.info(f"Created Warnet with temp directory {self.tmpdir}")
 
     @classmethod
-    def from_graph_file(cls, graph_file: str):
+    def from_graph_file(cls, graph_file: str, network: str = "warnet"):
         self = cls()
+        self.docker_network = network
         self.graph = networkx.read_graphml(graph_file, node_type=int)
         self.tanks_from_graph()
         return self
@@ -73,7 +74,7 @@ class Warnet:
         try:
             with subprocess.Popen(command, cwd=str(self.tmpdir), stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
                 for line in process.stdout:
-                    logging.debug(line.decode().rstrip())
+                    logging.info(line.decode().rstrip())
         except Exception as e:
             logging.error(f"An error occurred while executing `{' '.join(command)}` in {self.tmpdir}: {e}")
 
@@ -81,8 +82,8 @@ class Warnet:
         compose = {
             "version": "3.8",
             "networks": {
-                "warnet": {
-                    "name": "warnet",
+                self.docker_network: {
+                    "name": self.docker_network,
                     "ipam": {
                         "config": [
                             {"subnet": self.subnet}
@@ -108,7 +109,7 @@ class Warnet:
             "volumes": [f"{self.tmpdir / 'prometheus.yml'}:/etc/prometheus/prometheus.yml"],
             "command": ["--config.file=/etc/prometheus/prometheus.yml"],
             "networks": [
-                "warnet"
+                self.docker_network
             ]
         }
         compose["services"]["node-exporter"] = {
@@ -121,7 +122,7 @@ class Warnet:
             ],
             "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"],
             "networks": [
-                "warnet"
+                self.docker_network
             ]
         }
         compose["services"]["grafana"] = {
@@ -130,7 +131,7 @@ class Warnet:
             "ports": ["3000:3000"],
             "volumes": ["grafana-storage:/var/lib/grafana"],
             "networks": [
-                "warnet"
+                self.docker_network
             ]
         }
 
