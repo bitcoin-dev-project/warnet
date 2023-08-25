@@ -1,0 +1,3 @@
+FROM ubuntu/bind9:9.16-20.04_beta
+
+CMD ["/usr/sbin/named", "-g", "-c", "/etc/bind/named.conf"]

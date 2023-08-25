@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 from tempfile import mkdtemp
 from templates import TEMPLATES
+from dns import DNS
 from warnet.tank import Tank
 from warnet.utils import (
     parse_bitcoin_conf
@@ -133,6 +134,21 @@ class Warnet:
             "networks": [
                 self.docker_network
             ]
+        }
+        compose["services"]["dns-seed"] = {
+            "container_name": "dns-seed",
+            "ports": ["15353:53"],
+            "volumes": [
+                f"{str(DNS / 'dns-seed.zone')}:/etc/bind/dns-seed.zone",
+                f"{str(DNS / 'named.conf.local')}:/etc/bind/named.conf.local",
+                ],
+            "build": {
+                "context": ".",
+                "dockerfile": str(TEMPLATES / "Dockerfile_bind9"),
+            },
+            "networks": [
+                "warnet"
+            ],
         }
 
         docker_compose_path = self.tmpdir / "docker-compose.yml"
