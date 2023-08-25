@@ -1,6 +1,6 @@
 import logging
 import docker
-from test_framework.message_capture_parser import process_blob
+from warnet.utils import parse_raw_messages
 from warnet.tank import Tank
 
 def get_bitcoin_debug_log(network: str, index: int):
@@ -43,7 +43,7 @@ def get_messages(network: str, src_index: int, dst_index: int):
                 # slice off end padding
                 blob = blob[:stat["size"]]
                 # parse
-                json = process_blob(blob, outbound)
+                json = parse_raw_messages(blob, outbound)
                 messages = messages + json
     messages.sort(key=lambda x: x["time"])
     return messages
