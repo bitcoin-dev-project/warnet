@@ -51,11 +51,11 @@ const Sidebar: FC<SidebarProps> = ({}) => {
     addNode()
   }
   return (
-    <aside className="flex flex-col w-2/6 h-full px-4">
-      <h2 className="mt-4 text-brand-text-light text-2xl font-light">
+    <aside className="flex flex-col w-2/6 h-full px-4 py-4">
+      <h2 className="text-brand-text-light text-2xl font-light">
         Network Topology
       </h2>
-      <section className="w-full flex flex-col gap-8 mt-8 text-brand-text-dark">
+      <section className="w-full flex flex-col gap-8 mt-8 overflow-scroll text-brand-text-dark">
         <fieldset className="flex flex-col gap-2">
           <label htmlFor="network_name" className="text-xs">
             Network Name

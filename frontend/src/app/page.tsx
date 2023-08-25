@@ -38,7 +38,7 @@ export default function Home() {
   return (
     <NetworkProvider>
       <NodeGraphProvider>
-        <main className="bg-black flex min-h-screen h-[50vh] items-center justify-center">
+        <main className="bg-black flex min-h-screen h-[100vh] items-center justify-center">
           <NetworkDialog />
           <ForceGraph />
         </main>
