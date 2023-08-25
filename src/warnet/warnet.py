@@ -74,7 +74,6 @@ class Warnet:
             with subprocess.Popen(command, cwd=str(self.tmpdir), stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
                 for line in process.stdout:
                     logging.debug(line.decode().rstrip())
-
         except Exception as e:
             logging.error(f"An error occurred while executing `{' '.join(command)}` in {self.tmpdir}: {e}")
 

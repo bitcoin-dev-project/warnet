@@ -58,18 +58,18 @@ def get_messages(src_index: int, dst_index: int):
     messages.sort(key=lambda x: x["time"])
     return messages
 
-def stop_network(network: str = "warnet"):
+def stop_network():
     d = docker.from_env()
-    network = d.networks.get(network)
+    network = d.networks.get("warnet")
     containers = network.containers
     for c in containers:
         logging.info(f"stopping container: {c.name}")
         c.stop()
     return True
 
-def wipe_network(network: str = "warnet"):
+def wipe_network():
     d = docker.from_env()
-    network = d.networks.get(network)
+    network = d.networks.get("warnet")
     containers = network.containers
     for c in containers:
         logging.warning(f"removing container: {c.name}")
