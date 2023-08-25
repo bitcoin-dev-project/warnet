@@ -105,18 +105,31 @@ export const NodeGraphProvider = ({
       const newList = [...nodes]
       const newEdges = [...edges]
       newList[nodeIndex] = nodeInfo
-      const strippedNewList = newList.map(({id, size, name, latency, version, baseFee, cpu, ram}) => ({id, size, name, latency, version, baseFee, cpu, ram}))
       const strippedEdges = newEdges.map(({source, target}) => ({source: source.id, target: target.id}))
-      setNodes(strippedNewList)
+      setNodes(newList)
       setEdges(strippedEdges)
       closeDialog()
     }
   }
 
-  React.useEffect(() => {
-    console.log("nodes", nodes);
-    console.log("edges", edges);
-  }, [nodes, edges]);
+  const deleteNode = (node: GraphNode) => {
+    const updatedNodes = nodes.filter(({ id }) => id !== node.id)
+    const newEdges = edges.filter(({source, target}) => {
+      // remove edge if source or target is linked to the node
+      return !(source.id === node.id || target.id === node.id)
+    })
+    setEdges(newEdges)
+    setNodes(updatedNodes)
+  }
+
+  function stripEdges(edges: GraphEdge[]) {
+    return edges.map(({source, target}) => ({source: source.id, target: target.id}))
+  }
+
+  // React.useEffect(() => {
+  //   console.log("nodes", nodes);
+  //   console.log("edges", edges);
+  // }, [nodes, edges]);
 
   return (
     <nodeGraphContext.Provider
@@ -136,6 +149,7 @@ export const NodeGraphProvider = ({
         openDialog,
         closeDialog,
         addNode,
+        deleteNode,
         setNodePersonaFunc,
         showNodePersonaInfo,
         setNodeEdges,
