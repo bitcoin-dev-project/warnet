@@ -50,7 +50,8 @@ export type NodeGraphContext = {
   openDialog: () => void;
   closeDialog: () => void;
   nodePersonaType: NodePersonaType | null;
-  addNode: () => void;
+  addNode: (node?: GraphNode) => void;
+  duplicateNode: (node: GraphNode) => void;
   setNodePersonaFunc: ({type, nodePersona}: NetworkTopology) => void;
   setNodeEdges: (
     edge: GraphEdge[],
