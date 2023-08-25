@@ -67,15 +67,21 @@ export const NodeGraphProvider = ({
     generateGraphML({ nodes, edges });
   };
 
-  const addNode = () => {
+  const createNewNode = () => {
+    const newNodesNumber = nodes.filter(node => node.name?.includes("new node")).length
     const newNode =
       {
         id: nodes.length,
-        name: "new node",
+        name: "new node " + newNodesNumber,
         size: 10,
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
       }
+    return newNode;
+  }
+
+  const addNode = (node?: GraphNode) => {
+    const newNode = node ? node : createNewNode()
     setNodes([...nodes, newNode]);
     setNodeInfo(newNode)
     openDialog()
@@ -86,10 +92,12 @@ export const NodeGraphProvider = ({
     openDialog()
   }
   
-  // const updateNodeInfo = <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => {
-  //   console.log("updateNodeInfo", nodeProperty, value)
-  //   setNodeInfo((node) => (node ? {...node, [nodeProperty]: value} : null))
-  // }
+  const duplicateNode = (node: GraphNode) => {
+    const duplicateNode = {...node}
+    duplicateNode["id"] = nodes.length
+    duplicateNode["name"] = node.name + " duplicate"
+    addNode(duplicateNode)
+  }
 
   const updateNodeInfo = <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => {
     if (!nodeInfo) return
@@ -149,6 +157,7 @@ export const NodeGraphProvider = ({
         openDialog,
         closeDialog,
         addNode,
+        duplicateNode,
         deleteNode,
         setNodePersonaFunc,
         showNodePersonaInfo,

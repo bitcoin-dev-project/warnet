@@ -46,6 +46,10 @@ const testPersona: NetworkTopology = {
 const Sidebar: FC<SidebarProps> = ({}) => {
   const { addNode, generateNodeGraph } =
     useNodeGraphContext();
+  
+  const addNewNode = () => {
+    addNode()
+  }
   return (
     <aside className="flex flex-col w-2/6 h-full px-4">
       <h2 className="mt-4 text-brand-text-light text-2xl font-light">
@@ -63,7 +67,7 @@ const Sidebar: FC<SidebarProps> = ({}) => {
           />
         </fieldset>
         <div>
-          <button onClick={addNode} className="h-[45px] text-[13px] px-4 border-b-[1px] border-brand-gray-medium disabled:bg-brand-text-dark disabled:text-brand-text-light bg-brand-gray-medium">
+          <button onClick={addNewNode} className="h-[45px] text-[13px] px-4 border-b-[1px] border-brand-gray-medium disabled:bg-brand-text-dark disabled:text-brand-text-light bg-brand-gray-medium">
             Add Node +
           </button>
         </div>
