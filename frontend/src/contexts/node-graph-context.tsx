@@ -10,7 +10,7 @@ import {
 } from "@/types";
 import generateGraphML from "@/helpers/generate-graphml";
 import { defaultNodePersona } from "@/app/data";
-
+import { v4 } from 'uuid';
 export const nodeGraphContext = React.createContext<NodeGraphContext>(null!);
 
 export const NodeGraphProvider = ({
@@ -69,9 +69,10 @@ export const NodeGraphProvider = ({
 
   const createNewNode = () => {
     const newNodesNumber = nodes.filter(node => node.name?.includes("new node")).length
+    const id =(nodes[nodes.length -1]!.id ?? 0) + 1
     const newNode =
       {
-        id: nodes.length,
+        id,
         name: "new node " + newNodesNumber,
         size: 10,
         x: CANVAS_WIDTH / 2,
@@ -94,7 +95,7 @@ export const NodeGraphProvider = ({
   
   const duplicateNode = (node: GraphNode) => {
     const duplicateNode = {...node}
-    duplicateNode["id"] = nodes.length
+    duplicateNode["id"] = (nodes[nodes.length -1]!.id ?? 0) + 1
     duplicateNode["name"] = node.name + " duplicate"
     addNode(duplicateNode)
   }
