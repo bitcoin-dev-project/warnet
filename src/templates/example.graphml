@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key attr.name="version" attr.type="string" for="node" id="version"/>
+  <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
+  <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
+  <graph edgedefault="directed">
+    <node id="0">
+      <data key="version">24.0</data>
+      <data key="bitcoin_config">uacomment=warnet0</data>
+    </node>
+    <node id="1">
+      <data key="version">25.0</data>
+      <data key="bitcoin_config">uacomment=warnet1</data>
+    </node>
+    <node id="2">
+      <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
+      <data key="bitcoin_config">uacomment=warnet2</data>
+    </node>
+    <node id="3">
+      <data key="version">25.0</data>
+      <data key="bitcoin_config">uacomment=warnet3</data>
+      <data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
+    </node>
+    <edge id="0" source="1" target="0"></edge>
+    <edge id="1" source="2" target="0"></edge>
+    <edge id="2" source="3" target="0"></edge>
+    <edge id="3" source="1" target="2"></edge>
+    <edge id="4" source="1" target="3"></edge>
+    <edge id="5" source="2" target="3"></edge>
+  </graph>
+</graphml>

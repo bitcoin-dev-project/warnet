@@ -1,26 +1,12 @@
 import logging
 import docker
 from test_framework.message_capture_parser import process_blob
-from warnet.rpc_utils import bitcoin_rpc
+from warnet.tank import Tank
 
-
-def get_node(client: docker.DockerClient, node_id: int, network_name: str):
-    """
-    Fetch a node (container) from a network by its id.
-    """
-    network = client.networks.get(network_name)
-
-    for container in network.containers:
-        if container.name == f"{network_name}_{node_id}":
-            return container
-
-    raise ValueError(f"Container with name or ID '{node_id}' not found in network '{network_name}'.")
-
-
-def get_bitcoin_debug_log(node: int, network="warnet"):
-    d = docker.from_env()
-    node = get_node(d, node, network)
-    data, stat = node.get_archive("/root/.bitcoin/regtest/debug.log")
+def get_bitcoin_debug_log(network: str, index: int):
+    tank = Tank.from_docker_env(network, index)
+    subdir = "/" if tank.bitcoin_network == "main" else f"{tank.bitcoin_network}/"
+    data, stat = tank.container.get_archive(f"/root/.bitcoin/{subdir}debug.log")
     out = ""
     for chunk in data:
         out += chunk.decode()
@@ -30,28 +16,25 @@ def get_bitcoin_debug_log(node: int, network="warnet"):
     out = out[:stat["size"]]
     return out
 
+def get_bitcoin_cli(network: str, index: int, method: str, params=None):
+    tank = Tank.from_docker_env(network, index)
+    return tank.exec(f"bitcoin-cli {method} {' '.join(map(str, params))}").output.decode()
 
-def get_bitcoin_cli(node: int , method: str, params=None, network="warnet"):
-    d = docker.from_env()
-    node = get_node(d, node, network)
-    return bitcoin_rpc(node, method, params)
-
-
-def get_messages(src_node: int, dst_node: int, network: str = "warnet"):
-    d = docker.from_env()
-    src_node = get_node(d, src_node, network)
-    dst_node = get_node(d, dst_node, network)
+def get_messages(network: str, src_index: int, dst_index: int):
+    src_node = Tank.from_docker_env(network, src_index)
+    dst_node = Tank.from_docker_env(network, dst_index)
     # start with the IP of the peer
-    dst_ip = dst_node.attrs["NetworkSettings"]["Networks"][network]["IPAddress"]
+    dst_ip = dst_node.ipv4
     # find the corresponding message capture folder
     # (which may include the internal port if connection is inbound)
-    exit_code, dirs = src_node.exec_run("ls /root/.bitcoin/regtest/message_capture")
+    subdir = "/" if src_node.bitcoin_network == "main" else f"{src_node.bitcoin_network}/"
+    exit_code, dirs = src_node.exec(f"ls /root/.bitcoin/{subdir}message_capture")
     dirs = dirs.decode().splitlines()
     messages = []
     for dir_name in dirs:
         if dst_ip in dir_name:
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                data, stat = src_node.get_archive(f"/root/.bitcoin/regtest/message_capture/{dir_name}/{file}")
+                data, stat = src_node.container.get_archive(f"/root/.bitcoin/{subdir}message_capture/{dir_name}/{file}")
                 blob = b''
                 for chunk in data:
                     blob += chunk
@@ -65,8 +48,7 @@ def get_messages(src_node: int, dst_node: int, network: str = "warnet"):
     messages.sort(key=lambda x: x["time"])
     return messages
 
-
-def stop_network(network: str = "warnet"):
+def stop_network(network = "warnet"):
     d = docker.from_env()
     network = d.networks.get(network)
     containers = network.containers
@@ -75,13 +57,13 @@ def stop_network(network: str = "warnet"):
         c.stop()
     return True
 
-def wipe_network(network: str = "warnet"):
+def wipe_network(network_name = "warnet"):
     d = docker.from_env()
-    network = d.networks.get(network)
+    network = d.networks.get(network_name)
     containers = network.containers
     for c in containers:
         logging.warning(f"removing container: {c.name}")
         c.remove()
-    logging.warning(f"removing docker network: {network}")
+    logging.warning(f"removing docker network: {network_name}")
     network.remove()
     return True

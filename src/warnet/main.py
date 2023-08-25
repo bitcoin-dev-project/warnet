@@ -1,52 +1,65 @@
 import typer
+from typing_extensions import Annotated
+from typing import Optional
 import logging
-import docker
+import os
+import pkgutil
+import subprocess
+import sys
 from datetime import datetime
-import warnet
-from warnet import get_bitcoin_cli, get_bitcoin_debug_log, get_messages, stop_network, wipe_network
-from .graphs import read_graph_file
+from templates import TEMPLATES
+import scenarios
+from warnet.warnet import Warnet
+from warnet.client import (
+    get_bitcoin_cli,
+    get_bitcoin_debug_log,
+    get_messages,
+    stop_network,
+    wipe_network
+)
 
-BITCOIN_GRAPH_FILE = './graphs/basic3.graphml'
+EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
 
-logging.basicConfig(level=logging.INFO)
 warnet_app = typer.Typer()
 run_app = typer.Typer()
-warnet_app.add_typer(run_app, name="run", help="Run a warnet. `warnet run --help` for more info")
+warnet_app.add_typer(run_app, name="start", help="Start a warnet. `warnet start --help` for more info")
 
+logging.basicConfig(
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO
+)
 
 @warnet_app.command()
-def bcli(node: int, method: str, params: list[str] = typer.Option([]), network: str = "warnet"):
+def bcli(network: str, node: int, method: str, params: Annotated[Optional[list[str]], typer.Argument()] = None):
     """
-    Call bitcoin-cli <method> <params> on <node> in [network]
+    Call bitcoin-cli <method> <params> on <node> in <network>
     """
-    print(f"{node}")
-    print(f"{method}")
-    print(f"{params}")
     try:
-        result = get_bitcoin_cli(node, method, params, network)
+        result = get_bitcoin_cli(network, node, method, params)
         typer.echo(result)
     except Exception as e:
         typer.echo(f"In our quest to command node {node}, we encountered resistance: {e}")
 
 
 @warnet_app.command()
-def debug_log(node: int, network: str = "warnet"):
+def debug_log(network: str, node: int):
     """
-    Fetch the Bitcoin Core debug log from <node>
+    Fetch the Bitcoin Core debug log from <node> in <network>
     """
     try:
-        result = get_bitcoin_debug_log(node, network)
+        result = get_bitcoin_debug_log(network, node)
         typer.echo(result)
     except Exception as e:
         typer.echo(f"In our pursuit of knowledge from node {node}, we were thwarted: {e}")
 
 @warnet_app.command()
-def messages(node_a: int, node_b: int):
+def messages(network: str, node_a: int, node_b: int):
     """
-    Fetch messages sent between <node_a> and <node_b>.
+    Fetch messages sent between <node_a> and <node_b> in <network>
     """
     try:
-        messages = get_messages(node_a, node_b)
+        messages = get_messages(network, node_a, node_b)
         out = ""
         for m in messages:
             timestamp = datetime.utcfromtimestamp(m["time"] / 1e6).strftime('%Y-%m-%d %H:%M:%S')
@@ -59,47 +72,66 @@ def messages(node_a: int, node_b: int):
     except Exception as e:
         typer.echo(f"Amidst the fog of war, we failed to relay messages between strongholds {node_a} and {node_b}: {e}")
 
-
-@run_app.command()
-def from_file(graph_file: str):
+@warnet_app.command()
+def list():
     """
-    Run a warnet with topology loaded from a <graph_file>
+    List available scenarios in the Warnet Test Framework
     """
-    client = docker.from_env()
-    graph = read_graph_file(graph_file)
-    warnet.generate_docker_compose(graph)
-    warnet.docker_compose()
-    warnet.apply_network_conditions(client, graph)
-    warnet.connect_edges(client, graph)
-
+    for s in pkgutil.iter_modules(scenarios.__path__):
+        m = pkgutil.resolve_name(f"scenarios.{s.name}")
+        if hasattr(m, "cli_help"):
+            print(s.name.ljust(20),m.cli_help())
 
 @warnet_app.command()
-def stop(network: str = "warnet"):
+def run(scenario: str):
     """
-    Stop all docker containers in <network>.
+    Run <scenario> from the Warnet Test Framework
+    """
+    # TODO: should accept network argument
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    mod_path = os.path.join(dir_path, '..', 'scenarios', f"{sys.argv[2]}.py")
+    run_cmd = [sys.executable, mod_path] + sys.argv[3:]
+    subprocess.run(run_cmd)
+
+@run_app.command()
+def from_file(graph_file: str, network: str = "warnet"):
+    """
+    Run a warnet with topology loaded from a <graph_file> into [network] (default: "warnet")
+    """
+    wn = Warnet.from_graph_file(graph_file, network)
+    wn.write_bitcoin_confs()
+    wn.write_docker_compose()
+    wn.write_prometheus_config()
+    wn.docker_compose_up()
+    wn.apply_network_conditions()
+    wn.connect_edges()
+
+@warnet_app.command()
+def stop():
+    """
+    Stop all docker containers in [network] (default: "warnet").
     """
     try:
-        result = stop_network(network)
+        result = stop_network()
         typer.echo(result)
     except Exception as e:
         typer.echo(f"As we endeavored to cease operations, adversity struck: {e}")
 
 @warnet_app.command()
-def wipe(network: str = "warnet"):
+def wipe():
     """
-    Stop and then erase all docker containers in <network>, and then the docker network itself.
+    Stop and then erase all docker containers in [network] (default: "warnet"), and then the docker network itself.
     """
     try:
-        result = stop_network(network)
+        result = stop_network()
         typer.echo(result)
     except Exception as e:
         typer.echo(f"Error stopping containers: {e}")
     try:
-        result = wipe_network(network)
+        result = wipe_network()
         typer.echo(result)
     except Exception as e:
         typer.echo(f"Error wiping network: {e}")
-
 
 if __name__ == "__main__":
     warnet_app()

@@ -1,16 +1,18 @@
 import docker
+import logging
 from .test_node import TestNode
 from .util import get_rpc_proxy
 
 def setuptank(fmk):
     d = docker.from_env()
-    containers = [c for c in d.containers.list("all") if "warnet" in c.name]
+    network = d.networks.get("warnet")
+    containers = [c for c in network.containers if "tank" in c.name]
     containers.sort(key=lambda c: c.name)
     fmk.num_nodes = len(containers)
 
     for i, c in enumerate(containers):
         ip = c.attrs['NetworkSettings']['Networks']["warnet"]['IPAddress']
-        print(f"Adding TestNode {i} named {c.name} with IP {ip}")
+        logging.info(f"Adding TestNode {i} named {c.name} with IP {ip}")
         node = TestNode(
             i,
             "", # datadir path
