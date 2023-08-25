@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Base class for RPC testing."""
 
-from test_framework.warnet import *
+from test_framework.warnet import setuptank
 import configparser
 from enum import Enum
 import argparse
@@ -258,29 +258,24 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             self.options.tmpdir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
         self._start_logging()
 
-        self.success = TestStatus.PASSED
-        return
+        # self.options.cachedir = os.path.abspath(self.options.cachedir)
 
-        # 👇 everything down there is for local regtest which we don't need
+        # config = self.config
 
-        self.options.cachedir = os.path.abspath(self.options.cachedir)
+        # self.set_binary_paths()
 
-        config = self.config
-
-        self.set_binary_paths()
-
-        os.environ['PATH'] = os.pathsep.join([
-            os.path.join(config['environment']['BUILDDIR'], 'src'),
-            os.path.join(config['environment']['BUILDDIR'], 'src', 'qt'), os.environ['PATH']
-        ])
+        # os.environ['PATH'] = os.pathsep.join([
+        #     os.path.join(config['environment']['BUILDDIR'], 'src'),
+        #     os.path.join(config['environment']['BUILDDIR'], 'src', 'qt'), os.environ['PATH']
+        # ])
 
         # Set up temp directory and start logging
-        if self.options.tmpdir:
-            self.options.tmpdir = os.path.abspath(self.options.tmpdir)
-            os.makedirs(self.options.tmpdir, exist_ok=False)
-        else:
-            self.options.tmpdir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
-        self._start_logging()
+        # if self.options.tmpdir:
+        #     self.options.tmpdir = os.path.abspath(self.options.tmpdir)
+        #     os.makedirs(self.options.tmpdir, exist_ok=False)
+        # else:
+        #     self.options.tmpdir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
+        # self._start_logging()
 
         # Seed the PRNG. Note that test runs are reproducible if and only if
         # a single thread accesses the PRNG. For more information, see
@@ -302,13 +297,13 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         self.network_thread = NetworkThread()
         self.network_thread.start()
 
-        if self.options.usecli:
-            if not self.supports_cli:
-                raise SkipTest("--usecli specified but test does not support using CLI")
-            self.skip_if_no_cli()
-        self.skip_test_if_missing_module()
-        self.setup_chain()
-        self.setup_network()
+        # if self.options.usecli:
+        #     if not self.supports_cli:
+        #         raise SkipTest("--usecli specified but test does not support using CLI")
+        #     self.skip_if_no_cli()
+        # self.skip_test_if_missing_module()
+        # self.setup_chain()
+        # self.setup_network()
 
         self.success = TestStatus.PASSED
 

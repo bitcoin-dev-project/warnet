@@ -91,7 +91,7 @@ def run(scenario: str):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     mod_path = os.path.join(dir_path, '..', 'scenarios', f"{sys.argv[2]}.py")
     run_cmd = [sys.executable, mod_path] + sys.argv[3:]
-    subprocess.run(run_cmd)
+    subprocess.run(run_cmd, shell=False)
 
 @run_app.command()
 def from_file(graph_file: str, network: str = "warnet"):
