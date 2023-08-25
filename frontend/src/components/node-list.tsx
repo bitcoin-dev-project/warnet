@@ -4,7 +4,7 @@ import { GraphNode } from '@/types'
 import { Pencil1Icon, TrashIcon, CopyIcon } from "@radix-ui/react-icons";
 
 const NodeList = () => {
-  const {closeDialog, nodes, editNode} = useNodeGraphContext()
+  const {closeDialog, nodes, editNode, deleteNode } = useNodeGraphContext()
   const handleEditNode = (node: GraphNode) => {
     editNode(node)
   }
@@ -22,7 +22,7 @@ const NodeList = () => {
           <button onClick={() => handleEditNode(node)} className='p-1 hover:text-brand-gray-light'>
             <Pencil1Icon />
           </button>
-          <button className='p-1 hover:text-brand-gray-light'>
+          <button onClick={() => deleteNode(node)} className='p-1 hover:text-brand-gray-light'>
             <TrashIcon />
           </button>
         </div>
