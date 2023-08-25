@@ -10,7 +10,7 @@ const NodeList = () => {
   }
   const SingleNode = ({node}: {node: GraphNode}) => {
     return (
-      <div className='w-full text-xl bg-brand-gray-dark flex justify-between items-center gap-2 px-4 py-4'>
+      <div className='w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium'>
         <div className='flex h-full items-center gap-2'>
           <span className='w-3 h-3 rounded-full bg-red-300'></span>
           <p>{node.name}</p>
@@ -29,8 +29,9 @@ const NodeList = () => {
       </div>
     )
   }
+  
   return (
-    <div>
+    <div className="overflow-scroll flex flex-col">
       {nodes.map(node => <SingleNode key={node.id} node={node}/>)}
     </div>
   )
