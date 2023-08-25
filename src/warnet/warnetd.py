@@ -95,9 +95,9 @@ def run(scenario: str):
     try:
         # TODO: should accept network argument
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        mod_path = os.path.join(dir_path, "..", "scenarios", f"{sys.argv[2]}.py")
+        mod_path = os.path.join(dir_path, '..', 'scenarios', f"{sys.argv[2]}.py")
         run_cmd = [sys.executable, mod_path] + sys.argv[3:]
-        subprocess.run(run_cmd)
+        subprocess.run(run_cmd, shell=False)
         return Success(True)
     except Exception as e:
         return Error(f"{e}")
@@ -146,7 +146,7 @@ def wipe():
         return Error(f"{e}")
 
 
-def run():
+def server():
     """
     Run warnet RPC server.
     """
@@ -154,4 +154,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    server()
