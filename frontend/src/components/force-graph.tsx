@@ -148,14 +148,14 @@ const ForceGraph = () => {
         .attr("y", (d) => d.y! - NODE_ATTACHMENT_POINT);
     });
 
-    svg
-      .append("line")
-      .attr("ref", tempLinkRef.current)
-      .attr("fill", "#153")
-      .style("stroke", "#153")
-      .style("stroke-dasharray", "5,5")
-      .style("opacity", 0)
-      .attr("width", "11.5");
+    // svg
+    //   .append("line")
+    //   .attr("ref", tempLinkRef.current)
+    //   .attr("fill", "#153")
+    //   .style("stroke", "#153")
+    //   .style("stroke-dasharray", "5,5")
+    //   .style("opacity", 0)
+    //   .attr("width", "11.5");
 
     function mouseMoved(event: any) {
       if (creatingLink) {
@@ -173,7 +173,7 @@ const ForceGraph = () => {
     svg.on("click", () => {
       if (creatingLink) {
         setCreatingLink(null);
-        d3.select(tempLinkRef.current).style("opacity", 0);
+        // d3.select(tempLinkRef.current).style("opacity", 0);
       }
     });
 
