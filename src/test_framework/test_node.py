@@ -22,10 +22,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from .authproxy import (
-    JSONRPCException,
-    serialization_fallback,
-)
+from .authproxy import JSONRPCException
 from .descriptors import descsum_create
 from .p2p import P2P_SUBVERSION
 from .util import (
@@ -38,6 +35,7 @@ from .util import (
     rpc_url,
     wait_until_helper,
     p2p_port,
+    EncodeDecimal,
 )
 
 BITCOIND_PROC_WAIT_TIMEOUT = 60
@@ -192,7 +190,7 @@ class TestNode():
             assert self.rpc_connected and self.rpc is not None, self._node_msg("Error: no RPC connection")
             return getattr(RPCOverloadWrapper(self.rpc, descriptors=self.descriptors), name)
 
-    def start(self, extra_args=None, *, cwd=None, stdout=None, stderr=None, env=None, **kwargs):
+    def start(self, extra_args=None, *, cwd=None, stdout=None, stderr=None, **kwargs):
         """Start the node."""
         if extra_args is None:
             extra_args = self.extra_args
@@ -215,8 +213,6 @@ class TestNode():
 
         # add environment variable LIBC_FATAL_STDERR_=1 so that libc errors are written to stderr and not the terminal
         subp_env = dict(os.environ, LIBC_FATAL_STDERR_="1")
-        if env is not None:
-            subp_env.update(env)
 
         self.process = subprocess.Popen(self.args + extra_args, env=subp_env, stdout=stdout, stderr=stderr, cwd=cwd, **kwargs)
 
@@ -250,7 +246,7 @@ class TestNode():
                     # Wait for the node to finish reindex, block import, and
                     # loading the mempool. Usually importing happens fast or
                     # even "immediate" when the node is started. However, there
-                    # is no guarantee and sometimes ImportBlocks might finish
+                    # is no guarantee and sometimes ThreadImport might finish
                     # later. This is going to cause intermittent test failures,
                     # because generally the tests assume the node is fully
                     # ready after being started.
@@ -353,13 +349,21 @@ class TestNode():
         for profile_name in tuple(self.perf_subprocesses.keys()):
             self._stop_perf(profile_name)
 
+        # Check that stderr is as expected
+        self.stderr.seek(0)
+        stderr = self.stderr.read().decode('utf-8').strip()
+        if stderr != expected_stderr:
+            raise AssertionError("Unexpected stderr {} != {}".format(stderr, expected_stderr))
+
+        self.stdout.close()
+        self.stderr.close()
+
         del self.p2ps[:]
 
-        assert (not expected_stderr) or wait_until_stopped  # Must wait to check stderr
         if wait_until_stopped:
-            self.wait_until_stopped(expected_stderr=expected_stderr)
+            self.wait_until_stopped()
 
-    def is_node_stopped(self, *, expected_stderr="", expected_ret_code=0):
+    def is_node_stopped(self):
         """Checks whether the node has stopped.
 
         Returns True if the node has stopped. False otherwise.
@@ -371,17 +375,8 @@ class TestNode():
             return False
 
         # process has stopped. Assert that it didn't return an error code.
-        assert return_code == expected_ret_code, self._node_msg(
-            f"Node returned unexpected exit code ({return_code}) vs ({expected_ret_code}) when stopping")
-        # Check that stderr is as expected
-        self.stderr.seek(0)
-        stderr = self.stderr.read().decode('utf-8').strip()
-        if stderr != expected_stderr:
-            raise AssertionError("Unexpected stderr {} != {}".format(stderr, expected_stderr))
-
-        self.stdout.close()
-        self.stderr.close()
-
+        assert return_code == 0, self._node_msg(
+            "Node returned non-zero exit code (%d) when stopping" % return_code)
         self.running = False
         self.process = None
         self.rpc_connected = False
@@ -389,9 +384,8 @@ class TestNode():
         self.log.debug("Node stopped")
         return True
 
-    def wait_until_stopped(self, *, timeout=BITCOIND_PROC_WAIT_TIMEOUT, expect_error=False, **kwargs):
-        expected_ret_code = 1 if expect_error else 0  # Whether node shutdown return EXIT_FAILURE or EXIT_SUCCESS
-        wait_until_helper(lambda: self.is_node_stopped(expected_ret_code=expected_ret_code, **kwargs), timeout=timeout, timeout_factor=self.timeout_factor)
+    def wait_until_stopped(self, timeout=BITCOIND_PROC_WAIT_TIMEOUT):
+        wait_until_helper(self.is_node_stopped, timeout=timeout, timeout_factor=self.timeout_factor)
 
     def replace_in_config(self, replacements):
         """
@@ -409,27 +403,15 @@ class TestNode():
             conf.write(conf_data)
 
     @property
-    def datadir_path(self) -> Path:
-        return Path(self.datadir)
-
-    @property
     def chain_path(self) -> Path:
-        return self.datadir_path / self.chain
+        return Path(self.datadir) / self.chain
 
     @property
     def debug_log_path(self) -> Path:
         return self.chain_path / 'debug.log'
 
-    @property
-    def blocks_path(self) -> Path:
-        return self.chain_path / "blocks"
-
-    @property
-    def wallets_path(self) -> Path:
-        return self.chain_path / "wallets"
-
-    def debug_log_size(self, **kwargs) -> int:
-        with open(self.debug_log_path, **kwargs) as dl:
+    def debug_log_bytes(self) -> int:
+        with open(self.debug_log_path, encoding='utf-8') as dl:
             dl.seek(0, 2)
             return dl.tell()
 
@@ -438,13 +420,13 @@ class TestNode():
         if unexpected_msgs is None:
             unexpected_msgs = []
         time_end = time.time() + timeout * self.timeout_factor
-        prev_size = self.debug_log_size(encoding="utf-8")  # Must use same encoding that is used to read() below
+        prev_size = self.debug_log_bytes()
 
         yield
 
         while True:
             found = True
-            with open(self.debug_log_path, encoding="utf-8", errors="replace") as dl:
+            with open(self.debug_log_path, encoding='utf-8') as dl:
                 dl.seek(prev_size)
                 log = dl.read()
             print_log = " - " + "\n - ".join(log.splitlines())
@@ -469,7 +451,7 @@ class TestNode():
             the number of log lines we encountered when matching
         """
         time_end = time.time() + timeout * self.timeout_factor
-        prev_size = self.debug_log_size(mode="rb")  # Must use same mode that is used to read() below
+        prev_size = self.debug_log_bytes()
 
         yield
 
@@ -648,14 +630,10 @@ class TestNode():
             # in comparison to the upside of making tests less fragile and unexpected intermittent errors less likely.
             p2p_conn.sync_with_ping()
 
-            # Consistency check that the node received our user agent string.
-            # Find our connection in getpeerinfo by our address:port and theirs, as this combination is unique.
-            sockname = p2p_conn._transport.get_extra_info("socket").getsockname()
-            our_addr_and_port = f"{sockname[0]}:{sockname[1]}"
-            dst_addr_and_port = f"{p2p_conn.dstaddr}:{p2p_conn.dstport}"
-            info = [peer for peer in self.getpeerinfo() if peer["addr"] == our_addr_and_port and peer["addrbind"] == dst_addr_and_port]
-            assert_equal(len(info), 1)
-            assert_equal(info[0]["subver"], P2P_SUBVERSION)
+            # Consistency check that the Bitcoin Core has received our user agent string. This checks the
+            # node's newest peer. It could be racy if another Bitcoin Core node has connected since we opened
+            # our connection, but we don't expect that to happen.
+            assert_equal(self.getpeerinfo()[-1]['subver'], P2P_SUBVERSION)
 
         return p2p_conn
 
@@ -723,7 +701,7 @@ def arg_to_cli(arg):
     elif arg is None:
         return 'null'
     elif isinstance(arg, dict) or isinstance(arg, list):
-        return json.dumps(arg, default=serialization_fallback)
+        return json.dumps(arg, default=EncodeDecimal)
     else:
         return str(arg)
 
