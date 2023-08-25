@@ -1,10 +1,15 @@
 import functools
 import ipaddress
 import logging
+import os
 import random
 import re
 import subprocess
+import sys
 import time
+from io import BytesIO
+from test_framework.p2p import MESSAGEMAP
+from test_framework.messages import ser_uint256
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
     """
@@ -185,3 +190,113 @@ def dump_bitcoin_conf(conf_dict):
 
     # Terminate file with newline
     return '\n'.join(result) + '\n'
+
+def to_jsonable(obj):
+    HASH_INTS = [
+        "blockhash",
+        "block_hash",
+        "hash",
+        "hashMerkleRoot",
+        "hashPrevBlock",
+        "hashstop",
+        "prev_header",
+        "sha256",
+        "stop_hash",
+    ]
+
+    HASH_INT_VECTORS = [
+        "hashes",
+        "headers",
+        "vHave",
+        "vHash",
+    ]
+
+    if hasattr(obj, "__dict__"):
+        return obj.__dict__
+    elif hasattr(obj, "__slots__"):
+        ret = {}    # type: Any
+        for slot in obj.__slots__:
+            val = getattr(obj, slot, None)
+            if slot in HASH_INTS and isinstance(val, int):
+                ret[slot] = ser_uint256(val).hex()
+            elif slot in HASH_INT_VECTORS and all(isinstance(a, int) for a in val):
+                ret[slot] = [ser_uint256(a).hex() for a in val]
+            else:
+                ret[slot] = to_jsonable(val)
+        return ret
+    elif isinstance(obj, list):
+        return [to_jsonable(a) for a in obj]
+    elif isinstance(obj, bytes):
+        return obj.hex()
+    else:
+        return obj
+
+# This function is a hacked-up copy of process_file() from
+# Bitcoin Core contrib/message-capture/message-capture-parser.py
+def parse_raw_messages(blob, outbound):
+    TIME_SIZE = 8
+    LENGTH_SIZE = 4
+    MSGTYPE_SIZE = 12
+
+    messages = []
+    offset = 0
+    while True:
+        # Read the Header
+        header_len = TIME_SIZE + LENGTH_SIZE + MSGTYPE_SIZE
+        tmp_header_raw = blob[offset:offset+header_len]
+
+        offset = offset + header_len
+        if not tmp_header_raw:
+            break
+        tmp_header = BytesIO(tmp_header_raw)
+        time = int.from_bytes(tmp_header.read(TIME_SIZE), "little")      # type: int
+        msgtype = tmp_header.read(MSGTYPE_SIZE).split(b'\x00', 1)[0]     # type: bytes
+        length = int.from_bytes(tmp_header.read(LENGTH_SIZE), "little")  # type: int
+
+        # Start converting the message to a dictionary
+        msg_dict = {}
+        msg_dict["outbound"] = outbound
+        msg_dict["time"] = time
+        msg_dict["size"] = length   # "size" is less readable here, but more readable in the output
+
+        msg_ser = BytesIO(blob[offset:offset+length])
+        offset = offset + length
+
+        # Determine message type
+        if msgtype not in MESSAGEMAP:
+            # Unrecognized message type
+            try:
+                msgtype_tmp = msgtype.decode()
+                if not msgtype_tmp.isprintable():
+                    raise UnicodeDecodeError
+                msg_dict["msgtype"] = msgtype_tmp
+            except UnicodeDecodeError:
+                msg_dict["msgtype"] = "UNREADABLE"
+            msg_dict["body"] = msg_ser.read().hex()
+            msg_dict["error"] = "Unrecognized message type."
+            messages.append(msg_dict)
+            print(f"WARNING - Unrecognized message type {msgtype}", file=sys.stderr)
+            continue
+
+        # Deserialize the message
+        msg = MESSAGEMAP[msgtype]()
+        msg_dict["msgtype"] = msgtype.decode()
+
+        try:
+            msg.deserialize(msg_ser)
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            # Unable to deserialize message body
+            msg_ser.seek(0, os.SEEK_SET)
+            msg_dict["body"] = msg_ser.read().hex()
+            msg_dict["error"] = "Unable to deserialize message."
+            messages.append(msg_dict)
+            print(f"WARNING - Unable to deserialize message", file=sys.stderr)
+            continue
+
+        # Convert body of message into a jsonable object
+        if length:
+            msg_dict["body"] = to_jsonable(msg)
+        messages.append(msg_dict)
+    return messages

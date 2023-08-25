@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import logging
-from test_framework.test_framework import BitcoinTestFramework
+from warnet.test_framework_bridge import WarnetTestFramework
 from scenarios.utils import ensure_miner
 
 BLOCKS = 100
@@ -12,9 +11,9 @@ def cli_help():
     return ("Generate 100 blocks with 100 TXs each")
 
 
-class TXFlood(BitcoinTestFramework):
+class TXFlood(WarnetTestFramework):
     def set_test_params(self):
-        pass
+        self.num_nodes = 1
 
     def run_test(self):
         miner = ensure_miner(self.nodes[0])
@@ -23,9 +22,9 @@ class TXFlood(BitcoinTestFramework):
         for b in range(BLOCKS):
             for t in range(TXS):
                 txid = self.nodes[0].sendtoaddress(address=addr, amount=0.001)
-                logging.info(f"sending tx {t}/{TXS}: {txid}")
+                self.log.info(f"sending tx {t}/{TXS}: {txid}")
             block = self.generate(self.nodes[0], 1)
-            logging.info(f"generating block {b}/{BLOCKS}: {block}")
+            self.log.info(f"generating block {b}/{BLOCKS}: {block}")
 
 
 if __name__ == '__main__':
