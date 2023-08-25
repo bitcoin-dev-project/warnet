@@ -20,7 +20,6 @@ from test_framework.address import (
     key_to_p2wpkh,
     output_key_to_p2tr,
 )
-from test_framework.blocktools import COINBASE_MATURITY
 from test_framework.descriptors import descsum_create
 from test_framework.key import (
     ECKey,
@@ -36,11 +35,12 @@ from test_framework.messages import (
 )
 from test_framework.script import (
     CScript,
+    LegacySignatureHash,
     LEAF_VERSION_TAPSCRIPT,
     OP_NOP,
     OP_RETURN,
     OP_TRUE,
-    sign_input_legacy,
+    SIGHASH_ALL,
     taproot_construct,
 )
 from test_framework.script_util import (
@@ -53,7 +53,7 @@ from test_framework.util import (
     assert_equal,
     assert_greater_than_or_equal,
 )
-from test_framework.wallet_util import generate_keypair
+from test_framework.blocktools import COINBASE_MATURITY
 
 DEFAULT_FEE = Decimal("0.0001")
 
@@ -165,16 +165,18 @@ class MiniWallet:
 
     def sign_tx(self, tx, fixed_length=True):
         if self._mode == MiniWalletMode.RAW_P2PK:
+            (sighash, err) = LegacySignatureHash(CScript(self._scriptPubKey), tx, 0, SIGHASH_ALL)
+            assert err is None
             # for exact fee calculation, create only signatures with fixed size by default (>49.89% probability):
             # 65 bytes: high-R val (33 bytes) + low-S val (32 bytes)
-            # with the DER header/skeleton data of 6 bytes added, plus 2 bytes scriptSig overhead
-            # (OP_PUSHn and SIGHASH_ALL), this leads to a scriptSig target size of 73 bytes
-            tx.vin[0].scriptSig = b''
-            while not len(tx.vin[0].scriptSig) == 73:
-                tx.vin[0].scriptSig = b''
-                sign_input_legacy(tx, 0, self._scriptPubKey, self._priv_key)
+            # with the DER header/skeleton data of 6 bytes added, this leads to a target size of 71 bytes
+            der_sig = b''
+            while not len(der_sig) == 71:
+                der_sig = self._priv_key.sign_ecdsa(sighash)
                 if not fixed_length:
                     break
+            tx.vin[0].scriptSig = CScript([der_sig + bytes(bytearray([SIGHASH_ALL]))])
+            tx.rehash()
         elif self._mode == MiniWalletMode.RAW_OP_TRUE:
             for i in tx.vin:
                 i.scriptSig = CScript([OP_NOP] * 43)  # pad to identical size
@@ -216,12 +218,10 @@ class MiniWallet:
         txid: get the first utxo we find from a specific transaction
         """
         self._utxos = sorted(self._utxos, key=lambda k: (k['value'], -k['height']))  # Put the largest utxo last
-        blocks_height = self._test_node.getblockchaininfo()['blocks']
-        mature_coins = list(filter(lambda utxo: not utxo['coinbase'] or COINBASE_MATURITY - 1 <= blocks_height - utxo['height'], self._utxos))
         if txid:
             utxo_filter: Any = filter(lambda utxo: txid == utxo['txid'], self._utxos)
         else:
-            utxo_filter = reversed(mature_coins)  # By default the largest utxo
+            utxo_filter = reversed(self._utxos)  # By default the largest utxo
         if vout is not None:
             utxo_filter = filter(lambda utxo: vout == utxo['vout'], utxo_filter)
         index = self._utxos.index(next(utxo_filter))
@@ -233,8 +233,7 @@ class MiniWallet:
     def get_utxos(self, *, include_immature_coinbase=False, mark_as_spent=True):
         """Returns the list of all utxos and optionally mark them as spent"""
         if not include_immature_coinbase:
-            blocks_height = self._test_node.getblockchaininfo()['blocks']
-            utxo_filter = filter(lambda utxo: not utxo['coinbase'] or COINBASE_MATURITY - 1 <= blocks_height - utxo['height'], self._utxos)
+            utxo_filter = filter(lambda utxo: not utxo['coinbase'] or COINBASE_MATURITY <= utxo['confirmations'], self._utxos)
         else:
             utxo_filter = self._utxos
         utxos = deepcopy(list(utxo_filter))
@@ -257,19 +256,15 @@ class MiniWallet:
         Note that this method fails if there is no single internal utxo
         available that can cover the cost for the amount and the fixed fee
         (the utxo with the largest value is taken).
+
+        Returns a tuple (txid, n) referring to the created external utxo outpoint.
         """
         tx = self.create_self_transfer(fee_rate=0)["tx"]
         assert_greater_than_or_equal(tx.vout[0].nValue, amount + fee)
         tx.vout[0].nValue -= (amount + fee)           # change output -> MiniWallet
         tx.vout.append(CTxOut(amount, scriptPubKey))  # arbitrary output -> to be returned
         txid = self.sendrawtransaction(from_node=from_node, tx_hex=tx.serialize().hex())
-        return {
-            "sent_vout": 1,
-            "txid": txid,
-            "wtxid": tx.getwtxid(),
-            "hex": tx.serialize().hex(),
-            "tx": tx,
-        }
+        return txid, 1
 
     def send_self_transfer_multi(self, *, from_node, **kwargs):
         """Call create_self_transfer_multi and send the transaction."""
@@ -393,7 +388,9 @@ def getnewdestination(address_type='bech32m'):
        'legacy', 'p2sh-segwit', 'bech32' and 'bech32m'. Can be used when a random
        destination is needed, but no compiled wallet is available (e.g. as
        replacement to the getnewaddress/getaddressinfo RPCs)."""
-    key, pubkey = generate_keypair()
+    key = ECKey()
+    key.generate()
+    pubkey = key.get_pubkey().get_bytes()
     if address_type == 'legacy':
         scriptpubkey = key_to_p2pkh_script(pubkey)
         address = key_to_p2pkh(pubkey)

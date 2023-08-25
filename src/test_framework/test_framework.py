@@ -4,7 +4,6 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Base class for RPC testing."""
 
-from test_framework.warnet import setuptank
 import configparser
 from enum import Enum
 import argparse
@@ -93,7 +92,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
     This class also contains various public and private helper methods."""
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Sets test framework defaults. Do not override this method. Instead, override the set_test_params() method"""
         self.chain: str = 'regtest'
         self.setup_clean_chain: bool = False
@@ -104,6 +103,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         self.supports_cli = True
         self.bind_to_localhost_only = True
         self.parse_args()
+        self.disable_syscall_sandbox = self.options.nosandbox or self.options.valgrind
         self.default_wallet_name = "default_wallet" if self.options.descriptors else ""
         self.wallet_data_filename = "wallet.dat"
         # Optional list of wallet names that can be set in set_test_params to
@@ -125,7 +125,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
     def main(self):
         """Main function. This should not be overridden by the subclass test scripts."""
 
-        # assert hasattr(self, "num_nodes"), "Test must set self.num_nodes in set_test_params()"
+        assert hasattr(self, "num_nodes"), "Test must set self.num_nodes in set_test_params()"
 
         try:
             self.setup()
@@ -156,40 +156,42 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             sys.exit(exit_code)
 
     def parse_args(self):
-        previous_releases_path = ""
+        previous_releases_path = os.getenv("PREVIOUS_RELEASES_DIR") or os.getcwd() + "/releases"
         parser = argparse.ArgumentParser(usage="%(prog)s [options]")
-        parser.add_argument("--nocleanup",          dest="nocleanup",       default=False, action="store_true",
+        parser.add_argument("--nocleanup", dest="nocleanup", default=False, action="store_true",
                             help="Leave bitcoinds and test.* datadir on exit or error")
-        parser.add_argument("--noshutdown",         dest="noshutdown",      default=False, action="store_true",
+        parser.add_argument("--nosandbox", dest="nosandbox", default=False, action="store_true",
+                            help="Don't use the syscall sandbox")
+        parser.add_argument("--noshutdown", dest="noshutdown", default=False, action="store_true",
                             help="Don't stop bitcoinds after the test execution")
-        parser.add_argument("--cachedir",           dest="cachedir",        default=None,
+        parser.add_argument("--cachedir", dest="cachedir", default=os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + "/../../cache"),
                             help="Directory for caching pregenerated datadirs (default: %(default)s)")
-        parser.add_argument("--tmpdir",             dest="tmpdir",          default=None,
-                            help="Root directory for datadirs")
-        parser.add_argument("-l", "--loglevel",     dest="loglevel",        default="DEBUG",
+        parser.add_argument("--tmpdir", dest="tmpdir", help="Root directory for datadirs")
+        parser.add_argument("-l", "--loglevel", dest="loglevel", default="INFO",
                             help="log events at this level and higher to the console. Can be set to DEBUG, INFO, WARNING, ERROR or CRITICAL. Passing --loglevel DEBUG will output all logs to console. Note that logs at all levels are always written to the test_framework.log file in the temporary test directory.")
-        parser.add_argument("--tracerpc",           dest="trace_rpc",       default=False, action="store_true",
+        parser.add_argument("--tracerpc", dest="trace_rpc", default=False, action="store_true",
                             help="Print out all RPC calls as they are made")
-        parser.add_argument("--portseed",           dest="port_seed",       default=0,
+        parser.add_argument("--portseed", dest="port_seed", default=os.getpid(), type=int,
                             help="The seed to use for assigning port numbers (default: current process id)")
-        parser.add_argument("--previous-releases",  dest="prev_releases",   default=None, action="store_true",
+        parser.add_argument("--previous-releases", dest="prev_releases", action="store_true",
+                            default=os.path.isdir(previous_releases_path) and bool(os.listdir(previous_releases_path)),
                             help="Force test of previous releases (default: %(default)s)")
-        parser.add_argument("--coveragedir",        dest="coveragedir",     default=None,
+        parser.add_argument("--coveragedir", dest="coveragedir",
                             help="Write tested RPC commands into this directory")
-        parser.add_argument("--configfile",         dest="configfile",      default=None,
+        parser.add_argument("--configfile", dest="configfile",
+                            default=os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + "/../../config.ini"),
                             help="Location of the test framework config file (default: %(default)s)")
-        parser.add_argument("--pdbonfailure",       dest="pdbonfailure",    default=False, action="store_true",
+        parser.add_argument("--pdbonfailure", dest="pdbonfailure", default=False, action="store_true",
                             help="Attach a python debugger if test fails")
-        parser.add_argument("--usecli",             dest="usecli",          default=False, action="store_true",
+        parser.add_argument("--usecli", dest="usecli", default=False, action="store_true",
                             help="use bitcoin-cli instead of RPC for all commands")
-        parser.add_argument("--perf",               dest="perf",            default=False, action="store_true",
+        parser.add_argument("--perf", dest="perf", default=False, action="store_true",
                             help="profile running nodes with perf for the duration of the test")
-        parser.add_argument("--valgrind",           dest="valgrind",        default=False, action="store_true",
-                            help="run nodes under the valgrind memory error detector: expect at least a ~10x slowdown. valgrind 3.14 or later required.")
-        parser.add_argument("--randomseed",                                 default=0x7761726e6574, # "warnet" ascii
+        parser.add_argument("--valgrind", dest="valgrind", default=False, action="store_true",
+                            help="run nodes under the valgrind memory error detector: expect at least a ~10x slowdown. valgrind 3.14 or later required. Forces --nosandbox.")
+        parser.add_argument("--randomseed", type=int,
                             help="set a random seed for deterministically reproducing a previous test run")
-        parser.add_argument("--timeout-factor",     dest="timeout_factor",  default=1,
-                            help="adjust test timeouts by a factor. Setting it to 0 disables all timeouts")
+        parser.add_argument("--timeout-factor", dest="timeout_factor", type=float, help="adjust test timeouts by a factor. Setting it to 0 disables all timeouts")
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument
@@ -201,9 +203,9 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             self.options.timeout_factor = 99999
         self.options.timeout_factor = self.options.timeout_factor or (4 if self.options.valgrind else 1)
         self.options.previous_releases_path = previous_releases_path
+
         config = configparser.ConfigParser()
-        if self.options.configfile is not None:
-            config.read_file(open(self.options.configfile))
+        config.read_file(open(self.options.configfile))
         self.config = config
 
         if "descriptors" not in self.options:
@@ -226,29 +228,38 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
         PortSeed.n = self.options.port_seed
 
-    def set_binary_paths(self):
-        """Update self.options with the paths of all binaries from environment variables or their default values"""
-
-        binaries = {
-            "bitcoind": ("bitcoind", "BITCOIND"),
-            "bitcoin-cli": ("bitcoincli", "BITCOINCLI"),
-            "bitcoin-util": ("bitcoinutil", "BITCOINUTIL"),
-            "bitcoin-wallet": ("bitcoinwallet", "BITCOINWALLET"),
-        }
-        for binary, [attribute_name, env_variable_name] in binaries.items():
-            default_filename = os.path.join(
-                self.config["environment"]["BUILDDIR"],
-                "src",
-                binary + self.config["environment"]["EXEEXT"],
-            )
-            setattr(self.options, attribute_name, os.getenv(env_variable_name, default=default_filename))
-
     def setup(self):
         """Call this method to start up the test framework object with options set."""
 
         check_json_precision()
 
-        setuptank(self)
+        self.options.cachedir = os.path.abspath(self.options.cachedir)
+
+        config = self.config
+
+        fname_bitcoind = os.path.join(
+            config["environment"]["BUILDDIR"],
+            "src",
+            "bitcoind" + config["environment"]["EXEEXT"],
+        )
+        fname_bitcoincli = os.path.join(
+            config["environment"]["BUILDDIR"],
+            "src",
+            "bitcoin-cli" + config["environment"]["EXEEXT"],
+        )
+        fname_bitcoinutil = os.path.join(
+            config["environment"]["BUILDDIR"],
+            "src",
+            "bitcoin-util" + config["environment"]["EXEEXT"],
+        )
+        self.options.bitcoind = os.getenv("BITCOIND", default=fname_bitcoind)
+        self.options.bitcoincli = os.getenv("BITCOINCLI", default=fname_bitcoincli)
+        self.options.bitcoinutil = os.getenv("BITCOINUTIL", default=fname_bitcoinutil)
+
+        os.environ['PATH'] = os.pathsep.join([
+            os.path.join(config['environment']['BUILDDIR'], 'src'),
+            os.path.join(config['environment']['BUILDDIR'], 'src', 'qt'), os.environ['PATH']
+        ])
 
         # Set up temp directory and start logging
         if self.options.tmpdir:
@@ -257,25 +268,6 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         else:
             self.options.tmpdir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
         self._start_logging()
-
-        # self.options.cachedir = os.path.abspath(self.options.cachedir)
-
-        # config = self.config
-
-        # self.set_binary_paths()
-
-        # os.environ['PATH'] = os.pathsep.join([
-        #     os.path.join(config['environment']['BUILDDIR'], 'src'),
-        #     os.path.join(config['environment']['BUILDDIR'], 'src', 'qt'), os.environ['PATH']
-        # ])
-
-        # Set up temp directory and start logging
-        # if self.options.tmpdir:
-        #     self.options.tmpdir = os.path.abspath(self.options.tmpdir)
-        #     os.makedirs(self.options.tmpdir, exist_ok=False)
-        # else:
-        #     self.options.tmpdir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
-        # self._start_logging()
 
         # Seed the PRNG. Note that test runs are reproducible if and only if
         # a single thread accesses the PRNG. For more information, see
@@ -297,13 +289,13 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         self.network_thread = NetworkThread()
         self.network_thread.start()
 
-        # if self.options.usecli:
-        #     if not self.supports_cli:
-        #         raise SkipTest("--usecli specified but test does not support using CLI")
-        #     self.skip_if_no_cli()
-        # self.skip_test_if_missing_module()
-        # self.setup_chain()
-        # self.setup_network()
+        if self.options.usecli:
+            if not self.supports_cli:
+                raise SkipTest("--usecli specified but test does not support using CLI")
+            self.skip_if_no_cli()
+        self.skip_test_if_missing_module()
+        self.setup_chain()
+        self.setup_network()
 
         self.success = TestStatus.PASSED
 
@@ -505,6 +497,11 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             extra_args = [[]] * num_nodes
         if versions is None:
             versions = [None] * num_nodes
+        if self.is_syscall_sandbox_compiled() and not self.disable_syscall_sandbox:
+            for i in range(len(extra_args)):
+                # The -sandbox argument is not present in the v22.0 release.
+                if versions[i] is None or versions[i] >= 229900:
+                    extra_args[i] = extra_args[i] + ["-sandbox=log-and-abort"]
         if binary is None:
             binary = [get_bin_from_version(v, 'bitcoind', self.options.bitcoind) for v in versions]
         if binary_cli is None:
@@ -990,3 +987,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
     def is_bdb_compiled(self):
         """Checks whether the wallet module was compiled with BDB support."""
         return self.config["components"].getboolean("USE_BDB")
+
+    def is_syscall_sandbox_compiled(self):
+        """Checks whether the syscall sandbox was compiled."""
+        return self.config["components"].getboolean("ENABLE_SYSCALL_SANDBOX")
