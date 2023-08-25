@@ -64,6 +64,7 @@ export type NodeGraphContext = {
   generateNodeGraph: () => void;
   nodeInfo: GraphNode | null;
   editNode: (node: GraphNode) => void;
+  deleteNode: (node: GraphNode) => void;
   updateNodeInfo: <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => void;
   saveEditedNode: () => void;
 };
