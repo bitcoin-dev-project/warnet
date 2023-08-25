@@ -1,0 +1,17 @@
+dnsseed=0
+regtest=1
+debug=1
+logips=1
+capturemessages=1
+debugexclude=libevent
+debugexclude=leveldb
+debugexclude=rand
+
+[regtest]
+rpcuser=btc
+rpcpassword=passwd
+rpcallowip=0.0.0.0/0
+rpcbind=0.0.0.0
+fallbackfee=0.00001000
+whitelist=noban@18444
+uacomment=warnet0

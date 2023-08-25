@@ -11,7 +11,7 @@ services:
     networks:
       - warnet-api
 
-  api:
+  client-api:
     build:
       context: .
       dockerfile: Dockerfile_api
@@ -23,7 +23,19 @@ services:
       - db
     networks:
       - warnet-api
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
+    command: uvicorn client-api.main:app --host 0.0.0.0 --port 8080 --reload
+
+  server-api:
+    build:
+      context: .
+      dockerfile: Dockerfile_api
+    ports:
+      - "8090:8090"
+    volumes:
+      - .:/app
+    networks:
+      - warnet-api
+    command: uvicorn server-api.main:app --host 0.0.0.0 --port 8090 --reload
 
 networks:
   warnet-api:

@@ -1,10 +1,10 @@
 import jwt
-from ..db import crud, models, schemas, database
 from decouple import config
+from ..db import schemas
 
 JWT_SECRET =  config("JWT_SECRET");
 
-def create_user_jwttoken(user:schemas.User):
+def create_user_jwttoken(user: schemas.User):
 	if JWT_SECRET is None:
 		raise Exception("Add JWT_SECRET to .env")
 		
@@ -13,11 +13,9 @@ def create_user_jwttoken(user:schemas.User):
 	    "email":user.email
 	}
 
-	my_secret = JWT_SECRET;
-
 	token = jwt.encode(
 	    payload=payload_data,
-	    key=my_secret
+	    key=JWT_SECRET,
+	    algorithm="HS256"
 	)
 	return token
-

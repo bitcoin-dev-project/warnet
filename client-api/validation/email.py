@@ -5,13 +5,13 @@ from decouple import config
 
 
 def is_dev_env():
-	if config('ENVIROMENT') == "development":
+	if config('ENVIRONMENT') == "development":
 		return True;
 	return False;
 
 def _validate_email(email):
 	try:
-		emailinfo = email_validator.validate_email(email,test_environment=is_dev_env())
+		emailinfo = email_validator.validate_email(email, test_environment=is_dev_env())
 		email = emailinfo.normalized
 		return email, False
 
