@@ -170,29 +170,32 @@ const ForceGraph = () => {
     }
 
     svg.on("mousemove", mouseMoved);
-    svg.on("click", () => {
-      if (creatingLink) {
-        setCreatingLink(null);
-        // d3.select(tempLinkRef.current).style("opacity", 0);
+    svg.on("click", (e, d) => {
+      if (e.target.id === "canvas") {
+        setSelectedNode(null);
       }
+      // if (creatingLink) {
+      //   setCreatingLink(null);
+      //   // d3.select(tempLinkRef.current).style("opacity", 0);
+      // }
     });
 
     return () => {
       simulation.stop();
+      svg.on("click", null);
+      node.on("click", null);
     };
   }, [nodes, edges, creatingLink, selectedNode, setNodeEdges]);
 
-  // React.useEffect(() => {
-  //   // console.log("creatingLink", creatingLink);
-  //   const edge = edges.map((edge) => {
-  //     return {
-  //       ...edge,
-  //       source: nodes.find((node) => node.id === edge.source.id),
-  //       target: nodes.find((node) => node.id === edge.target.id),
-  //     };
-  //   });
-  //   console.log("edge", edge);
-  // }, [creatingLink, edges, nodes]);
+  useEffect(() => {
+    console.log({ nodes });
+  }, [nodes]);
+  useEffect(() => {
+    console.log({ edges });
+  }, [edges]);
+  useEffect(() => {
+    console.log(selectedNode);
+  }, [selectedNode]);
 
   if (!showGraph) {
     return null;
@@ -203,6 +206,7 @@ const ForceGraph = () => {
       <Sidebar />
       {isDialogOpen && <NodeInfo />}
       <svg
+        id="canvas"
         ref={svgRef}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
