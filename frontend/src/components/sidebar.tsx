@@ -44,10 +44,10 @@ const testPersona: NetworkTopology = {
 };
 
 const Sidebar: FC<SidebarProps> = ({}) => {
-  const { addNode, generateNodeGraph, setNodePersonaFunc } =
+  const { addNode, generateNodeGraph } =
     useNodeGraphContext();
   return (
-    <aside className="flex flex-col w-2/6 h-full px-4 flex-1">
+    <aside className="flex flex-col w-2/6 h-full px-4">
       <h2 className="mt-4 text-brand-text-light text-2xl font-light">
         Network Topology
       </h2>

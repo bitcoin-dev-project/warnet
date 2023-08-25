@@ -64,7 +64,7 @@ export const NetworkProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(true);
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   // const [showGraph, setShowGraph] = useState<boolean>(false);
   const [selectedNetwork, setSelectedNetwork] = useState(defaultNetworkTopology)
   const [networkList, setNetworkList] = useState<SavedNetworkGraph[]>(
