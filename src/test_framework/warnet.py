@@ -1,23 +1,24 @@
-import docker
 import logging
 from .test_node import TestNode
 from .util import get_rpc_proxy
+from warnet.warnet import Warnet
+
+logging.basicConfig(
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO
+)
 
 def setuptank(fmk):
-    d = docker.from_env()
-    network = d.networks.get("warnet")
-    containers = [c for c in network.containers if "tank" in c.name]
-    containers.sort(key=lambda c: c.name)
-    fmk.num_nodes = len(containers)
-
-    for i, c in enumerate(containers):
-        ip = c.attrs['NetworkSettings']['Networks']["warnet"]['IPAddress']
-        logging.info(f"Adding TestNode {i} named {c.name} with IP {ip}")
+    warnet = Warnet.from_docker_env("warnet")
+    for i, tank in enumerate(warnet.tanks):
+        ip = tank.ipv4
+        logging.info(f"Adding TestNode {i} from {tank.bitcoind_name} with IP {ip}")
         node = TestNode(
             i,
             "", # datadir path
-            chain="regtest",
-            rpchost=str(ip),
+            chain=tank.bitcoin_network,
+            rpchost=ip,
             timewait=60,
             timeout_factor=fmk.options.timeout_factor,
             bitcoind=None,
@@ -26,14 +27,11 @@ def setuptank(fmk):
             coverage_dir=fmk.options.coveragedir,
         )
         node.rpc = get_rpc_proxy(
-            f"http://btc:passwd@{ip}:18443",
+            f"http://{tank.rpc_user}:{tank.rpc_password}@{ip}:{tank.rpc_port}",
             i,
             timeout=60,
             coveragedir=fmk.options.coveragedir,
         )
         node.rpc_connected = True
         fmk.nodes.append(node)
-
-
-
-
+        fmk.num_nodes = len(fmk.nodes)

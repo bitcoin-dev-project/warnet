@@ -120,6 +120,11 @@ class Tank:
                 else:
                     key, value = option, "1"
                 conf[self.bitcoin_network].append((key, value))
+
+        conf[self.bitcoin_network].append(("rpcuser", self.rpc_user))
+        conf[self.bitcoin_network].append(("rpcpassword", self.rpc_password))
+        conf[self.bitcoin_network].append(("rpcport", self.rpc_port))
+
         conf_file = dump_bitcoin_conf(conf)
         path = self.warnet.tmpdir / f"bitcoin.conf.{self.suffix}"
         logging.info(f"Wrote file {path}")

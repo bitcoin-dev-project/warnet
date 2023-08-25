@@ -43,6 +43,20 @@ class Warnet:
         self.tanks_from_graph()
         return self
 
+    @classmethod
+    def from_docker_env(cls, network_name):
+        self = cls()
+        self.docker_network = network_name
+        index = 0
+        while index <= 999999:
+            try:
+                self.tanks.append(Tank.from_docker_env(self.docker_network, index))
+                index = index + 1
+            except:
+                assert index == len(self.tanks)
+                break
+        return self
+
     def tanks_from_graph(self):
         for node_id in self.graph.nodes():
             if int(node_id) != len(self.tanks):
