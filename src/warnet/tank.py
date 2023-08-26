@@ -184,7 +184,7 @@ class Tank:
             "environment": {
                 "BITCOIN_RPC_HOST": self.bitcoind_name,
                 "BITCOIN_RPC_PORT": self.rpc_port,
-                "BITCOIN_RPC_USER": self.rpc_password,
+                "BITCOIN_RPC_USER": self.rpc_user,
                 "BITCOIN_RPC_PASSWORD": self.rpc_password,
             },
             "ports": [f"{8335 + self.index}:9332"],
