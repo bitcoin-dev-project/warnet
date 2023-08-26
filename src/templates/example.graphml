@@ -48,7 +48,7 @@
     <!-- test this pull request -->
     <node id="10">
       <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
-      <data key="bitcoin_config">sensitiverelayowntx=1,debugexclude=addrman,debug=sensitiverelay,uacomment=sensitive_relay</data>
+      <data key="bitcoin_config">sensitiverelayowntx=1,debugexclude=addrman,debug=sensitiverelay,debug=tor,debug=net,uacomment=sensitive_relay</data>
     </node>
     <!-- provide addrs for 8 full + 2 block outbound connections -->
     <edge id="0" source="10" target="0"></edge>
