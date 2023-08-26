@@ -83,7 +83,7 @@ class Warnet:
             src_tank = self.tanks[int(src)]
             dst_ip = self.tanks[dst].ipv4
             logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
-            src_tank.exec(f"bitcoin-cli addnode {dst_ip} add")
+            src_tank.exec(f"bitcoin-cli addpeeraddress {dst_ip} 18444")
 
     def docker_compose_up(self):
         command = ["docker-compose", "-p", "warnet", "up", "-d", "--build"]

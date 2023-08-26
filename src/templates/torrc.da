@@ -1,0 +1,22 @@
+# Common
+Log debug file /var/log/tor/debug.log
+RunAsDaemon 1
+ControlPort 9051
+CookieAuthentication 1
+ORPort 9001
+ExitPolicy accept *:*
+TestingTorNetwork 1
+
+# Relay
+DirAuthority DAeesohphoox orport=9030 no-v2 v3ident=0303840D6B3AD1BDE9FC731EAA8387BD1939C29C 100.20.15.18:9030 6A68434F4CDC4664A8B129929CE4A4D39D4BC8B4
+AssumeReachable 1
+PathsNeededToBuildCircuits 0.25
+TestingDirAuthVoteExit *
+TestingDirAuthVoteHSDir *
+V3AuthNIntervalsValid 2
+
+# Directory Authority
+AuthoritativeDirectory 1
+V3AuthoritativeDirectory 1
+ContactInfo winston_churchill@warnet.dev
+DirPort 9030
