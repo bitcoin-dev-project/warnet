@@ -74,7 +74,10 @@ class Tank:
     @property
     def ipv4(self):
         if self._ipv4 is None:
-            self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
+            if self.index == 0:
+                self._ipv4 = "100.20.15.18" # Tor directory server
+            else:
+                self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
         return self._ipv4
 
     @property
@@ -175,7 +178,10 @@ class Tank:
         services[self.bitcoind_name] = {
             "container_name": self.bitcoind_name,
             "build": build,
-            "volumes": [f"{self.conf_file}:/root/.bitcoin/bitcoin.conf"],
+            "volumes": [
+                f"{self.conf_file}:/root/.bitcoin/bitcoin.conf",
+                f"{TEMPLATES / ('torrc' if self.index != 0 else 'torrc.da')}:/etc/tor/torrc"
+            ],
             "networks": {
                 self.docker_network: {
                     "ipv4_address": f"{self.ipv4}",
@@ -183,6 +189,9 @@ class Tank:
             },
             "privileged": True,
         }
+        if self.index == 0:
+            services[self.bitcoind_name]["volumes"].append(
+                f"{TEMPLATES / 'tor-keys'}:/root/.tor/keys")
 
         # Add the prometheus data exporter in a neighboring container
         services[self.exporter_name] = {

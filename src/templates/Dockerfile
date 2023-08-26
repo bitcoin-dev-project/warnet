@@ -61,5 +61,5 @@ RUN if [ -n "${REPO}" ]; then \
     fi;
 
 # Start tor and the Bitcoin Core daemon.
-CMD tor --RunAsDaemon 1 --ControlPort 9051 --CookieAuthentication 1 && \
+CMD tor && \
     /usr/local/bin/bitcoind --datadir=/root/.bitcoin --conf=/root/.bitcoin/bitcoin.conf
