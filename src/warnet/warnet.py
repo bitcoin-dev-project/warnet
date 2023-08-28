@@ -6,8 +6,6 @@ import docker
 import logging
 import networkx
 import subprocess
-import tarfile
-import tempfile
 import yaml
 from pathlib import Path
 from tempfile import mkdtemp
@@ -64,31 +62,29 @@ class Warnet:
         for tank in self.tanks:
             tank.apply_network_conditions()
 
-    def update_dns_seeds(self):
+    def sync_dns_seeder(self):
         """
-        Update dns seed list served by dns-seed.
-
-        Currently this is append only, and has no crawl function.
+        Sync the dns seed list served by dns-seed with currently active Tanks.
         """
         seeder = self.docker.containers.get("dns-seed")
         records_list = [f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks]
 
-        # Using a temp file seems to make docker happier?
-        temp_file_path = "/etc/bind/temp_dns_records"
-        seeder.exec_run("dns-seed", f"sh -c '> {temp_file_path}'")
+        # Start from template
+        with open(str(DNS / "dns-seed.zone"), 'r') as f:
+            content = [line.rstrip() for line in f]
 
-        for record in records_list:
-            command_to_append = f"sh -c 'echo \"{record}\" >> {temp_file_path}'"
-            seeder.exec_run("dns-seed", command_to_append)
+        # TODO: Really we should also read active SOA value from dns-seed, and increment from there
 
-        concat_command = f"sh -c 'cat {temp_file_path} >> /etc/bind/dns-seed.zone'"
-        seeder.exec_run("dns-seed", concat_command)
-        delete_temp_command = f"sh -c 'rm {temp_file_path}'"
-        seeder.exec_run("dns-seed", delete_temp_command)
+        content.extend(records_list)
+        # Join the content into a single string and escape single quotes for echoing
+        content_str = '\n'.join(content).replace("'", "'\\''")
 
-        # Reload bind9 to recognize the changes
-        seeder.exec_run("dns-seed", "rndc reload")
+        # Overwrite all existing content
+        result = seeder.exec_run(f"sh -c 'echo \"{content_str}\" > /etc/bind/dns-seed.zone'")
+        logging.debug(f"result of updating dns-seed.zone: {result}")
 
+        # Reload that single zone only
+        seeder.exec_run("rndc reload dns-seed")
 
     def connect_edges(self):
         for edge in self.graph.edges():
@@ -166,7 +162,7 @@ class Warnet:
         if dns:
             compose["services"]["dns-seed"] = {
                 "container_name": "dns-seed",
-                "ports": ["15353:53"],
+                "ports": ["15353:53/udp", "15353:53/tcp"],
                 "volumes": [
                     f"{str(DNS / 'dns-seed.zone')}:/etc/bind/dns-seed.zone",
                     f"{str(DNS / 'named.conf.local')}:/etc/bind/named.conf.local",
