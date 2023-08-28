@@ -109,8 +109,8 @@ def from_file(graph_file: str, network: str = "warnet"):
     wn.connect_edges()
 
 @warnet_app.command()
-def sync_dns_seeder(graph_file: str, network: str = "warnet"):
-    wn = Warnet.from_graph_file(graph_file, network)
+def sync_dns_seed(network: str = "warnet"):
+    wn = Warnet.from_docker_env(network)
     wn.generate_zone_file_from_tanks()
     wn.apply_zone_file()
 
