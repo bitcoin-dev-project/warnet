@@ -112,14 +112,15 @@ def from_file(graph_file: str, network: str = "warnet"):
     wn.write_docker_compose()
     wn.write_prometheus_config()
     wn.docker_compose_up()
-    wn.sync_dns_seeder()
+    wn.generate_zone_file_from_tanks()
+    wn.apply_zone_file()
     wn.apply_network_conditions()
     wn.connect_edges()
 
 @warnet_app.command()
 def sync_dns_seeder(graph_file: str, network: str = "warnet"):
     wn = Warnet.from_graph_file(graph_file, network)
-    wn.sync_dns_seeder()
+    wn.apply_zone_file()
 
 @warnet_app.command()
 def stop():
