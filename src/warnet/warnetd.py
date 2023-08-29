@@ -25,11 +25,13 @@ RPC_TIMEOUT = 600
 continue_running = True
 
 app = Flask(__name__)
-jsonrpc = JSONRPC(app, '/api')
+jsonrpc = JSONRPC(app, "/api")
 
 # Determine the log file path based on XDG_STATE_HOME
-xdg_state_home = os.environ.get('XDG_STATE_HOME', os.path.join(os.environ['HOME'], '.local', 'state'))
-log_file_path = os.path.join(xdg_state_home, 'warnet', 'warnet.log')
+xdg_state_home = os.environ.get(
+    "XDG_STATE_HOME", os.path.join(os.environ["HOME"], ".local", "state")
+)
+log_file_path = os.path.join(xdg_state_home, "warnet", "warnet.log")
 
 # Ensure the directory exists
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
@@ -38,9 +40,11 @@ os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
 logging.basicConfig(
     level=logging.DEBUG,
     handlers=[
-        RotatingFileHandler(log_file_path, maxBytes=1_000_000, backupCount=3, delay=True)
+        RotatingFileHandler(
+            log_file_path, maxBytes=1_000_000, backupCount=3, delay=True
+        )
     ],
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 # Disable urllib3.connectionpool logging
 logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
@@ -48,7 +52,7 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
 logger = logging.getLogger("warnetd")
 
 
-@jsonrpc.method('bcli')
+@jsonrpc.method("bcli")
 def bcli(node: int, method: str, params: list[str] = [], network: str = "warnet"):
     """
     Call bitcoin-cli on <node> <method> <params> in [network]
@@ -60,7 +64,7 @@ def bcli(node: int, method: str, params: list[str] = [], network: str = "warnet"
         raise Exception(f"{e}")
 
 
-@jsonrpc.method('debug_log')
+@jsonrpc.method("debug_log")
 def debug_log(network: str, node: int):
     """
     Fetch the Bitcoin Core debug log from <node>
@@ -72,7 +76,7 @@ def debug_log(network: str, node: int):
         raise Exception(f"{e}")
 
 
-@jsonrpc.method('messages')
+@jsonrpc.method("messages")
 def messages(network: str, node_a: int, node_b: int):
     """
     Fetch messages sent between <node_a> and <node_b>.
@@ -94,7 +98,7 @@ def messages(network: str, node_a: int, node_b: int):
         raise Exception(f"{e}")
 
 
-@jsonrpc.method('list')
+@jsonrpc.method("list")
 def list() -> list[str]:
     """
     List available scenarios in the Warnet Test Framework
@@ -109,7 +113,8 @@ def list() -> list[str]:
     except Exception as e:
         return [f"Exception {e}"]
 
-@jsonrpc.method('run')
+
+@jsonrpc.method("run")
 def run(scenario: str, network: str = "warnet") -> str:
     """
     Run <scenario> from the Warnet Test Framework
@@ -117,7 +122,7 @@ def run(scenario: str, network: str = "warnet") -> str:
     try:
         # TODO: should handle network argument
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        mod_path = os.path.join(dir_path, '..', 'scenarios', f"{sys.argv[2]}.py")
+        mod_path = os.path.join(dir_path, "..", "scenarios", f"{sys.argv[2]}.py")
         run_cmd = [sys.executable, mod_path] + sys.argv[3:]
         subprocess.run(run_cmd, shell=False)
         return f"Running scenario {scenario}..."
@@ -143,7 +148,7 @@ def from_file(graph_file: str, network: str = "warnet") -> str:
         return f"Exception {e}"
 
 
-@jsonrpc.method('stop')
+@jsonrpc.method("stop")
 def stop(network: str = "warnet") -> str:
     """
     Stop all docker containers in <network>.
@@ -155,7 +160,7 @@ def stop(network: str = "warnet") -> str:
         return f"Exception {e}"
 
 
-@jsonrpc.method('wipe')
+@jsonrpc.method("wipe")
 def wipe(network: str = "warnet") -> str:
     """
     Stop and then erase all docker containers in <network>, and then the docker network itself.
@@ -168,7 +173,7 @@ def wipe(network: str = "warnet") -> str:
         return f"Exception {e}"
 
 
-@jsonrpc.method('stop_daemon')
+@jsonrpc.method("stop_daemon")
 def stop_daemon() -> str:
     """
     Stop the daemon.
@@ -182,18 +187,24 @@ def run_server():
 
 
 def run_gunicorn():
-    subprocess.run([
-        "gunicorn",
-        "-w", "4",
-        f"-b :{WARNETD_PORT}",
-        "--daemon",
-        f"-t {RPC_TIMEOUT}",
-        "--log-level", "debug",
-        "--access-logfile", log_file_path,
-        "--error-logfile", log_file_path,
-        "warnet.warnetd:app"
-    ])
+    subprocess.run(
+        [
+            "gunicorn",
+            "-w",
+            "4",
+            f"-b :{WARNETD_PORT}",
+            "--daemon",
+            f"-t {RPC_TIMEOUT}",
+            "--log-level",
+            "debug",
+            "--access-logfile",
+            log_file_path,
+            "--error-logfile",
+            log_file_path,
+            "warnet.warnetd:app",
+        ]
+    )
 
 
 if __name__ == "__main__":
-        run_server()
+    run_server()

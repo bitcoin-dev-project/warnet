@@ -10,11 +10,12 @@ from warnet.utils import (
     get_architecture,
     generate_ipv4_addr,
     sanitize_tc_netem_command,
-    dump_bitcoin_conf
+    dump_bitcoin_conf,
 )
 
 CONTAINER_PREFIX_BITCOIND = "tank"
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
+
 
 class Tank:
     def __init__(self):
@@ -58,7 +59,9 @@ class Tank:
         self = cls()
         self.index = int(index)
         self.docker_network = network
-        self._ipv4 = self.container.attrs["NetworkSettings"]["Networks"][self.docker_network]["IPAddress"]
+        self._ipv4 = self.container.attrs["NetworkSettings"]["Networks"][
+            self.docker_network
+        ]["IPAddress"]
         return self
 
     @property
@@ -99,15 +102,21 @@ class Tank:
             return
 
         if not sanitize_tc_netem_command(self.netem):
-            logging.warning(f"Not applying unsafe tc-netem conditions to container {self.bitcoind_name}: `{self.netem}`")
+            logging.warning(
+                f"Not applying unsafe tc-netem conditions to container {self.bitcoind_name}: `{self.netem}`"
+            )
             return
 
         # Apply the network condition to the container
         rcode, result = self.exec(self.netem)
         if rcode == 0:
-            logging.info(f"Successfully applied network conditions to {self.bitcoind_name}: `{self.netem}`")
+            logging.info(
+                f"Successfully applied network conditions to {self.bitcoind_name}: `{self.netem}`"
+            )
         else:
-            logging.error(f"Error applying network conditions to {self.bitcoind_name}: `{self.netem}` ({result})")
+            logging.error(
+                f"Error applying network conditions to {self.bitcoind_name}: `{self.netem}` ({result})"
+            )
 
     def write_bitcoin_conf(self, base_bitcoin_conf):
         conf = deepcopy(base_bitcoin_conf)
@@ -128,7 +137,7 @@ class Tank:
         conf_file = dump_bitcoin_conf(conf)
         path = self.warnet.tmpdir / f"bitcoin.conf.{self.suffix}"
         logging.info(f"Wrote file {path}")
-        with open(path, 'w') as file:
+        with open(path, "w") as file:
             file.write(conf_file)
         self.conf_file = path
 
@@ -146,7 +155,7 @@ class Tank:
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
-                }
+                },
             }
         else:
             # assume it's a release version, get the binary
@@ -157,18 +166,15 @@ class Tank:
                 "args": {
                     "ARCH": arch,
                     "BITCOIN_VERSION": self.version,
-                    "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{self.version}/bitcoin-{self.version}-{arch}-linux-gnu.tar.gz"
-                }
+                    "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{self.version}/bitcoin-{self.version}-{arch}-linux-gnu.tar.gz",
+                },
             }
 
         # Add the bitcoind service
         services[self.bitcoind_name] = {
             "container_name": self.bitcoind_name,
-
             "build": build,
-            "volumes": [
-                f"{self.conf_file}:/root/.bitcoin/bitcoin.conf"
-            ],
+            "volumes": [f"{self.conf_file}:/root/.bitcoin/bitcoin.conf"],
             "networks": {
                 self.docker_network: {
                     "ipv4_address": f"{self.ipv4}",
@@ -188,17 +194,14 @@ class Tank:
                 "BITCOIN_RPC_PASSWORD": self.rpc_password,
             },
             "ports": [f"{8335 + self.index}:9332"],
-            "networks": [
-                self.docker_network
-            ]
+            "networks": [self.docker_network],
         }
 
     def add_scrapers(self, scrapers):
-        scrapers.append({
-            "job_name": self.bitcoind_name,
-            "scrape_interval": "5s",
-            "static_configs": [
-                {"targets": [f"{self.exporter_name}:9332"]}
-            ]
-        })
-
+        scrapers.append(
+            {
+                "job_name": self.bitcoind_name,
+                "scrape_interval": "5s",
+                "static_configs": [{"targets": [f"{self.exporter_name}:9332"]}],
+            }
+        )
