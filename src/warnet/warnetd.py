@@ -3,8 +3,10 @@ import pkgutil
 import subprocess
 import sys
 from datetime import datetime
+from daemon import DaemonContext
 from jsonrpcserver import method, serve, Success, Error
 import logging
+from logging.handlers import RotatingFileHandler
 import scenarios
 
 from warnet.warnet import Warnet
@@ -17,12 +19,23 @@ from warnet.client import (
 )
 
 WARNETD_PORT = 9276
+continue_running = True
 
-logging.basicConfig(
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.DEBUG,
-)
+# Determine the log file path based on XDG_STATE_HOME
+xdg_state_home = os.environ.get('XDG_STATE_HOME', os.path.join(os.environ['HOME'], '.local', 'state'))
+log_file_path = os.path.join(xdg_state_home, 'warnet', 'logfile.log')
+
+# Ensure the directory exists
+os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+
+logger = logging.getLogger('warnetd')
+logger.setLevel(logging.DEBUG)
+# Create a handler that writes log messages to a file, with a maximum
+# log file size of 1 MB, keeping 3 backup old log files.
+handler = RotatingFileHandler(log_file_path, maxBytes=1e6, backupCount=3)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 @method
@@ -148,9 +161,10 @@ def wipe():
 
 def server():
     """
-    Run warnet RPC server.
+    Run warnetd RPC server.
     """
-    serve(port=WARNETD_PORT)
+    with DaemonContext( stdout=handler.stream, stderr=handler.stream):
+        serve(port=WARNETD_PORT)
 
 
 if __name__ == "__main__":
