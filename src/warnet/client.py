@@ -1,3 +1,4 @@
+import concurrent.futures
 import logging
 import docker
 from typing import List, Optional
@@ -61,13 +62,19 @@ def get_messages(network: str, src_index: int, dst_index: int) -> List[Optional[
     return messages
 
 
+def stop_container(c):
+    logger.info(f"stopping container: {c.name}")
+    c.stop()
+
 def stop_network(network="warnet") -> bool:
     d = docker.from_env()
     network = d.networks.get(network)
     containers = network.containers
-    for c in containers:
-        logger.info(f"stopping container: {c.name}")
-        c.stop()
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Stop containers in parallel using threads
+        executor.map(stop_container, containers)
+
     return True
 
 
