@@ -18,6 +18,10 @@ from test_framework.util import (
 )
 from warnet.warnet import Warnet
 
+
+logger = logging.getLogger("test-framework-bridge")
+
+
 class WarnetTestFramework(BitcoinTestFramework):
     def set_test_params(self):
         pass
@@ -32,7 +36,7 @@ class WarnetTestFramework(BitcoinTestFramework):
         warnet = Warnet.from_docker_env("warnet")
         for i, tank in enumerate(warnet.tanks):
             ip = tank.ipv4
-            logging.info(f"Adding TestNode {i} from {tank.bitcoind_name} with IP {ip}")
+            logger.info(f"Adding TestNode {i} from {tank.bitcoind_name} with IP {ip}")
             node = TestNode(
                 i,
                 "", # datadir path
