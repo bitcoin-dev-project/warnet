@@ -1,9 +1,12 @@
 import logging
 import docker
+from typing import List, Optional
 from warnet.utils import parse_raw_messages
 from warnet.tank import Tank
 
-def get_bitcoin_debug_log(network: str, index: int):
+logger = logging.getLogger("warnet.client")
+
+def get_bitcoin_debug_log(network: str, index: int) -> str:
     tank = Tank.from_docker_env(network, index)
     subdir = "/" if tank.bitcoin_network == "main" else f"{tank.bitcoin_network}/"
     data, stat = tank.container.get_archive(f"/root/.bitcoin/{subdir}debug.log")
@@ -16,11 +19,11 @@ def get_bitcoin_debug_log(network: str, index: int):
     out = out[:stat["size"]]
     return out
 
-def get_bitcoin_cli(network: str, index: int, method: str, params=None):
+def get_bitcoin_cli(network: str, index: int, method: str, params=None) -> str:
     tank = Tank.from_docker_env(network, index)
     return tank.exec(f"bitcoin-cli {method} {' '.join(map(str, params))}").output.decode()
 
-def get_messages(network: str, src_index: int, dst_index: int):
+def get_messages(network: str, src_index: int, dst_index: int) -> List[Optional[str]]:
     src_node = Tank.from_docker_env(network, src_index)
     dst_node = Tank.from_docker_env(network, dst_index)
     # start with the IP of the peer
@@ -48,22 +51,22 @@ def get_messages(network: str, src_index: int, dst_index: int):
     messages.sort(key=lambda x: x["time"])
     return messages
 
-def stop_network(network = "warnet"):
+def stop_network(network = "warnet") -> bool:
     d = docker.from_env()
     network = d.networks.get(network)
     containers = network.containers
     for c in containers:
-        logging.info(f"stopping container: {c.name}")
+        logger.info(f"stopping container: {c.name}")
         c.stop()
     return True
 
-def wipe_network(network_name = "warnet"):
+def wipe_network(network_name = "warnet") -> bool:
     d = docker.from_env()
     network = d.networks.get(network_name)
     containers = network.containers
     for c in containers:
-        logging.warning(f"removing container: {c.name}")
+        logger.warning(f"removing container: {c.name}")
         c.remove()
-    logging.warning(f"removing docker network: {network_name}")
+    logger.warning(f"removing docker network: {network_name}")
     network.remove()
     return True

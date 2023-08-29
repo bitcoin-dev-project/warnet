@@ -15,6 +15,7 @@ from warnet.utils import (
     parse_bitcoin_conf
 )
 
+logger = logging.getLogger("Warnet")
 TMPDIR_PREFIX = "warnet_tmp_"
 
 class Warnet:
@@ -26,7 +27,7 @@ class Warnet:
         self.subnet = "100.0.0.0/8"
         self.graph = None
         self.tanks = []
-        logging.info(f"Created Warnet with temp directory {self.tmpdir}")
+        logger.info(f"Created Warnet with temp directory {self.tmpdir}")
 
     @classmethod
     def from_graph_file(cls, graph_file: str, network: str = "warnet"):
@@ -62,7 +63,7 @@ class Warnet:
             if int(node_id) != len(self.tanks):
                 raise Exception(f"Node ID in graph must be incrementing integers (got '{node_id}', expected '{len(self.tanks)}')")
             self.tanks.append(Tank.from_graph_node(node_id, self))
-        logging.info(f"Imported {len(self.tanks)} tanks from graph")
+        logger.info(f"Imported {len(self.tanks)} tanks from graph")
 
     def write_bitcoin_confs(self):
         with open(TEMPLATES / "bitcoin.conf", 'r') as file:
@@ -80,7 +81,7 @@ class Warnet:
             (src, dst) = edge
             src_tank = self.tanks[int(src)]
             dst_ip = self.tanks[dst].ipv4
-            logging.info(f"Using `addndode` to connect tanks {src} to {dst}")
+            logger.info(f"Using `addndode` to connect tanks {src} to {dst}")
             src_tank.exec(f"bitcoin-cli addnode {dst_ip} add")
 
     def docker_compose_up(self):
@@ -88,9 +89,9 @@ class Warnet:
         try:
             with subprocess.Popen(command, cwd=str(self.tmpdir), stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
                 for line in process.stdout:
-                    logging.info(line.decode().rstrip())
+                    logger.info(line.decode().rstrip())
         except Exception as e:
-            logging.error(f"An error occurred while executing `{' '.join(command)}` in {self.tmpdir}: {e}")
+            logger.error(f"An error occurred while executing `{' '.join(command)}` in {self.tmpdir}: {e}")
 
     def write_docker_compose(self):
         compose = {
@@ -153,9 +154,9 @@ class Warnet:
         try:
             with open(docker_compose_path, "w") as file:
                 yaml.dump(compose, file)
-            logging.info(f"Wrote file: {docker_compose_path}")
+            logger.info(f"Wrote file: {docker_compose_path}")
         except Exception as e:
-            logging.error(f"An error occurred while writing to {docker_compose_path}: {e}")
+            logger.error(f"An error occurred while writing to {docker_compose_path}: {e}")
 
     def write_prometheus_config(self):
         config = {
@@ -188,6 +189,6 @@ class Warnet:
         try:
             with open(prometheus_path, "w") as file:
                 yaml.dump(config, file)
-            logging.info(f"Wrote file: {prometheus_path}")
+            logger.info(f"Wrote file: {prometheus_path}")
         except Exception as e:
-            logging.error(f"An error occurred while writing to {prometheus_path}: {e}")
+            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
