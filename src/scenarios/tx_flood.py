@@ -8,7 +8,7 @@ TXS = 100
 
 
 def cli_help():
-    return ("Generate 100 blocks with 100 TXs each")
+    return "Generate 100 blocks with 100 TXs each"
 
 
 class TXFlood(WarnetTestFramework):
@@ -27,6 +27,5 @@ class TXFlood(WarnetTestFramework):
             self.log.info(f"generating block {b}/{BLOCKS}: {block}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     TXFlood().main()
-

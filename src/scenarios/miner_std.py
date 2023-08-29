@@ -6,7 +6,7 @@ from scenarios.utils import ensure_miner
 
 
 def cli_help():
-    return ("Generate blocks over time. Options: [--allnodes | --interval=<number>]")
+    return "Generate blocks over time. Options: [--allnodes | --interval=<number>]"
 
 
 class MinerStd(WarnetTestFramework):
@@ -15,10 +15,19 @@ class MinerStd(WarnetTestFramework):
         self.num_nodes = 0
 
     def add_options(self, parser):
-        parser.add_argument("--allnodes", dest="allnodes", action="store_true",
-                            help="When true, generate blocks from all nodes instead of just nodes[0]")
-        parser.add_argument("--interval", dest="interval", default=60, type=int,
-                            help="Number of seconds between block generation (default 60 seconds)")
+        parser.add_argument(
+            "--allnodes",
+            dest="allnodes",
+            action="store_true",
+            help="When true, generate blocks from all nodes instead of just nodes[0]",
+        )
+        parser.add_argument(
+            "--interval",
+            dest="interval",
+            default=60,
+            type=int,
+            help="Number of seconds between block generation (default 60 seconds)",
+        )
 
     def run_test(self):
         current_miner = 0
@@ -35,5 +44,5 @@ class MinerStd(WarnetTestFramework):
             sleep(self.options.interval)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     MinerStd().main()

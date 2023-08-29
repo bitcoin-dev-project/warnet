@@ -29,3 +29,24 @@ dynamic = ["version"]
 [project.scripts]
 warnetd = "warnet.warnetd:run_gunicorn"
 warnet = "warnet.cli:cli"
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+exclude = '''
+(
+  /(
+      \.git
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | api
+    | src/test_framework
+  )/
+  | src/warnet/test_framework_bridge\.py
+)
+'''

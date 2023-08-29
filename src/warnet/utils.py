@@ -11,6 +11,7 @@ from io import BytesIO
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
 
+
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
     """
     A decorator for exponential backoff.
@@ -20,6 +21,7 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
     - base_delay: Initial delay in seconds.
     - max_delay: Maximum delay in seconds.
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -32,11 +34,14 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
                     retries += 1
                     if retries == max_retries:
                         raise e
-                    delay = min(base_delay * (2 ** retries), max_delay)
+                    delay = min(base_delay * (2**retries), max_delay)
                     logging.warning(f"retry in {delay} seconds...")
                     time.sleep(delay)
+
         return wrapper
+
     return decorator
+
 
 def get_architecture():
     """
@@ -44,13 +49,14 @@ def get_architecture():
 
     :return: The architecture of the machine or None if an error occurred
     """
-    result = subprocess.run(['uname', '-m'], stdout=subprocess.PIPE)
-    arch = result.stdout.decode('utf-8').strip()
+    result = subprocess.run(["uname", "-m"], stdout=subprocess.PIPE)
+    arch = result.stdout.decode("utf-8").strip()
     if arch == "arm64":
         arch = "aarch64"
     if arch is None:
         raise Exception("Failed to detect architecture.")
     return arch
+
 
 def generate_ipv4_addr(subnet):
     """
@@ -60,20 +66,20 @@ def generate_ipv4_addr(subnet):
     :return: Random IP address within the subnet
     """
     reserved_ips = [
-        '0.0.0.0/8',
-        '10.0.0.0/8',
-        '100.64.0.0/10',
-        '127.0.0.0/8',
-        '169.254.0.0/16',
-        '172.16.0.0/12',
-        '192.0.0.0/24',
-        '192.0.2.0/24',
-        '192.88.99.0/24',
-        '192.168.0.0/16',
-        '198.18.0.0/15',
-        '198.51.100.0/24',
-        '203.0.113.0/24',
-        '224.0.0.0/4'
+        "0.0.0.0/8",
+        "10.0.0.0/8",
+        "100.64.0.0/10",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "172.16.0.0/12",
+        "192.0.0.0/24",
+        "192.0.2.0/24",
+        "192.88.99.0/24",
+        "192.168.0.0/16",
+        "198.18.0.0/15",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+        "224.0.0.0/4",
     ]
 
     def is_public(ip):
@@ -86,10 +92,13 @@ def generate_ipv4_addr(subnet):
 
     # Generate a random IP within the subnet range
     while True:
-        ip_int = random.randint(int(network.network_address), int(network.broadcast_address))
+        ip_int = random.randint(
+            int(network.network_address), int(network.broadcast_address)
+        )
         ip_str = str(ipaddress.ip_address(ip_int))
         if is_public(ip_str):
             return ip_str
+
 
 def sanitize_tc_netem_command(command: str) -> bool:
     """
@@ -113,7 +122,7 @@ def sanitize_tc_netem_command(command: str) -> bool:
         "duplicate": r"^\d+(\.\d+)?%$",
         "corrupt": r"^\d+(\.\d+)?%$",
         "reorder": r"^\d+(\.\d+)?%\s\d+(\.\d+)?%$",
-        "rate": r"^\d+(kbit|mbit|gbit)$"
+        "rate": r"^\d+(kbit|mbit|gbit)$",
     }
 
     # Validate each param
@@ -133,6 +142,7 @@ def sanitize_tc_netem_command(command: str) -> bool:
 
     return True
 
+
 def parse_bitcoin_conf(file_content):
     """
     Custom parser for INI-style bitcoin.conf
@@ -150,17 +160,18 @@ def parse_bitcoin_conf(file_content):
 
     for line in file_content.splitlines():
         line = line.strip()
-        if not line or line.startswith('#'):
+        if not line or line.startswith("#"):
             continue
 
-        if line.startswith('[') and line.endswith(']'):
+        if line.startswith("[") and line.endswith("]"):
             current_section = line[1:-1]
             result[current_section] = []
-        elif '=' in line:
-            key, value = line.split('=', 1)
+        elif "=" in line:
+            key, value = line.split("=", 1)
             result[current_section].append((key.strip(), value.strip()))
 
     return result
+
 
 def dump_bitcoin_conf(conf_dict):
     """
@@ -176,20 +187,21 @@ def dump_bitcoin_conf(conf_dict):
 
     # Print global section at the top first
     values = conf_dict[None]
-    for (sub_key, sub_value) in values:
-        result.append(f'{sub_key}={sub_value}')
+    for sub_key, sub_value in values:
+        result.append(f"{sub_key}={sub_value}")
 
     # Then print any named subsections
     for section, values in conf_dict.items():
         if section is not None:
-            result.append(f'\n[{section}]')
+            result.append(f"\n[{section}]")
         else:
             continue
-        for (sub_key, sub_value) in values:
-            result.append(f'{sub_key}={sub_value}')
+        for sub_key, sub_value in values:
+            result.append(f"{sub_key}={sub_value}")
 
     # Terminate file with newline
-    return '\n'.join(result) + '\n'
+    return "\n".join(result) + "\n"
+
 
 def to_jsonable(obj):
     HASH_INTS = [
@@ -214,7 +226,7 @@ def to_jsonable(obj):
     if hasattr(obj, "__dict__"):
         return obj.__dict__
     elif hasattr(obj, "__slots__"):
-        ret = {}    # type: Any
+        ret = {}  # type: Any
         for slot in obj.__slots__:
             val = getattr(obj, slot, None)
             if slot in HASH_INTS and isinstance(val, int):
@@ -231,6 +243,7 @@ def to_jsonable(obj):
     else:
         return obj
 
+
 # This function is a hacked-up copy of process_file() from
 # Bitcoin Core contrib/message-capture/message-capture-parser.py
 def parse_raw_messages(blob, outbound):
@@ -243,23 +256,25 @@ def parse_raw_messages(blob, outbound):
     while True:
         # Read the Header
         header_len = TIME_SIZE + LENGTH_SIZE + MSGTYPE_SIZE
-        tmp_header_raw = blob[offset:offset+header_len]
+        tmp_header_raw = blob[offset : offset + header_len]
 
         offset = offset + header_len
         if not tmp_header_raw:
             break
         tmp_header = BytesIO(tmp_header_raw)
-        time = int.from_bytes(tmp_header.read(TIME_SIZE), "little")      # type: int
-        msgtype = tmp_header.read(MSGTYPE_SIZE).split(b'\x00', 1)[0]     # type: bytes
+        time = int.from_bytes(tmp_header.read(TIME_SIZE), "little")  # type: int
+        msgtype = tmp_header.read(MSGTYPE_SIZE).split(b"\x00", 1)[0]  # type: bytes
         length = int.from_bytes(tmp_header.read(LENGTH_SIZE), "little")  # type: int
 
         # Start converting the message to a dictionary
         msg_dict = {}
         msg_dict["outbound"] = outbound
         msg_dict["time"] = time
-        msg_dict["size"] = length   # "size" is less readable here, but more readable in the output
+        msg_dict[
+            "size"
+        ] = length  # "size" is less readable here, but more readable in the output
 
-        msg_ser = BytesIO(blob[offset:offset+length])
+        msg_ser = BytesIO(blob[offset : offset + length])
         offset = offset + length
 
         # Determine message type
