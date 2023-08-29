@@ -20,10 +20,12 @@ dependencies = [
     "jsonschema",
     "jsonrpcserver==5.0.3",
     "jsonrpcclient==4.0.0",
-    "python-daemon==3.0.1",
+    "gunicorn==21.2.0",
+    "flask==2.3.3",
+    "Flask-JSONRPC==2.2.2",
 ]
 dynamic = ["version"]
 
 [project.scripts]
-warnetd = "warnet.warnetd:server"
+warnetd = "warnet.warnetd:run_gunicorn"
 warnet = "warnet.main:cli"

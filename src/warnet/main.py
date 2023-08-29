@@ -3,6 +3,8 @@ import requests
 import typer
 from typing_extensions import Annotated
 from typing import Optional
+from flask import jsonify
+import requests
 from templates import TEMPLATES
 from warnet.warnetd import WARNETD_PORT
 
@@ -11,7 +13,7 @@ EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
 
 def rpc(rpc_method, params: [] = []):
     payload = request(rpc_method, params)
-    response = requests.post(f"http://localhost:{WARNETD_PORT}/", json=payload)
+    response = requests.post(f"http://localhost:{WARNETD_PORT}/api", json=payload)
     parsed = parse(response.json())
 
     if isinstance(parsed, Ok):
@@ -96,7 +98,7 @@ def run(scenario: str):
 
 
 @cli.command()
-def from_file(graph_file: str = EXAMPLE_GRAPH_FILE, network: str="warnet"):
+def from_file(graph_file, network: str="warnet"):
     """
     Run a warnet with topology loaded from a <graph_file> into [network] (default: "warnet")
     """
@@ -129,6 +131,19 @@ def wipe():
         typer.echo(result)
     except Exception as e:
         typer.echo(f"Error wiping network: {e}")
+
+
+@cli.command()
+def stop_daemon():
+    """
+    Stop the warnetd daemon.
+    """
+    try:
+        result = rpc("stop_daemon")
+        typer.echo(result)
+    except Exception as e:
+        typer.echo(f"As we endeavored to cease operations, adversity struck: {e}")
+
 
 
 if __name__ == "__main__":
