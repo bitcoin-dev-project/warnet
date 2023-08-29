@@ -1,14 +1,16 @@
+import logging
 import os
 import pkgutil
+import signal
 import subprocess
 import sys
 from datetime import datetime
-from daemon import DaemonContext
-from jsonrpcserver import method, serve, Success, Error
-import logging
 from logging.handlers import RotatingFileHandler
-import scenarios
 
+from flask import Flask
+from flask_jsonrpc import JSONRPC
+
+import scenarios
 from warnet.warnet import Warnet
 from warnet.client import (
     get_bitcoin_cli,
@@ -21,9 +23,12 @@ from warnet.client import (
 WARNETD_PORT = 9276
 continue_running = True
 
+app = Flask(__name__)
+jsonrpc = JSONRPC(app, '/api')
+
 # Determine the log file path based on XDG_STATE_HOME
 xdg_state_home = os.environ.get('XDG_STATE_HOME', os.path.join(os.environ['HOME'], '.local', 'state'))
-log_file_path = os.path.join(xdg_state_home, 'warnet', 'logfile.log')
+log_file_path = os.path.join(xdg_state_home, 'warnet', 'warnet.log')
 
 # Ensure the directory exists
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
@@ -32,37 +37,37 @@ logger = logging.getLogger('warnetd')
 logger.setLevel(logging.DEBUG)
 # Create a handler that writes log messages to a file, with a maximum
 # log file size of 1 MB, keeping 3 backup old log files.
-handler = RotatingFileHandler(log_file_path, maxBytes=1e6, backupCount=3)
+handler = RotatingFileHandler(log_file_path, maxBytes=1_000_000, backupCount=3)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-@method
+@jsonrpc.method('bcli')
 def bcli(network: str, node: int, method: str, params: list[str] = []):
     """
     Call bitcoin-cli <method> <params> on <node> in [network]
     """
     try:
         result = get_bitcoin_cli(network, node, method, params)
-        return Success(result)
+        return result
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-@method
+@jsonrpc.method('debug_log')
 def debug_log(network: str, node: int):
     """
     Fetch the Bitcoin Core debug log from <node>
     """
     try:
         result = get_bitcoin_debug_log(network, node)
-        return Success(result)
+        return result
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-@method
+@jsonrpc.method('messages')
 def messages(network: str, node_a: int, node_b: int):
     """
     Fetch messages sent between <node_a> and <node_b>.
@@ -79,12 +84,12 @@ def messages(network: str, node_a: int, node_b: int):
             if "body" in m:
                 body = m["body"]
             out = out + f"{timestamp} {direction} {m['msgtype']} {body}\n"
-        return Success(out)
+        return out
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-@method
+@jsonrpc.method('list')
 def list() -> list[str]:
     """
     List available scenarios in the Warnet Test Framework
@@ -95,12 +100,11 @@ def list() -> list[str]:
             m = pkgutil.resolve_name(f"scenarios.{s.name}")
             if hasattr(m, "cli_help"):
                 sc.append(f"{s.name.ljust(20)}, {m.cli_help()}")
-        return Success(sc)
+        return sc
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
-
-@method
+@jsonrpc.method('run')
 def run(scenario: str):
     """
     Run <scenario> from the Warnet Test Framework
@@ -111,12 +115,12 @@ def run(scenario: str):
         mod_path = os.path.join(dir_path, '..', 'scenarios', f"{sys.argv[2]}.py")
         run_cmd = [sys.executable, mod_path] + sys.argv[3:]
         subprocess.run(run_cmd, shell=False)
-        return Success(True)
+        return True
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-@method
+@jsonrpc.method()
 def from_file(graph_file: str, network: str):
     """
     Run a warnet with topology loaded from a <graph_file>
@@ -129,43 +133,61 @@ def from_file(graph_file: str, network: str):
         wn.docker_compose_up()
         wn.apply_network_conditions()
         wn.connect_edges()
-        return Success(True)
+        return True
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-@method
-def stop():
+@jsonrpc.method('stop')
+def stop() -> bool:
     """
     Stop all docker containers in <network>.
     """
     try:
         result = stop_network()
-        return Success(result)
+        return result
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-@method
-def wipe():
+@jsonrpc.method('wipe')
+def wipe() -> bool:
     """
     Stop and then erase all docker containers in <network>, and then the docker network itself.
     """
     try:
         stop_network()
         result = wipe_network()
-        return Success(result)
+        return result
     except Exception as e:
-        return Error(f"{e}")
+        raise Exception(f"{e}")
 
 
-def server():
+def run_server():
+    app.run(port=WARNETD_PORT, threaded=True)
+
+
+@jsonrpc.method('stop_daemon')
+def stop_daemon() -> str:
     """
-    Run warnetd RPC server.
+    Stop the daemon.
     """
-    with DaemonContext( stdout=handler.stream, stderr=handler.stream):
-        serve(port=WARNETD_PORT)
+    os.kill(os.getppid(), signal.SIGTERM)
+    return "Stopping daemon..."
+
+
+def run_gunicorn():
+    subprocess.run([
+        "gunicorn", 
+        "-w", "4", 
+        f"-b :{WARNETD_PORT}",
+        "--daemon", 
+        "--log-level", "debug",
+        "--access-logfile", log_file_path,
+        "--error-logfile", log_file_path,
+        "warnet.warnetd:app"
+    ])
 
 
 if __name__ == "__main__":
-    server()
+        run_server()
