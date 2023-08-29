@@ -12,6 +12,9 @@ from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
 
 
+logger = logging.getLogger("utils")
+
+
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
     """
     A decorator for exponential backoff.
@@ -30,12 +33,12 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    logging.error(f"rpc error:\n\t{e}")
+                    logger.error(f"rpc error:\n\t{e}")
                     retries += 1
                     if retries == max_retries:
                         raise e
                     delay = min(base_delay * (2**retries), max_delay)
-                    logging.warning(f"retry in {delay} seconds...")
+                    logger.warning(f"retry in {delay} seconds...")
                     time.sleep(delay)
 
         return wrapper

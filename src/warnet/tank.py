@@ -15,6 +15,7 @@ from warnet.utils import (
 
 CONTAINER_PREFIX_BITCOIND = "tank"
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
+logger = logging.getLogger("tank")
 
 
 class Tank:
@@ -102,7 +103,7 @@ class Tank:
             return
 
         if not sanitize_tc_netem_command(self.netem):
-            logging.warning(
+            logger.warning(
                 f"Not applying unsafe tc-netem conditions to container {self.bitcoind_name}: `{self.netem}`"
             )
             return
@@ -110,11 +111,11 @@ class Tank:
         # Apply the network condition to the container
         rcode, result = self.exec(self.netem)
         if rcode == 0:
-            logging.info(
+            logger.info(
                 f"Successfully applied network conditions to {self.bitcoind_name}: `{self.netem}`"
             )
         else:
-            logging.error(
+            logger.error(
                 f"Error applying network conditions to {self.bitcoind_name}: `{self.netem}` ({result})"
             )
 
@@ -136,7 +137,7 @@ class Tank:
 
         conf_file = dump_bitcoin_conf(conf)
         path = self.warnet.tmpdir / f"bitcoin.conf.{self.suffix}"
-        logging.info(f"Wrote file {path}")
+        logger.info(f"Wrote file {path}")
         with open(path, "w") as file:
             file.write(conf_file)
         self.conf_file = path
