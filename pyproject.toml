@@ -28,4 +28,4 @@ dynamic = ["version"]
 
 [project.scripts]
 warnetd = "warnet.warnetd:run_gunicorn"
-warnet = "warnet.main:cli"
+warnet = "warnet.cli:cli"
