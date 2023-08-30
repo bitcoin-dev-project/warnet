@@ -89,8 +89,8 @@ def remove_container(c):
     logger.warning(f"removing container: {c.name}")
     c.remove()
 
-def wipe_network(network_name="warnet") -> bool:
-    def thread_wipe_network():
+def remove_network(network_name="warnet") -> bool:
+    def thread_remove_network():
         d = docker.from_env()
         network = d.networks.get(network_name)
         containers = network.containers
@@ -101,11 +101,7 @@ def wipe_network(network_name="warnet") -> bool:
         # Use a second executor to ensure all stops complete before removes
         with concurrent.futures.ThreadPoolExecutor() as executor:
             executor.map(remove_container, containers)
- 
-        # Once all containers are removed, remove the network
-        logger.info(f"removing docker network: {network_name}")
-        network.remove()
 
-    threading.Thread(target=thread_wipe_network).start()
+    threading.Thread(target=thread_remove_network).start()
     return True
 
