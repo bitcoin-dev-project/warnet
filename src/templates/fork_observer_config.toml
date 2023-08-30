@@ -1,0 +1,30 @@
+# fork-observer base configuration file
+
+# Database path of the key value store. Will be created if non-existing.
+database_path = "db"
+
+# path to the location of the static www files
+www_path = "./www"
+
+# Interval for checking for new blocks
+query_interval = 1
+
+# Webserver listen address
+address = "0.0.0.0:2323"
+
+# Custom footer for the site.
+footer_html = """
+    <div class="my-2">
+      <div>
+        <span class="text-muted">Warnet fork-observer</span>
+      </div>
+    </div>
+  """
+
+[[networks]]
+id = 0xDEADBE
+name = "Warnet"
+description = "A custom regtest network"
+min_fork_height = 0
+max_interesting_heights = 1
+

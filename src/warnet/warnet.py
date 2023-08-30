@@ -5,6 +5,7 @@
 import docker
 import logging
 import networkx
+import shutil
 import subprocess
 import yaml
 from pathlib import Path
@@ -21,12 +22,14 @@ TMPDIR_PREFIX = "warnet_tmp_"
 class Warnet:
     def __init__(self):
         self.tmpdir: Path = Path(mkdtemp(prefix=TMPDIR_PREFIX))
+        self.fork_observer_config = self.tmpdir / "fork_observer_config.toml"
         self.docker = docker.from_env()
         self.bitcoin_network:str = "regtest"
         self.docker_network:str = "warnet"
         self.subnet: str = "100.0.0.0/8"
         self.graph = None
         self.tanks: List[Tank] = []
+        shutil.copy(TEMPLATES / "fork_observer_config.toml", self.fork_observer_config)
         logger.info(f"Created Warnet with temp directory {self.tmpdir}")
 
     def __str__(self) -> str:
@@ -154,6 +157,13 @@ class Warnet:
             "container_name": "grafana",
             "ports": ["3000:3000"],
             "volumes": ["grafana-storage:/var/lib/grafana"],
+            "networks": [self.docker_network],
+        }
+        compose["services"]["fork-observer"] = {
+            "image": "will8clark/fork-observer:latest",
+            "container_name": "fork-observer",
+            "ports": ["12323:2323"],
+            "volumes": [f"{self.fork_observer_config}:/fork-observer/config.toml"],
             "networks": [self.docker_network],
         }
 
