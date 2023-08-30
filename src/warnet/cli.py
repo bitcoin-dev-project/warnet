@@ -138,15 +138,15 @@ def stop(network: str = "warnet"):
 
 
 @cli.command()
-def wipe(network: str = "warnet"):
+def remove(network: str = "warnet"):
     """
-    Stop and then erase all docker containers in [network] (default: "warnet"), and then the docker network itself.
+    Stop and then erase all docker containers in [network] (default: "warnet").
     """
     try:
-        result = rpc("wipe", {"network": network})
+        result = rpc("remove", {"network": network})
         print(result)
     except Exception as e:
-        print(f"Error wiping network: {e}")
+        print(f"Error removing network: {e}")
 
 
 @cli.command()

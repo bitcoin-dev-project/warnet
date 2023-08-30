@@ -19,7 +19,7 @@ from warnet.client import (
     get_bitcoin_debug_log,
     get_messages,
     stop_network,
-    wipe_network,
+    remove_network,
 )
 
 WARNETD_PORT = 9276
@@ -181,13 +181,13 @@ def stop(network: str = "warnet") -> str:
         return f"Exception {e}"
 
 
-@jsonrpc.method("wipe")
-def wipe(network: str = "warnet") -> str:
+@jsonrpc.method("remove")
+def remove(network: str = "warnet") -> str:
     """
-    Stop and then erase all docker containers in <network>, and then the docker network itself.
+    Stop and then erase all docker containers in <network>.
     """
     try:
-        wipe_network(network)
+        remove_network(network)
         return "Stopping and wiping warnet"
     except Exception as e:
         return f"Exception {e}"
