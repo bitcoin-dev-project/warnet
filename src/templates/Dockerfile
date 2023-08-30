@@ -60,6 +60,7 @@ RUN if [ -n "${REPO}" ]; then \
         make install; \
     fi;
 
-# Start tor and the Bitcoin Core daemon.
-CMD tor && \
+
+# Start tor with user debian-tor and the Bitcoin Core daemon.
+CMD gosu debian-tor tor & \
     /usr/local/bin/bitcoind --datadir=/root/.bitcoin --conf=/root/.bitcoin/bitcoin.conf
