@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useLayoutEffect } from "react";
 import * as d3 from "d3";
 import { GraphEdge, GraphNode } from "@/types";
 import {
@@ -32,12 +32,27 @@ const ForceGraph = () => {
   );
 
   const svgRef = useRef(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const tempLinkRef = useRef(null);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
 
+    const canvas = canvasRef.current
+    const canvasDetails = {
+      height: canvas?.clientHeight ?? CANVAS_HEIGHT,
+      width: canvas?.clientWidth ?? CANVAS_WIDTH
+    }
+
+    // const zoom = d3.zoom()
+    //   .scaleExtent([0.5, 10]) // Adjust zoom limits as needed
+    //   .on("zoom", zoomed);
+    // svg.call(zoom);
+    // function zoomed(event) {
+    //   svg.attr("transform", event.transform);
+    // }
+
+    svg.selectAll("*").remove();
     const simulation: d3.Simulation<GraphNode, undefined> = d3
       .forceSimulation(nodes)
       .force(
@@ -49,8 +64,7 @@ const ForceGraph = () => {
       )
       .force("charge", d3.forceManyBody().strength(-5))
       .alphaDecay(0.01)
-      .force("center", d3.forceCenter(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2));
-
+      .force("center", d3.forceCenter(canvasDetails.width / 2, canvasDetails.height / 2));
     const drag = (simulation: d3.Simulation<GraphNode, undefined>) => {
       function dragstarted(event: any) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -91,14 +105,21 @@ const ForceGraph = () => {
 
     const node = svg
       .append("g")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1.5)
-      .selectAll("rect")
+      .selectAll(".node")
       .data(nodes)
-      .join("rect")
-      .attr("width", 20)
-      .attr("height", 20)
-      .attr("fill", (d) => color(d.id!.toString()))
+      .join("svg")
+      .html((d) => `
+        <svg width="187" height="64" viewBox="0 0 187 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="12" height="64" rx="6" fill="#0F62FE"/>
+          <rect x="12.5" y="7.5" width="162" height="49" fill="black"/>
+          <circle cx="36" cy="32" r="8" fill="#FF02A9"/>
+          <text x="50" y="37" class="cursor-pointer text-sm fill-white">${d.name}</text>
+          <rect x="12.5" y="7.5" width="162" height="49" stroke="#545454"/>
+          <rect x="175" width="12" height="64" rx="6" fill="#0F62FE"/>
+        </svg>
+      `)
+      .classed("node", true)
+      // .append("svg")
       .call(drag(simulation))
       .on("click", (event, d) => {
         if (selectedNode) {
@@ -119,20 +140,6 @@ const ForceGraph = () => {
         }
       });
 
-    const labels = svg
-      .append("g")
-      .selectAll("text")
-      .data(nodes)
-      .enter()
-      .append("text")
-      .attr("x", (d) => d.x!)
-      .attr("y", (d) => d.y!)
-      .text((d) => d.name!)
-      .attr("font-size", "12px")
-      .attr("font-weight", "bold")
-      .attr("text-anchor", "middle")
-      .attr("dy", -10);
-
     simulation.on("tick", () => {
       link
         .attr("x1", (d) => d.source.x!)
@@ -143,19 +150,7 @@ const ForceGraph = () => {
       node
         .attr("x", (d) => d.x! - NODE_ATTACHMENT_POINT)
         .attr("y", (d) => d.y! - NODE_ATTACHMENT_POINT);
-      labels
-        .attr("x", (d) => d.x! - NODE_ATTACHMENT_POINT)
-        .attr("y", (d) => d.y! - NODE_ATTACHMENT_POINT);
     });
-
-    // svg
-    //   .append("line")
-    //   .attr("ref", tempLinkRef.current)
-    //   .attr("fill", "#153")
-    //   .style("stroke", "#153")
-    //   .style("stroke-dasharray", "5,5")
-    //   .style("opacity", 0)
-    //   .attr("width", "11.5");
 
     function mouseMoved(event: any) {
       if (creatingLink) {
@@ -171,7 +166,7 @@ const ForceGraph = () => {
 
     svg.on("mousemove", mouseMoved);
     svg.on("click", (e, d) => {
-      if (e.target.id === "canvas") {
+      if (e.target.id === "svg-container") {
         setSelectedNode(null);
       }
       // if (creatingLink) {
@@ -205,13 +200,15 @@ const ForceGraph = () => {
     <>
       <Sidebar />
       {isDialogOpen && <NodeInfo />}
-      <svg
-        id="canvas"
-        ref={svgRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        className={`bg-slate-100 border rounded-md`}
-      ></svg>
+      <div id="canvas" ref={canvasRef} className="w-full h-full bg-brand-gray-medium border">
+        <svg
+          id="svg-container"
+          ref={svgRef}
+          // width={CANVAS_WIDTH}
+          // height={CANVAS_HEIGHT}
+          className="w-full h-full"
+        ></svg>
+      </div>
     </>
   );
 };
