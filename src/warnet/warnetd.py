@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import pkgutil
@@ -22,7 +23,6 @@ from warnet.client import (
 )
 
 WARNETD_PORT = 9276
-# RPC_TIMEOUT = 600
 continue_running = True
 
 app = Flask(__name__)
@@ -42,7 +42,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     handlers=[
         RotatingFileHandler(
-            log_file_path, maxBytes=1_000_000, backupCount=3, delay=True
+            log_file_path, maxBytes=16_000_000, backupCount=3, delay=True
         )
     ],
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -199,29 +199,36 @@ def stop_daemon() -> str:
     return "Stopping daemon..."
 
 
-def run_server():
-    app.run(port=WARNETD_PORT, threaded=True)
-
-
 def run_gunicorn():
-    subprocess.run(
-        [
-            "gunicorn",
-            "-w",
-            "4",
-            f"-b :{WARNETD_PORT}",
+    """
+    Run the RPC server using gunicorn WSGI HTTP server
+    """
+    parser = argparse.ArgumentParser(description='Run the Warnet RPC server.')
+    parser.add_argument('--no-daemon', default=False, action='store_true', help='Run server in the foreground instead of daemon mode.')
+    args = parser.parse_args()
+
+    command = [
+        "gunicorn",
+        "-w",
+        "4",
+        f"-b :{WARNETD_PORT}",
+        "--log-level",
+        "debug",
+        "warnet.warnetd:app",
+    ]
+
+    # If in daemon mode, log to file and add daemon argument
+    if not args.no_daemon:
+        command.extend([
             "--daemon",
-            # f"-t {RPC_TIMEOUT}",
-            "--log-level",
-            "debug",
             "--access-logfile",
             log_file_path,
             "--error-logfile",
             log_file_path,
-            "warnet.warnetd:app",
-        ]
-    )
+        ])
+ 
+    subprocess.run(command)
 
 
 if __name__ == "__main__":
-    run_server()
+    run_gunicorn()
