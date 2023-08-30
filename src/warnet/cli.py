@@ -6,7 +6,6 @@ from pathlib import Path
 from jsonrpcclient import Ok, parse, request
 import typer
 from rich import print
-import requests
 
 from templates import TEMPLATES
 from warnet.warnetd import WARNETD_PORT
@@ -14,6 +13,8 @@ from warnet.warnetd import WARNETD_PORT
 EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
 
 cli = typer.Typer()
+debug = typer.Typer()
+cli.add_typer(debug, name="debug", help="Various warnet debug commands")
 
 
 def rpc(rpc_method, params: Optional[Union[Dict[str, Any], Tuple[Any, ...]]]):
@@ -99,6 +100,18 @@ def run(scenario: str):
     except Exception as e:
         print(f"Error running scenario: {e}")
 
+
+@debug.command()
+def generate_compose(graph_file: str, network: str = "warnet"):
+    """
+    Generate the docker-compose file for a given graph_file and return it.
+    Does not start the network.
+    """
+    try:
+        result = rpc("generate_compose", {"graph_file": graph_file, "network": network})
+        print(result)
+    except Exception as e:
+        print(f"Error generating compose: {e}")
 
 @cli.command()
 def start(graph_file: Path = EXAMPLE_GRAPH_FILE, network: str = "warnet"):
