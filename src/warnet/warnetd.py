@@ -4,6 +4,7 @@ import pkgutil
 import signal
 import subprocess
 import sys
+import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
@@ -21,7 +22,7 @@ from warnet.client import (
 )
 
 WARNETD_PORT = 9276
-RPC_TIMEOUT = 600
+# RPC_TIMEOUT = 600
 continue_running = True
 
 app = Flask(__name__)
@@ -135,17 +136,34 @@ def from_file(graph_file: str, network: str = "warnet") -> str:
     """
     Run a warnet with topology loaded from a <graph_file>
     """
-    try:
-        wn = Warnet.from_graph_file(graph_file, network)
-        wn.write_bitcoin_confs()
-        wn.write_docker_compose()
-        wn.write_prometheus_config()
-        wn.docker_compose_up()
-        wn.apply_network_conditions()
-        wn.connect_edges()
-        return f"Created warnet named '{network}' from graph file {graph_file}"
-    except Exception as e:
-        return f"Exception {e}"
+    def start_thread():
+        try:
+            wn = Warnet.from_graph_file(graph_file, network)
+            wn.write_bitcoin_confs()
+            wn.write_docker_compose()
+            wn.write_prometheus_config()
+            wn.docker_compose_up()
+            wn.apply_network_conditions()
+            wn.connect_edges()
+            logger.info(f"Created warnet named '{network}' from graph file {graph_file}")
+        except Exception as e:
+            logger.error(f"Exception {e}")
+
+    threading.Thread(target=start_thread).start()
+    return f"Starting warnet named '{network}'"
+
+
+@jsonrpc.method()
+def generate_compose(graph_file: str, network: str = "warnet") -> str:
+    """
+    Generate the docker compose file for a graph file and return import
+    """
+    wn = Warnet.from_graph_file(graph_file, network)
+    wn.write_bitcoin_confs()
+    wn.write_docker_compose()
+    docker_compose_path = wn.tmpdir / "docker-compose.yml"
+    with open(docker_compose_path, "r") as f:
+        return f.read()
 
 
 @jsonrpc.method("stop")
@@ -154,8 +172,8 @@ def stop(network: str = "warnet") -> str:
     Stop all docker containers in <network>.
     """
     try:
-        result = stop_network(network)
-        return "Warnet stopped" if result else "Warnet not stopped"
+        _ = stop_network(network)
+        return "Stopping warnet"
     except Exception as e:
         return f"Exception {e}"
 
@@ -166,9 +184,8 @@ def wipe(network: str = "warnet") -> str:
     Stop and then erase all docker containers in <network>, and then the docker network itself.
     """
     try:
-        result = "Warnet stopped" if stop_network(network) else "Warnet not stopped"
-        result += "\nWarnet wiped" if wipe_network(network) else "Warnet not wiped"
-        return result
+        wipe_network(network)
+        return "Stopping and wiping warnet"
     except Exception as e:
         return f"Exception {e}"
 
@@ -194,7 +211,7 @@ def run_gunicorn():
             "4",
             f"-b :{WARNETD_PORT}",
             "--daemon",
-            f"-t {RPC_TIMEOUT}",
+            # f"-t {RPC_TIMEOUT}",
             "--log-level",
             "debug",
             "--access-logfile",
