@@ -5,7 +5,7 @@ Monitor and analyze the emergent behaviours of Bitcoin networks.
 ## Major functionality
 
 * Warnet uses docker to launch a bitcoin network of `n` nodes which are connected to each other according to a network topology from a specification file.
-* Nodes are assigned random IP addresses in the 100.0.0.0/8 subnet which ensures randomized `addrman` binning [by Bitcoin Core](https://github.com/bitcoin/bitcoin/blob/8372ab0ea3c88308aabef476e3b9d023ba3fd4b7/src/addrman.h#L66).
+* Nodes are by default assigned random IP addresses in the 100.0.0.0/8 subnet which ensures randomized `addrman` binning [by Bitcoin Core](https://github.com/bitcoin/bitcoin/blob/8372ab0ea3c88308aabef476e3b9d023ba3fd4b7/src/addrman.h#L66), along with a Tor address.
 * Nodes can be assigned activities which can be programmed using the Bitcoin Core function test [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
 * Nodes can have traffic shaping parameters assigned to them via the graph using [tc-netem](https://manpages.ubuntu.com/manpages/trusty/man8/tc-netem.8.html) tool.
 * Log files from nodes can be accessed directly
@@ -109,47 +109,75 @@ pip install --upgrade pip
 pip install -e .
 ```
 
-## Running a demo
+## Running
 
-To start warnet in demo mode with the default graph, simply run the following commands in the active venv:
+Warnet runs a daemon called `warnetd` which can be used to manage multiple warnets.
+`warnetd` will by default log to a file `$XDG_STATE_HOME/warnet/warnet.log` if the `$XDG_STATE_HOME` environment variable is set, otherwise it will use `$HOME/.local/state/warnet/warnet.log`.
+
+To start `warnetd` with your venv activated simply run:
 
 ```bash
-warnet
+warnetd
 ```
 
-Each container is a node as described in the graph, along with various data exporters and a demo graphana dashboard.
+> [!NOTE]
+> `warnetd` also accepts a `--no-debug` option which prevents daemonization
 
-The commands specified in [Command-line Tools](#command-line-tools) can then be used to control and query the nodes.
+Once `warnetd` is running it can be interacted with using the cli tool `warnet`.
+Run `warnet --help` to see a list of possible commands.
+
+All `warnet` commands accept a `--network` option, which allows you to specify the warnet you want to control.
+This is set by default to `--network="warnet"` to simplify default operation.
+
+To start an example warnet, with your venv active, run the following command to use the default graph and network:
+
+```bash
+warnet start
+```
+
+Each container is a node as described in the graph, along with various data exporters and a demo grafana dashboard.
+
+The commands listed in `warnet --help` can then be used to control and query the nodes.
 
 ###  Run scenarios on a network
 
 Once or more nodes in a network can run a scenario, which constitutes a set of actions for one or more nodes.
-Scenarios are written using the Bitcoin Core test framework for functional testing with some modifications (most notably that `self.nodes[]` represents an array of dockerized `bitcoind` nodes).
+Scenarios are written using the Bitcoin Core test framework for functional testing, with some modifications: most notably that `self.nodes[]` represents an array of dockerized `bitcoind` nodes.
 The resultant scenario files can be run with a python interpreter and used to control many nodes in the network simultaneously.
 
-See `/src/scenarios` for examples.
+See `/src/scenarios` for examples of how these can be written.
 
-Example:
+To see available scenarios (loaded from the default directory):
+
+```bash
+warnet list
+```
+
+Once a scenarios is selected it can be run with `warnet run <scenario_name> [--network=warnet]`, e.g.:
 
 ```bash
 # Command one node to generate a wallet and fill 100 blocks with 100 txs each
-python src/scenarios/tx-flood.py
+warnet run tx-flood.py
+```
+
+This will run the run the scenario in the background until it exits, or is killed by the user.
+
+### Stopping
+
+Currently the warnet can be stopped, or stopped and removed, but **not** stopped, persisted and restarted.
+Persisting the warnet during a stoppage is WIP.
+
+To stop the warnet, or remove it (which first stops, then deletes the containers):
+
+```bash
+# stop but retain containers
+warnet stop
+
+# stop and erase containers
+warnet wipe
 ```
 
 ## Remote / Cloud Deployment
 
 `// TODO`
-
-## Command-line Tools
-
-```
-      Usage: warnet-cli <command> <arg1> <arg2> ...
-
-      Available commands:
-        bcli <node#> <method> <params...> Send a bitcoin-cli command to the specified node.
-        log <node#>                       Output the bitcoin debug.log file for specified node.
-        run <scnario name> <args...>      Run the specified warnet scenario.
-        messages <src:node#> <dest:node#> Output the captured messages between two specified nodes.
-        stop                              Stop warnet. Stops and removes all containers and networks.
-```
 
