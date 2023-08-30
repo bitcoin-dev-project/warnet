@@ -1,7 +1,10 @@
 import concurrent.futures
 import logging
-import docker
+import threading
 from typing import List, Optional
+
+import docker
+
 from warnet.utils import parse_raw_messages
 from warnet.tank import Tank
 
@@ -67,24 +70,42 @@ def stop_container(c):
     c.stop()
 
 def stop_network(network="warnet") -> bool:
-    d = docker.from_env()
-    network = d.networks.get(network)
-    containers = network.containers
+    """
+    Stop all containers in the network in parallel using a background thread
+    """
+    def thread_stop():
+        d = docker.from_env()
+        network_obj = d.networks.get(network)
+        containers = network_obj.containers
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Stop containers in parallel using threads
-        executor.map(stop_container, containers)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(stop_container, containers)
 
+    threading.Thread(target=thread_stop).start()
     return True
 
+
+def remove_container(c):
+    logger.warning(f"removing container: {c.name}")
+    c.remove()
 
 def wipe_network(network_name="warnet") -> bool:
-    d = docker.from_env()
-    network = d.networks.get(network_name)
-    containers = network.containers
-    for c in containers:
-        logger.warning(f"removing container: {c.name}")
-        c.remove()
-    logger.warning(f"removing docker network: {network_name}")
-    network.remove()
+    def thread_wipe_network():
+        d = docker.from_env()
+        network = d.networks.get(network_name)
+        containers = network.containers
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(stop_container, containers)
+
+        # Use a second executor to ensure all stops complete before removes
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(remove_container, containers)
+ 
+        # Once all containers are removed, remove the network
+        logger.info(f"removing docker network: {network_name}")
+        network.remove()
+
+    threading.Thread(target=thread_wipe_network).start()
     return True
+
