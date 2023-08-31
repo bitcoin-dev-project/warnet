@@ -100,6 +100,16 @@ def run(scenario: str):
     except Exception as e:
         print(f"Error running scenario: {e}")
 
+@debug.command()
+def update_dns_seed(graph_file: Path = EXAMPLE_GRAPH_FILE, network: str = "warnet"):
+    """
+    Update the dns seed database using a graph file
+    """
+    try:
+        result = rpc("update_dns_seeder", {"graph_file": str(graph_file), "network": network})
+        print(result)
+    except Exception as e:
+        print(f"Error updating dns seed addresses: {e}")
 
 @debug.command()
 def generate_compose(graph_file: str, network: str = "warnet"):

@@ -146,6 +146,8 @@ def from_file(graph_file: str, network: str = "warnet") -> str:
             wn.write_docker_compose()
             wn.write_prometheus_config()
             wn.docker_compose_up()
+            wn.generate_zone_file_from_tanks()
+            wn.apply_zone_file()
             wn.apply_network_conditions()
             wn.connect_edges()
             logger.info(f"Created warnet named '{network}' from graph file {graph_file}")
@@ -154,6 +156,20 @@ def from_file(graph_file: str, network: str = "warnet") -> str:
 
     threading.Thread(target=lambda: thread_start(wn)).start()
     return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
+
+
+@jsonrpc.method()
+def update_dns_seeder(graph_file: str, network: str = "warnet") -> str:
+    try:
+        wn = Warnet.from_graph_file(graph_file, network)
+        wn.generate_zone_file_from_tanks()
+        wn.apply_zone_file()
+        with open(wn.zone_file_path, 'r') as f:
+            zone_file = f.read()
+
+        return f"DNS seeder update using zone file:\n{zone_file}"
+    except Exception as e:
+        return f"DNS seeder not updated due to exception: {e}"
 
 
 @jsonrpc.method()
