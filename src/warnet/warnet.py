@@ -10,6 +10,7 @@ import yaml
 from pathlib import Path
 from tempfile import mkdtemp
 from templates import TEMPLATES
+from typing import List
 from warnet.tank import Tank
 from warnet.utils import parse_bitcoin_conf
 
@@ -19,14 +20,26 @@ TMPDIR_PREFIX = "warnet_tmp_"
 
 class Warnet:
     def __init__(self):
-        self.tmpdir = Path(mkdtemp(prefix=TMPDIR_PREFIX))
+        self.tmpdir: Path = Path(mkdtemp(prefix=TMPDIR_PREFIX))
         self.docker = docker.from_env()
-        self.bitcoin_network = "regtest"
-        self.docker_network = "warnet"
-        self.subnet = "100.0.0.0/8"
+        self.bitcoin_network:str = "regtest"
+        self.docker_network:str = "warnet"
+        self.subnet: str = "100.0.0.0/8"
         self.graph = None
-        self.tanks = []
+        self.tanks: List[Tank] = []
         logger.info(f"Created Warnet with temp directory {self.tmpdir}")
+
+    def __str__(self) -> str:
+        tanks_str = ',\n'.join([str(tank) for tank in self.tanks])
+        return (f"Warnet(\n"
+                f"\tTemp Directory: {self.tmpdir}\n"
+                f"\tBitcoin Network: {self.bitcoin_network}\n"
+                f"\tDocker Network: {self.docker_network}\n"
+                f"\tSubnet: {self.subnet}\n"
+                f"\tGraph: {self.graph}\n"
+                f"\tTanks: [\n{tanks_str}\n"
+                f"\t]\n"
+                f")")
 
     @classmethod
     def from_graph_file(cls, graph_file: str, network: str = "warnet"):

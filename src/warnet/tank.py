@@ -37,6 +37,16 @@ class Tank:
         self._bitcoind_name = None
         self._exporter_name = None
 
+    def __str__(self) -> str:
+        return (f"Tank(\n"
+                f"\tIndex: {self.index}\n"
+                f"\tVersion: {self.version}\n"
+                f"\tConf: {self.conf}\n"
+                f"\tConf File: {self.conf_file}\n"
+                f"\tNetem: {self.netem}\n"
+                f"\tIPv4: {self._ipv4}\n"
+                f"\t)")
+
     @classmethod
     def from_graph_node(cls, index, warnet):
         assert index is not None
