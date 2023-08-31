@@ -125,8 +125,10 @@ def run(scenario: str, network: str = "warnet") -> str:
         dir_path = os.path.dirname(os.path.realpath(__file__))
         mod_path = os.path.join(dir_path, "..", "scenarios", f"{sys.argv[2]}.py")
         run_cmd = [sys.executable, mod_path] + sys.argv[3:]
-        subprocess.run(run_cmd, shell=False)
-        return f"Running scenario {scenario}..."
+        subprocess.Popen(run_cmd, shell=False)
+        # TODO: We could here use python-prctl to give the background process
+        # a name prefixed with "warnet"? Might only work on linux...
+        return f"Running scenario {scenario} in the background..."
     except Exception as e:
         return f"Exception {e}"
 
@@ -136,9 +138,10 @@ def from_file(graph_file: str, network: str = "warnet") -> str:
     """
     Run a warnet with topology loaded from a <graph_file>
     """
-    def start_thread():
+    wn = Warnet.from_graph_file(graph_file, network)
+
+    def thread_start(wn):
         try:
-            wn = Warnet.from_graph_file(graph_file, network)
             wn.write_bitcoin_confs()
             wn.write_docker_compose()
             wn.write_prometheus_config()
@@ -149,8 +152,8 @@ def from_file(graph_file: str, network: str = "warnet") -> str:
         except Exception as e:
             logger.error(f"Exception {e}")
 
-    threading.Thread(target=start_thread).start()
-    return f"Starting warnet named '{network}'"
+    threading.Thread(target=lambda: thread_start(wn)).start()
+    return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
 
 
 @jsonrpc.method()
