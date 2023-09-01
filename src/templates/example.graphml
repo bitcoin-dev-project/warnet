@@ -2,54 +2,58 @@
   <key attr.name="version" attr.type="string" for="node" id="version"/>
   <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
   <graph edgedefault="directed">
-    <!-- v24.0 -->
+    <!-- v22.0 -->
     <node id="0">
-        <data key="version">24.0</data>
+        <data key="version">22.0</data>
         <data key="bitcoin_config">uacomment=w0</data>
     </node>
     <node id="1">
-        <data key="version">24.0</data>
+        <data key="version">22.0</data>
         <data key="bitcoin_config">uacomment=w1</data>
     </node>
     <node id="2">
-        <data key="version">24.0</data>
+        <data key="version">22.0</data>
         <data key="bitcoin_config">uacomment=w2</data>
     </node>
     <node id="3">
-        <data key="version">24.0</data>
+        <data key="version">22.0</data>
         <data key="bitcoin_config">uacomment=w3</data>
     </node>
-    <!-- v25.0 -->
+    <!-- v23.0 -->
     <node id="4">
-        <data key="version">25.0</data>
+        <data key="version">23.0</data>
         <data key="bitcoin_config">uacomment=w4</data>
     </node>
     <node id="5">
-        <data key="version">25.0</data>
+        <data key="version">23.0</data>
         <data key="bitcoin_config">uacomment=w5</data>
     </node>
     <node id="6">
-        <data key="version">25.0</data>
+        <data key="version">23.0</data>
         <data key="bitcoin_config">uacomment=w6</data>
     </node>
     <node id="7">
-        <data key="version">25.0</data>
+        <data key="version">23.0</data>
         <data key="bitcoin_config">uacomment=w7</data>
     </node>
-    <!-- v24.1 -->
+    <!-- v22.0 -->
     <node id="8">
-        <data key="version">24.1</data>
+        <data key="version">22.0</data>
         <data key="bitcoin_config">uacomment=w8</data>
     </node>
     <node id="9">
-        <data key="version">24.1</data>
+        <data key="version">22.0</data>
         <data key="bitcoin_config">uacomment=w9</data>
     </node>
-    <!-- test this pull request -->
     <node id="10">
-      <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
-      <data key="bitcoin_config">sensitiverelayowntx=1,debugexclude=addrman,debug=sensitiverelay,debug=tor,debug=net,uacomment=sensitive_relay</data>
+        <data key="version">22.0</data>
+        <data key="bitcoin_config">uacomment=w10</data>
     </node>
+    <!-- test this pull request -->
+    <!-- <node id="10"> -->
+    <!--   <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data> -->
+    <!--   <data key="bitcoin_config">sensitiverelayowntx=1,debugexclude=addrman,debug=sensitiverelay,debug=tor,debug=net,uacomment=sensitive_relay</data> -->
+    <!-- </node> -->
     <!-- provide addrs for 8 full + 2 block outbound connections -->
     <edge id="0" source="10" target="0"></edge>
     <edge id="1" source="10" target="1"></edge>

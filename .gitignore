@@ -4,3 +4,4 @@ __pycache__
 warnet.egg-info
 .python-version
 .env
+src/templates/Dockerfile*

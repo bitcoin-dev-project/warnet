@@ -4,15 +4,27 @@ import logging
 import os
 import random
 import re
-import subprocess
 import sys
 import time
 from io import BytesIO
+from pathlib import Path
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
 
 
 logger = logging.getLogger("utils")
+
+SUPPORTED_TAGS = [
+    "23.0",
+    "22.0",
+    "0.21.1",
+    "0.20.1",
+    "0.19.1",
+    "0.18.1",
+    "0.17.1",
+    "0.16.3",
+    "0.15.1",
+]
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -33,32 +45,18 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    logger.error(f"rpc error:\n\t{e}")
+                    error_msg = str(e).replace('\n', ' ').replace('\t', ' ')
+                    logger.error(f"rpc error: {error_msg}")
                     retries += 1
                     if retries == max_retries:
                         raise e
                     delay = min(base_delay * (2**retries), max_delay)
-                    logger.warning(f"retry in {delay} seconds...")
+                    logger.warning(f"exponential_backoff: retry in {delay} seconds...")
                     time.sleep(delay)
 
         return wrapper
 
     return decorator
-
-
-def get_architecture():
-    """
-    Get the architecture of the machine.
-
-    :return: The architecture of the machine or None if an error occurred
-    """
-    result = subprocess.run(["uname", "-m"], stdout=subprocess.PIPE)
-    arch = result.stdout.decode("utf-8").strip()
-    if arch == "arm64":
-        arch = "aarch64"
-    if arch is None:
-        raise Exception("Failed to detect architecture.")
-    return arch
 
 
 def generate_ipv4_addr(subnet):
@@ -318,3 +316,12 @@ def parse_raw_messages(blob, outbound):
             msg_dict["body"] = to_jsonable(msg)
         messages.append(msg_dict)
     return messages
+
+
+def gen_config_dir(network: str) -> Path:
+    """
+    Determine a config dir based on network name
+    """
+    xdg_config = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+    config_dir = Path(xdg_config) / "warnet" / network
+    return config_dir

@@ -4,13 +4,17 @@
 
 import docker
 import logging
+import shutil
 from copy import deepcopy
+from pathlib import Path
+from docker.models.containers import Container
 from templates import TEMPLATES
 from warnet.utils import (
-    get_architecture,
+    exponential_backoff,
     generate_ipv4_addr,
     sanitize_tc_netem_command,
     dump_bitcoin_conf,
+    SUPPORTED_TAGS,
 )
 
 CONTAINER_PREFIX_BITCOIND = "tank"
@@ -27,6 +31,7 @@ class Tank:
         self.version = "25.0"
         self.conf = ""
         self.conf_file = None
+        self.torrc_file = None
         self.netem = None
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
@@ -36,6 +41,7 @@ class Tank:
         self._ipv4 = None
         self._bitcoind_name = None
         self._exporter_name = None
+        self.config_dir = Path()
 
     def __str__(self) -> str:
         return (f"Tank(\n"
@@ -58,11 +64,17 @@ class Tank:
         self.index = int(index)
         node = warnet.graph.nodes[index]
         if "version" in node:
+            if not "/" and "#" in self.version:
+                if node["version"] not in SUPPORTED_TAGS:
+                    raise Exception(f"Unsupported version: can't be generated from Docker images: {node['version']}")
             self.version = node["version"]
         if "bitcoin_config" in node:
             self.conf = node["bitcoin_config"]
         if "tc_netem" in node:
             self.netem = node["tc_netem"]
+        self.config_dir = self.warnet.config_dir / str(self.suffix)
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.write_torrc()
         return self
 
     @classmethod
@@ -103,13 +115,21 @@ class Tank:
         return self._exporter_name
 
     @property
-    def container(self):
+    def container(self) -> Container:
+        # logger.debug(f"Containers in environment: {[container.name for container in docker.from_env().containers.list()]}")
+        # logger.debug(f"bitcoind_name = {self.bitcoind_name}")
         if self._container is None:
+            # logger.debug(f"self._container for {self.bitcoind_name} is None")
             self._container = docker.from_env().containers.get(self.bitcoind_name)
+        # logger.debug(f"After self._container for {self.bitcoind_name} is {self._container}")
         return self._container
 
-    def exec(self, cmd):
-        return self.container.exec_run(cmd)
+    @exponential_backoff()
+    def exec(self, cmd: str, user: str = "root"):
+        result = self.container.exec_run(cmd=cmd, user=user)
+        if result.exit_code != 0:
+            raise Exception(f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}")
+        return result.output.decode('utf-8')
 
     def apply_network_conditions(self):
         if self.netem is None:
@@ -149,11 +169,19 @@ class Tank:
         conf[self.bitcoin_network].append(("rpcport", self.rpc_port))
 
         conf_file = dump_bitcoin_conf(conf)
-        path = self.warnet.tmpdir / f"bitcoin.conf.{self.suffix}"
+        path = self.config_dir / f"bitcoin.conf"
         logger.info(f"Wrote file {path}")
         with open(path, "w") as file:
             file.write(conf_file)
         self.conf_file = path
+
+    def write_torrc(self):
+        tor_node_type = 'torrc' if self.index != 0 else 'torrc.da'
+        src_tor_conf_file = TEMPLATES / tor_node_type
+
+        dest_path = self.config_dir / "torrc"
+        shutil.copyfile(src_tor_conf_file, dest_path)
+        self.torrc_file = dest_path
 
     def add_services(self, services):
         assert self.index is not None
@@ -162,10 +190,11 @@ class Tank:
         # Setup bitcoind, either release binary or build from source
         if "/" and "#" in self.version:
             # it's a git branch, building step is necessary
+            # TODO: broken
             repo, branch = self.version.split("#")
             build = {
-                "context": ".",
-                "dockerfile": str(TEMPLATES / "Dockerfile"),
+                "context": str(TEMPLATES),
+                "dockerfile": str(TEMPLATES / "Dockerfile_custom_build"),
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
@@ -173,35 +202,30 @@ class Tank:
             }
         else:
             # assume it's a release version, get the binary
-            arch = get_architecture()
             build = {
-                "context": ".",
-                "dockerfile": str(TEMPLATES / "Dockerfile"),
-                "args": {
-                    "ARCH": arch,
-                    "BITCOIN_VERSION": self.version,
-                    "BITCOIN_URL": f"https://bitcoincore.org/bin/bitcoin-core-{self.version}/bitcoin-{self.version}-{arch}-linux-gnu.tar.gz",
-                },
+                "context": str(TEMPLATES),
+                "dockerfile": str(TEMPLATES / f"Dockerfile_{self.version}"),
             }
 
         # Add the bitcoind service
         services[self.bitcoind_name] = {
             "container_name": self.bitcoind_name,
             "build": build,
+            "entrypoint": "/warnet_entrypoint.sh",
             "volumes": [
-                f"{self.conf_file}:/root/.bitcoin/bitcoin.conf",
-                f"{TEMPLATES / ('torrc' if self.index != 0 else 'torrc.da')}:/etc/tor/torrc"
+                f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
+                f"{self.torrc_file}:/etc/tor/torrc",
             ],
             "networks": {
                 self.docker_network: {
                     "ipv4_address": f"{self.ipv4}",
                 }
             },
+            "labels": {
+                "warnet": "tank"
+            },
             "privileged": True,
         }
-        if self.index == 0:
-            services[self.bitcoind_name]["volumes"].append(
-                f"{TEMPLATES / 'tor-keys'}:/root/.tor/keys")
 
         # Add the prometheus data exporter in a neighboring container
         services[self.exporter_name] = {

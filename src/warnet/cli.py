@@ -1,3 +1,4 @@
+import os
 import requests
 from typing_extensions import Annotated
 from typing import Optional, Any, Tuple, Dict, Union
@@ -15,7 +16,6 @@ EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
 cli = typer.Typer()
 debug = typer.Typer()
 cli.add_typer(debug, name="debug", help="Various warnet debug commands")
-
 
 def rpc(rpc_method, params: Optional[Union[Dict[str, Any], Tuple[Any, ...]]]):
     payload = request(rpc_method, params)
@@ -37,7 +37,7 @@ def bcli(
     network: str = "warnet",
 ):
     """
-    Call bitcoin-cli <method> <params> on <node> in <network>
+    Call bitcoin-cli <method> <params> on <node> in <--network>
     """
     try:
         result = rpc(
@@ -104,8 +104,7 @@ def run(scenario: str):
 @debug.command()
 def generate_compose(graph_file: str, network: str = "warnet"):
     """
-    Generate the docker-compose file for a given graph_file and return it.
-    Does not start the network.
+    Generate the docker-compose file for a given <graph_file> and <--network> name and return it.
     """
     try:
         result = rpc("generate_compose", {"graph_file": graph_file, "network": network})
@@ -116,7 +115,7 @@ def generate_compose(graph_file: str, network: str = "warnet"):
 @cli.command()
 def start(graph_file: Path = EXAMPLE_GRAPH_FILE, network: str = "warnet"):
     """
-    Start a warnet with topology loaded from a <graph_file> into [network] (default: "warnet")
+    Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
     """
     try:
         result = rpc("from_file", {"graph_file": str(graph_file), "network": network})
@@ -126,36 +125,36 @@ def start(graph_file: Path = EXAMPLE_GRAPH_FILE, network: str = "warnet"):
 
 
 @cli.command()
-def stop(network: str = "warnet"):
+def up(network: str = "warnet"):
     """
-    Stop all docker containers in [network] (default: "warnet").
+    Run 'docker-compose up' on a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc("stop", {"network": network})
+        result = rpc("up", {"network": network})
+        print(result)
+    except Exception as e:
+        print(f"Error creating network: {e}")
+
+
+@cli.command()
+def down(network: str = "warnet"):
+    """
+    Run 'docker-compose down on a warnet named <--network> (default: "warnet").
+    """
+    try:
+        result = rpc("down", {"network": network})
         print(result)
     except Exception as e:
         print(f"As we endeavored to cease operations, adversity struck: {e}")
 
 
 @cli.command()
-def remove(network: str = "warnet"):
-    """
-    Stop and then erase all docker containers in [network] (default: "warnet").
-    """
-    try:
-        result = rpc("remove", {"network": network})
-        print(result)
-    except Exception as e:
-        print(f"Error removing network: {e}")
-
-
-@cli.command()
-def stop_daemon():
+def stop():
     """
     Stop the warnetd daemon.
     """
     try:
-        result = rpc("stop_daemon", None)
+        result = rpc("stop", None)
         print(result)
     except Exception as e:
         print(f"As we endeavored to cease operations, adversity struck: {e}")
