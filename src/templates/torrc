@@ -1,8 +1,11 @@
 # Common
 Log debug file /var/log/tor/debug.log
+DataDirectory /home/debian-tor/.tor/
 RunAsDaemon 1
 ControlPort 9051
 CookieAuthentication 1
+CookieAuthFileGroupReadable 1
+DataDirectoryGroupReadable 1
 ORPort 9001
 ExitPolicy accept *:*
 TestingTorNetwork 1

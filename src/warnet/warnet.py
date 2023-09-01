@@ -5,34 +5,37 @@
 import docker
 import logging
 import networkx
+import shutil
 import subprocess
 import yaml
 from pathlib import Path
-from tempfile import mkdtemp
 from templates import TEMPLATES
 from typing import List
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf
+from warnet.utils import parse_bitcoin_conf, gen_config_dir
 
 logger = logging.getLogger("Warnet")
 TMPDIR_PREFIX = "warnet_tmp_"
+logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
+logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
 
 class Warnet:
-    def __init__(self):
-        self.tmpdir: Path = Path(mkdtemp(prefix=TMPDIR_PREFIX))
+
+    def __init__(self, config_dir):
+        self.config_dir: Path = config_dir
         self.docker = docker.from_env()
         self.bitcoin_network:str = "regtest"
         self.docker_network:str = "warnet"
         self.subnet: str = "100.0.0.0/8"
         self.graph = None
+        self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
-        logger.info(f"Created Warnet with temp directory {self.tmpdir}")
 
     def __str__(self) -> str:
         tanks_str = ',\n'.join([str(tank) for tank in self.tanks])
         return (f"Warnet(\n"
-                f"\tTemp Directory: {self.tmpdir}\n"
+                f"\tTemp Directory: {self.config_dir}\n"
                 f"\tBitcoin Network: {self.bitcoin_network}\n"
                 f"\tDocker Network: {self.docker_network}\n"
                 f"\tSubnet: {self.subnet}\n"
@@ -42,23 +45,36 @@ class Warnet:
                 f")")
 
     @classmethod
-    def from_graph_file(cls, graph_file: str, network: str = "warnet"):
-        self = cls()
+    def from_graph_file(cls, graph_file: str, config_dir: Path, network: str = "warnet"):
+        self = cls(config_dir)
+        destination = self.config_dir / self.graph_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(graph_file, destination)
         self.docker_network = network
         self.graph = networkx.read_graphml(graph_file, node_type=int)
         self.tanks_from_graph()
+        logger.info(f"Created Warnet with temp directory {self.config_dir}")
         return self
 
     @classmethod
     def from_graph(cls, graph):
-        self = cls()
+        self = cls(Path())
         self.graph = graph
+        self.tanks_from_graph()
+        logger.info(f"Created Warnet with temp directory {self.config_dir}")
+        return self
+
+    @classmethod
+    def from_network(cls, config_dir: Path = Path(), network: str = "warnet"):
+        self = cls(config_dir)
+        self.config_dir = gen_config_dir(network)
+        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
         self.tanks_from_graph()
         return self
 
     @classmethod
-    def from_docker_env(cls, network_name):
-        self = cls()
+    def from_docker_env(cls, config_dir, network_name):
+        self = cls(config_dir)
         self.docker_network = network_name
         index = 0
         while index <= 999999:
@@ -96,14 +112,15 @@ class Warnet:
             src_tank = self.tanks[int(src)]
             dst_ip = self.tanks[dst].ipv4
             logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
-            src_tank.exec(f"bitcoin-cli addpeeraddress {dst_ip} 18444")
+            cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
+            src_tank.exec(cmd=cmd, user="bitcoin")
 
-    def docker_compose_up(self):
-        command = ["docker-compose", "-p", "warnet", "up", "-d", "--build"]
+    def docker_compose_build_up(self):
+        command = ["docker-compose", "-p", self.docker_network, "up", "-d", "--build"]
         try:
             with subprocess.Popen(
                 command,
-                cwd=str(self.tmpdir),
+                cwd=str(self.config_dir),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             ) as process:
@@ -111,7 +128,39 @@ class Warnet:
                     logger.info(line.decode().rstrip())
         except Exception as e:
             logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.tmpdir}: {e}"
+                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
+            )
+
+    def docker_compose_up(self):
+        command = ["docker-compose", "-p", self.docker_network, "up", "-d"]
+        try:
+            with subprocess.Popen(
+                command,
+                cwd=str(self.config_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            ) as process:
+                for line in process.stdout:
+                    logger.info(line.decode().rstrip())
+        except Exception as e:
+            logger.error(
+                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
+            )
+
+    def docker_compose_down(self):
+        command = ["docker-compose", "down"]
+        try:
+            with subprocess.Popen(
+                command,
+                cwd=str(self.config_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            ) as process:
+                for line in process.stdout:
+                    logger.info(line.decode().rstrip())
+        except Exception as e:
+            logger.error(
+                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
     def write_docker_compose(self):
@@ -137,7 +186,7 @@ class Warnet:
             "container_name": "prometheus",
             "ports": ["9090:9090"],
             "volumes": [
-                f"{self.tmpdir / 'prometheus.yml'}:/etc/prometheus/prometheus.yml"
+                f"{self.config_dir / 'prometheus.yml'}:/etc/prometheus/prometheus.yml"
             ],
             "command": ["--config.file=/etc/prometheus/prometheus.yml"],
             "networks": [self.docker_network],
@@ -157,7 +206,7 @@ class Warnet:
             "networks": [self.docker_network],
         }
 
-        docker_compose_path = self.tmpdir / "docker-compose.yml"
+        docker_compose_path = self.config_dir / "docker-compose.yml"
         try:
             with open(docker_compose_path, "w") as file:
                 yaml.dump(compose, file)
@@ -192,7 +241,7 @@ class Warnet:
         for tank in self.tanks:
             tank.add_scrapers(config["scrape_configs"])
 
-        prometheus_path = self.tmpdir / "prometheus.yml"
+        prometheus_path = self.config_dir / "prometheus.yml"
         try:
             with open(prometheus_path, "w") as file:
                 yaml.dump(config, file)

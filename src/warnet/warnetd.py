@@ -18,9 +18,9 @@ from warnet.client import (
     get_bitcoin_cli,
     get_bitcoin_debug_log,
     get_messages,
-    stop_network,
-    remove_network,
+    compose_down,
 )
+from warnet.utils import gen_config_dir
 
 WARNETD_PORT = 9276
 continue_running = True
@@ -54,13 +54,13 @@ logger = logging.getLogger("warnetd")
 
 
 @jsonrpc.method("bcli")
-def bcli(node: int, method: str, params: list[str] = [], network: str = "warnet"):
+def bcli(node: int, method: str, params: list[str] = [], network: str = "warnet") -> str:
     """
     Call bitcoin-cli on <node> <method> <params> in [network]
     """
     try:
         result = get_bitcoin_cli(network, node, method, params)
-        return result
+        return str(result)
     except Exception as e:
         raise Exception(f"{e}")
 
@@ -133,19 +133,39 @@ def run(scenario: str, network: str = "warnet") -> str:
         return f"Exception {e}"
 
 
+@jsonrpc.method("up")
+def up(network: str = "warnet") -> str:
+    config_dir = gen_config_dir(network)
+    wn = Warnet.from_network(config_dir, network)
+    def thread_start(wn):
+        try:
+            wn.docker_compose_up()
+            wn.apply_network_conditions()
+            wn.connect_edges()
+            logger.info(f"Resumed warnet named '{network}' from config dir {wn.config_dir}")
+        except Exception as e:
+            logger.error(f"Exception {e}")
+
+    threading.Thread(target=lambda: thread_start(wn)).start()
+    return f"Resuming warnet..."
+
+
 @jsonrpc.method()
 def from_file(graph_file: str, network: str = "warnet") -> str:
     """
     Run a warnet with topology loaded from a <graph_file>
     """
-    wn = Warnet.from_graph_file(graph_file, network)
+    config_dir = gen_config_dir(network)
+    if config_dir.exists():
+        return f"Config dir {config_dir} already exists, not overwriting existing warnet"
+    wn = Warnet.from_graph_file(graph_file, config_dir, network)
 
     def thread_start(wn):
         try:
             wn.write_bitcoin_confs()
             wn.write_docker_compose()
             wn.write_prometheus_config()
-            wn.docker_compose_up()
+            wn.docker_compose_build_up()
             wn.apply_network_conditions()
             wn.connect_edges()
             logger.info(f"Created warnet named '{network}' from graph file {graph_file}")
@@ -161,42 +181,33 @@ def generate_compose(graph_file: str, network: str = "warnet") -> str:
     """
     Generate the docker compose file for a graph file and return import
     """
-    wn = Warnet.from_graph_file(graph_file, network)
+    config_dir = gen_config_dir(network)
+    if config_dir.exists():
+        return f"Config dir {config_dir} already exists, not overwriting existing warnet"
+    wn = Warnet.from_graph_file(graph_file, config_dir, network)
     wn.write_bitcoin_confs()
     wn.write_docker_compose()
-    docker_compose_path = wn.tmpdir / "docker-compose.yml"
+    docker_compose_path = wn.config_dir / "docker-compose.yml"
     with open(docker_compose_path, "r") as f:
         return f.read()
 
 
-@jsonrpc.method("stop")
-def stop(network: str = "warnet") -> str:
+@jsonrpc.method("down")
+def down(network: str = "warnet") -> str:
     """
     Stop all docker containers in <network>.
     """
     try:
-        _ = stop_network(network)
+        _ = compose_down(network)
         return "Stopping warnet"
     except Exception as e:
         return f"Exception {e}"
 
 
-@jsonrpc.method("remove")
-def remove(network: str = "warnet") -> str:
+@jsonrpc.method("stop")
+def stop() -> str:
     """
-    Stop and then erase all docker containers in <network>.
-    """
-    try:
-        remove_network(network)
-        return "Stopping and wiping warnet"
-    except Exception as e:
-        return f"Exception {e}"
-
-
-@jsonrpc.method("stop_daemon")
-def stop_daemon() -> str:
-    """
-    Stop the daemon.
+    Stop warnetd.
     """
     os.kill(os.getppid(), signal.SIGTERM)
     return "Stopping daemon..."
