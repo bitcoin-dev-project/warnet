@@ -7,6 +7,7 @@ import docker
 
 from warnet.utils import parse_raw_messages
 from warnet.tank import Tank
+from warnet.warnet import Warnet
 
 logger = logging.getLogger("warnet.client")
 
@@ -14,7 +15,7 @@ logger = logging.getLogger("warnet.client")
 def get_bitcoin_debug_log(network: str, index: int) -> str:
     tank = Tank.from_docker_env(network, index)
     subdir = "/" if tank.bitcoin_network == "main" else f"{tank.bitcoin_network}/"
-    data, stat = tank.container.get_archive(f"/root/.bitcoin/{subdir}debug.log")
+    data, stat = tank.container.get_archive(f"/home/bitcoin/.bitcoin/{subdir}debug.log")
     out = ""
     for chunk in data:
         out += chunk.decode()
@@ -27,9 +28,11 @@ def get_bitcoin_debug_log(network: str, index: int) -> str:
 
 def get_bitcoin_cli(network: str, index: int, method: str, params=None) -> str:
     tank = Tank.from_docker_env(network, index)
-    return tank.exec(
-        f"bitcoin-cli {method} {' '.join(map(str, params))}"
-    ).output.decode()
+    if params:
+        cmd = f"bitcoin-cli {method} {' '.join(map(str, params))}"
+    else:
+        cmd = f"bitcoin-cli {method}"
+    return tank.exec(cmd=cmd, user="bitcoin")
 
 
 def get_messages(network: str, src_index: int, dst_index: int) -> List[Optional[str]]:
@@ -42,14 +45,14 @@ def get_messages(network: str, src_index: int, dst_index: int) -> List[Optional[
     subdir = (
         "/" if src_node.bitcoin_network == "main" else f"{src_node.bitcoin_network}/"
     )
-    exit_code, dirs = src_node.exec(f"ls /root/.bitcoin/{subdir}message_capture")
+    exit_code, dirs = src_node.exec(f"ls /home/bitcoin/.bitcoin/{subdir}message_capture")
     dirs = dirs.decode().splitlines()
     messages = []
     for dir_name in dirs:
         if dst_ip in dir_name:
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 data, stat = src_node.container.get_archive(
-                    f"/root/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
+                    f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
                 )
                 blob = b""
                 for chunk in data:
@@ -84,24 +87,10 @@ def stop_network(network="warnet") -> bool:
     threading.Thread(target=thread_stop).start()
     return True
 
-
-def remove_container(c):
-    logger.warning(f"removing container: {c.name}")
-    c.remove()
-
-def remove_network(network_name="warnet") -> bool:
-    def thread_remove_network():
-        d = docker.from_env()
-        network = d.networks.get(network_name)
-        containers = network.containers
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor.map(stop_container, containers)
-
-        # Use a second executor to ensure all stops complete before removes
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor.map(remove_container, containers)
-
-    threading.Thread(target=thread_remove_network).start()
+def compose_down(network="warnet") -> bool:
+    """
+    Run docker-compose down on a warnet
+    """
+    wn = Warnet.from_network(network=network)
+    wn.docker_compose_down()
     return True
-

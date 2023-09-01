@@ -5,3 +5,5 @@ warnet.egg-info
 .python-version
 .env
 docker-compose.yml
+
+src/templates/Dockerfile*
