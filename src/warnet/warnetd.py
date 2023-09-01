@@ -138,11 +138,12 @@ def run(scenario: str, network: str = "warnet") -> str:
 
 @jsonrpc.method("up")
 def up(network: str = "warnet") -> str:
-    config_dir = gen_config_dir(network)
-    wn = Warnet.from_network(config_dir, network)
+    wn = Warnet.from_network(network=network, tanks=False)
     def thread_start(wn):
         try:
             wn.docker_compose_up()
+            # Update warnet from docker here to get ip addresses
+            wn = Warnet.from_docker_env(network)
             wn.apply_network_conditions()
             wn.connect_edges()
             logger.info(f"Resumed warnet named '{network}' from config dir {wn.config_dir}")

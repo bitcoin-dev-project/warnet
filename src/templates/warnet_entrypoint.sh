@@ -5,9 +5,9 @@
 usermod -a -G debian-tor bitcoin
 
 # tor
+cp /etc/tor/torrc_original /etc/tor/torrc
 mkdir -p /home/debian-tor/.tor/keys
 chown -R debian-tor:debian-tor /home/debian-tor
-chown -R debian-tor:debian-tor /etc/tor
 gosu debian-tor tor
 
 exec /entrypoint.sh bitcoind
