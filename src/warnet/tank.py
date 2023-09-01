@@ -97,10 +97,7 @@ class Tank:
     @property
     def ipv4(self):
         if self._ipv4 is None:
-            if self.index == 0:
-                self._ipv4 = "100.20.15.18" # Tor directory server
-            else:
-                self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
+            self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
         return self._ipv4
 
     @property
@@ -173,8 +170,7 @@ class Tank:
         self.conf_file = path
 
     def write_torrc(self):
-        tor_node_type = 'torrc' if self.index != 0 else 'torrc.da'
-        src_tor_conf_file = TEMPLATES / tor_node_type
+        src_tor_conf_file = TEMPLATES / 'torrc'
 
         dest_path = self.config_dir / "torrc"
         shutil.copyfile(src_tor_conf_file, dest_path)
@@ -188,7 +184,6 @@ class Tank:
         # Setup bitcoind, either release binary or build from source
         if "/" and "#" in self.version:
             # it's a git branch, building step is necessary
-            # TODO: broken
             repo, branch = self.version.split("#")
             build = {
                 "context": str(TEMPLATES),
@@ -213,7 +208,7 @@ class Tank:
             "build": build,
             "volumes": [
                 f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
-                f"{self.torrc_file}:/etc/tor/torrc",
+                f"{self.torrc_file}:/etc/tor/torrc_original",
             ],
             "networks": {
                 self.docker_network: {
@@ -227,18 +222,18 @@ class Tank:
         })
 
         # Add the prometheus data exporter in a neighboring container
-        services[self.exporter_name] = {
-            "image": "jvstein/bitcoin-prometheus-exporter",
-            "container_name": self.exporter_name,
-            "environment": {
-                "BITCOIN_RPC_HOST": self.bitcoind_name,
-                "BITCOIN_RPC_PORT": self.rpc_port,
-                "BITCOIN_RPC_USER": self.rpc_user,
-                "BITCOIN_RPC_PASSWORD": self.rpc_password,
-            },
-            "ports": [f"{8335 + self.index}:9332"],
-            "networks": [self.docker_network],
-        }
+        # services[self.exporter_name] = {
+        #     "image": "jvstein/bitcoin-prometheus-exporter",
+        #     "container_name": self.exporter_name,
+        #     "environment": {
+        #         "BITCOIN_RPC_HOST": self.bitcoind_name,
+        #         "BITCOIN_RPC_PORT": self.rpc_port,
+        #         "BITCOIN_RPC_USER": self.rpc_user,
+        #         "BITCOIN_RPC_PASSWORD": self.rpc_password,
+        #     },
+        #     "ports": [f"{8335 + self.index}:9332"],
+        #     "networks": [self.docker_network],
+        # }
 
     def add_scrapers(self, scrapers):
         scrapers.append(

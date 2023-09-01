@@ -16,6 +16,8 @@ from warnet.utils import parse_bitcoin_conf, gen_config_dir
 
 logger = logging.getLogger("Warnet")
 TMPDIR_PREFIX = "warnet_tmp_"
+TOR_DOCKERFILE = "Dockerfile_tor_da"
+TOR_DA_IP = "100.20.15.18"
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
@@ -53,29 +55,31 @@ class Warnet:
         self.docker_network = network
         self.graph = networkx.read_graphml(graph_file, node_type=int)
         self.tanks_from_graph()
-        logger.info(f"Created Warnet with temp directory {self.config_dir}")
+        logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
 
     @classmethod
-    def from_graph(cls, graph):
+    def from_graph(cls, graph, tanks=True):
         self = cls(Path())
         self.graph = graph
         self.tanks_from_graph()
-        logger.info(f"Created Warnet with temp directory {self.config_dir}")
+        logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
 
     @classmethod
-    def from_network(cls, config_dir: Path = Path(), network: str = "warnet"):
+    def from_network(cls, config_dir: Path = Path(), network: str = "warnet", tanks=True):
         self = cls(config_dir)
         self.config_dir = gen_config_dir(network)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
-        self.tanks_from_graph()
+        if tanks:
+            self.tanks_from_graph()
         return self
 
     @classmethod
     def from_docker_env(cls, network_name):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir)
+        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
         self.docker_network = network_name
         index = 0
         while index <= 999999:
@@ -205,6 +209,19 @@ class Warnet:
             "ports": ["3000:3000"],
             "volumes": ["grafana-storage:/var/lib/grafana"],
             "networks": [self.docker_network],
+        }
+        # Add Tor service
+        compose["services"]["tor"] = {
+            "build": {
+                "context": str(TEMPLATES),
+                "dockerfile": TOR_DOCKERFILE,
+            },
+            "container_name": "tor",
+            "networks": {
+                self.docker_network: {
+                    "ipv4_address": TOR_DA_IP,
+                }
+            },
         }
 
         docker_compose_path = self.config_dir / "docker-compose.yml"

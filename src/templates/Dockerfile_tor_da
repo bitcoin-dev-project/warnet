@@ -1,0 +1,19 @@
+FROM alpine:latest
+
+RUN apk add --no-cache tor
+
+RUN addgroup -S debian-tor && adduser -S debian-tor -G debian-tor
+
+RUN mkdir -p /home/debian-tor/.tor/keys
+RUN chown -R debian-tor:debian-tor /home/debian-tor
+RUN mkdir -p /var/log/tor
+RUN chown -R debian-tor:debian-tor /var/log/tor
+
+COPY tor-keys /home/debian-tor/.tor/keys
+RUN chown -R debian-tor:debian-tor /home/debian-tor/.tor/keys
+COPY torrc.da /etc/tor/torrc
+
+EXPOSE 9050
+
+USER debian-tor
+CMD ["tor", "-f", "/etc/tor/torrc"]
