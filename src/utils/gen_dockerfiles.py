@@ -6,11 +6,10 @@ base_url = "ruimarinho/bitcoin-core"
 dockerfile_template = """FROM {base_url}:{tag}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \\
-        python3 \\
-        vim \\
         tor \\
-        iproute2; \\
-    apt-get clean;
+        iproute2 \\
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY tor-keys/* /home/debian-tor/.tor/keys/
 COPY warnet_entrypoint.sh /warnet_entrypoint.sh
