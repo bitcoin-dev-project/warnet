@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 from warnet.test_framework_bridge import WarnetTestFramework
 from scenarios.utils import ensure_miner
 

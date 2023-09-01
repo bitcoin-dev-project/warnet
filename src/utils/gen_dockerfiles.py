@@ -1,17 +1,5 @@
 from templates import TEMPLATES
-
-# Tags
-tags = [
-    "23.0",
-    "22.0",
-    "0.21.1",
-    "0.20.1",
-    "0.19.1",
-    "0.18.1",
-    "0.17.1",
-    "0.16.3",
-    "0.15.1",
-]
+from warnet.utils import SUPPORTED_TAGS
 
 base_url = "ruimarinho/bitcoin-core"
 
@@ -28,7 +16,7 @@ COPY tor-keys/* /home/debian-tor/.tor/keys/
 COPY warnet_entrypoint.sh /warnet_entrypoint.sh
 """
 
-for tag in tags:
+for tag in SUPPORTED_TAGS:
     dockerfile_content = dockerfile_template.format(base_url=base_url, tag=tag)
 
     with open(TEMPLATES / f"Dockerfile_{tag}", "w") as file:
