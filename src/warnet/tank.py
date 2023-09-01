@@ -7,6 +7,7 @@ import logging
 import shutil
 from copy import deepcopy
 from pathlib import Path
+from docker.api import service
 from docker.models.containers import Container
 from templates import TEMPLATES
 from warnet.utils import (
@@ -116,12 +117,8 @@ class Tank:
 
     @property
     def container(self) -> Container:
-        # logger.debug(f"Containers in environment: {[container.name for container in docker.from_env().containers.list()]}")
-        # logger.debug(f"bitcoind_name = {self.bitcoind_name}")
         if self._container is None:
-            # logger.debug(f"self._container for {self.bitcoind_name} is None")
             self._container = docker.from_env().containers.get(self.bitcoind_name)
-        # logger.debug(f"After self._container for {self.bitcoind_name} is {self._container}")
         return self._container
 
     @exponential_backoff()
@@ -186,6 +183,7 @@ class Tank:
     def add_services(self, services):
         assert self.index is not None
         assert self.conf_file is not None
+        services[self.bitcoind_name] = {}
 
         # Setup bitcoind, either release binary or build from source
         if "/" and "#" in self.version:
@@ -206,12 +204,13 @@ class Tank:
                 "context": str(TEMPLATES),
                 "dockerfile": str(TEMPLATES / f"Dockerfile_{self.version}"),
             }
+            # Use entrypoint for derived build, but not for compiled build
+            services[self.bitcoind_name].update({"entrypoint": "/warnet_entrypoint.sh"})
 
         # Add the bitcoind service
-        services[self.bitcoind_name] = {
+        services[self.bitcoind_name].update({
             "container_name": self.bitcoind_name,
             "build": build,
-            "entrypoint": "/warnet_entrypoint.sh",
             "volumes": [
                 f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
                 f"{self.torrc_file}:/etc/tor/torrc",
@@ -225,7 +224,7 @@ class Tank:
                 "warnet": "tank"
             },
             "privileged": True,
-        }
+        })
 
         # Add the prometheus data exporter in a neighboring container
         services[self.exporter_name] = {
