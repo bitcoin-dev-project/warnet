@@ -33,7 +33,7 @@ class WarnetTestFramework(BitcoinTestFramework):
     # the original methods from BitcoinTestFramework
 
     def setup(self):
-        warnet = Warnet.from_docker_env("warnet")
+        warnet = Warnet.from_docker_env(self.options.network)
         for i, tank in enumerate(warnet.tanks):
             ip = tank.ipv4
             logger.info(f"Adding TestNode {i} from {tank.bitcoind_name} with IP {ip}")
@@ -157,6 +157,8 @@ class WarnetTestFramework(BitcoinTestFramework):
                             help="set a random seed for deterministically reproducing a previous test run")
         parser.add_argument("--timeout-factor",     dest="timeout_factor",  default=1,
                             help="adjust test timeouts by a factor. Setting it to 0 disables all timeouts")
+        parser.add_argument("--network",     dest="network",  default="warnet",
+                            help="Designate which warnet this should run on (default: warnet)")
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument

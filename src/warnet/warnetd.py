@@ -120,16 +120,19 @@ def run(scenario: str, network: str = "warnet") -> str:
     """
     Run <scenario> from the Warnet Test Framework
     """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
+
+    if not os.path.exists(scenario_path):
+        return f"Scenario {scenario} not found at {scenario_path}."
+
     try:
-        # TODO: should handle network argument
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        mod_path = os.path.join(dir_path, "..", "scenarios", f"{sys.argv[2]}.py")
-        run_cmd = [sys.executable, mod_path] + sys.argv[3:]
+        run_cmd = [sys.executable, scenario_path] + [f"--network={network}"]
+        logger.debug(f"Running {run_cmd}")
         subprocess.Popen(run_cmd, shell=False)
-        # TODO: We could here use python-prctl to give the background process
-        # a name prefixed with "warnet"? Might only work on linux...
         return f"Running scenario {scenario} in the background..."
     except Exception as e:
+        logger.error(f"Exception occurred while running the scenario: {e}")
         return f"Exception {e}"
 
 

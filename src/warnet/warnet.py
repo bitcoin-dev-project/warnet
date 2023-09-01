@@ -73,7 +73,8 @@ class Warnet:
         return self
 
     @classmethod
-    def from_docker_env(cls, config_dir, network_name):
+    def from_docker_env(cls, network_name):
+        config_dir = gen_config_dir(network_name)
         self = cls(config_dir)
         self.docker_network = network_name
         index = 0
@@ -111,7 +112,7 @@ class Warnet:
             (src, dst) = edge
             src_tank = self.tanks[int(src)]
             dst_ip = self.tanks[dst].ipv4
-            logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
+            logger.info(f"Using `addpeeraddress` to connect tanks {src} to {dst}")
             cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
             src_tank.exec(cmd=cmd, user="bitcoin")
 
