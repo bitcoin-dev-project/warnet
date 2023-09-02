@@ -45,8 +45,8 @@ def get_messages(network: str, src_index: int, dst_index: int) -> List[Optional[
     subdir = (
         "/" if src_node.bitcoin_network == "main" else f"{src_node.bitcoin_network}/"
     )
-    exit_code, dirs = src_node.exec(f"ls /home/bitcoin/.bitcoin/{subdir}message_capture")
-    dirs = dirs.decode().splitlines()
+    dirs = src_node.exec(f"ls /home/bitcoin/.bitcoin/{subdir}message_capture")
+    dirs = dirs.splitlines()
     messages = []
     for dir_name in dirs:
         if dst_ip in dir_name:

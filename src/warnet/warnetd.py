@@ -66,35 +66,45 @@ def bcli(node: int, method: str, params: list[str] = [], network: str = "warnet"
 
 
 @jsonrpc.method("debug_log")
-def debug_log(network: str, node: int):
+def debug_log(network: str, node: int) -> str:
     """
     Fetch the Bitcoin Core debug log from <node>
     """
     try:
         result = get_bitcoin_debug_log(network, node)
-        return result
+        return str(result)
     except Exception as e:
         raise Exception(f"{e}")
 
 
 @jsonrpc.method("messages")
-def messages(network: str, node_a: int, node_b: int):
+def messages(network: str, node_a: int, node_b: int) -> str:
     """
     Fetch messages sent between <node_a> and <node_b>.
     """
     try:
         messages = get_messages(network, node_a, node_b)
-        out = ""
-        for m in messages:
-            timestamp = datetime.utcfromtimestamp(m["time"] / 1e6).strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            direction = ">>>" if m["outbound"] else "<<<"
-            body = ""
-            if "body" in m:
-                body = m["body"]
-            out = out + f"{timestamp} {direction} {m['msgtype']} {body}\n"
-        return out
+        if not messages:
+            return f"No messages found between {node_a} and {node_b}"
+ 
+        # Convert each message dictionary to a string representation
+        messages_str_list = []
+        for message in messages:
+            timestamp = datetime.utcfromtimestamp(message["time"] / 1e6).strftime("%Y-%m-%d %H:%M:%S")
+            direction = ">>>" if message.get("outbound", False) else "<<<"
+            msgtype = message.get("msgtype", "")
+ 
+            # Handle the body dictionary in a special way
+            body_dict = message.get("body", {})
+            body_str = ', '.join(f"{key}: {value}" for key, value in body_dict.items())
+
+            messages_str_list.append(f"{timestamp} {direction} {msgtype} {body_str}")
+
+        # Join all message strings with newlines
+        result_str = '\n'.join(messages_str_list)
+
+        return result_str
+
     except Exception as e:
         raise Exception(f"{e}")
 
@@ -222,7 +232,7 @@ def run_gunicorn():
     Run the RPC server using gunicorn WSGI HTTP server
     """
     parser = argparse.ArgumentParser(description='Run the Warnet RPC server.')
-    parser.add_argument('--no-daemon', default=False, action='store_true', help='Run server in the foreground instead of daemon mode.')
+    parser.add_argument('--daemon', default=False, action='store_true', help='Run server in the background.')
     args = parser.parse_args()
 
     command = [
@@ -236,7 +246,7 @@ def run_gunicorn():
     ]
 
     # If in daemon mode, log to file and add daemon argument
-    if not args.no_daemon:
+    if args.daemon:
         command.extend([
             "--daemon",
             "--access-logfile",
