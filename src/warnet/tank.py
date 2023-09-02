@@ -73,6 +73,17 @@ class Tank:
             self.conf = node["bitcoin_config"]
         if "tc_netem" in node:
             self.netem = node["tc_netem"]
+        with open(self.warnet.fork_observer_config, "a") as f:
+            f.write(f'''
+    [[networks.nodes]]
+    id = {self.index}
+    name = "Node {self.index}"
+    description = "Warnet tank {self.index}"
+    rpc_host = "{self.ipv4}"
+    rpc_port = {self.rpc_port}
+    rpc_user = "{self.rpc_user}"
+    rpc_password = "{self.rpc_password}"
+''')
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.write_torrc()
