@@ -183,13 +183,14 @@ def generate_compose(graph_file: str, network: str = "warnet"):
 
 @network.command()
 @click.argument('graph_file', default=EXAMPLE_GRAPH_FILE, type=click.Path())
+@click.option('--force', default=False, is_flag=True, type=bool)
 @click.option('--network', default='warnet', show_default=True)
-def start(graph_file: Path = EXAMPLE_GRAPH_FILE, network: str = "warnet"):
+def start(graph_file: Path = EXAMPLE_GRAPH_FILE, force: bool = False, network: str = "warnet"):
     """
     Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
     """
     try:
-        result = rpc_call("from_file", {"graph_file": str(graph_file), "network": network})
+        result = rpc_call("from_file", {"graph_file": str(graph_file), "force": force, "network": network})
         print(result)
     except Exception as e:
         print(f"Error creating network: {e}")

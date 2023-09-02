@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import pkgutil
+import shutil
 import signal
 import subprocess
 import sys
@@ -165,13 +166,16 @@ def up(network: str = "warnet") -> str:
 
 
 @jsonrpc.method()
-def from_file(graph_file: str, network: str = "warnet") -> str:
+def from_file(graph_file: str, force: bool = False, network: str = "warnet") -> str:
     """
     Run a warnet with topology loaded from a <graph_file>
     """
     config_dir = gen_config_dir(network)
     if config_dir.exists():
-        return f"Config dir {config_dir} already exists, not overwriting existing warnet"
+        if force:
+            shutil.rmtree(config_dir)
+        else:
+            return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
     wn = Warnet.from_graph_file(graph_file, config_dir, network)
 
     def thread_start(wn):
