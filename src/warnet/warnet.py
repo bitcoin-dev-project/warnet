@@ -18,6 +18,7 @@ logger = logging.getLogger("Warnet")
 TMPDIR_PREFIX = "warnet_tmp_"
 TOR_DOCKERFILE = "Dockerfile_tor_da"
 TOR_DA_IP = "100.20.15.18"
+FO_CONF_NAME = "fork_observer_config.toml"
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
@@ -26,6 +27,7 @@ class Warnet:
 
     def __init__(self, config_dir):
         self.config_dir: Path = config_dir
+        self.config_dir.mkdir(parents=True, exist_ok=True)
         self.docker = docker.from_env()
         self.bitcoin_network:str = "regtest"
         self.docker_network:str = "warnet"
@@ -33,6 +35,9 @@ class Warnet:
         self.graph = None
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
+        self.fork_observer_config = self.config_dir / FO_CONF_NAME
+        logger.info(f"copying config {TEMPLATES / FO_CONF_NAME} to {self.fork_observer_config}")
+        shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
 
     def __str__(self) -> str:
         tanks_str = ',\n'.join([str(tank) for tank in self.tanks])
@@ -59,7 +64,7 @@ class Warnet:
         return self
 
     @classmethod
-    def from_graph(cls, graph, tanks=True):
+    def from_graph(cls, graph):
         self = cls(Path())
         self.graph = graph
         self.tanks_from_graph()
@@ -210,7 +215,6 @@ class Warnet:
             "volumes": ["grafana-storage:/var/lib/grafana"],
             "networks": [self.docker_network],
         }
-        # Add Tor service
         compose["services"]["tor"] = {
             "build": {
                 "context": str(TEMPLATES),
@@ -222,6 +226,13 @@ class Warnet:
                     "ipv4_address": TOR_DA_IP,
                 }
             },
+        }
+        compose["services"]["fork-observer"] = {
+            "image": "b10c/fork-observer:latest",
+            "container_name": "fork-observer",
+            "ports": ["12323:2323"],
+            "volumes": [f"{self.fork_observer_config}:/app/config.toml"],
+            "networks": [self.docker_network],
         }
 
         docker_compose_path = self.config_dir / "docker-compose.yml"
