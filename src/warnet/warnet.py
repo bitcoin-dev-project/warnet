@@ -29,35 +29,40 @@ logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
 
 class Warnet:
-
     def __init__(self, config_dir):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.docker = docker.from_env()
-        self.bitcoin_network:str = "regtest"
-        self.docker_network:str = "warnet"
+        self.bitcoin_network: str = "regtest"
+        self.docker_network: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
         self.graph = None
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
         self.fork_observer_config = self.config_dir / FO_CONF_NAME
-        logger.info(f"copying config {TEMPLATES / FO_CONF_NAME} to {self.fork_observer_config}")
+        logger.info(
+            f"copying config {TEMPLATES / FO_CONF_NAME} to {self.fork_observer_config}"
+        )
         shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
 
     def __str__(self) -> str:
-        tanks_str = ',\n'.join([str(tank) for tank in self.tanks])
-        return (f"Warnet(\n"
-                f"\tTemp Directory: {self.config_dir}\n"
-                f"\tBitcoin Network: {self.bitcoin_network}\n"
-                f"\tDocker Network: {self.docker_network}\n"
-                f"\tSubnet: {self.subnet}\n"
-                f"\tGraph: {self.graph}\n"
-                f"\tTanks: [\n{tanks_str}\n"
-                f"\t]\n"
-                f")")
+        tanks_str = ",\n".join([str(tank) for tank in self.tanks])
+        return (
+            f"Warnet(\n"
+            f"\tTemp Directory: {self.config_dir}\n"
+            f"\tBitcoin Network: {self.bitcoin_network}\n"
+            f"\tDocker Network: {self.docker_network}\n"
+            f"\tSubnet: {self.subnet}\n"
+            f"\tGraph: {self.graph}\n"
+            f"\tTanks: [\n{tanks_str}\n"
+            f"\t]\n"
+            f")"
+        )
 
     @classmethod
-    def from_graph_file(cls, graph_file: str, config_dir: Path, network: str = "warnet"):
+    def from_graph_file(
+        cls, graph_file: str, config_dir: Path, network: str = "warnet"
+    ):
         self = cls(config_dir)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -77,10 +82,14 @@ class Warnet:
         return self
 
     @classmethod
-    def from_network(cls, config_dir: Path = Path(), network: str = "warnet", tanks=True):
+    def from_network(
+        cls, config_dir: Path = Path(), network: str = "warnet", tanks=True
+    ):
         self = cls(config_dir)
         self.config_dir = gen_config_dir(network)
-        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
+        self.graph = networkx.read_graphml(
+            Path(self.config_dir / self.graph_name), node_type=int
+        )
         if tanks:
             self.tanks_from_graph()
         return self
@@ -89,7 +98,9 @@ class Warnet:
     def from_docker_env(cls, network_name):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir)
-        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
+        self.graph = networkx.read_graphml(
+            Path(self.config_dir / self.graph_name), node_type=int
+        )
         self.docker_network = network_name
         index = 0
         while index <= 999999:
@@ -125,19 +136,20 @@ class Warnet:
         for tank in self.tanks:
             tank.apply_network_conditions()
 
-
     def generate_zone_file_from_tanks(self):
-        records_list = [f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks]
+        records_list = [
+            f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks
+        ]
         content = []
-        with open(str(TEMPLATES / ZONE_FILE_NAME), 'r') as f:
+        with open(str(TEMPLATES / ZONE_FILE_NAME), "r") as f:
             content = [line.rstrip() for line in f]
 
         # TODO: Really we should also read active SOA value from dns-seed, and increment from there
 
         content.extend(records_list)
         # Join the content into a single string and escape single quotes for echoing
-        content_str = '\n'.join(content).replace("'", "'\\''")
-        with open(self.config_dir / ZONE_FILE_NAME, 'w') as f:
+        content_str = "\n".join(content).replace("'", "'\\''")
+        with open(self.config_dir / ZONE_FILE_NAME, "w") as f:
             f.write(content_str)
 
     def apply_zone_file(self):
@@ -147,16 +159,17 @@ class Warnet:
         seeder = self.docker.containers.get("dns-seed")
 
         # Read the content from the generated zone file
-        with open(self.config_dir / ZONE_FILE_NAME, 'r') as f:
+        with open(self.config_dir / ZONE_FILE_NAME, "r") as f:
             content_str = f.read().replace("'", "'\\''")
 
         # Overwrite all existing content
-        result = seeder.exec_run(f"sh -c 'echo \"{content_str}\" > /etc/bind/dns-seed.zone'")
+        result = seeder.exec_run(
+            f"sh -c 'echo \"{content_str}\" > /etc/bind/dns-seed.zone'"
+        )
         logging.debug(f"result of updating {ZONE_FILE_NAME}: {result}")
 
         # Reload that single zone only
         seeder.exec_run("rndc reload dns-seed")
-
 
     def connect_edges(self):
         for edge in self.graph.edges():
@@ -246,7 +259,6 @@ class Warnet:
         for service_obj in services:
             service_name = service_obj.__class__.__name__.lower()
             compose["services"][service_name] = service_obj.get_service()
-
 
         docker_compose_path = self.config_dir / "docker-compose.yml"
         try:

@@ -72,10 +72,12 @@ def stop_container(c):
     logger.info(f"stopping container: {c.name}")
     c.stop()
 
+
 def stop_network(network="warnet") -> bool:
     """
     Stop all containers in the network in parallel using a background thread
     """
+
     def thread_stop():
         d = docker.from_env()
         network_obj = d.networks.get(network)
@@ -86,6 +88,7 @@ def stop_network(network="warnet") -> bool:
 
     threading.Thread(target=thread_stop).start()
     return True
+
 
 def compose_down(network="warnet") -> bool:
     """
