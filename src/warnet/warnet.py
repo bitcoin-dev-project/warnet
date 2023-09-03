@@ -11,12 +11,17 @@ import yaml
 from pathlib import Path
 from templates import TEMPLATES
 from typing import List
+
+from services.prometheus import Prometheus
+from services.node_exporter import NodeExporter
+from services.grafana import Grafana
+from services.tor import Tor
+from services.fork_observer import ForkObserver
+from services.dns_seed import DnsSeed
 from warnet.tank import Tank
 from warnet.utils import parse_bitcoin_conf, gen_config_dir
 
 logger = logging.getLogger("Warnet")
-TOR_DOCKERFILE = "Dockerfile_tor_da"
-TOR_DA_IP = "100.20.15.18"
 FO_CONF_NAME = "fork_observer_config.toml"
 ZONE_FILE_NAME = "dns-seed.zone"
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -227,65 +232,20 @@ class Warnet:
         for tank in self.tanks:
             tank.add_services(compose["services"])
 
-        # Add global services
-        compose["services"]["prometheus"] = {
-            "image": "prom/prometheus:latest",
-            "container_name": "prometheus",
-            "ports": ["9090:9090"],
-            "volumes": [
-                f"{self.config_dir / 'prometheus.yml'}:/etc/prometheus/prometheus.yml"
-            ],
-            "command": ["--config.file=/etc/prometheus/prometheus.yml"],
-            "networks": [self.docker_network],
-        }
-        compose["services"]["node-exporter"] = {
-            "image": "prom/node-exporter:latest",
-            "container_name": "node-exporter",
-            "volumes": ["/proc:/host/proc:ro", "/sys:/host/sys:ro", "/:/rootfs:ro"],
-            "command": ["--path.procfs=/host/proc", "--path.sysfs=/host/sys"],
-            "networks": [self.docker_network],
-        }
-        compose["services"]["grafana"] = {
-            "image": "grafana/grafana:latest",
-            "container_name": "grafana",
-            "ports": ["3000:3000"],
-            "volumes": ["grafana-storage:/var/lib/grafana"],
-            "networks": [self.docker_network],
-        }
-        compose["services"]["tor"] = {
-            "build": {
-                "context": str(TEMPLATES),
-                "dockerfile": TOR_DOCKERFILE,
-            },
-            "container_name": "tor",
-            "networks": {
-                self.docker_network: {
-                    "ipv4_address": TOR_DA_IP,
-                }
-            },
-        }
-        compose["services"]["fork-observer"] = {
-            "image": "b10c/fork-observer:latest",
-            "container_name": "fork-observer",
-            "ports": ["12323:2323"],
-            "volumes": [f"{self.fork_observer_config}:/app/config.toml"],
-            "networks": [self.docker_network],
-        }
+        # Initialize services and add them to the compose
+        services = [
+            Prometheus(self.docker_network, self.config_dir),
+            NodeExporter(self.docker_network),
+            Grafana(self.docker_network),
+            Tor(self.docker_network, TEMPLATES),
+            ForkObserver(self.docker_network, self.fork_observer_config),
+        ]
         if dns:
-            compose["services"]["dns-seed"] = {
-                "container_name": "dns-seed",
-                "ports": ["15353:53/udp", "15353:53/tcp"],
-                "build": {
-                    "context": ".",
-                    "dockerfile": str(TEMPLATES / "Dockerfile_bind9"),
-                },
-                "networks": [
-                    "warnet"
-                ],
-            }
-            # Copy to tmpdir for dockerfile. Using volume means changes on container reflect on template
-            shutil.copy(str(TEMPLATES / 'dns-seed.zone'), self.config_dir)
-            shutil.copy(str(TEMPLATES / 'named.conf.local'), self.config_dir)
+            services.append(DnsSeed(self.docker_network, TEMPLATES, self.config_dir))
+
+        for service_obj in services:
+            service_name = service_obj.__class__.__name__.lower()
+            compose["services"][service_name] = service_obj.get_service()
 
 
         docker_compose_path = self.config_dir / "docker-compose.yml"
