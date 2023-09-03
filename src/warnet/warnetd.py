@@ -24,26 +24,25 @@ from warnet.client import (
 from warnet.utils import gen_config_dir
 
 WARNETD_PORT = 9276
-continue_running = True
 
 app = Flask(__name__)
 jsonrpc = JSONRPC(app, "/api")
 
 # Determine the log file path based on XDG_STATE_HOME
-xdg_state_home = os.environ.get(
+_xdg_state_home = os.environ.get(
     "XDG_STATE_HOME", os.path.join(os.environ["HOME"], ".local", "state")
 )
-log_file_path = os.path.join(xdg_state_home, "warnet", "warnet.log")
+LOG_FILE_PATH = os.path.join(_xdg_state_home, "warnet", "warnet.log")
 
 # Ensure the directory exists
-os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
 
 # Configure root logger
 logging.basicConfig(
     level=logging.DEBUG,
     handlers=[
         RotatingFileHandler(
-            log_file_path, maxBytes=16_000_000, backupCount=3, delay=True
+            LOG_FILE_PATH, maxBytes=16_000_000, backupCount=3, delay=True
         )
     ],
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -271,9 +270,9 @@ def run_gunicorn():
         command.extend([
             "--daemon",
             "--access-logfile",
-            log_file_path,
+            LOG_FILE_PATH,
             "--error-logfile",
-            log_file_path,
+            LOG_FILE_PATH,
         ])
  
     subprocess.run(command)
