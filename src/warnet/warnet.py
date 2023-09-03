@@ -15,10 +15,10 @@ from warnet.tank import Tank
 from warnet.utils import parse_bitcoin_conf, gen_config_dir
 
 logger = logging.getLogger("Warnet")
-TMPDIR_PREFIX = "warnet_tmp_"
 TOR_DOCKERFILE = "Dockerfile_tor_da"
 TOR_DA_IP = "100.20.15.18"
 FO_CONF_NAME = "fork_observer_config.toml"
+ZONE_FILE_NAME = "dns-seed.zone"
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
@@ -96,6 +96,10 @@ class Warnet:
                 break
         return self
 
+    @property
+    def zone_file_path(self):
+        return self.config_dir / ZONE_FILE_NAME
+
     def tanks_from_graph(self):
         for node_id in self.graph.nodes():
             if int(node_id) != len(self.tanks):
@@ -115,6 +119,39 @@ class Warnet:
     def apply_network_conditions(self):
         for tank in self.tanks:
             tank.apply_network_conditions()
+
+
+    def generate_zone_file_from_tanks(self):
+        records_list = [f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks]
+        content = []
+        with open(str(TEMPLATES / ZONE_FILE_NAME), 'r') as f:
+            content = [line.rstrip() for line in f]
+
+        # TODO: Really we should also read active SOA value from dns-seed, and increment from there
+
+        content.extend(records_list)
+        # Join the content into a single string and escape single quotes for echoing
+        content_str = '\n'.join(content).replace("'", "'\\''")
+        with open(self.config_dir / ZONE_FILE_NAME, 'w') as f:
+            f.write(content_str)
+
+    def apply_zone_file(self):
+        """
+        Sync the dns seed list served by dns-seed with currently active Tanks.
+        """
+        seeder = self.docker.containers.get("dns-seed")
+
+        # Read the content from the generated zone file
+        with open(self.config_dir / ZONE_FILE_NAME, 'r') as f:
+            content_str = f.read().replace("'", "'\\''")
+
+        # Overwrite all existing content
+        result = seeder.exec_run(f"sh -c 'echo \"{content_str}\" > /etc/bind/dns-seed.zone'")
+        logging.debug(f"result of updating {ZONE_FILE_NAME}: {result}")
+
+        # Reload that single zone only
+        seeder.exec_run("rndc reload dns-seed")
+
 
     def connect_edges(self):
         for edge in self.graph.edges():
@@ -173,7 +210,7 @@ class Warnet:
                 f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
-    def write_docker_compose(self):
+    def write_docker_compose(self, dns=True):
         compose = {
             "version": "3.8",
             "networks": {
@@ -234,6 +271,22 @@ class Warnet:
             "volumes": [f"{self.fork_observer_config}:/app/config.toml"],
             "networks": [self.docker_network],
         }
+        if dns:
+            compose["services"]["dns-seed"] = {
+                "container_name": "dns-seed",
+                "ports": ["15353:53/udp", "15353:53/tcp"],
+                "build": {
+                    "context": ".",
+                    "dockerfile": str(TEMPLATES / "Dockerfile_bind9"),
+                },
+                "networks": [
+                    "warnet"
+                ],
+            }
+            # Copy to tmpdir for dockerfile. Using volume means changes on container reflect on template
+            shutil.copy(str(TEMPLATES / 'dns-seed.zone'), self.config_dir)
+            shutil.copy(str(TEMPLATES / 'named.conf.local'), self.config_dir)
+
 
         docker_compose_path = self.config_dir / "docker-compose.yml"
         try:

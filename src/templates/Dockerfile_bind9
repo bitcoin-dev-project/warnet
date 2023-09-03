@@ -1,0 +1,5 @@
+FROM ubuntu/bind9:9.16-20.04_beta
+COPY dns-seed.zone /etc/bind/dns-seed.zone
+COPY named.conf.local /etc/bind/named.conf.local
+
+CMD ["/usr/sbin/named", "-g", "-c", "/etc/bind/named.conf"]
