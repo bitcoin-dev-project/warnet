@@ -46,7 +46,7 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    error_msg = str(e).replace('\n', ' ').replace('\t', ' ')
+                    error_msg = str(e).replace("\n", " ").replace("\t", " ")
                     logger.error(f"rpc error: {error_msg}")
                     retries += 1
                     if retries == max_retries:

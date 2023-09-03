@@ -45,14 +45,16 @@ class Tank:
         self.config_dir = Path()
 
     def __str__(self) -> str:
-        return (f"Tank(\n"
-                f"\tIndex: {self.index}\n"
-                f"\tVersion: {self.version}\n"
-                f"\tConf: {self.conf}\n"
-                f"\tConf File: {self.conf_file}\n"
-                f"\tNetem: {self.netem}\n"
-                f"\tIPv4: {self._ipv4}\n"
-                f"\t)")
+        return (
+            f"Tank(\n"
+            f"\tIndex: {self.index}\n"
+            f"\tVersion: {self.version}\n"
+            f"\tConf: {self.conf}\n"
+            f"\tConf File: {self.conf_file}\n"
+            f"\tNetem: {self.netem}\n"
+            f"\tIPv4: {self._ipv4}\n"
+            f"\t)"
+        )
 
     @classmethod
     def from_graph_node(cls, index, warnet):
@@ -67,14 +69,17 @@ class Tank:
         if "version" in node:
             if not "/" and "#" in self.version:
                 if node["version"] not in SUPPORTED_TAGS:
-                    raise Exception(f"Unsupported version: can't be generated from Docker images: {node['version']}")
+                    raise Exception(
+                        f"Unsupported version: can't be generated from Docker images: {node['version']}"
+                    )
             self.version = node["version"]
         if "bitcoin_config" in node:
             self.conf = node["bitcoin_config"]
         if "tc_netem" in node:
             self.netem = node["tc_netem"]
         with open(self.warnet.fork_observer_config, "a") as f:
-            f.write(f'''
+            f.write(
+                f"""
     [[networks.nodes]]
     id = {self.index}
     name = "Node {self.index}"
@@ -83,7 +88,8 @@ class Tank:
     rpc_port = {self.rpc_port}
     rpc_user = "{self.rpc_user}"
     rpc_password = "{self.rpc_password}"
-''')
+"""
+            )
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.write_torrc()
@@ -133,8 +139,10 @@ class Tank:
     def exec(self, cmd: str, user: str = "root"):
         result = self.container.exec_run(cmd=cmd, user=user)
         if result.exit_code != 0:
-            raise Exception(f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}")
-        return result.output.decode('utf-8')
+            raise Exception(
+                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}"
+            )
+        return result.output.decode("utf-8")
 
     def apply_network_conditions(self):
         if self.netem is None:
@@ -181,7 +189,7 @@ class Tank:
         self.conf_file = path
 
     def write_torrc(self):
-        src_tor_conf_file = TEMPLATES / 'torrc'
+        src_tor_conf_file = TEMPLATES / "torrc"
 
         dest_path = self.config_dir / "torrc"
         shutil.copyfile(src_tor_conf_file, dest_path)
@@ -214,23 +222,23 @@ class Tank:
             services[self.bitcoind_name].update({"entrypoint": "/warnet_entrypoint.sh"})
 
         # Add the bitcoind service
-        services[self.bitcoind_name].update({
-            "container_name": self.bitcoind_name,
-            "build": build,
-            "volumes": [
-                f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
-                f"{self.torrc_file}:/etc/tor/torrc_original",
-            ],
-            "networks": {
-                self.docker_network: {
-                    "ipv4_address": f"{self.ipv4}",
-                }
-            },
-            "labels": {
-                "warnet": "tank"
-            },
-            "privileged": True,
-        })
+        services[self.bitcoind_name].update(
+            {
+                "container_name": self.bitcoind_name,
+                "build": build,
+                "volumes": [
+                    f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
+                    f"{self.torrc_file}:/etc/tor/torrc_original",
+                ],
+                "networks": {
+                    self.docker_network: {
+                        "ipv4_address": f"{self.ipv4}",
+                    }
+                },
+                "labels": {"warnet": "tank"},
+                "privileged": True,
+            }
+        )
 
         # Add the prometheus data exporter in a neighboring container
         # services[self.exporter_name] = {
