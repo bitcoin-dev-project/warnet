@@ -8,6 +8,7 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
+
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
 
