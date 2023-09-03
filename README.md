@@ -123,7 +123,7 @@ warnetd
 > [!NOTE]
 > `warnetd` also accepts a `--no-debug` option which prevents daemonization
 
-Once `warnetd` is running it can be interacted with using the cli tool `warnet`.
+Once `warnetd` is running it can be interacted with using the cli tool `warcli`.
 Run `warnet --help` to see a list of possible commands.
 
 All `warnet` commands accept a `--network` option, which allows you to specify the warnet you want to control.
@@ -132,7 +132,17 @@ This is set by default to `--network="warnet"` to simplify default operation.
 To start an example warnet, with your venv active, run the following command to use the default graph and network:
 
 ```bash
-warnet start
+warcli start
+```
+
+To see available commands use:
+
+```bash
+# All commands help
+warcli help
+
+# Sub-command help
+warcli help networks
 ```
 
 Each container is a node as described in the graph, along with various data exporters and a demo grafana dashboard.
@@ -150,31 +160,31 @@ See `/src/scenarios` for examples of how these can be written.
 To see available scenarios (loaded from the default directory):
 
 ```bash
-warnet list
+warcli scenarios list
 ```
 
-Once a scenarios is selected it can be run with `warnet run <scenario_name> [--network=warnet]`, e.g.:
+Once a scenarios is selected it can be run with `warnet scenarios run <scenario_name> [--network=warnet]`, e.g.:
 
 ```bash
 # Command one node to generate a wallet and fill 100 blocks with 100 txs each
-warnet run tx-flood.py
+warcli scenarios run tx-flood.py
 ```
 
-This will run the run the scenario in the background until it exits, or is killed by the user.
+This will run the run the scenario in the background until it exits or is killed by the user.
 
 ### Stopping
 
-Currently the warnet can be stopped, or stopped and removed, but **not** stopped, persisted and restarted.
+Currently the warnet can be stopped, but **not** stopped, persisted and continued.
 Persisting the warnet during a stoppage is WIP.
 
-To stop the warnet, or remove it (which first stops, then deletes the containers):
+To stop the warnet, and warnetd daemon:
 
 ```bash
 # stop but retain containers
-warnet stop
+warcli network down
 
-# stop and erase containers
-warnet wipe
+# stop warnetd
+warcli stop
 ```
 
 ## Remote / Cloud Deployment
