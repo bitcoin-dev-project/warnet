@@ -1,0 +1,4 @@
+zone "dns-seed" {
+    type master;
+    file "/etc/bind/dns-seed.zone";
+};
