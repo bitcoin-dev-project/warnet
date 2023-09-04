@@ -7,9 +7,10 @@ import signal
 import subprocess
 import sys
 import threading
+from collections import defaultdict
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from typing import List
+from typing import List, Dict
 from flask import Flask
 from flask_jsonrpc.app import JSONRPC
 
@@ -21,7 +22,13 @@ from warnet.client import (
     get_messages,
     compose_down,
 )
-from warnet.utils import gen_config_dir
+from warnet.utils import (
+    gen_config_dir,
+    save_running_scenario,
+    load_running_scenarios,
+    remove_stopped_scenario,
+    update_running_scenarios_file,
+)
 
 WARNETD_PORT = 9276
 
@@ -84,26 +91,32 @@ def messages(network: str, node_a: int, node_b: int) -> str:
     Fetch messages sent between <node_a> and <node_b>.
     """
     try:
-        messages = get_messages(network, node_a, node_b)
+        messages = [
+            msg for msg in get_messages(network, node_a, node_b) if msg is not None
+        ]
         if not messages:
             return f"No messages found between {node_a} and {node_b}"
 
-        # Convert each message dictionary to a string representation
         messages_str_list = []
+
         for message in messages:
+            # Check if 'time' key exists and its value is a number
+            if not (message.get("time") and isinstance(message["time"], (int, float))):
+                continue
+
             timestamp = datetime.utcfromtimestamp(message["time"] / 1e6).strftime(
                 "%Y-%m-%d %H:%M:%S"
             )
             direction = ">>>" if message.get("outbound", False) else "<<<"
             msgtype = message.get("msgtype", "")
-
-            # Handle the body dictionary in a special way
             body_dict = message.get("body", {})
-            body_str = ", ".join(f"{key}: {value}" for key, value in body_dict.items())
 
+            if not isinstance(body_dict, dict):  # messages will be in dict form
+                continue
+
+            body_str = ", ".join(f"{key}: {value}" for key, value in body_dict.items())
             messages_str_list.append(f"{timestamp} {direction} {msgtype} {body_str}")
 
-        # Join all message strings with newlines
         result_str = "\n".join(messages_str_list)
 
         return result_str
@@ -128,11 +141,12 @@ def list() -> list[str]:
         return [f"Exception {e}"]
 
 
+running_scenarios = defaultdict(dict)
+
+
 @jsonrpc.method("run")
 def run(scenario: str, additional_args: List[str], network: str = "warnet") -> str:
-    """
-    Run <scenario> from the Warnet Test Framework
-    """
+    config_dir = gen_config_dir(network)
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
 
@@ -140,13 +154,59 @@ def run(scenario: str, additional_args: List[str], network: str = "warnet") -> s
         return f"Scenario {scenario} not found at {scenario_path}."
 
     try:
-        run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
+        run_cmd = (
+            [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
+        )
         logger.debug(f"Running {run_cmd}")
-        subprocess.Popen(run_cmd, shell=False)
+        process = subprocess.Popen(run_cmd, shell=False)
+
+        save_running_scenario(scenario, process, config_dir)
+
         return f"Running scenario {scenario} in the background..."
     except Exception as e:
         logger.error(f"Exception occurred while running the scenario: {e}")
         return f"Exception {e}"
+
+
+@jsonrpc.method("stop_scenario")
+def stop_scenario(scenario: str, network: str = "warnet") -> str:
+    config_dir = gen_config_dir(network)
+    running_scenarios = load_running_scenarios(config_dir)
+
+    if scenario not in running_scenarios:
+        return f"Scenario {scenario} is not running."
+
+    pid = running_scenarios[scenario]
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return f"Scenario {scenario} with PID {pid} is not running."
+
+    os.kill(pid, signal.SIGTERM)
+
+    remove_stopped_scenario(scenario, config_dir)
+
+    return f"Stopped scenario {scenario}."
+
+
+@jsonrpc.method("list_running_scenarios")
+def list_running_scenarios(network: str = "warnet") -> Dict[str, int]:
+    config_dir = gen_config_dir(network)
+    running_scenarios = load_running_scenarios(config_dir)
+
+    # Check if each PID is still running
+    still_running = {}
+    for scenario, pid in running_scenarios.items():
+        try:
+            os.kill(pid, 0)  # Will raise an error if the process doesn't exist
+            still_running[scenario] = pid
+        except OSError:
+            pass
+
+    # Update the file with only the still running scenarios
+    update_running_scenarios_file(config_dir, still_running)
+
+    return still_running
 
 
 @jsonrpc.method("up")

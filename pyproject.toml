@@ -23,13 +23,14 @@ dependencies = [
     "jsonrpcserver==5.0.3",
     "jsonrpcclient==4.0.0",
     "networkx==3.1",
+    "rich==13.5.2",
     "PyYAML==6.0.1",
 ]
 dynamic = ["version"]
 
 [project.scripts]
 warnet = "warnet.warnetd:run_gunicorn"
-warcli = "warnet.cli:cli"
+warcli = "warnet.cli.main:cli"
 
 [tool.black]
 line-length = 88
