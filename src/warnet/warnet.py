@@ -17,13 +17,12 @@ from services.node_exporter import NodeExporter
 from services.grafana import Grafana
 from services.tor import Tor
 from services.fork_observer import ForkObserver
-from services.dns_seed import DnsSeed
+from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf, gen_config_dir
+from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str
 
-logger = logging.getLogger("Warnet")
+logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
-ZONE_FILE_NAME = "dns-seed.zone"
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
@@ -60,6 +59,7 @@ class Warnet:
         )
 
     @classmethod
+    @bubble_exception_str
     def from_graph_file(
         cls, graph_file: str, config_dir: Path, network: str = "warnet"
     ):
@@ -74,6 +74,7 @@ class Warnet:
         return self
 
     @classmethod
+    @bubble_exception_str
     def from_graph(cls, graph):
         self = cls(Path())
         self.graph = graph
@@ -82,6 +83,7 @@ class Warnet:
         return self
 
     @classmethod
+    @bubble_exception_str
     def from_network(
         cls, config_dir: Path = Path(), network: str = "warnet", tanks=True
     ):
@@ -95,6 +97,7 @@ class Warnet:
         return self
 
     @classmethod
+    @bubble_exception_str
     def from_docker_env(cls, network_name):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir)
@@ -113,9 +116,11 @@ class Warnet:
         return self
 
     @property
+    @bubble_exception_str
     def zone_file_path(self):
         return self.config_dir / ZONE_FILE_NAME
 
+    @bubble_exception_str
     def tanks_from_graph(self):
         for node_id in self.graph.nodes():
             if int(node_id) != len(self.tanks):
@@ -125,6 +130,7 @@ class Warnet:
             self.tanks.append(Tank.from_graph_node(node_id, self))
         logger.info(f"Imported {len(self.tanks)} tanks from graph")
 
+    @bubble_exception_str
     def write_bitcoin_confs(self):
         with open(TEMPLATES / "bitcoin.conf", "r") as file:
             text = file.read()
@@ -132,10 +138,12 @@ class Warnet:
         for tank in self.tanks:
             tank.write_bitcoin_conf(base_bitcoin_conf)
 
+    @bubble_exception_str
     def apply_network_conditions(self):
         for tank in self.tanks:
             tank.apply_network_conditions()
 
+    @bubble_exception_str
     def generate_zone_file_from_tanks(self):
         records_list = [
             f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks
@@ -152,11 +160,12 @@ class Warnet:
         with open(self.config_dir / ZONE_FILE_NAME, "w") as f:
             f.write(content_str)
 
+    @bubble_exception_str
     def apply_zone_file(self):
         """
         Sync the dns seed list served by dns-seed with currently active Tanks.
         """
-        seeder = self.docker.containers.get("dns-seed")
+        seeder = self.docker.containers.get(f"{self.docker_network}_{DNS_SEED_NAME}")
 
         # Read the content from the generated zone file
         with open(self.config_dir / ZONE_FILE_NAME, "r") as f:
@@ -171,6 +180,7 @@ class Warnet:
         # Reload that single zone only
         seeder.exec_run("rndc reload dns-seed")
 
+    @bubble_exception_str
     def connect_edges(self):
         for edge in self.graph.edges():
             (src, dst) = edge
@@ -180,6 +190,7 @@ class Warnet:
             cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
             src_tank.exec(cmd=cmd, user="bitcoin")
 
+    @bubble_exception_str
     def docker_compose_build_up(self):
         command = ["docker-compose", "-p", self.docker_network, "up", "-d", "--build"]
         try:
@@ -196,6 +207,7 @@ class Warnet:
                 f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
+    @bubble_exception_str
     def docker_compose_up(self):
         command = ["docker-compose", "-p", self.docker_network, "up", "-d"]
         try:
@@ -212,6 +224,7 @@ class Warnet:
                 f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
+    @bubble_exception_str
     def docker_compose_down(self):
         command = ["docker-compose", "down"]
         try:
@@ -228,6 +241,7 @@ class Warnet:
                 f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
+    @bubble_exception_str
     def write_docker_compose(self, dns=True):
         compose = {
             "version": "3.8",
@@ -270,6 +284,7 @@ class Warnet:
                 f"An error occurred while writing to {docker_compose_path}: {e}"
             )
 
+    @bubble_exception_str
     def write_prometheus_config(self):
         config = {
             "global": {"scrape_interval": "15s"},

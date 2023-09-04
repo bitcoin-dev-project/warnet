@@ -40,7 +40,7 @@ class Tank:
         self._container = None
         self._suffix = None
         self._ipv4 = None
-        self._bitcoind_name = None
+        self._container_name = None
         self._exporter_name = None
         self.config_dir = Path()
 
@@ -118,10 +118,12 @@ class Tank:
         return self._ipv4
 
     @property
-    def bitcoind_name(self):
-        if self._bitcoind_name is None:
-            self._bitcoind_name = f"{CONTAINER_PREFIX_BITCOIND}_{self.suffix}"
-        return self._bitcoind_name
+    def container_name(self):
+        if self._container_name is None:
+            self._container_name = (
+                f"{self.docker_network}_{CONTAINER_PREFIX_BITCOIND}_{self.suffix}"
+            )
+        return self._container_name
 
     @property
     def exporter_name(self):
@@ -132,7 +134,7 @@ class Tank:
     @property
     def container(self) -> Container:
         if self._container is None:
-            self._container = docker.from_env().containers.get(self.bitcoind_name)
+            self._container = docker.from_env().containers.get(self.container_name)
         return self._container
 
     @exponential_backoff()
@@ -150,7 +152,7 @@ class Tank:
 
         if not sanitize_tc_netem_command(self.netem):
             logger.warning(
-                f"Not applying unsafe tc-netem conditions to container {self.bitcoind_name}: `{self.netem}`"
+                f"Not applying unsafe tc-netem conditions to container {self.container_name}: `{self.netem}`"
             )
             return
 
@@ -158,11 +160,11 @@ class Tank:
         rcode, result = self.exec(self.netem)
         if rcode == 0:
             logger.info(
-                f"Successfully applied network conditions to {self.bitcoind_name}: `{self.netem}`"
+                f"Successfully applied network conditions to {self.container_name}: `{self.netem}`"
             )
         else:
             logger.error(
-                f"Error applying network conditions to {self.bitcoind_name}: `{self.netem}` ({result})"
+                f"Error applying network conditions to {self.container_name}: `{self.netem}` ({result})"
             )
 
     def write_bitcoin_conf(self, base_bitcoin_conf):
@@ -198,7 +200,7 @@ class Tank:
     def add_services(self, services):
         assert self.index is not None
         assert self.conf_file is not None
-        services[self.bitcoind_name] = {}
+        services[self.container_name] = {}
 
         # Setup bitcoind, either release binary or build from source
         if "/" and "#" in self.version:
@@ -219,12 +221,14 @@ class Tank:
                 "dockerfile": str(TEMPLATES / f"Dockerfile_{self.version}"),
             }
             # Use entrypoint for derived build, but not for compiled build
-            services[self.bitcoind_name].update({"entrypoint": "/warnet_entrypoint.sh"})
+            services[self.container_name].update(
+                {"entrypoint": "/warnet_entrypoint.sh"}
+            )
 
         # Add the bitcoind service
-        services[self.bitcoind_name].update(
+        services[self.container_name].update(
             {
-                "container_name": self.bitcoind_name,
+                "container_name": self.container_name,
                 "build": build,
                 "volumes": [
                     f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
@@ -257,7 +261,7 @@ class Tank:
     def add_scrapers(self, scrapers):
         scrapers.append(
             {
-                "job_name": self.bitcoind_name,
+                "job_name": self.container_name,
                 "scrape_interval": "5s",
                 "static_configs": [{"targets": [f"{self.exporter_name}:9332"]}],
             }
