@@ -9,6 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 from docker.api import service
 from docker.models.containers import Container
+from services.fluentd import FLUENT_IP
 from templates import TEMPLATES
 from warnet.utils import (
     exponential_backoff,
@@ -241,22 +242,30 @@ class Tank:
                 },
                 "labels": {"warnet": "tank"},
                 "privileged": True,
+                # "depends_on": ["fluentd"],
+                # "logging": {
+                #     "driver": "fluentd",
+                #     "options": {
+                #         "fluentd-address": f"{FLUENT_IP}:24224",
+                #         "tag": "{{.Name}}"
+                #     }
+                # }
             }
         )
 
         # Add the prometheus data exporter in a neighboring container
-        # services[self.exporter_name] = {
-        #     "image": "jvstein/bitcoin-prometheus-exporter",
-        #     "container_name": self.exporter_name,
-        #     "environment": {
-        #         "BITCOIN_RPC_HOST": self.bitcoind_name,
-        #         "BITCOIN_RPC_PORT": self.rpc_port,
-        #         "BITCOIN_RPC_USER": self.rpc_user,
-        #         "BITCOIN_RPC_PASSWORD": self.rpc_password,
-        #     },
-        #     "ports": [f"{8335 + self.index}:9332"],
-        #     "networks": [self.docker_network],
-        # }
+        services[self.exporter_name] = {
+            "image": "jvstein/bitcoin-prometheus-exporter",
+            "container_name": self.exporter_name,
+            "environment": {
+                "BITCOIN_RPC_HOST": self.container_name,
+                "BITCOIN_RPC_PORT": self.rpc_port,
+                "BITCOIN_RPC_USER": self.rpc_user,
+                "BITCOIN_RPC_PASSWORD": self.rpc_password,
+            },
+            "ports": [f"{8335 + self.index}:9332"],
+            "networks": [self.docker_network],
+        }
 
     def add_scrapers(self, scrapers):
         scrapers.append(
