@@ -34,11 +34,11 @@ from warnet.utils import (
 
 WARNETD_PORT = 9276
 
-# Determine the log file path based on XDG_STATE_HOME
-_xdg_state_home = os.environ.get(
-    "XDG_STATE_HOME", os.path.join(os.environ["HOME"], ".local", "state")
+# Determine the log file path based on XDG_STATE_HOME, or ~/.warnet
+log_file_dir = os.environ.get(
+    "XDG_STATE_HOME", os.path.join(os.environ["HOME"], ".warnet")
 )
-LOG_FILE_PATH = os.path.join(_xdg_state_home, "warnet", "warnet.log")
+LOG_FILE_PATH = os.path.join(log_file_dir, "warnet", "warnet.log")
 
 # Ensure the directory exists
 os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)

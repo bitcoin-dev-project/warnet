@@ -112,7 +112,7 @@ pip install -e .
 ## Running
 
 Warnet runs a daemon called `warnetd` which can be used to manage multiple warnets.
-`warnetd` will by default log to a file `$XDG_STATE_HOME/warnet/warnet.log` if the `$XDG_STATE_HOME` environment variable is set, otherwise it will use `$HOME/.local/state/warnet/warnet.log`.
+`warnetd` will by default log to a file `$XDG_STATE_HOME/warnet/warnet.log` if the `$XDG_STATE_HOME` environment variable is set, otherwise it will use `$HOME/.warnet/warnet.log`.
 
 To start `warnetd` with your venv activated simply run:
 
