@@ -17,6 +17,7 @@ from services.node_exporter import NodeExporter
 from services.grafana import Grafana
 from services.tor import Tor
 from services.fork_observer import ForkObserver
+from services.fluentd import FLUENT_CONF, Fluentd, FLUENT_IP
 from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
 from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str
@@ -43,6 +44,7 @@ class Warnet:
             f"copying config {TEMPLATES / FO_CONF_NAME} to {self.fork_observer_config}"
         )
         shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
+        shutil.copy(TEMPLATES / FLUENT_CONF, self.config_dir)
 
     def __str__(self) -> str:
         tanks_str = ",\n".join([str(tank) for tank in self.tanks])
@@ -266,6 +268,7 @@ class Warnet:
             Grafana(self.docker_network),
             Tor(self.docker_network, TEMPLATES),
             ForkObserver(self.docker_network, self.fork_observer_config),
+            # Fluentd(self.docker_network, self.config_dir),
         ]
         if dns:
             services.append(DnsSeed(self.docker_network, TEMPLATES, self.config_dir))
