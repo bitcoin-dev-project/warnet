@@ -8,7 +8,7 @@ class Grafana(BaseService):
         super().__init__(docker_network)
         self.service = {
             "image": "grafana/grafana:latest",
-            "container_name": "grafana",
+            "container_name": f"{self.docker_network}_grafana",
             "ports": [f"3000:{PORT}"],
             "volumes": ["grafana-storage:/var/lib/grafana"],
             "networks": [self.docker_network],

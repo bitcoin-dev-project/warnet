@@ -1,3 +1,4 @@
+import docker
 from .base_service import BaseService
 
 PORT = 9090
@@ -8,7 +9,7 @@ class Prometheus(BaseService):
         super().__init__(docker_network, config_dir)
         self.service = {
             "image": "prom/prometheus:latest",
-            "container_name": "prometheus",
+            "container_name": f"{self.docker_network}_prometheus",
             "ports": [f"{PORT}:9090"],
             "volumes": [
                 f"{self.config_dir / 'prometheus.yml'}:/etc/prometheus/prometheus.yml"

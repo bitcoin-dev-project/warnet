@@ -129,7 +129,7 @@ class Tank:
     @property
     def exporter_name(self):
         if self._exporter_name is None:
-            self._exporter_name = f"{CONTAINER_PREFIX_PROMETHEUS}_{self.suffix}"
+            self._exporter_name = f"{self.docker_network}_{CONTAINER_PREFIX_PROMETHEUS}_{self.suffix}"
         return self._exporter_name
 
     @property

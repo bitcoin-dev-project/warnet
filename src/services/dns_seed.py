@@ -14,7 +14,7 @@ class DnsSeed(BaseService):
         self.docker_network = docker_network
         self.templates = templates
         self.service = {
-            "container_name": DNS_SEED_NAME,
+            "container_name": f"{self.docker_network}_{DNS_SEED_NAME}",
             "ports": [f"{PORT}:53/udp", f"{PORT}:53/tcp"],
             "build": {
                 "context": ".",

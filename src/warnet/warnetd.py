@@ -9,7 +9,7 @@ import sys
 import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-
+from typing import List
 from flask import Flask
 from flask_jsonrpc.app import JSONRPC
 
@@ -129,7 +129,7 @@ def list() -> list[str]:
 
 
 @jsonrpc.method("run")
-def run(scenario: str, network: str = "warnet") -> str:
+def run(scenario: str, additional_args: List[str], network: str = "warnet") -> str:
     """
     Run <scenario> from the Warnet Test Framework
     """
@@ -140,7 +140,7 @@ def run(scenario: str, network: str = "warnet") -> str:
         return f"Scenario {scenario} not found at {scenario_path}."
 
     try:
-        run_cmd = [sys.executable, scenario_path] + [f"--network={network}"]
+        run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
         logger.debug(f"Running {run_cmd}")
         subprocess.Popen(run_cmd, shell=False)
         return f"Running scenario {scenario} in the background..."
