@@ -63,7 +63,7 @@ jsonrpc = JSONRPC(app, "/api")
 
 @jsonrpc.method("bcli")
 def bcli(
-    node: int, method: str, params: list[str] = [], network: str = "warnet"
+    node: int, method: str, params: List[str] = [], network: str = "warnet"
 ) -> str:
     """
     Call bitcoin-cli on <node> <method> <params> in [network]
@@ -128,7 +128,7 @@ def messages(network: str, node_a: int, node_b: int) -> str:
 
 
 @jsonrpc.method("list")
-def list() -> list[str]:
+def list() -> List[str]:
     """
     List available scenarios in the Warnet Test Framework
     """
