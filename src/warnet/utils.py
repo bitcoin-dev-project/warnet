@@ -350,9 +350,9 @@ def bubble_exception_str(func):
     return wrapper
 
 
-def save_running_scenario(scenario: str, process, config_dir: Path):
+def save_running_scenario(scenario: str, pid: int, config_dir: Path):
     with open(config_dir / RUNNING_PROC_FILE, "a") as file:
-        file.write(f"{scenario}\t{process.pid}\n")
+        file.write(f"{scenario}\t{pid}\n")
 
 
 def load_running_scenarios(config_dir: Path) -> Dict[str, int]:

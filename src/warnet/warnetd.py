@@ -6,6 +6,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 import threading
 from collections import defaultdict
 from datetime import datetime
@@ -23,6 +24,7 @@ from warnet.client import (
     compose_down,
 )
 from warnet.utils import (
+    exponential_backoff,
     gen_config_dir,
     save_running_scenario,
     load_running_scenarios,
@@ -158,7 +160,7 @@ def run(scenario: str, additional_args: List[str], network: str = "warnet") -> s
             [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
         )
         logger.debug(f"Running {run_cmd}")
-        process = subprocess.Popen(run_cmd, shell=False)
+        process = subprocess.Popen(run_cmd, shell=False, preexec_fn=os.setsid)
 
         save_running_scenario(scenario, process, config_dir)
 
@@ -169,24 +171,45 @@ def run(scenario: str, additional_args: List[str], network: str = "warnet") -> s
 
 
 @jsonrpc.method("stop_scenario")
-def stop_scenario(scenario: str, network: str = "warnet") -> str:
+def stop_scenario(pid: int, network: str = "warnet") -> str:
+
+    def is_running(pid):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        return True
+
+    @exponential_backoff()
+    def kill_process(pid):
+        os.kill(pid, signal.SIGKILL)
+
     config_dir = gen_config_dir(network)
     running_scenarios = load_running_scenarios(config_dir)
 
-    if scenario not in running_scenarios:
-        return f"Scenario {scenario} is not running."
+    scenario = None
+    for scenario_name, scenario_pid in running_scenarios.items():
+        if scenario_pid == pid:
+            scenario = scenario_name
+            break
+    if not scenario:
+        return f"No active scenario found for PID {pid}."
 
-    pid = running_scenarios[scenario]
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return f"Scenario {scenario} with PID {pid} is not running."
+    if not is_running(pid):
+        return f"Scenario {scenario} with PID {pid} was found in file but is not running."
 
+    # First try with SIGTERM
     os.kill(pid, signal.SIGTERM)
+    time.sleep(5)
+    # Then try SIGKILL with exponential backoff
+    if is_running(pid):
+        kill_process(pid)
+
+    if is_running(pid):
+        return f"Could not kill scenario {scenario} with pid {pid} using SIGKILL"
 
     remove_stopped_scenario(scenario, config_dir)
-
-    return f"Stopped scenario {scenario}."
+    return f"Stopped scenario {scenario} with PID {pid}."
 
 
 @jsonrpc.method("list_running_scenarios")
