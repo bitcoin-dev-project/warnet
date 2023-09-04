@@ -26,7 +26,7 @@ def list():
 
 @scenarios.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario", type=str)
-@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED) 
+@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 @click.option("--network", default="warnet", show_default=True)
 def run(scenario, network, additional_args):
     """
@@ -54,15 +54,14 @@ def active(network: str = "warnet"):
 
 
 @scenarios.command()
-@click.argument("scenario", type=str)
-@click.argument("name", type=str)
+@click.argument("pid", type=int)
 @click.option("--network", default="warnet", show_default=True)
-def stop(scenario, network):
+def stop(pid: int, network: str = "warnet"):
     """
-    Stop <scenario> from running on <--network>
+    Stop scenario with <pid> from running on <--network>
     """
     try:
-        params = {"scenario": scenario, "network": network}
+        params = {"pid": pid, "network": network}
         res = rpc_call("stop_scenario", params)
         print(res)
     except Exception as e:
