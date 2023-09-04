@@ -3,6 +3,9 @@ import shutil
 
 
 PORT = 15353
+DNS_SEED_NAME = "dns-seed"
+ZONE_FILE_NAME = "dns-seed.zone"
+NAMED_CONF_NAME = "named.conf.local"
 
 
 class DnsSeed(BaseService):
@@ -11,7 +14,7 @@ class DnsSeed(BaseService):
         self.docker_network = docker_network
         self.templates = templates
         self.service = {
-            "container_name": "dns-seed",
+            "container_name": DNS_SEED_NAME,
             "ports": [f"{PORT}:53/udp", f"{PORT}:53/tcp"],
             "build": {
                 "context": ".",
@@ -20,5 +23,5 @@ class DnsSeed(BaseService):
             "networks": [self.docker_network],
         }
         # Copy files for dockerfile
-        shutil.copy(str(self.templates / "dns-seed.zone"), config_dir)
-        shutil.copy(str(self.templates / "named.conf.local"), config_dir)
+        shutil.copy(str(self.templates / ZONE_FILE_NAME), config_dir)
+        shutil.copy(str(self.templates / NAMED_CONF_NAME), config_dir)
