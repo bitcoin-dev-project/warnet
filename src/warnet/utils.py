@@ -9,6 +9,7 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
+from typing import Dict
 
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
@@ -27,6 +28,7 @@ SUPPORTED_TAGS = [
     "0.16.3",
     "0.15.1",
 ]
+RUNNING_PROC_FILE = "running_scenarios.dat"
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -346,3 +348,44 @@ def bubble_exception_str(func):
             )
 
     return wrapper
+
+
+def save_running_scenario(scenario: str, process, config_dir: Path):
+    with open(config_dir / RUNNING_PROC_FILE, "a") as file:
+        file.write(f"{scenario}\t{process.pid}\n")
+
+
+def load_running_scenarios(config_dir: Path) -> Dict[str, int]:
+    scenarios = {}
+    if os.path.exists(config_dir / RUNNING_PROC_FILE):
+        with open(os.path.join(config_dir, RUNNING_PROC_FILE), "r") as file:
+            for line in file.readlines():
+                scenario, pid = line.strip().split("\t")
+                scenarios[scenario] = int(pid)
+    return scenarios
+
+
+def remove_stopped_scenario(scenario: str, config_dir: Path):
+    lines = []
+    with open(config_dir / RUNNING_PROC_FILE, "r") as file:
+        lines = file.readlines()
+
+    with open(config_dir / RUNNING_PROC_FILE, "w") as file:
+        for line in lines:
+            if not line.startswith(scenario):
+                file.write(line)
+
+
+def update_running_scenarios_file(config_dir: Path, running_scenarios: Dict[str, int]):
+    with open(config_dir / RUNNING_PROC_FILE, "w") as file:
+        for scenario, pid in running_scenarios.items():
+            file.write(f"{scenario}\t{pid}\n")
+
+    # Check if each PID is still running
+    still_running = {}
+    for scenario, pid in running_scenarios.items():
+        try:
+            os.kill(pid, 0)  # Will raise an error if the process doesn't exist
+            still_running[scenario] = pid
+        except OSError:
+            pass
