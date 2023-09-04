@@ -176,14 +176,17 @@ def list():
         print(f"Error listing scenarios: {e}")
 
 
-@scenarios.command()
+@scenarios.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario", type=str)
-def run(scenario):
+@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED) 
+@click.option("--network", default="warnet", show_default=True)
+def run(scenario, network, additional_args):
     """
     Run <scenario> from the Warnet Test Framework
     """
     try:
-        res = rpc_call("run", {"scenario": scenario})
+        params = {"scenario": scenario, "additional_args": additional_args, "network": network}
+        res = rpc_call("run", params)
         print(res)
     except Exception as e:
         print(f"Error running scenario: {e}")
