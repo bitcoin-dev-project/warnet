@@ -1,7 +1,7 @@
 import concurrent.futures
 import logging
 import threading
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 import docker
 
@@ -35,7 +35,9 @@ def get_bitcoin_cli(network: str, index: int, method: str, params=None) -> str:
     return tank.exec(cmd=cmd, user="bitcoin")
 
 
-def get_messages(network: str, src_index: int, dst_index: int) -> List[Optional[str]]:
+def get_messages(
+    network: str, src_index: int, dst_index: int
+) -> List[Optional[Dict[str, Any]]]:
     src_node = Tank.from_docker_env(network, src_index)
     dst_node = Tank.from_docker_env(network, dst_index)
     # start with the IP of the peer
