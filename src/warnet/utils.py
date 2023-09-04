@@ -326,8 +326,8 @@ def gen_config_dir(network: str) -> Path:
     """
     Determine a config dir based on network name
     """
-    xdg_config = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-    config_dir = Path(xdg_config) / "warnet" / network
+    config_dir = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.warnet"))
+    config_dir = Path(config_dir) / "warnet" / network
     return config_dir
 
 
