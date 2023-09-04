@@ -1,5 +1,5 @@
 import click
-from rich import print
+from rich import print as richprint
 
 from templates import TEMPLATES
 from warnet.cli.debug import debug
@@ -30,14 +30,14 @@ def help_command(ctx, command):
     """
     if command is None:
         # Display help for the main CLI
-        print(ctx.parent.get_help())
+        richprint(ctx.parent.get_help())
         return
 
     # Fetch the command object
     cmd_obj = cli.get_command(ctx, command)
 
     if cmd_obj is None:
-        print(f"Unknown command: {command}")
+        richprint(f"Unknown command: {command}")
         return
 
     # Extract only the relevant help information (excluding the initial usage line)
@@ -61,7 +61,7 @@ def help_command(ctx, command):
         args_str = " ".join(arguments)
         usage_str = f"Usage: warnet {command} [OPTIONS] {args_str}\n\n{help_info}"
 
-    print(usage_str)
+    richprint(usage_str)
 
 
 cli.add_command(help_command)
@@ -91,9 +91,9 @@ def rpc(node, method, params, network):
             "bcli",
             {"network": network, "node": node, "method": method_str, "params": params},
         )
-        print(result)
+        richprint(result)
     except Exception as e:
-        print(f"bitcoin-cli {method_str} {params} failed on node {node}:\n{e}")
+        richprint(f"bitcoin-cli {method_str} {params} failed on node {node}:\n{e}")
 
 
 @cli.command()
@@ -107,7 +107,7 @@ def debug_log(node, network):
         result = rpc_call("debug_log", {"node": node, "network": network})
         print(result)
     except Exception as e:
-        print(f"In our pursuit of knowledge from node {node}, we were thwarted: {e}")
+        richprint(f"In our pursuit of knowledge from node {node}, we were thwarted: {e}")
 
 
 @cli.command()
@@ -125,9 +125,9 @@ def messages(node_a, node_b, network):
         result = rpc_call(
             "messages", {"network": network, "node_a": node_a, "node_b": node_b}
         )
-        print(result)
+        richprint(result)
     except Exception as e:
-        print(
+        richprint(
             f"Error fetching messages between {node_a} and {node_b}: {e}"
         )
 
@@ -139,9 +139,9 @@ def stop():
     """
     try:
         result = rpc_call("stop", None)
-        print(result)
+        richprint(result)
     except Exception as e:
-        print(f"Error stopping warnetd: {e}")
+        richprint(f"Error stopping warnetd: {e}")
 
 
 if __name__ == "__main__":
