@@ -111,25 +111,25 @@ pip install -e .
 
 ## Running
 
-Warnet runs a daemon called `warnetd` which can be used to manage multiple warnets.
-`warnetd` will by default log to a file `$XDG_STATE_HOME/warnet/warnet.log` if the `$XDG_STATE_HOME` environment variable is set, otherwise it will use `$HOME/.warnet/warnet.log`.
+Warnet runs a daemon which can be used to manage multiple warnets.
+`warnet` will by default log to a file `$XDG_STATE_HOME/warnet/warnet.log` if the `$XDG_STATE_HOME` environment variable is set, otherwise it will use `$HOME/.warnet/warnet.log`.
 
-To start `warnetd` with your venv activated simply run:
+To start `warnet` in the foreground with your venv activated simply run:
 
 ```bash
-warnetd
+warnet
 ```
 
 > [!NOTE]
-> `warnetd` also accepts a `--no-debug` option which prevents daemonization
+> `warnetd` also accepts a `--daemon` option which runs the process in the background.
 
-Once `warnetd` is running it can be interacted with using the cli tool `warcli`.
-Run `warnet --help` to see a list of possible commands.
+Run `warnet --help` to see a list of options.
 
-All `warnet` commands accept a `--network` option, which allows you to specify the warnet you want to control.
+Once `warnet` is running it can be interacted with using the cli tool `warcli`.
+All `warcli` commands accept a `--network` option, which allows you to specify the warnet you want to control.
 This is set by default to `--network="warnet"` to simplify default operation.
 
-To start an example warnet, with your venv active, run the following command to use the default graph and network:
+To start an example warnet, with your venv active and the server running, run the following command to use the default graph and network:
 
 ```bash
 warcli start
@@ -147,7 +147,7 @@ warcli help networks
 
 Each container is a node as described in the graph, along with various data exporters and a demo grafana dashboard.
 
-The commands listed in `warnet --help` can then be used to control and query the nodes.
+The commands listed in `warcli help` can then be used to control and query the nodes.
 
 ###  Run scenarios on a network
 
@@ -163,7 +163,7 @@ To see available scenarios (loaded from the default directory):
 warcli scenarios list
 ```
 
-Once a scenarios is selected it can be run with `warnet scenarios run <scenario_name> [--network=warnet]`, e.g.:
+Once a scenarios is selected it can be run with `warcli scenarios run <scenario_name> [--network=warnet]`, e.g.:
 
 ```bash
 # Command one node to generate a wallet and fill 100 blocks with 100 txs each
@@ -177,7 +177,7 @@ This will run the run the scenario in the background until it exits or is killed
 Currently the warnet can be stopped, but **not** stopped, persisted and continued.
 Persisting the warnet during a stoppage is WIP.
 
-To stop the warnet, and warnetd daemon:
+To stop the warnet server:
 
 ```bash
 # stop but retain containers
