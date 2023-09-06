@@ -1,10 +1,12 @@
-import { Edge, Node } from "reactflow";
+import { Edge, EdgeChange, Node, NodeChange, OnEdgesChange, OnNodesChange } from "reactflow";
 import { BITCOIN_CORE_BINARY_VERSIONS, CPU_CORES, NODE_LATENCY, RAM_OPTIONS } from "./config";
 import * as NetworkContextExports from "./contexts/network-context";
+import { Dispatch } from "react";
 
 export type GraphNode = {
   id?: number;
   size: number;
+  label?: string;
   name?: string;
   version?: typeof BITCOIN_CORE_BINARY_VERSIONS[number];
   latency?: typeof NODE_LATENCY[number];
@@ -35,8 +37,8 @@ export type NodePersona = {
   latency: string;
   peers: number;
   baseFee: number;
-  edges: Edge<GraphEdge>[];
-  nodes: Node<GraphNode>[];
+  edges: Edge<Partial<GraphEdge>>[];
+  nodes: Node<Partial<GraphNode>>[];
 };
 
 export type NetworkPersona = {
@@ -45,30 +47,34 @@ export type NetworkPersona = {
 }
 
 export type NodeGraphContext = {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
+  nodes: Node<Partial<GraphNode>>[];
+  edges: Edge<Partial<GraphEdge>>[];
   isDialogOpen: boolean;
   openDialog: () => void;
   closeDialog: () => void;
   nodePersonaType: NodePersonaType | null;
-  addNode: (node?: GraphNode) => void;
-  duplicateNode: (node: GraphNode) => void;
+  setNodes: Dispatch<React.SetStateAction<Node<any, string | undefined>[]>>;
+  setEdges: Dispatch<React.SetStateAction<Edge<any>[]>>;
+  addNode: (node?:Node<Partial<GraphNode>>) => void;
+  duplicateNode: (node: Node<Partial<GraphNode>>) => void;
   setNodePersonaFunc: ({type, nodePersona}: NetworkTopology) => void;
   setNodeEdges: (
-    edge: GraphEdge[],
-    selectedNode?: GraphNode,
-    d?: GraphNode
+    edge: Edge<Partial<GraphEdge>>[],
+    selectedNode?: Node<Partial<GraphNode>>,
+    d?:Node<Partial<GraphNode>>
   ) => void;
   showGraph: boolean;
   showGraphFunc: () => void;
   showNodePersonaInfo: () => void;
   nodePersona: NodePersona | null;
   generateNodeGraph: () => void;
-  nodeInfo: GraphNode | null;
-  editNode: (node: GraphNode) => void;
-  deleteNode: (node: GraphNode) => void;
-  updateNodeInfo: <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => void;
+  nodeInfo: Node<Partial<GraphNode>> | null;
+  editNode: (node: Node<Partial<GraphNode>>) => void;
+  deleteNode: (node: Node<Partial<GraphNode>>) => void;
+  updateNodeInfo: (nodeProperty: any, value: any) => void;
   saveEditedNode: () => void;
+  onNodesChange: OnNodesChange;
+  onEdgesChange: OnEdgesChange;
 };
 
 export type NetworkContext = {
