@@ -11,6 +11,7 @@ import threading
 from collections import defaultdict
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+from logging import StreamHandler
 from typing import List, Dict
 from flask import Flask
 from flask_jsonrpc.app import JSONRPC
@@ -53,7 +54,8 @@ logging.basicConfig(
     handlers=[
         RotatingFileHandler(
             LOG_FILE_PATH, maxBytes=16_000_000, backupCount=3, delay=True
-        )
+        ),
+        StreamHandler(sys.stdout)
     ],
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
