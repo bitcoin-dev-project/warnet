@@ -211,7 +211,7 @@ class Tank:
             repo, branch = self.version.split("#")
             build = {
                 "context": str(TEMPLATES),
-                "dockerfile": str(TEMPLATES / "Dockerfile_custom_build"),
+                "dockerfile": str(TEMPLATES / "Dockerfile"),
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
@@ -221,13 +221,13 @@ class Tank:
             # assume it's a release version, get the binary
             build = {
                 "context": str(TEMPLATES),
-                "dockerfile": str(TEMPLATES / f"Dockerfile_{self.version}"),
+                "dockerfile": str(TEMPLATES / f"Dockerfile"),
+                "args": {
+                    "ARCH": "x86_64",
+                    "BITCOIN_URL": "https://bitcoincore.org/bin",
+                    "BITCOIN_VERSION": f"{self.version}",
+                },
             }
-            # Use entrypoint for derived build, but not for compiled build
-            services[self.container_name].update(
-                {"entrypoint": "/warnet_entrypoint.sh"}
-            )
-
         # Add the bitcoind service
         services[self.container_name].update(
             {
