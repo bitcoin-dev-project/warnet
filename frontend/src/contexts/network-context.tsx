@@ -10,7 +10,7 @@ import {
   NodePersona,
   NodePersonaType,
   SavedNetworkGraph,
-} from "@/types";
+} from "@/flowTypes";
 import generateGraphML from "@/helpers/generate-graphml";
 
 const userSteps = {
@@ -24,11 +24,17 @@ export type Steps = (typeof userSteps)[keyof typeof userSteps];
 export const networkContext = React.createContext<NetworkContext>(null!);
 
 const newNode = {
-  id: 0,
+  id: "0",
+  data: {
   name: "new node",
+  label:"new node",
   size: 10,
-  x: CANVAS_WIDTH / 2,
-  y: CANVAS_HEIGHT / 2,
+  },
+  position: {
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT / 2,
+  }
+
 };
 
 const newNetworkTopology: NetworkTopology = {

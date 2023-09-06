@@ -1,13 +1,12 @@
 "use client";
 
 import React from "react";
-
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
 
 import NodeAccordion from "./node-accordion";
-import SelectBox from "./select";
+import { useNodeFlowContext } from "@/contexts/node-flow-context";
+import DefaultSelectBox from "./default-select";
 
 const DialogBox = () => {
   const {
@@ -16,11 +15,11 @@ const DialogBox = () => {
     openDialog,
     showGraphFunc,
     showNodePersonaInfo,
-    steps,
     nodePersonaType,
-  } = useNodeGraphContext();
-
+  } = useNodeFlowContext();
+  let steps = 0;
   const dialogContentStyles = () => {
+  
     switch (steps) {
       case -1:
         return "top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]";
@@ -63,7 +62,7 @@ const DialogBox = () => {
           <Dialog.Description className="text-black mt-[10px] mb-5 text-[15px] leading-normal">
             You can choose your profile here.
           </Dialog.Description>
-          <SelectBox />
+          {/* <DefaultSelectBox /> */}
           <div className="mt-[25px] flex justify-end">
             <Dialog.Close asChild>
               <button
