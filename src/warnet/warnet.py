@@ -47,17 +47,18 @@ class Warnet:
         # shutil.copy(TEMPLATES / FLUENT_CONF, self.config_dir)
 
     def __str__(self) -> str:
-        tanks_str = ",\n".join([str(tank) for tank in self.tanks])
+        template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
+        tanks_str = template % ("Index", "Version", "Conf", "Netem", "IPv4")
+        for tank in self.tanks:
+            tanks_str += template % (tank.index, tank.version, tank.conf, tank.netem, tank.ipv4)
         return (
-            f"Warnet(\n"
+            f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
             f"\tBitcoin Network: {self.bitcoin_network}\n"
             f"\tDocker Network: {self.docker_network}\n"
             f"\tSubnet: {self.subnet}\n"
             f"\tGraph: {self.graph}\n"
-            f"\tTanks: [\n{tanks_str}\n"
-            f"\t]\n"
-            f")"
+            f"Tanks:\n{tanks_str}"
         )
 
     @classmethod
