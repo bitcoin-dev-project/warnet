@@ -7,9 +7,7 @@ import logging
 import shutil
 from copy import deepcopy
 from pathlib import Path
-from docker.api import service
 from docker.models.containers import Container
-from services.fluentd import FLUENT_IP
 from templates import TEMPLATES
 from warnet.utils import (
     exponential_backoff,
@@ -17,6 +15,7 @@ from warnet.utils import (
     sanitize_tc_netem_command,
     dump_bitcoin_conf,
     SUPPORTED_TAGS,
+    get_architecture,
 )
 
 CONTAINER_PREFIX_BITCOIND = "tank"
@@ -223,7 +222,7 @@ class Tank:
                 "context": str(TEMPLATES),
                 "dockerfile": str(TEMPLATES / f"Dockerfile"),
                 "args": {
-                    "ARCH": "x86_64",
+                    "ARCH": get_architecture(),
                     "BITCOIN_URL": "https://bitcoincore.org/bin",
                     "BITCOIN_VERSION": f"{self.version}",
                 },
