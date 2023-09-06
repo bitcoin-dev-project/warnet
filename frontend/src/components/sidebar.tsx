@@ -6,46 +6,13 @@ import NodePersonaInfo from "./node-persona-info";
 import { defaultNodesData } from "@/app/data";
 import NodeList from "./node-list";
 import { NetworkTopology, NodePersona } from "@/types";
+import { useNodeFlowContext } from "@/contexts/node-flow-context";
 
 type SidebarProps = {};
 
-const testPersona: NetworkTopology = {
-  type: "custom",
-  nodePersona: {
-    baseFee: 0.5,
-    id: 12,
-    latency: "10ms",
-    name: "test",
-    nodes: [
-      {
-        size: 10,
-        id: 0,
-        name: "first",
-        latency: "10ms",
-        version: "21.0",
-      },
-      {
-        size: 10,
-        id: 1,
-        name: "second",
-        latency: "10ms",
-        version: "21.0",
-      },
-    ],
-    edges: [
-      {
-        source: 0,
-        target: 1,
-      },
-    ],
-    peers: 2,
-    version: "22.0",
-  },
-};
-
 const Sidebar: FC<SidebarProps> = ({}) => {
   const { addNode, generateNodeGraph } =
-    useNodeGraphContext();
+    useNodeFlowContext();
   
   const addNewNode = () => {
     addNode()

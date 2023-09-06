@@ -3,14 +3,14 @@
 import React from "react";
 
 import { useNetworkContext } from "@/contexts/network-context";
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import * as Dialog from "@radix-ui/react-dialog";
 import SelectBox from "./selectNetwork";
+import { useNodeFlowContext } from "@/contexts/node-flow-context";
 
 const NetworkDialog = () => {
   const { isDialogOpen, closeDialog, openDialog, steps, networkList, setStep, networkTopologyList, selectedNetwork, setSelectedNetwork } =
     useNetworkContext();
-  const {setNodePersonaFunc, showGraphFunc} = useNodeGraphContext()
+  const {setNodePersonaFunc, showGraphFunc} = useNodeFlowContext()
 
   const graphNextStep = () => {
     setNodePersonaFunc({type: selectedNetwork.type, nodePersona: selectedNetwork.nodePersona})
