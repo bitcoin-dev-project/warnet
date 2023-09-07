@@ -135,11 +135,19 @@ To start an example warnet, with your venv active and the server running, run th
 warcli network start
 ```
 
-To see available commands use:
+To generate a random graph, with your venv active and the server running, run the following command to create 20 nodes where each edge has a 30% chance of being connected:
+
+```bash
+warcli graph random 20 0.3
+```
+
+You can save this to a file using the `--file=` option.
+
+To see other available commands use:
 
 ```bash
 # All commands help
-warcli help
+warcli --help
 
 # Sub-command help
 warcli help network
@@ -183,7 +191,7 @@ To stop the warnet server:
 # stop containers but retain images
 warcli network down
 
-# stop warnetd
+# stop warnetd daemon
 warcli stop
 ```
 

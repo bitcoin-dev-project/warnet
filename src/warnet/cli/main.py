@@ -3,6 +3,7 @@ from rich import print as richprint
 
 from templates import TEMPLATES
 from warnet.cli.debug import debug
+from warnet.cli.graph import graph
 from warnet.cli.network import network
 from warnet.cli.rpc import rpc_call
 from warnet.cli.scenarios import scenarios
@@ -16,6 +17,7 @@ def cli():
 
 
 cli.add_command(debug)
+cli.add_command(graph)
 cli.add_command(scenarios)
 cli.add_command(network)
 

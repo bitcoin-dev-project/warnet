@@ -31,6 +31,8 @@ SUPPORTED_TAGS = [
     "0.16.3",
     "0.15.2",
 ]
+WEIGHTED_TAGS = [tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)]
+
 RUNNING_PROC_FILE = "running_scenarios.dat"
 
 

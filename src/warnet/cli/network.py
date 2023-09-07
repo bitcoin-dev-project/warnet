@@ -14,20 +14,19 @@ def network():
     """Network commands"""
 
 
-
 @network.command()
 @click.argument("graph_file", default=EXAMPLE_GRAPH_FILE, type=click.Path())
 @click.option("--force", default=False, is_flag=True, type=bool)
 @click.option("--network", default="warnet", show_default=True)
-def start(
+def from_graph(
     graph_file: Path = EXAMPLE_GRAPH_FILE, force: bool = False, network: str = "warnet"
 ):
     """
-    Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
+    Create a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
     """
     try:
         result = rpc_call(
-            "network_from_file",
+            "network_from_graph",
             {"graph_file": str(graph_file), "force": force, "network": network},
         )
         print(result)

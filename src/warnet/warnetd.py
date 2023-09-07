@@ -12,12 +12,15 @@ from collections import defaultdict
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
+from io import BytesIO
+from pathlib import Path
 from typing import List, Dict
 from flask import Flask
 from flask_jsonrpc.app import JSONRPC
 
+import networkx
 import scenarios
-from warnet.warnet import Warnet
+from warnet.warnet import Warnet, create_graph_with_probability
 from warnet.client import (
     get_bitcoin_cli,
     get_bitcoin_debug_log,
@@ -278,8 +281,21 @@ def generate_compose(graph_file: str, network: str = "warnet") -> str:
         return f.read()
 
 
-@jsonrpc.method("network_from_file")
-def network_from_file(graph_file: str, force: bool = False, network: str = "warnet") -> str:
+@jsonrpc.method("graph_generate")
+def graph_generate(num_nodes: int, probability: float, file: str = "", random: bool = False) -> str:
+    graph = create_graph_with_probability(num_nodes, probability, random)
+    if file:
+        file_path = Path(file)
+        networkx.write_graphml(graph, file_path)
+        return f"Generated graph and written to file: {file}"
+    bio = BytesIO()
+    networkx.write_graphml(graph, bio)
+    xml_data = bio.getvalue()
+    return f"Generated graph:\n{xml_data.decode('utf-8')}"
+
+
+@jsonrpc.method("network_from_graph")
+def network_from_graph(graph_file: str, force: bool = False, network: str = "warnet") -> str:
     """
     Run a warnet with topology loaded from a <graph_file>
     """

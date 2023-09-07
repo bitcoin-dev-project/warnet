@@ -5,6 +5,7 @@
 import docker
 import logging
 import networkx
+import random
 import shutil
 import subprocess
 import yaml
@@ -20,7 +21,7 @@ from services.fork_observer import ForkObserver
 # from services.fluentd import FLUENT_CONF, Fluentd, FLUENT_IP
 from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
+from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge, WEIGHTED_TAGS
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -78,11 +79,14 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_graph(cls, graph):
-        self = cls(Path())
+    def from_graph(cls, graph, config_dir: Path, network: str = "warnet"):
+        self = cls(config_dir)
+        self.docker_network = network
         self.graph = graph
+        # TODO: fix hardcoding
+        networkx.write_graphml(self.graph, self.config_dir / "graph.graphml")
         self.tanks_from_graph()
-        logger.info(f"Created Warnet using directory {self.config_dir}")
+        logger.info(f"Created random Warnet")
         return self
 
     @classmethod
@@ -327,3 +331,15 @@ class Warnet:
             logger.info(f"Wrote file: {prometheus_path}")
         except Exception as e:
             logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
+
+
+def create_graph_with_probability(num_nodes, p, random_version=False):
+    graph = networkx.erdos_renyi_graph(num_nodes, p, directed=True)
+    for node in graph.nodes():
+        if random_version:
+            graph.nodes[node]['version'] = random.choice(WEIGHTED_TAGS)
+        else:
+            graph.nodes[node]['version'] = "25.0"
+        # Would be cool to add random config params here too...
+        graph.nodes[node]['bitcoin_config'] = ""
+    return graph
