@@ -19,13 +19,13 @@ fi
 
 echo "$0: assuming uid:gid for bitcoin:bitcoin of $(id -u bitcoin):$(id -g bitcoin)"
 
-if [ $(echo "$1" | cut -c1) = "-" ]; then
+if [ "$(echo "$1" | cut -c1)" = "-" ]; then
   echo "$0: assuming arguments for bitcoind"
 
   set -- bitcoind "$@"
 fi
 
-if [ $(echo "$1" | cut -c1) = "-" ] || [ "$1" = "bitcoind" ]; then
+if [ "$(echo "$1" | cut -c1)" = "-" ] || [ "$1" = "bitcoind" ]; then
   mkdir -p "$BITCOIN_DATA"
   chmod 700 "$BITCOIN_DATA"
   # Fix permissions for home dir.
@@ -37,6 +37,9 @@ if [ $(echo "$1" | cut -c1) = "-" ] || [ "$1" = "bitcoind" ]; then
 
   set -- "$@" -datadir="$BITCOIN_DATA"
 fi
+
+# Wait for the dns-seed to start returning results
+./check_dns.sh
 
 if [ "$1" = "bitcoind" ] || [ "$1" = "bitcoin-cli" ] || [ "$1" = "bitcoin-tx" ]; then
   echo

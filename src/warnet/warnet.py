@@ -149,7 +149,7 @@ class Warnet:
     @bubble_exception_str
     def generate_zone_file_from_tanks(self):
         records_list = [
-            f"seed.dns-seed.     300 IN  A   {tank.ipv4}" for tank in self.tanks
+            f"x9.dummySeed.invalid.     300 IN  A   {tank.ipv4}" for tank in self.tanks
         ]
         content = []
         with open(str(TEMPLATES / ZONE_FILE_NAME), "r") as f:
@@ -176,12 +176,12 @@ class Warnet:
 
         # Overwrite all existing content
         result = seeder.exec_run(
-            f"sh -c 'echo \"{content_str}\" > /etc/bind/dns-seed.zone'"
+            f"sh -c 'echo \"{content_str}\" > /etc/bind/invalid.zone'"
         )
         logger.debug(f"result of updating {ZONE_FILE_NAME}: {result}")
 
         # Reload that single zone only
-        seeder.exec_run("rndc reload dns-seed")
+        seeder.exec_run("rndc reload invalid")
 
     @bubble_exception_str
     def connect_edges(self):
