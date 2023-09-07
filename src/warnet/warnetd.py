@@ -245,60 +245,6 @@ def list_running_scenarios(network: str = "warnet") -> Dict[str, int]:
     return still_running
 
 
-@jsonrpc.method("up")
-def up(network: str = "warnet") -> str:
-    wn = Warnet.from_network(network=network, tanks=False)
-
-    def thread_start(wn):
-        try:
-            wn.docker_compose_up()
-            # Update warnet from docker here to get ip addresses
-            wn = Warnet.from_docker_env(network)
-            wn.apply_network_conditions()
-            wn.connect_edges()
-            logger.info(
-                f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
-            )
-        except Exception as e:
-            logger.error(f"Exception {e}")
-
-    threading.Thread(target=lambda: thread_start(wn)).start()
-    return f"Resuming warnet..."
-
-
-@jsonrpc.method()
-def from_file(graph_file: str, force: bool = False, network: str = "warnet") -> str:
-    """
-    Run a warnet with topology loaded from a <graph_file>
-    """
-    config_dir = gen_config_dir(network)
-    if config_dir.exists():
-        if force:
-            shutil.rmtree(config_dir)
-        else:
-            return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
-    wn = Warnet.from_graph_file(graph_file, config_dir, network)
-
-    def thread_start(wn):
-        try:
-            wn.write_bitcoin_confs()
-            wn.write_docker_compose()
-            wn.write_prometheus_config()
-            wn.docker_compose_build_up()
-            wn.generate_zone_file_from_tanks()
-            wn.apply_zone_file()
-            wn.apply_network_conditions()
-            wn.connect_edges()
-            logger.info(
-                f"Created warnet named '{network}' from graph file {graph_file}"
-            )
-        except Exception as e:
-            logger.error(f"Exception {e}")
-
-    threading.Thread(target=lambda: thread_start(wn)).start()
-    return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
-
-
 @jsonrpc.method()
 def update_dns_seeder(graph_file: str, network: str = "warnet") -> str:
     try:
@@ -332,8 +278,62 @@ def generate_compose(graph_file: str, network: str = "warnet") -> str:
         return f.read()
 
 
-@jsonrpc.method("down")
-def down(network: str = "warnet") -> str:
+@jsonrpc.method("network_from_file")
+def network_from_file(graph_file: str, force: bool = False, network: str = "warnet") -> str:
+    """
+    Run a warnet with topology loaded from a <graph_file>
+    """
+    config_dir = gen_config_dir(network)
+    if config_dir.exists():
+        if force:
+            shutil.rmtree(config_dir)
+        else:
+            return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
+    wn = Warnet.from_graph_file(graph_file, config_dir, network)
+
+    def thread_start(wn):
+        try:
+            wn.write_bitcoin_confs()
+            wn.write_docker_compose()
+            wn.write_prometheus_config()
+            wn.docker_compose_build_up()
+            wn.generate_zone_file_from_tanks()
+            wn.apply_zone_file()
+            wn.apply_network_conditions()
+            wn.connect_edges()
+            logger.info(
+                f"Created warnet named '{network}' from graph file {graph_file}"
+            )
+        except Exception as e:
+            logger.error(f"Exception {e}")
+
+    threading.Thread(target=lambda: thread_start(wn)).start()
+    return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
+
+
+@jsonrpc.method("network_up")
+def network_up(network: str = "warnet") -> str:
+    wn = Warnet.from_network(network=network, tanks=False)
+
+    def thread_start(wn):
+        try:
+            wn.docker_compose_up()
+            # Update warnet from docker here to get ip addresses
+            wn = Warnet.from_docker_env(network)
+            wn.apply_network_conditions()
+            wn.connect_edges()
+            logger.info(
+                f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
+            )
+        except Exception as e:
+            logger.error(f"Exception {e}")
+
+    threading.Thread(target=lambda: thread_start(wn)).start()
+    return f"Resuming warnet..."
+
+
+@jsonrpc.method("network_down")
+def network_down(network: str = "warnet") -> str:
     """
     Stop all docker containers in <network>.
     """

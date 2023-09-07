@@ -27,7 +27,7 @@ def start(
     """
     try:
         result = rpc_call(
-            "from_file",
+            "network_from_file",
             {"graph_file": str(graph_file), "force": force, "network": network},
         )
         print(result)
@@ -42,7 +42,7 @@ def up(network: str = "warnet"):
     Run 'docker-compose up' on a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("up", {"network": network})
+        result = rpc_call("network_up", {"network": network})
         print(result)
     except Exception as e:
         print(f"Error creating network: {e}")
@@ -55,7 +55,7 @@ def down(network: str = "warnet"):
     Run 'docker-compose down on a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("down", {"network": network})
+        result = rpc_call("network_down", {"network": network})
         print(result)
     except Exception as e:
         print(f"Error running docker-compose down on network {network}: {e}")
