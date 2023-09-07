@@ -1,4 +1,4 @@
-zone "dns-seed" {
+zone "invalid" {
     type master;
-    file "/etc/bind/dns-seed.zone";
+    file "/etc/bind/invalid.zone";
 };

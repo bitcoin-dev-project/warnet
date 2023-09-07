@@ -9,6 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 from docker.models.containers import Container
 from templates import TEMPLATES
+from services.dns_seed import IP_ADDR as DNS_IP_ADDR
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr,
@@ -241,8 +242,11 @@ class Tank:
                         "ipv4_address": f"{self.ipv4}",
                     }
                 },
+                "extra_hosts": [f"dummySeed.invalid:{DNS_IP_ADDR}"], # hack to trick regtest into doing dns lookups
                 "labels": {"warnet": "tank"},
                 "privileged": True,
+                "cap_add": ["NET_ADMIN", "NET_RAW"],
+                "dns": [DNS_IP_ADDR],
                 # "depends_on": ["fluentd"],
                 # "logging": {
                 #     "driver": "fluentd",
