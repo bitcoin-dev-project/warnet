@@ -98,9 +98,7 @@ export const NodeGraphFlowProvider = ({
   
   const duplicateNode = (node: Node<Partial<GraphNode>>) => {
     const length = nodes.length
-    console.log(node);
     const duplicateNode = {...node, id:`${length}`,data:{label:`${node?.data?.label} duplicate`, name:`${node?.data?.label} duplicate`}}
-    console.log(duplicateNode);
     addNode(duplicateNode)
   }
 
