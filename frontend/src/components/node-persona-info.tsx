@@ -4,7 +4,7 @@ import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import { BITCOIN_CORE_BINARY_VERSIONS, NODE_LATENCY } from "@/config";
 
 const NodePersonaInfo = () => {
-  const { nodePersonaType, nodePersona, steps, closeDialog, showGraphFunc } =
+  const { nodePersonaType, nodePersona, closeDialog, showGraphFunc } =
     useNodeGraphContext();
 
   return (

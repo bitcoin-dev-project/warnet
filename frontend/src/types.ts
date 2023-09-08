@@ -1,12 +1,15 @@
-import { Steps } from "./contexts/node-graph-context";
+import { BITCOIN_CORE_BINARY_VERSIONS, CPU_CORES, NODE_LATENCY, RAM_OPTIONS } from "./config";
+import * as NetworkContextExports from "./contexts/network-context";
 
 export type GraphNode = {
   id?: number;
   size: number;
   name?: string;
-  version?: string;
-  latency?: string;
+  version?: typeof BITCOIN_CORE_BINARY_VERSIONS[number];
+  latency?: typeof NODE_LATENCY[number];
   baseFee?: number;
+  ram?: typeof RAM_OPTIONS[number]
+  cpu?: typeof CPU_CORES[number]
   x?: number;
   y?: number;
 };
@@ -35,25 +38,55 @@ export type NodePersona = {
   nodes: GraphNode[];
 };
 
+export type NetworkPersona = {
+  type: NodePersonaType
+  persona: NodePersona
+}
+
 export type NodeGraphContext = {
-  steps: number;
   nodes: GraphNode[];
   edges: GraphEdge[];
   isDialogOpen: boolean;
   openDialog: () => void;
   closeDialog: () => void;
   nodePersonaType: NodePersonaType | null;
-  addNode: (node?: GraphNode[]) => void;
-  setNodePersonaFunc: (persona: NodePersonaType) => void;
+  addNode: (node?: GraphNode) => void;
+  duplicateNode: (node: GraphNode) => void;
+  setNodePersonaFunc: ({type, nodePersona}: NetworkTopology) => void;
   setNodeEdges: (
     edge: GraphEdge[],
     selectedNode?: GraphNode,
     d?: GraphNode
   ) => void;
   showGraph: boolean;
-  setStep: (step: Steps) => void;
   showGraphFunc: () => void;
   showNodePersonaInfo: () => void;
   nodePersona: NodePersona | null;
   generateNodeGraph: () => void;
+  nodeInfo: GraphNode | null;
+  editNode: (node: GraphNode) => void;
+  deleteNode: (node: GraphNode) => void;
+  updateNodeInfo: <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => void;
+  saveEditedNode: () => void;
 };
+
+export type NetworkContext = {
+  steps: NetworkContextExports.Steps;
+  selectedNetwork: NetworkTopology;
+  setSelectedNetwork: (value: NetworkTopology) => void;
+  isDialogOpen: boolean;
+  networkList: SavedNetworkGraph[];
+  networkTopologyList: NetworkTopology[];
+  setNetworkList: (list: SavedNetworkGraph[]) => void;
+  // uploadToNodeGraph: () => void;
+  openDialog: () => void;
+  closeDialog: () => void;
+  setStep: (step: NetworkContextExports.Steps) => void;
+}
+
+export type SavedNetworkGraph = {
+  type: NodePersonaType;
+  nodePersona: NodePersona;
+  date: Date;
+}
+export type NetworkTopology = Omit<SavedNetworkGraph, "date">

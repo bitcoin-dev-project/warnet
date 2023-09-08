@@ -1,36 +1,16 @@
-import React, { useState } from "react";
-
-import { defaultEdgesData, defaultNodesData } from "@/app/data";
+import React, { useState, useEffect } from "react";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
 import {
   GraphEdge,
   GraphNode,
+  NetworkTopology,
   NodeGraphContext,
   NodePersona,
   NodePersonaType,
 } from "@/types";
 import generateGraphML from "@/helpers/generate-graphml";
-
-const defaultNodePersona: NodePersona = {
-  id: 0,
-  name: "Alice",
-  version: "22.0",
-  latency: "10ms",
-  peers: 8,
-  baseFee: 0.5,
-  edges: defaultEdgesData,
-  nodes: defaultNodesData,
-};
-
-const userSteps = {
-  "build your node profile": -1,
-  "Select a persona": 0,
-  "Show node persona info": 1,
-  "Add a node": 2,
-} as const;
-
-export type Steps = (typeof userSteps)[keyof typeof userSteps];
-
+import { defaultNodePersona } from "@/app/data";
+import { v4 } from 'uuid';
 export const nodeGraphContext = React.createContext<NodeGraphContext>(null!);
 
 export const NodeGraphProvider = ({
@@ -47,29 +27,32 @@ export const NodeGraphProvider = ({
   const [nodePersona, setNodePersona] = useState<NodePersona | null>(
     defaultNodePersona
   );
-  const [steps, setSteps] = React.useState<Steps>(-1);
-
+  const [nodeInfo, setNodeInfo] = useState<GraphNode | null>(null)
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
-    setSteps(-1);
+    setNodeInfo(null)
+    // setSteps(-1);
   };
 
-  const setNodePersonaFunc = (persona: NodePersonaType) => {
-    setNodePersonaType(persona), console.log("persona", persona);
+  const setNodePersonaFunc = ({type, nodePersona}: NetworkTopology) => {
+    setNodePersonaType(type)
+    setNodePersona(nodePersona)
+    setNodes(nodePersona.nodes)
+    setNodeEdges(nodePersona.edges)
   };
 
   const showGraphFunc = () => {
-    setSteps(2);
+    // setSteps(2);
     setShowGraph(true);
   };
 
-  const setStep = (step: Steps) => {
-    setSteps(step);
-  };
+  // const setStep = (step: Steps) => {
+  //   setSteps(step);
+  // };
 
   const showNodePersonaInfo = () => {
-    setSteps(1);
+    // setSteps(1);
   };
 
   const setNodeEdges = (edge: GraphEdge[]) => {
@@ -84,44 +67,99 @@ export const NodeGraphProvider = ({
     generateGraphML({ nodes, edges });
   };
 
-  const addNode = (nodeArray?: GraphNode[]) => {
-    if (nodeArray) {
-      setNodes([...nodes, ...nodeArray]);
-      return;
-    }
-    const newNode = [
+  const createNewNode = () => {
+    const newNodesNumber = nodes.filter(node => node.name?.includes("new node")).length
+    const id =(nodes[nodes.length -1]!.id ?? 0) + 1
+    const newNode =
       {
-        id: nodes.length,
-        name: "new node",
+        id,
+        name: "new node " + newNodesNumber,
         size: 10,
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
-      },
-    ];
-    console.log("newNode", newNode);
-    setNodes([...nodes, ...newNode]);
+      }
+    return newNode;
+  }
+
+  const addNode = (node?: GraphNode) => {
+    const newNode = node ? node : createNewNode()
+    setNodes([...nodes, newNode]);
+    setNodeInfo(newNode)
+    openDialog()
   };
 
-  React.useEffect(() => {
-    console.log("nodes", nodes);
-    console.log("edges", edges);
-  }, [nodes, edges]);
+  const editNode = (node: GraphNode) => {
+    setNodeInfo(node)
+    openDialog()
+  }
+  
+  const duplicateNode = (node: GraphNode) => {
+    const duplicateNode = {...node}
+    duplicateNode["id"] = (nodes[nodes.length -1]!.id ?? 0) + 1
+    duplicateNode["name"] = node.name + " duplicate"
+    addNode(duplicateNode)
+  }
+
+  const updateNodeInfo = <K extends keyof GraphNode>(nodeProperty: K, value: GraphNode[K]) => {
+    if (!nodeInfo) return
+    const duplNode = {...nodeInfo}
+    duplNode![nodeProperty] = value
+    setNodeInfo(duplNode)
+  }
+
+  const saveEditedNode = () => {
+    if (!nodeInfo) return;
+    const nodeIndex = nodes.findIndex((node) => node.id === nodeInfo?.id)
+    if (nodeIndex !== -1) {
+      const newList = [...nodes]
+      const newEdges = [...edges]
+      newList[nodeIndex] = nodeInfo
+      const strippedEdges = newEdges.map(({source, target}) => ({source: source.id, target: target.id}))
+      setNodes(newList)
+      setEdges(strippedEdges)
+      closeDialog()
+    }
+  }
+
+  const deleteNode = (node: GraphNode) => {
+    const updatedNodes = nodes.filter(({ id }) => id !== node.id)
+    const newEdges = edges.filter(({source, target}) => {
+      // remove edge if source or target is linked to the node
+      return !(source.id === node.id || target.id === node.id)
+    })
+    setEdges(newEdges)
+    setNodes(updatedNodes)
+  }
+
+  function stripEdges(edges: GraphEdge[]) {
+    return edges.map(({source, target}) => ({source: source.id, target: target.id}))
+  }
+
+  // React.useEffect(() => {
+  //   console.log("nodes", nodes);
+  //   console.log("edges", edges);
+  // }, [nodes, edges]);
 
   return (
     <nodeGraphContext.Provider
       value={{
-        steps,
         nodes,
         edges,
         nodePersona,
         nodePersonaType,
         isDialogOpen,
         showGraph,
+        nodeInfo,
+        updateNodeInfo,
+        editNode,
+        saveEditedNode,
+        // setNodeInfo,
         showGraphFunc,
         openDialog,
         closeDialog,
         addNode,
-        setStep,
+        duplicateNode,
+        deleteNode,
         setNodePersonaFunc,
         showNodePersonaInfo,
         setNodeEdges,

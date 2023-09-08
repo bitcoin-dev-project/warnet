@@ -1,8 +1,15 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, IBM_Plex_Sans } from 'next/font/google'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: "--font-inter" })
+const ibm = IBM_Plex_Sans({ 
+  subsets: ['latin'],
+  weight: ["100", "200", "300", "400", "500", "600", "700"],
+  variable: "--font-ibm",
+  display: "swap",
+  style: ["normal"],
+})
 
 export const metadata: Metadata = {
   title: 'Warnet',
@@ -16,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${inter.variable} ${ibm.variable} font-ibm`}>{children}</body>
     </html>
   )
 }
