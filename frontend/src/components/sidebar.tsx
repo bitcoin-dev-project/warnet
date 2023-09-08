@@ -1,11 +1,5 @@
 import React, { FC } from "react";
-
-import { BITCOIN_CORE_BINARY_VERSIONS } from "@/config";
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
-import NodePersonaInfo from "./node-persona-info";
-import { defaultNodesData } from "@/app/data";
 import NodeList from "./node-list";
-import { NetworkTopology, NodePersona } from "@/types";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
 
 type SidebarProps = {};

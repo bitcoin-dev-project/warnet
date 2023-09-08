@@ -8,7 +8,6 @@ import {
   NodePersona,
   NodePersonaType,
 } from "@/flowTypes";
-import generateGraphML from "@/helpers/generate-graphml";
 import { defaultNodePersona } from "@/app/data";
 import { v4 } from 'uuid';
 import { Edge, Node, useEdgesState, useNodesState } from "reactflow";
