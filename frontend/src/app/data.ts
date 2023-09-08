@@ -33,7 +33,7 @@ export const defaultEdgesData: Edge<Partial<GraphEdge>>[] = [
     target: "3",
   },
   {
-    id: "e6-3",
+    id: "e4-6",
     source: "4",
     target: "6",
   },
@@ -47,6 +47,7 @@ export const defaultEdgesData: Edge<Partial<GraphEdge>>[] = [
 export const defaultNodesData: Node<GraphNode>[] = [
   {
     id: "0",
+    type:"draggable",
     data: {
     name: "node 0",
     label: "node 0",
@@ -62,6 +63,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
   },
   {
     id: "1",
+    type:"draggable",
     data:{
     name: "node 1",
     label: "node 1",
@@ -77,6 +79,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
   },
   {
     id: "2",
+    type:"draggable",
     data:{
     name: "miner node 2",
     label: "miner node 2",
@@ -92,6 +95,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
   },
   {
     id: "3",
+    type:"draggable",
     data:{
     name: "node 3",
     label: "node 3",
@@ -107,6 +111,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
   },
   {
     id: '4',
+    type:"draggable",
     data:{
     name: "node 4",
     label: "node 4",
@@ -122,6 +127,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
   },
   {
     id: "5",
+    type:"draggable",
     data:{
     name: "miner node 5",
     label: "miner node 5",
@@ -137,6 +143,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
   },
   {
     id: "6",
+    type:"draggable",
     data:{
     name: "node 6",
     label: "node 6",
