@@ -293,6 +293,29 @@ def from_file(graph_file: str, force: bool = False, network: str = "warnet") -> 
 
 
 @jsonrpc.method()
+def build_from_graph_file(graph_file: str, force: bool = False, network: str = "warnet") -> str:
+    config_dir = gen_config_dir(network)
+    if config_dir.exists():
+        if force:
+            shutil.rmtree(config_dir)
+        else:
+            return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
+    res = False
+    try:
+        wn = Warnet.from_graph_file(graph_file, config_dir, network)
+        wn.write_bitcoin_confs()
+        wn.write_docker_compose()
+        wn.write_prometheus_config()
+        res = wn.docker_compose_build()
+    except Exception as e:
+        logger.error(f"Exception {e}")
+    if res:
+        return f"Build warnet network named '{network}' with the following parameters:\n{wn}"
+    else:
+        return "Failed to build from graph file. Check logs for more info."
+
+
+@jsonrpc.method()
 def update_dns_seeder(graph_file: str, network: str = "warnet") -> str:
     try:
         config_dir = gen_config_dir(network)

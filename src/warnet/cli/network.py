@@ -36,6 +36,19 @@ def start(
 
 
 @network.command()
+@click.argument("graph_file", default=EXAMPLE_GRAPH_FILE, type=click.Path())
+@click.option("--network", default="warnet", show_default=True)
+def build(graph_file: Path = EXAMPLE_GRAPH_FILE, network: str = "warnet"):
+    """
+    Run 'docker-compose build' on a warnet named <--network> (default: "warnet").
+    """
+    try:
+        result = rpc_call("build_from_graph_file", {"graph_file": str(graph_file), "network": network})
+        print(result)
+    except Exception as e:
+        print(f"Error creating network: {e}")
+
+@network.command()
 @click.option("--network", default="warnet", show_default=True)
 def up(network: str = "warnet"):
     """

@@ -212,6 +212,36 @@ class Warnet:
             )
 
     @bubble_exception_str
+    def docker_compose_build(self) -> bool:
+        command = ["docker-compose", "-p", self.docker_network, "build"]
+        try:
+            with subprocess.Popen(
+                command,
+                cwd=str(self.config_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            ) as process:
+                for line in process.stdout:
+                    logger.info(line.decode().rstrip())
+
+            # Wait for the process to finish and check the return code
+            process.wait()
+            if process.returncode == 0:
+                logger.info(f"The command `{' '.join(command)}` executed successfully.")
+                return True
+            else:
+                logger.error(
+                    f"The command `{' '.join(command)}` in {self.config_dir} exited with code {process.returncode}"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(
+                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
+            )
+            return False
+
+    @bubble_exception_str
     def docker_compose_up(self):
         command = ["docker-compose", "-p", self.docker_network, "up", "-d"]
         try:
