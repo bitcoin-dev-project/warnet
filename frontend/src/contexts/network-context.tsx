@@ -11,7 +11,6 @@ import {
   NodePersonaType,
   SavedNetworkGraph,
 } from "@/flowTypes";
-import generateGraphML from "@/helpers/generate-graphml";
 
 const userSteps = {
   "select config": -1,

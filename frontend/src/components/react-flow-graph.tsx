@@ -1,15 +1,9 @@
 "use client";
 
-import React, {
-  useRef,
-  useEffect,
-  useLayoutEffect,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useCallback, useMemo } from "react";
 import Sidebar from "./sidebar";
 import NodeInfo from "./node-info-dialog";
-import ReactFlow, { Node, addEdge } from "reactflow";
+import ReactFlow, {addEdge } from "reactflow";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
 import DraggableNode from "./DraggableNode";
 

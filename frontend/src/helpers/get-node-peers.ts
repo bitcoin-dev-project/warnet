@@ -1,12 +1,13 @@
-import { GraphEdge, GraphNode } from "@/types";
+import { GraphEdge, GraphNode } from "@/flowTypes";
+import { Edge, Node } from "reactflow";
 
 const getNodePeers = (
-  nodeId: number,
-  nodes: GraphNode[],
-  edges: GraphEdge[]
+  nodeId: number | string,
+  nodes: Node<Partial<GraphNode>>[],
+  edges: Edge<Partial<GraphEdge>>[]
 ) => {
   const nodeEdges = edges.filter(
-    (edge) => edge.source.id === nodeId || edge.target.id === nodeId
+    (edge) => edge.source === nodeId || edge.target === nodeId
   );
   const nodePeers = nodeEdges.map((edge) => {
     return nodes.find((node) => node.id === edge.target);

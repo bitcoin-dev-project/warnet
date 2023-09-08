@@ -1,4 +1,4 @@
-import { GraphEdge, GraphNode } from "@/types";
+import { GraphEdge, GraphNode } from "@/flowTypes";
 import { parse } from "js2xmlparser";
 
 type GraphElement = {

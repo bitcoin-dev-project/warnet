@@ -1,12 +1,11 @@
 import React from 'react'
-import { useNodeGraphContext } from '@/contexts/node-graph-context'
 import { Pencil1Icon, TrashIcon, CopyIcon } from "@radix-ui/react-icons";
 import { useNodeFlowContext } from '@/contexts/node-flow-context';
 import { Node } from 'reactflow';
 import { GraphNode } from '@/flowTypes';
 
 const NodeList = () => {
-  const {closeDialog, nodes, editNode, deleteNode, duplicateNode } = useNodeFlowContext()
+  const { nodes, editNode, deleteNode, duplicateNode } = useNodeFlowContext()
   const handleEditNode = (node: Node<Partial<GraphNode>>) => {
     editNode(node)
   }
