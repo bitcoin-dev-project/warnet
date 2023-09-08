@@ -3,10 +3,10 @@ name: Build warnet
 on:
   push:
     branches:
-      - main
+      - basic_workflow
   pull_request:
     branches:
-      - main
+      - basic_workflow
 
 jobs:
   build:
