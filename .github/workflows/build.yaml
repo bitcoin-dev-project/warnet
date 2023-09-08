@@ -40,7 +40,12 @@ jobs:
           source venv/bin/activate
           warnet --daemon
 
-      - name: Start warcli network # really we just want this to build
+      - name: Build example network
         run: |
           source venv/bin/activate
           warcli network build
+
+      - name: Run example network
+        run: |
+          source venv/bin/activate
+          warcli network up
