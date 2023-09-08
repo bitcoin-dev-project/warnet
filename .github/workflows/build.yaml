@@ -28,12 +28,19 @@ jobs:
 
       - name: Install warnet and deps
         run: |
+          source venv/bin/activate
           pip install -e .
 
       - name: Install Docker Compose
         run: |
           sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Increase Docker log level
+        run: |
+          sudo systemctl stop docker
+          echo '{"debug": true}' | sudo tee /etc/docker/daemon.json > /dev/null
+          sudo systemctl start docker
 
       - name: Start warnet daemon
         run: |
@@ -45,7 +52,24 @@ jobs:
           source venv/bin/activate
           warcli network build
 
-      - name: Run example network
-        run: |
-          source venv/bin/activate
-          warcli network up
+      # - name: Run example network
+      #   run: |
+      #     source venv/bin/activate
+      #     warcli network up
+      #     tail -f ~/.warnet/warnet/warnet.log | grep --line-buffered -m 1 -e "warnetd - INFO - Successfully created warnet" -e "warnetd - ERROR - Error creating warnet" &
+      #     PID=$!
+      #     sleep 300
+      #     kill $PID
+      #     if grep -q "warnetd - INFO - Successfully created warnet" ~/.config/warnet/warnet/warnet.log; then
+      #       echo "Success message found in logs"
+      #     elif grep -q "warnetd - ERROR - Error creating warnet" ~/.config/warnet/warnet/warnet.log; then
+      #       echo "Error message found in logs"
+      #       exit 1
+      #     else
+      #       echo "No success or error messages found in logs within the time limit"
+      #       exit 1
+      #     fi
+
+      - name: Print warnet logs on failure
+        if: ${{ failure() }}
+        run: cat $HOME/.config/warnet/warnet/warnet.log

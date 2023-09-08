@@ -286,7 +286,7 @@ def from_file(graph_file: str, force: bool = False, network: str = "warnet") -> 
                 f"Successfully created warnet named '{network}' from graph file {graph_file}"
             )
         except Exception as e:
-            logger.error(f"Exception {e}")
+            logger.error(f"Error creating warnet named '{network}': {e}")
 
     threading.Thread(target=lambda: thread_start(wn)).start()
     return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
