@@ -1,15 +1,33 @@
 "use client";
 
-import React, { useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import Sidebar from "./sidebar";
 import NodeInfo from "./node-info-dialog";
-import ReactFlow, { Node, addEdge }  from "reactflow";
+import ReactFlow, { Node, addEdge } from "reactflow";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
+import DraggableNode from "./DraggableNode";
 
 const ReactFlowGraph = () => {
-    const { nodes, edges, isDialogOpen, showGraph, setEdges, onNodesChange, onEdgesChange } =
-    useNodeFlowContext();
-    const onConnect = useCallback((params:any) => setEdges((eds) => addEdge(params, eds)), []);
+  const {
+    nodes,
+    edges,
+    isDialogOpen,
+    showGraph,
+    setEdges,
+    onNodesChange,
+    onEdgesChange,
+  } = useNodeFlowContext();
+  const onConnect = useCallback(
+    (params: any) => setEdges((eds) => addEdge(params, eds)),
+    []
+  );
+  const nodeTypes = useMemo(() => ({ draggable: DraggableNode }), []);
   if (!showGraph) {
     return null;
   }
@@ -17,9 +35,19 @@ const ReactFlowGraph = () => {
     <>
       <Sidebar />
       {isDialogOpen && <NodeInfo />}
-      <div id="canvas" className="w-full h-full bg-brand-gray-medium border border-black">
-        <ReactFlow nodes={nodes || []} edges={edges || []} onConnect={onConnect} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} />
-    </div>
+      <div
+        id="canvas"
+        className="w-full h-full bg-brand-gray-medium border border-black"
+      >
+        <ReactFlow
+          nodes={nodes || []}
+          edges={edges || []}
+          onConnect={onConnect}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+        />
+      </div>
     </>
   );
 };
