@@ -1,0 +1,46 @@
+name: Build warnet
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      - name: Create and activate Python virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+
+      - name: Install warnet and deps
+        run: |
+          pip install -e .
+
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Start warnet daemon
+        run: |
+          source venv/bin/activate
+          warnet --daemon
+
+      - name: Start warcli network # really we just want this to build
+        run: |
+          source venv/bin/activate
+          warcli network build
