@@ -2,7 +2,6 @@
 
 import React from "react";
 import NetworkDialog from "@/components/init-dialog";
-import { NodeGraphProvider } from "@/contexts/node-graph-context";
 import { NetworkProvider } from "@/contexts/network-context";
 import ReactFlowGraph from "@/components/react-flow-graph";
 import "reactflow/dist/style.css";

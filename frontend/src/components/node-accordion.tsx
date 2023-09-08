@@ -1,17 +1,16 @@
 import classNames from "classnames";
 import React from "react";
-
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import getNodePeers from "@/helpers/get-node-peers";
 import * as Accordion from "@radix-ui/react-accordion";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
+import { useNodeFlowContext } from "@/contexts/node-flow-context";
 
 type AccordionTriggerProps = React.ComponentProps<typeof Accordion.Trigger>;
 type AccordionContentProps = React.ComponentProps<typeof Accordion.Content>;
 type AccordionItemProps = React.ComponentProps<typeof Accordion.Item>;
 
 const NodeAccordion = () => {
-  const { nodes, edges, closeDialog, showGraphFunc } = useNodeGraphContext();
+  const { nodes, edges, closeDialog, showGraphFunc } = useNodeFlowContext();
 
   return (
     <Accordion.Root
@@ -25,7 +24,7 @@ const NodeAccordion = () => {
         return (
           <AccordionItem value={node?.id!.toString()} key={node.id}>
             <AccordionTrigger>
-              {node.name + " " + `${node?.id! + 1}`}
+              {node?.data?.label + " " + `${node?.id! + 1}`}
             </AccordionTrigger>
             <AccordionContent>
               <div className="flex flex-col gap-y-1">
@@ -34,19 +33,19 @@ const NodeAccordion = () => {
                     core version
                   </p>
                   <p className="text-sm text-black font-light mb-2">
-                    {node.version}
+                    {node.data.version}
                   </p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-sm text-black font-light mb-2">latency</p>
                   <p className="text-sm text-black font-light mb-2">
-                    {node.latency}
+                    {node.data.latency}
                   </p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-sm text-black font-light mb-2">base fee</p>
                   <p className="text-sm text-black font-light mb-2">
-                    {node.baseFee}
+                    {node.data.baseFee}
                   </p>
                 </div>
                 <div className="flex justify-between">

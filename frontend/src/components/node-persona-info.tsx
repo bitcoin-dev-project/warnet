@@ -1,11 +1,10 @@
 import React from "react";
-
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import { BITCOIN_CORE_BINARY_VERSIONS, NODE_LATENCY } from "@/config";
+import { useNodeFlowContext } from "@/contexts/node-flow-context";
 
 const NodePersonaInfo = () => {
   const { nodePersonaType, nodePersona, closeDialog, showGraphFunc } =
-    useNodeGraphContext();
+    useNodeFlowContext();
 
   return (
     <section className={` w-[330px] h-[300px] bg-white rounded-md p-5`}>

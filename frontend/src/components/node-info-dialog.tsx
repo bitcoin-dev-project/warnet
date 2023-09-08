@@ -1,5 +1,4 @@
 import { BITCOIN_CORE_BINARY_VERSIONS, CPU_CORES, NODE_LATENCY, RAM_OPTIONS } from "@/config";
-import { useNodeGraphContext } from "@/contexts/node-graph-context";
 import * as Dialog from "@radix-ui/react-dialog";
 import React, { useEffect, useState } from "react";
 import DefaultSelectBox from "./default-select";
