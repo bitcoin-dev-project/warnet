@@ -74,8 +74,10 @@ export const NodeGraphFlowProvider = ({
       {
         id,
         data:{
-            label:"new node " + newNodesNumber
+            label:"new node " + newNodesNumber,
+            name:"new node " + newNodesNumber,
         },
+        type:"draggable",
         position: {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
