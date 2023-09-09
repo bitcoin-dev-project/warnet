@@ -19,15 +19,17 @@ from test_framework.messages import ser_uint256
 logger = logging.getLogger("utils")
 
 SUPPORTED_TAGS = [
-    "23.0",
-    "22.0",
-    "0.21.1",
-    "0.20.1",
+    "25.0",
+    "24.1",
+    "23.2",
+    "22.1",
+    "0.21.2",
+    "0.20.2",
     "0.19.1",
     "0.18.1",
-    "0.17.1",
+    "0.17.2",
     "0.16.3",
-    "0.15.1",
+    "0.15.2",
 ]
 RUNNING_PROC_FILE = "running_scenarios.dat"
 
