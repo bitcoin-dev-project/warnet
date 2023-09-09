@@ -69,7 +69,8 @@ class Warnet:
         self = cls(config_dir)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(graph_file, destination)
+        if not graph_file == str(destination):
+            shutil.copy(graph_file, destination)
         self.docker_network = network
         self.graph = networkx.read_graphml(graph_file, node_type=int)
         self.tanks_from_graph()
@@ -103,19 +104,11 @@ class Warnet:
     @bubble_exception_str
     def from_docker_env(cls, network_name):
         config_dir = gen_config_dir(network_name)
-        self = cls(config_dir)
-        self.graph = networkx.read_graphml(
-            Path(self.config_dir / self.graph_name), node_type=int
-        )
+        # TODO fix this
+        self = Warnet.from_graph_file(str(config_dir / "graph.graphml"), config_dir)
         self.docker_network = network_name
-        index = 0
-        while index <= 999999:
-            try:
-                self.tanks.append(Tank.from_docker_env(self.docker_network, index))
-                index = index + 1
-            except:
-                assert index == len(self.tanks)
-                break
+        for tank in self.tanks:
+            tank.update_from_docker_env()
         return self
 
     @property

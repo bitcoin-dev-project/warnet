@@ -106,6 +106,11 @@ class Tank:
         ]["IPAddress"]
         return self
 
+    def update_from_docker_env(self):
+        self._ipv4 = self.container.attrs["NetworkSettings"]["Networks"][
+            self.docker_network
+        ]["IPAddress"]
+
     @property
     def suffix(self):
         if self._suffix is None:
