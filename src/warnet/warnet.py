@@ -20,7 +20,7 @@ from services.fork_observer import ForkObserver
 # from services.fluentd import FLUENT_CONF, Fluentd, FLUENT_IP
 from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str
+from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -69,7 +69,8 @@ class Warnet:
         self = cls(config_dir)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(graph_file, destination)
+        if not graph_file == str(destination):
+            shutil.copy(graph_file, destination)
         self.docker_network = network
         self.graph = networkx.read_graphml(graph_file, node_type=int)
         self.tanks_from_graph()
@@ -103,19 +104,11 @@ class Warnet:
     @bubble_exception_str
     def from_docker_env(cls, network_name):
         config_dir = gen_config_dir(network_name)
-        self = cls(config_dir)
-        self.graph = networkx.read_graphml(
-            Path(self.config_dir / self.graph_name), node_type=int
-        )
+        # TODO fix this
+        self = Warnet.from_graph_file(str(config_dir / "graph.graphml"), config_dir)
         self.docker_network = network_name
-        index = 0
-        while index <= 999999:
-            try:
-                self.tanks.append(Tank.from_docker_env(self.docker_network, index))
-                index = index + 1
-            except:
-                assert index == len(self.tanks)
-                break
+        for tank in self.tanks:
+            tank.udate_from_docker_env()
         return self
 
     @property
@@ -186,11 +179,19 @@ class Warnet:
     @bubble_exception_str
     def connect_edges(self):
         for edge in self.graph.edges():
+            logger.info(edge)
             (src, dst) = edge
-            src_tank = self.tanks[int(src)]
+            src_tank = self.tanks[src]
             dst_ip = self.tanks[dst].ipv4
-            logger.info(f"Using `addpeeraddress` to connect tanks {src} to {dst}")
-            cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
+            # <= 20.2 doesn't have addpeeraddress
+            res = version_cmp_ge(src_tank.version, "0.21.0")
+            if res:
+                logger.info(f"Using `addpeeraddress` to connect tanks {src} to {dst}")
+                cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
+            else:
+                logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
+                cmd = f'bitcoin-cli addnode "{dst_ip}:18444" onetry'
+            logger.info(f"Using command: '{cmd}'")
             src_tank.exec(cmd=cmd, user="bitcoin")
 
     @bubble_exception_str

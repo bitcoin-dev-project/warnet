@@ -240,7 +240,7 @@ def list_running_scenarios(network: str = "warnet") -> Dict[str, int]:
 
 @jsonrpc.method("up")
 def up(network: str = "warnet") -> str:
-    wn = Warnet.from_network(network=network, tanks=False)
+    wn = Warnet.from_network(network=network)
 
     def thread_start(wn):
         try:
@@ -283,7 +283,7 @@ def from_file(graph_file: str, force: bool = False, network: str = "warnet") -> 
             wn.apply_network_conditions()
             wn.connect_edges()
             logger.info(
-                f"Created warnet named '{network}' from graph file {graph_file}"
+                f"Successfully created warnet named '{network}' from graph file {graph_file}"
             )
         except Exception as e:
             logger.error(f"Exception {e}")
