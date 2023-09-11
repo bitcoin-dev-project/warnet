@@ -15,10 +15,6 @@ from test_framework.test_node import TestNode
 from test_framework.util import get_rpc_proxy, PortSeed
 from warnet.warnet import Warnet
 
-
-logger = logging.getLogger("test-framework-bridge")
-
-
 class WarnetTestFramework(BitcoinTestFramework):
     def set_test_params(self):
         pass
@@ -30,10 +26,19 @@ class WarnetTestFramework(BitcoinTestFramework):
     # the original methods from BitcoinTestFramework
 
     def setup(self):
+        # hacked from _start_logging()
+        # Scenarios will log plain messages to stdout only, which will can redirected by warnet
+        self.log = logging.getLogger()
+        self.log.setLevel(logging.INFO) # set this to DEBUG to see ALL RPC CALLS
+        ch = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(fmt='%(message)s')
+        ch.setFormatter(formatter)
+        self.log.addHandler(ch)
+
         warnet = Warnet.from_docker_env(self.options.network)
         for i, tank in enumerate(warnet.tanks):
             ip = tank.ipv4
-            logger.info(f"Adding TestNode {i} from {tank.container_name} with IP {ip}")
+            self.log.info(f"Adding TestNode {i} from {tank.container_name} with IP {ip}")
             node = TestNode(
                 i,
                 "",  # datadir path
@@ -64,8 +69,6 @@ class WarnetTestFramework(BitcoinTestFramework):
             os.makedirs(self.options.tmpdir, exist_ok=False)
         else:
             self.options.tmpdir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
-        self._start_logging()
-        self.log.handlers = []
 
         # self.options.cachedir = os.path.abspath(self.options.cachedir)
 

@@ -166,7 +166,14 @@ def run(scenario: str, additional_args: List[str], network: str = "warnet") -> s
             [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
         )
         logger.debug(f"Running {run_cmd}")
-        process = subprocess.Popen(run_cmd, shell=False, preexec_fn=os.setsid)
+
+        with subprocess.Popen(
+            run_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        ) as process:
+            for line in process.stdout:
+                logger.info(line.decode().rstrip())
 
         save_running_scenario(scenario, process, config_dir)
 
