@@ -132,7 +132,7 @@ This is set by default to `--network="warnet"` to simplify default operation.
 To start an example warnet, with your venv active and the server running, run the following command to use the default graph and network:
 
 ```bash
-warcli start
+warcli network start
 ```
 
 To see available commands use:
@@ -142,7 +142,7 @@ To see available commands use:
 warcli help
 
 # Sub-command help
-warcli help networks
+warcli help network
 ```
 
 Each container is a node as described in the graph, along with various data exporters and a demo grafana dashboard.
@@ -167,7 +167,7 @@ Once a scenarios is selected it can be run with `warcli scenarios run <scenario_
 
 ```bash
 # Command one node to generate a wallet and fill 100 blocks with 100 txs each
-warcli scenarios run tx-flood.py
+warcli scenarios run tx_flood
 ```
 
 This will run the run the scenario in the background until it exits or is killed by the user.
@@ -180,7 +180,7 @@ Persisting the warnet during a stoppage is WIP.
 To stop the warnet server:
 
 ```bash
-# stop but retain containers
+# stop containers but retain images
 warcli network down
 
 # stop warnetd
