@@ -1,8 +1,7 @@
-FROM alpine:latest
+FROM debian:bookworm-slim
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apk add --no-cache tor
-
-RUN addgroup -S debian-tor && adduser -S debian-tor -G debian-tor
+RUN apt-get update && apt-get install -y tor
 
 RUN mkdir -p /home/debian-tor/.tor/keys
 RUN chown -R debian-tor:debian-tor /home/debian-tor
