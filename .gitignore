@@ -5,3 +5,4 @@ warnet.egg-info
 .python-version
 .env
 src/templates/Dockerfile_[0-9]*
+fork_observer_config.toml
