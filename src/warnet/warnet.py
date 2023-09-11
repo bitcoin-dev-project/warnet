@@ -20,7 +20,7 @@ from services.fork_observer import ForkObserver
 # from services.fluentd import FLUENT_CONF, Fluentd, FLUENT_IP
 from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str
+from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -187,10 +187,16 @@ class Warnet:
     def connect_edges(self):
         for edge in self.graph.edges():
             (src, dst) = edge
-            src_tank = self.tanks[int(src)]
+            src_tank = self.tanks[src]
             dst_ip = self.tanks[dst].ipv4
-            logger.info(f"Using `addpeeraddress` to connect tanks {src} to {dst}")
-            cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
+            # <= 20.2 doesn't have addpeeraddress
+            res = version_cmp_ge(src_tank.version, "0.21.0")
+            if res:
+                logger.info(f"Using `addpeeraddress` to connect tanks {src} to {dst}")
+                cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
+            else:
+                logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
+                cmd = f'bitcoin-cli addnode "{dst_ip}:18444" onetry'
             src_tank.exec(cmd=cmd, user="bitcoin")
 
     @bubble_exception_str
