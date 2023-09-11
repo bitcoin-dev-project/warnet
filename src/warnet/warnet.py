@@ -175,10 +175,9 @@ class Warnet:
             content_str = f.read().replace("'", "'\\''")
 
         # Overwrite all existing content
-        result = seeder.exec_run(
+        _result = seeder.exec_run(
             f"sh -c 'echo \"{content_str}\" > /etc/bind/invalid.zone'"
         )
-        logger.debug(f"result of updating {ZONE_FILE_NAME}: {result}")
 
         # Reload that single zone only
         seeder.exec_run("rndc reload invalid")
