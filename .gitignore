@@ -8,3 +8,4 @@ docker-compose.yml
 
 src/templates/Dockerfile*
 src/templates/Dockerfile_[0-9]*
+fork_observer_config.toml
