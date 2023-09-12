@@ -9,7 +9,7 @@ import {
   NodePersonaType,
 } from "@/flowTypes";
 import { defaultNodePersona } from "@/app/data";
-import { v4 } from 'uuid';
+import { v4 } from "uuid";
 import { Edge, Node, useEdgesState, useNodesState } from "reactflow";
 import generateGraphML from "@/helpers/generate-graphml";
 export const nodeFlowContext = React.createContext<NodeGraphContext>(null!);
@@ -21,26 +21,26 @@ export const NodeGraphFlowProvider = ({
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [showGraph, setShowGraph] = useState<boolean>(false);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<GraphEdge>([]);
   const [nodePersonaType, setNodePersonaType] =
     useState<NodePersonaType | null>(null);
   const [nodePersona, setNodePersona] = useState<NodePersona | null>(
     defaultNodePersona
   );
-  const [nodeInfo, setNodeInfo] = useState<Node<Partial<GraphNode>> | null>(null)
+  const [nodeInfo, setNodeInfo] = useState<Node<GraphNode> | null>(null);
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
-    setNodeInfo(null)
+    setNodeInfo(null);
     // setSteps(-1);
   };
 
-  const setNodePersonaFunc = ({type, nodePersona}: NetworkTopology) => {
-    setNodePersonaType(type)
-    setNodePersona(nodePersona)
-    setNodes(nodePersona.nodes)
-    setNodeEdges(nodePersona.edges)
+  const setNodePersonaFunc = ({ type, nodePersona }: NetworkTopology) => {
+    setNodePersonaType(type);
+    setNodePersona(nodePersona);
+    setNodes(nodePersona.nodes);
+    setNodeEdges(nodePersona.edges);
   };
 
   const showGraphFunc = () => {
@@ -56,7 +56,7 @@ export const NodeGraphFlowProvider = ({
     // setSteps(1);
   };
 
-  const setNodeEdges = (edge: Edge<Partial<GraphEdge>>[]) => {
+  const setNodeEdges = (edge: Edge<GraphEdge>[]) => {
     setEdges([...edge]);
   };
 
@@ -69,76 +69,94 @@ export const NodeGraphFlowProvider = ({
   };
 
   const createNewNode = () => {
-    const newNodesNumber = nodes.filter(node => node.data?.label.includes("new node")).length
-    const id =(nodes[nodes.length -1]!.id ?? 0) + 1
-    const newNode: Node<Partial<GraphNode>> =
-      {
+    const newNodesNumber = nodes.filter(
+      (node) => node.data?.label?.includes("new node")
+    ).length;
+    const id = (nodes[nodes.length - 1]?.id ?? 0) + 1;
+    const newNode: Node<GraphNode> = {
+      id,
+      data: {
         id,
-        data:{
-            label:"new node " + newNodesNumber,
-            name:"new node " + newNodesNumber,
-        },
-        type:"draggable",
-        position: {
+        label: "new node " + newNodesNumber,
+        size: 10,
+      },
+      type: "draggable",
+      position: {
         x: CANVAS_WIDTH / 2,
         y: CANVAS_HEIGHT / 2,
-        }
-      }
+      },
+    };
     return newNode;
-  }
-
-  const addNode = (node?: Node<Partial<GraphNode>>) => {
-    const newNode = node ? node : createNewNode()
-    setNodes([...nodes, newNode]);
-    setNodeInfo(newNode)
-    openDialog()
   };
 
-  const editNode = (node: Node<Partial<GraphNode>>) => {
+  const addNode = (node?: Node<GraphNode>) => {
+    const newNode = node ? node : createNewNode();
+    setNodes([...nodes, newNode]);
+    setNodeInfo(newNode);
+    openDialog();
+  };
+
+  const editNode = (node: Node<GraphNode>) => {
     setNodeInfo(node)
-    openDialog()
-  }
-  
-  const duplicateNode = (node: Node<Partial<GraphNode>>) => {
-    const length = nodes.length
-    const duplicateNode = {...node, id:`${length}`,data:{label:`${node?.data?.label} duplicate`, name:`${node?.data?.label} duplicate`}}
-    addNode(duplicateNode)
-  }
+    openDialog();
+  };
+
+  const duplicateNode = (node: Node<GraphNode>) => {
+    const id = (nodes[nodes.length - 1]?.id ?? 0) + 1;
+    const length = nodes.length;
+    const duplicateNode = {
+      ...node,
+      id,
+      data: {
+        ...node.data,
+        id,
+        label: `${node?.data?.label} duplicate`,
+      },
+    };
+    addNode(duplicateNode);
+  };
 
   const updateNodeInfo = (nodeProperty: any, value: any) => {
-    if (!nodeInfo) return
-    const duplNode = {...nodeInfo}
+    if (!nodeInfo) return;
+    const duplNode = JSON.parse(JSON.stringify(nodeInfo));
     //@ts-ignore partia will come back to it
-    duplNode.data[nodeProperty]  = value
-    setNodeInfo(duplNode)
-  }
+    duplNode.data[nodeProperty] = value;
+    setNodeInfo(duplNode);
+  };
 
   const saveEditedNode = () => {
     if (!nodeInfo) return;
-    const nodeIndex = nodes.findIndex((node) => node.id === nodeInfo?.id)
+    const nodeIndex = nodes.findIndex((node) => node.id === nodeInfo?.id);
     if (nodeIndex !== -1) {
-      const newList = [...nodes]
-      const newEdges = [...edges]
-      newList[nodeIndex] = nodeInfo
-      const strippedEdges = newEdges.map(({source, target, id}) => ({id,source: source, target: target}))
-      setNodes(newList)
-      setEdges(strippedEdges)
-      closeDialog()
+      const newList = [...nodes];
+      const newEdges = [...edges];
+      newList[nodeIndex] = nodeInfo;
+      const strippedEdges = newEdges.map(({ source, target, id }) => ({
+        id,
+        source: source,
+        target: target,
+      }));
+      setNodes(newList);
+      setEdges(strippedEdges);
+      closeDialog();
     }
-  }
+  };
 
-  const deleteNode = (node: Node<Partial<GraphNode>>) => {
-    const updatedNodes = nodes.filter(({ id }) => id !== node.id)
-    const newEdges = edges.filter(({source, target}) => {
+  const deleteNode = (node: Node<GraphNode>) => {
+    const updatedNodes = nodes.filter(({ id }) => id !== node.id);
+    const newEdges = edges.filter(({ source, target }) => {
       // remove edge if source or target is linked to the node
-      return !(source === node.id || target === node.id)
-    })
-    setEdges(newEdges)
-    setNodes(updatedNodes)
-  }
+      return !(source === node.id || target === node.id);
+    });
+    setEdges(newEdges);
+    setNodes(updatedNodes);
+  };
 
   function stripEdges(edges: GraphEdge[]) {
-    return edges.map(({source, target}) => ({source: source.id, target: target.id}))
+    return edges.map(({ source, target }) => ({
+      source: source.id,
+      target: target.id,
+    }));
   }
 
   // React.useEffect(() => {
@@ -173,7 +191,7 @@ export const NodeGraphFlowProvider = ({
         setNodeEdges,
         generateNodeGraph,
         onNodesChange,
-        onEdgesChange
+        onEdgesChange,
       }}
     >
       {children}
