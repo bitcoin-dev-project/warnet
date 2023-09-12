@@ -1,7 +1,7 @@
 import { GraphEdge, GraphNode, NodePersona, SavedNetworkGraph } from "@/flowTypes";
 import { Edge, Node } from "reactflow";
 
-export const defaultEdgesData: Edge<Partial<GraphEdge>>[] = [
+export const defaultEdgesData: Edge<GraphEdge>[] = [
   {
     id: "e0-1",
     source: "0",
@@ -49,7 +49,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: "0",
     type:"draggable",
     data: {
-    name: "node 0",
+    id: "0",
     label: "node 0",
     version: "20.0",
     latency: "10ms",
@@ -65,7 +65,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: "1",
     type:"draggable",
     data:{
-    name: "node 1",
+    id: "1",
     label: "node 1",
     version: "22.1",
     latency: "20ms",
@@ -81,7 +81,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: "2",
     type:"draggable",
     data:{
-    name: "miner node 2",
+    id: "2",
     label: "miner node 2",
     version: "21.0",
     latency: "5ms",
@@ -97,7 +97,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: "3",
     type:"draggable",
     data:{
-    name: "node 3",
+    id: "3",
     label: "node 3",
     version: "20.0",
     latency: "15ms",
@@ -113,7 +113,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: '4',
     type:"draggable",
     data:{
-    name: "node 4",
+    id: "4",
     label: "node 4",
     version: "22.1",
     latency: "20ms",
@@ -129,7 +129,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: "5",
     type:"draggable",
     data:{
-    name: "miner node 5",
+    id: "5",
     label: "miner node 5",
     version: "21.0",
     latency: "5ms",
@@ -145,7 +145,7 @@ export const defaultNodesData: Node<GraphNode>[] = [
     id: "6",
     type:"draggable",
     data:{
-    name: "node 6",
+    id: "6",
     label: "node 6",
     version: "20.0",
     latency: "15ms",
