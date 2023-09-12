@@ -6,10 +6,10 @@ import { GraphNode } from '@/flowTypes';
 
 const NodeList = () => {
   const { nodes, editNode, deleteNode, duplicateNode } = useNodeFlowContext()
-  const handleEditNode = (node: Node<Partial<GraphNode>>) => {
+  const handleEditNode = (node: Node<GraphNode>) => {
     editNode(node)
   }
-  const SingleNode = ({node}: {node: Node<Partial<GraphNode>> }) => {
+  const SingleNode = ({node}: {node: Node<GraphNode> }) => {
     return (
       <div className='w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium'>
         <div className='flex h-full items-center gap-2'>
