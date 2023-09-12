@@ -10,11 +10,11 @@ def cli_help():
 
 class MinerStd(WarnetTestFramework):
     def set_test_params(self):
-        self.num_nodes = 11
+        self.num_nodes = 12
 
     def run_test(self):
         # PR branch node
-        test_node = self.nodes[10]
+        test_node = self.nodes[11]
         test_wallet = ensure_miner(test_node)
         addr = test_wallet.getnewaddress()
 
@@ -22,7 +22,7 @@ class MinerStd(WarnetTestFramework):
         self.generatetoaddress(test_node, 110, addr)
 
         self.log.info("adding onion addresses from all peers...")
-        for i in range(10):
+        for i in range(11):
             info = self.nodes[i].getnetworkinfo()
             for addr in info["localaddresses"]:
                 if "onion" in addr["address"]:
