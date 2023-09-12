@@ -25,10 +25,11 @@ export const networkContext = React.createContext<NetworkContext>(null!);
 const newNode = {
   id: "0",
   data: {
-  name: "new node",
-  label:"new node",
-  size: 10,
+    id: "0",
+    label:"new node",
+    size: 10,
   },
+  type: "draggable",
   position: {
     x: CANVAS_WIDTH / 2,
     y: CANVAS_HEIGHT / 2,
