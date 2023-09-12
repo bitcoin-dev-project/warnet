@@ -1,9 +1,10 @@
 import { GraphEdge, GraphNode } from "@/flowTypes";
 import { parse } from "js2xmlparser";
+import { Edge, Node } from "reactflow";
 
 type GraphElement = {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
+  nodes: Node<GraphNode>[];
+  edges: Edge<GraphEdge>[];
 };
 
 const generateGraphML = ({ nodes, edges }: GraphElement) => {
@@ -60,25 +61,25 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
             id: node.id,
           },
           data: [
-            { "@": { key: "label" }, "#": node.name },
-            { "@": { key: "size" }, "#": node.size },
-            { "@": { key: "version" }, "#": node.version },
-            { "@": { key: "latency" }, "#": node.latency },
-            { "@": { key: "baseFee" }, "#": node.baseFee },
-            { "@": { key: "x" }, "#": node.x },
-            { "@": { key: "y" }, "#": node.y },
+            { "@": { key: "label" }, "#": node.data.name },
+            { "@": { key: "size" }, "#": node.data.size },
+            { "@": { key: "version" }, "#": node.data.version },
+            { "@": { key: "latency" }, "#": node.data.latency },
+            { "@": { key: "baseFee" }, "#": node.data.baseFee },
+            { "@": { key: "x" }, "#": node.position.x },
+            { "@": { key: "y" }, "#": node.position.y },
           ],
         })),
         edge: edges.map((edge) => ({
           "@": {
-            id: edge.source.id,
-            source: edge.source.id,
-            target: edge.target.id,
+            id: edge.source,
+            source: edge.source,
+            target: edge.target,
           },
-          data: [
-            { "@": { key: "edgelabel" }, "#": edge.source.name },
-            { "@": { key: "weight" }, "#": edge.source.size },
-          ],
+          // data: [
+          //   { "@": { key: "edgelabel" }, "#": edge.data?.value },
+          //   { "@": { key: "weight" }, "#": edge.data?.value },
+          // ],
         })),
       },
     },
