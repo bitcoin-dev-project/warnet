@@ -7,49 +7,49 @@
         <data key="bitcoin_config">uacomment=w0</data>
     </node>
     <node id="1">
-        <data key="version">24.1</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w1</data>
     </node>
     <node id="2">
-        <data key="version">23.2</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w2</data>
     </node>
     <node id="3">
-        <data key="version">22.1</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w3</data>
     </node>
     <node id="4">
-        <data key="version">0.21.2</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w4</data>
     </node>
     <node id="5">
-        <data key="version">0.20.2</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w5</data>
     </node>
     <node id="6">
-        <data key="version">0.19.1</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w6</data>
     </node>
     <node id="7">
-        <data key="version">0.18.1</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w7</data>
     </node>
     <node id="8">
-        <data key="version">0.18.0</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w8</data>
     </node>
     <node id="9">
-        <data key="version">0.17.2</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w9</data>
     </node>
     <node id="10">
-        <data key="version">0.16.3</data>
+        <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w10</data>
     </node>
     <!-- test this pull request -->
     <node id="11">
       <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
-      <data key="bitcoin_config">sensitiverelayowntx=1,debugexclude=addrman,debug=sensitiverelay,debug=tor,debug=net,uacomment=sensitive_relay</data>
+      <data key="bitcoin_config">sensitiverelayowntx=1,uacomment=sensitive_relay</data>
     </node>
     <!-- provide addrs for 8 full + 2 block outbound connections -->
     <edge id="0" source="11" target="0"></edge>
