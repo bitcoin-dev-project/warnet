@@ -114,7 +114,6 @@ export const NodeGraphFlowProvider = ({
   const updateNodeInfo = (nodeProperty: any, value: any) => {
     if (!nodeInfo) return;
     const duplNode = JSON.parse(JSON.stringify(nodeInfo));
-    //@ts-ignore partia will come back to it
     duplNode.data[nodeProperty] = value;
     setNodeInfo(duplNode);
   };
