@@ -45,7 +45,7 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
             id: node.id,
           },
           data: [
-            { "@": { key: "label" }, "#": node.data.name },
+            { "@": { key: "label" }, "#": node.data.label },
             { "@": { key: "size" }, "#": node.data.size },
             { "@": { key: "version" }, "#": node.data.version },
             { "@": { key: "latency" }, "#": node.data.latency },
