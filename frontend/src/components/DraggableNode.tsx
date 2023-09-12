@@ -22,10 +22,10 @@ function DraggableNode({ data, isConnectable }: IDraggableNode) {
         style={nodeStyling}
         isConnectable={isConnectable}
       />
-      <div title={data?.name} className="flex bg-black border items-center gap-x-3 border-[#545454] px-4 py-3.5 font-ibm max-w-[225px] w-full">
+      <div title={data?.label} className="flex bg-black border items-center gap-x-3 border-[#545454] px-4 py-3.5 font-ibm max-w-[225px] w-full">
         <div className="min-w-[16px] max-w-[16px] rounded-full min-h-[16px] max-h-[16px]" style={{background:"#FF0202"}}/>
         <label htmlFor="text" className="first-letter:uppercase max-w-[100%] whitespace-nowrap text-ellipsis overflow-hidden text-xl leading-5">
-          {data?.name}
+          {data?.label}
         </label>
       </div>
       <Handle
