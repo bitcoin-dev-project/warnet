@@ -33,7 +33,6 @@ export const NodeGraphFlowProvider = ({
   const closeDialog = () => {
     setIsDialogOpen(false);
     setNodeInfo(null);
-    // setSteps(-1);
   };
 
   const setNodePersonaFunc = ({ type, nodePersona }: NetworkTopology) => {
@@ -47,10 +46,6 @@ export const NodeGraphFlowProvider = ({
     // setSteps(2);
     setShowGraph(true);
   };
-
-  // const setStep = (step: Steps) => {
-  //   setSteps(step);
-  // };
 
   const showNodePersonaInfo = () => {
     // setSteps(1);
@@ -129,15 +124,8 @@ export const NodeGraphFlowProvider = ({
     const nodeIndex = nodes.findIndex((node) => node.id === nodeInfo?.id);
     if (nodeIndex !== -1) {
       const newList = [...nodes];
-      const newEdges = [...edges];
       newList[nodeIndex] = nodeInfo;
-      const strippedEdges = newEdges.map(({ source, target, id }) => ({
-        id,
-        source: source,
-        target: target,
-      }));
       setNodes(newList);
-      setEdges(strippedEdges);
       closeDialog();
     }
   };
@@ -151,18 +139,6 @@ export const NodeGraphFlowProvider = ({
     setEdges(newEdges);
     setNodes(updatedNodes);
   };
-
-  function stripEdges(edges: GraphEdge[]) {
-    return edges.map(({ source, target }) => ({
-      source: source.id,
-      target: target.id,
-    }));
-  }
-
-  // React.useEffect(() => {
-  //   console.log("nodes", nodes);
-  //   console.log("edges", edges);
-  // }, [nodes, edges]);
 
   return (
     <nodeFlowContext.Provider
@@ -203,7 +179,7 @@ export const useNodeFlowContext = () => {
   const context = React.useContext(nodeFlowContext);
   if (context === undefined) {
     throw new Error(
-      "useNodeGraphContext must be used within a NodeGraphProvider"
+      "useNodeFlowContext must be used within a NodeFlowProvider"
     );
   }
   return context;
