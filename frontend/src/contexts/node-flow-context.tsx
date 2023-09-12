@@ -11,6 +11,7 @@ import {
 import { defaultNodePersona } from "@/app/data";
 import { v4 } from 'uuid';
 import { Edge, Node, useEdgesState, useNodesState } from "reactflow";
+import generateGraphML from "@/helpers/generate-graphml";
 export const nodeFlowContext = React.createContext<NodeGraphContext>(null!);
 
 export const NodeGraphFlowProvider = ({
@@ -64,7 +65,7 @@ export const NodeGraphFlowProvider = ({
     //   nodes: nodes,
     //   edges: edges,
     // };
-    // generateGraphML({ nodes, edges });
+    generateGraphML({ nodes, edges });
   };
 
   const createNewNode = () => {
