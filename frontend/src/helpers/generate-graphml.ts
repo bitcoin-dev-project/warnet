@@ -20,22 +20,6 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
       },
       {
         "@": {
-          id: "edgelabel",
-          for: "edge",
-          attr_name: "Edge Label",
-          attr_type: "string",
-        },
-      },
-      {
-        "@": {
-          id: "weight",
-          for: "edge",
-          attr_name: "weight",
-          attr_type: "double",
-        },
-      },
-      {
-        "@": {
           id: "size",
           for: "node",
           attr_name: "size",
@@ -76,10 +60,6 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
             source: edge.source,
             target: edge.target,
           },
-          // data: [
-          //   { "@": { key: "edgelabel" }, "#": edge.data?.value },
-          //   { "@": { key: "weight" }, "#": edge.data?.value },
-          // ],
         })),
       },
     },
