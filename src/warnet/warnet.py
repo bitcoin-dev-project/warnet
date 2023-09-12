@@ -90,6 +90,7 @@ class Warnet:
     def from_network(
         cls, config_dir: Path = Path(), network: str = "warnet", tanks=True
     ):
+        config_dir = gen_config_dir(network)
         self = cls(config_dir)
         self.config_dir = gen_config_dir(network)
         self.graph = networkx.read_graphml(
