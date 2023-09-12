@@ -4,6 +4,7 @@
 
 import docker
 import logging
+import os
 import shutil
 from copy import deepcopy
 from pathlib import Path
@@ -91,9 +92,11 @@ class Tank:
     rpc_password = "{self.rpc_password}"
 """
             )
-        self.config_dir = self.warnet.config_dir / str(self.suffix)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.write_torrc()
+        self.config_dir = Path(self.warnet.config_dir / str(self.suffix))
+        if not self.config_dir.exists(): # first time setup
+            self.config_dir.mkdir(parents=True)
+            self.bitcoin_data_dir.mkdir()
+            self.write_torrc()
         return self
 
     @classmethod
@@ -139,6 +142,10 @@ class Tank:
         if self._container is None:
             self._container = docker.from_env().containers.get(self.container_name)
         return self._container
+
+    @property
+    def bitcoin_data_dir(self) -> Path:
+        return self.config_dir / "bitcoin_data"
 
     @exponential_backoff()
     def exec(self, cmd: str, user: str = "root"):
@@ -187,7 +194,7 @@ class Tank:
         conf[self.bitcoin_network].append(("rpcport", self.rpc_port))
 
         conf_file = dump_bitcoin_conf(conf)
-        path = self.config_dir / f"bitcoin.conf"
+        path = self.bitcoin_data_dir / f"bitcoin.conf"
         logger.info(f"Wrote file {path}")
         with open(path, "w") as file:
             file.write(conf_file)
@@ -215,6 +222,8 @@ class Tank:
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
+                    "UID": os.getuid(),
+                    "GID": os.getgid(),
                 },
             }
         else:
@@ -226,6 +235,8 @@ class Tank:
                     "ARCH": get_architecture(),
                     "BITCOIN_URL": "https://bitcoincore.org/bin",
                     "BITCOIN_VERSION": f"{self.version}",
+                    "UID": os.getuid(),
+                    "GID": os.getgid(),
                 },
             }
         # Add the bitcoind service
@@ -234,7 +245,7 @@ class Tank:
                 "container_name": self.container_name,
                 "build": build,
                 "volumes": [
-                    f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
+                    f"{self.bitcoin_data_dir}:/home/bitcoin/.bitcoin",
                     f"{self.torrc_file}:/etc/tor/torrc_original",
                 ],
                 "networks": {

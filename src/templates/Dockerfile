@@ -50,8 +50,8 @@ RUN set -ex \
 # shrink image size with a second stage
 FROM debian:bookworm-slim
 
-ARG UID=3338
-ARG GID=3338
+ARG UID=1000
+ARG GID=1000
 ARG REPO
 # env var overrides
 ENV UID=$UID
