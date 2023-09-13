@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo } from "react";
 import Sidebar from "./sidebar";
 import NodeInfo from "./node-info-dialog";
-import ReactFlow, { addEdge } from "reactflow";
+import ReactFlow, { addEdge, Background, BackgroundVariant, NodeDragHandler, OnMove } from "reactflow";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
 import DraggableNode from "./DraggableNode";
 
@@ -11,6 +11,8 @@ const ReactFlowGraph = () => {
   const {
     nodes,
     edges,
+    nodeInfo,
+    selectNode,
     isDialogOpen,
     showGraph,
     setEdges,
@@ -24,6 +26,11 @@ const ReactFlowGraph = () => {
   const nodeTypes = useMemo(() => ({ draggable: DraggableNode }), []);
   if (!showGraph) {
     return null;
+  }
+  const handleNodeDrag: NodeDragHandler = (e) => {
+    const { id } = e.target as HTMLElement
+    if (!id || nodeInfo?.id === id) return
+    selectNode(id)
   }
   return (
     <>
@@ -40,6 +47,7 @@ const ReactFlowGraph = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
+          onNodeDragStart={handleNodeDrag}
         />
       </div>
     </>
