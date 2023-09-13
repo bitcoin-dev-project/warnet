@@ -183,7 +183,7 @@ To stop the warnet server:
 # stop containers but retain images
 warcli network down
 
-# stop warnetd
+# stop warnet
 warcli stop
 ```
 
