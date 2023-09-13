@@ -26,10 +26,6 @@ from warnet.client import (
 from warnet.utils import (
     exponential_backoff,
     gen_config_dir,
-    save_running_scenario,
-    load_running_scenarios,
-    remove_stopped_scenario,
-    update_running_scenarios_file,
 )
 
 WARNET_SERVER_PORT = 9276
@@ -44,6 +40,7 @@ class Server():
             # XDG_STATE_HOME / warnet / warnet.log
             self.basedir = os.path.join(self.basedir, "warnet")
 
+        self.running_scenarios = []
 
         self.app = Flask(__name__)
         self.jsonrpc = JSONRPC(self.app, "/api")
@@ -161,26 +158,22 @@ class Server():
             raise Exception(f"{e}")
 
 
-    def list(self) -> List[str]:
+    def list(self) -> List[tuple]:
         """
         List available scenarios in the Warnet Test Framework
         """
         try:
-            sc = []
+            scenario_list = []
             for s in pkgutil.iter_modules(scenarios.__path__):
                 m = pkgutil.resolve_name(f"scenarios.{s.name}")
                 if hasattr(m, "cli_help"):
-                    sc.append(f"{s.name.ljust(20)}, {m.cli_help()}")
-            return sc
+                    scenario_list.append((s.name, m.cli_help()))
+            return scenario_list
         except Exception as e:
             return [f"Exception {e}"]
 
 
-    running_scenarios = defaultdict(dict)
-
-
     def run(self, scenario: str, additional_args: List[str], network: str = "warnet") -> str:
-        config_dir = gen_config_dir(network)
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
 
@@ -188,85 +181,49 @@ class Server():
             return f"Scenario {scenario} not found at {scenario_path}."
 
         try:
-            run_cmd = (
-                [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
-            )
+            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
             self.logger.debug(f"Running {run_cmd}")
 
-            with subprocess.Popen(
+            proc = subprocess.Popen(
                 run_cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                for line in process.stdout:
+                stderr=subprocess.PIPE,
+            )
+
+            def proc_logger():
+                for line in proc.stdout:
                     self.logger.info(line.decode().rstrip())
+            t = threading.Thread(target=lambda: proc_logger())
+            t.daemon = True
+            t.start()
 
-            save_running_scenario(scenario, process, config_dir)
+            self.running_scenarios.append({
+                "pid": proc.pid,
+                "cmd": f"{scenario} {' '.join(additional_args)}",
+                "proc": proc
+            })
 
-            return f"Running scenario {scenario} in the background..."
+            return f"Running scenario {scenario} with PID {proc.pid} in the background..."
         except Exception as e:
             self.logger.error(f"Exception occurred while running the scenario: {e}")
             return f"Exception {e}"
 
 
     def stop_scenario(self, pid: int, network: str = "warnet") -> str:
+        for sc in self.running_scenarios:
+            if pid == sc["pid"]:
+                sc["proc"].terminate()
+                return f"Stopped scenario with PID {pid}."
 
-        def is_running(pid):
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
-                return False
-            return True
-
-        @exponential_backoff()
-        def kill_process(pid):
-            os.kill(pid, signal.SIGKILL)
-
-        config_dir = gen_config_dir(network)
-        running_scenarios = load_running_scenarios(config_dir)
-
-        scenario = None
-        for scenario_name, scenario_pid in running_scenarios.items():
-            if scenario_pid == pid:
-                scenario = scenario_name
-                break
-        if not scenario:
-            return f"No active scenario found for PID {pid}."
-
-        if not is_running(pid):
-            return f"Scenario {scenario} with PID {pid} was found in file but is not running."
-
-        # First try with SIGTERM
-        os.kill(pid, signal.SIGTERM)
-        time.sleep(5)
-        # Then try SIGKILL with exponential backoff
-        if is_running(pid):
-            kill_process(pid)
-
-        if is_running(pid):
-            return f"Could not kill scenario {scenario} with pid {pid} using SIGKILL"
-
-        remove_stopped_scenario(scenario, config_dir)
-        return f"Stopped scenario {scenario} with PID {pid}."
+        return f"Could not find scenario with PID {pid}."
 
 
-    def list_running_scenarios(self, network: str = "warnet") -> Dict[str, int]:
-        config_dir = gen_config_dir(network)
-        running_scenarios = load_running_scenarios(config_dir)
-
-        # Check if each PID is still running
-        still_running = {}
-        for scenario, pid in running_scenarios.items():
-            try:
-                os.kill(pid, 0)  # Will raise an error if the process doesn't exist
-                still_running[scenario] = pid
-            except OSError:
-                pass
-
-        # Update the file with only the still running scenarios
-        update_running_scenarios_file(config_dir, still_running)
-
-        return still_running
+    def list_running_scenarios(self, network: str = "warnet") -> List[Dict]:
+        return [{
+            "pid": sc["pid"],
+            "cmd": sc["cmd"],
+            "active": sc["proc"].poll() is None
+        } for sc in self.running_scenarios]
 
 
     def up(self, network: str = "warnet") -> str:
@@ -375,7 +332,7 @@ def run_server():
     # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
     # "If the debug flag is set the server will automatically reload
     # for code changes and show a debugger in case an exception happened."
-    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
+    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=True)
 
 
 if __name__ == "__main__":
