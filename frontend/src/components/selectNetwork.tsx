@@ -6,7 +6,6 @@ import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import * as Select from "@radix-ui/react-select";
 
 const SelectBox = ({list, value, updateSelection}: {list: NetworkTopology[], value: NetworkTopology, updateSelection: (value: NetworkTopology) => void}) => {
-console.log(list, "test")
   const onSelectChange = (value: string) => {
     const network = list.find(network => network.nodePersona.name === value)
     if (!network) return
