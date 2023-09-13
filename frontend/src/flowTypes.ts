@@ -14,6 +14,7 @@ export type GraphNode = {
   cpu?: typeof CPU_CORES[number]
   x?: number;
   y?: number;
+  bitcoin_conf?:any; //we don't know the all the structure yet
 };
 
 export type GraphEdge = {
