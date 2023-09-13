@@ -250,6 +250,13 @@ class Tank:
                 #         "tag": "{{.Name}}"
                 #     }
                 # }
+                "healthcheck": {
+                    "test": ["CMD", "gosu", "bitcoin", "bitcoin-cli", "getblockchaininfo"],
+                    "interval": "30s",
+                    "timeout": "10s",
+                    "start_period": "10s",
+                    "retries": "3",
+                },
             }
         )
 
