@@ -18,6 +18,7 @@ from warnet.utils import (
     SUPPORTED_TAGS,
     get_architecture,
 )
+from warnet.resources import resource_profiles
 
 CONTAINER_PREFIX_BITCOIND = "tank"
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
@@ -35,6 +36,7 @@ class Tank:
         self.conf_file = None
         self.torrc_file = None
         self.netem = None
+        self.resource_profile = None
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
@@ -53,6 +55,7 @@ class Tank:
             f"\tConf: {self.conf}\n"
             f"\tConf File: {self.conf_file}\n"
             f"\tNetem: {self.netem}\n"
+            f"\tProfile: {self.resource_profile}\n"
             f"\tIPv4: {self._ipv4}\n"
             f"\t)"
         )
@@ -78,6 +81,13 @@ class Tank:
             self.conf = node["bitcoin_config"]
         if "tc_netem" in node:
             self.netem = node["tc_netem"]
+        # TODO: updgrade to use docker swarm mode, then we can properly set CPU#'s
+        if "profile" in node:
+            if node["profile"] not in resource_profiles:
+                logger.warning(f"Unknown profile {node['profile']} set for node {self.index}")
+            else:
+                self.resource_profile = resource_profiles[node["profile"]]
+                logger.debug(f"Setting profile {node['profile']} for node {self.index}")
         with open(self.warnet.fork_observer_config, "a") as f:
             f.write(
                 f"""
@@ -160,8 +170,8 @@ class Tank:
             return
 
         # Apply the network condition to the container
-        rcode, result = self.exec(self.netem)
-        if rcode == 0:
+        result = self.container.exec_run(cmd=self.netem, user="root")
+        if result.exit_code == 0:
             logger.info(
                 f"Successfully applied network conditions to {self.container_name}: `{self.netem}`"
             )
@@ -257,6 +267,14 @@ class Tank:
                 # }
             }
         )
+        # this could be updated to deploy {CPU, memory} if we use swarm or similar
+        if self.resource_profile:
+            services[self.container_name].update(
+                {
+                    "cpu_shares": int(self.resource_profile.get("cpus", "0.5")) * 1024,
+                    "mem_limit": self.resource_profile.get("memory", "512M"),
+                }
+            )
 
         # Add the prometheus data exporter in a neighboring container
         services[self.exporter_name] = {
