@@ -143,6 +143,15 @@ warcli graph random 20 0.3
 
 You can save this to a file using the `--file=` option.
 
+You can use the `graph create` subcommand to generate arbitrary networkx graphs from their list of generators:
+
+```bash
+# list networkx graph generators
+warcli graph list
+# use a name to generate a graph of 10 nodes connected in a ring
+warcli graph create cycle_graph 10
+```
+
 To see other available commands use:
 
 ```bash
