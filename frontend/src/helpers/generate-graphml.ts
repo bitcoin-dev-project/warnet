@@ -40,20 +40,29 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
         edgedefault: "directed",
       },
       "#": {
-        node: nodes.map((node) => ({
-          "@": {
-            id: node.id,
-          },
-          data: [
-            { "@": { key: "label" }, "#": node.data.label },
-            { "@": { key: "size" }, "#": node.data.size },
-            { "@": { key: "version" }, "#": node.data.version },
-            { "@": { key: "latency" }, "#": node.data.latency },
-            { "@": { key: "baseFee" }, "#": node.data.baseFee },
-            { "@": { key: "x" }, "#": node.position.x },
-            { "@": { key: "y" }, "#": node.position.y },
-          ],
-        })),
+        node: nodes.map((node) => {
+          const nodesBitcoinConf =
+            Object.entries(node.data?.bitcoin_conf || {}).flat() || [];
+          let result = "";
+          for (let i = 2; i < nodesBitcoinConf.length; i += 2) {
+            result += `${nodesBitcoinConf[i]}=${nodesBitcoinConf[i + 1]},`;
+          }
+          return {
+            "@": {
+              id: node.id,
+            },
+            data: [
+              { "@": { key: "label" }, "#": node.data.label },
+              { "@": { key: "size" }, "#": node.data.size },
+              { "@": { key: "version" }, "#": node.data.version },
+              { "@": { key: "latency" }, "#": node.data.latency },
+              { "@": { key: "baseFee" }, "#": node.data.baseFee },
+              { "@": { key: "x" }, "#": node.position.x },
+              { "@": { key: "y" }, "#": node.position.y },
+              { "@": { key: "bitcoin_conf" }, "#": result },
+            ],
+          };
+        }),
         edge: edges.map((edge) => ({
           "@": {
             id: edge.source,
@@ -68,7 +77,6 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
   const xml = parse("graphml", graphmlData);
   const blob = new Blob([xml], { type: "application/xml" });
   const url = URL.createObjectURL(blob);
-  console.log({ xml });
   const a = document.createElement("a");
   a.href = url;
   a.download = "graph.graphml";
