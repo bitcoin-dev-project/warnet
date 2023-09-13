@@ -24,6 +24,7 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  overflow-y: scroll;
 }
 
 .init_dialog_table_config td, .init_dialog_table_config th {
@@ -45,3 +46,4 @@ body {
   color: #777;
   font-size: 12px;
 }
+
