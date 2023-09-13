@@ -1,3 +1,4 @@
+import { useNodeFlowContext } from "@/contexts/node-flow-context";
 import { GraphNode } from "@/flowTypes";
 import { useCallback } from "react";
 import { Handle, Position } from "reactflow";
@@ -7,6 +8,9 @@ interface IDraggableNode {
   isConnectable: boolean;
 }
 function DraggableNode({ data, isConnectable }: IDraggableNode) {
+  const { nodeInfo } = useNodeFlowContext();
+  const isSelected = nodeInfo?.id === data.id
+
   const nodeStyling = {
     background: "#0F62FE",
     minHeight: "64px",
@@ -15,16 +19,19 @@ function DraggableNode({ data, isConnectable }: IDraggableNode) {
     borderRadius:"11px"
   };
   return (
-    <div >
+    <div 
+      data-node-highlight={isSelected || null} 
+      className="group data-[node-highlight]:shadow-[0_0_25px_rgba(255,170,51,0.4)]"
+    >
       <Handle
         type="target"
         position={Position.Left}
         style={nodeStyling}
         isConnectable={isConnectable}
       />
-      <div title={data?.label} className="flex bg-black border items-center gap-x-3 border-[#545454] px-4 py-3.5 font-ibm max-w-[225px] w-full">
-        <div className="min-w-[16px] max-w-[16px] rounded-full min-h-[16px] max-h-[16px]" style={{background:"#FF0202"}}/>
-        <label htmlFor="text" className="first-letter:uppercase max-w-[100%] whitespace-nowrap text-ellipsis overflow-hidden text-xl leading-5">
+      <div id={data.id} title={data?.label} className="flex bg-black group-data-[node-highlight]:bg-orange-200 border items-center gap-x-3 border-[#545454] px-4 py-3.5 font-ibm max-w-[225px] w-full">
+        <div className="min-w-[16px] max-w-[16px] rounded-full min-h-[16px] max-h-[16px] bg-[#FF0202]"/>
+        <label htmlFor="text" className="group-data-[node-highlight]:text-black first-letter:uppercase max-w-[100%] whitespace-nowrap text-ellipsis overflow-hidden text-xl leading-5 pointer-events-none">
           {data?.label}
         </label>
       </div>
