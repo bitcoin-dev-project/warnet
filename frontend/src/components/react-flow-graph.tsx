@@ -32,6 +32,9 @@ const ReactFlowGraph = () => {
     if (!id || nodeInfo?.id === id) return
     selectNode(id)
   }
+  const handlePaneClick = (e: React.MouseEvent<Element, MouseEvent>) => {
+    selectNode(null)
+  }
   return (
     <>
       <Sidebar />
@@ -48,6 +51,7 @@ const ReactFlowGraph = () => {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           onNodeDragStart={handleNodeDrag}
+          onPaneClick={handlePaneClick}
         />
       </div>
     </>

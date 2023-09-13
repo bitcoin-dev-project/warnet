@@ -90,7 +90,11 @@ export const NodeGraphFlowProvider = ({
     openDialog();
   };
 
-  const selectNode = (id: Node["id"]) => {
+  const selectNode = (id: Node["id"] | null) => {
+    if (!id) {
+      setNodeInfo(null)
+      return
+    }
     const node = nodes.find((_node) => _node.id === id)
     if (node) {
       setNodeInfo(node)
