@@ -32,7 +32,6 @@ export const NodeGraphFlowProvider = ({
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
-    setNodeInfo(null);
   };
 
   const setNodePersonaFunc = ({ type, nodePersona }: NetworkTopology) => {
@@ -89,6 +88,13 @@ export const NodeGraphFlowProvider = ({
     setNodes([...nodes, newNode]);
     setNodeInfo(newNode);
     openDialog();
+  };
+
+  const selectNode = (id: Node["id"]) => {
+    const node = nodes.find((_node) => _node.id === id)
+    if (node) {
+      setNodeInfo(node)
+    }
   };
 
   const editNode = (node: Node<GraphNode>) => {
@@ -154,6 +160,7 @@ export const NodeGraphFlowProvider = ({
         updateNodeInfo,
         editNode,
         saveEditedNode,
+        selectNode,
         // setNodeInfo,
         showGraphFunc,
         openDialog,

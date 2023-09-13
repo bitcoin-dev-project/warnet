@@ -5,18 +5,23 @@ import { Node } from 'reactflow';
 import { GraphNode } from '@/flowTypes';
 
 const NodeList = () => {
-  const { nodes, editNode, deleteNode, duplicateNode } = useNodeFlowContext()
+  const { nodes, editNode, deleteNode, duplicateNode, nodeInfo } = useNodeFlowContext()
+
   const handleEditNode = (node: Node<GraphNode>) => {
     editNode(node)
   }
   const SingleNode = ({node}: {node: Node<GraphNode> }) => {
+    const isSelected = nodeInfo?.id === node.id
     return (
-      <div className='w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium'>
+      <div 
+        data-node-highlight={isSelected || null} 
+        className="data-[node-highlight]:bg-orange-200 data-[node-highlight]:text-black w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium"
+      >
         <div className='flex h-full items-center gap-2'>
           <span className='w-3 h-3 rounded-full bg-red-300'></span>
           <p>{node?.data?.label}</p>
         </div>
-        <div className='flex gap-2 text-white'>
+        <div className='flex gap-2 text-black'>
           <button onClick={() => duplicateNode(node)} className='p-1 hover:text-brand-gray-light'>
             <CopyIcon className='' />
           </button>
