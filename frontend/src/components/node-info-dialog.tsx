@@ -137,6 +137,7 @@ const NodeInfo = () => {
                 id="bitcoin_conf"
                 type="file"
                 onChange={(e) => handleFileChange(e)}
+                accept=".conf"
                 placeholder="My Network"
                 className="h-[45px] px-[15px] w-[280px] hidden file:bg-black border-b-[1px] border-brand-gray-medium bg-brand-gray-dark placeholder:text-sm placeholder:text-brand-text-dark"
               />
