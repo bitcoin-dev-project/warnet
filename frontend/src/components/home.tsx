@@ -14,7 +14,7 @@ const HomePage = () => {
                 <div className='flex flex-col gap-6'>
                     <section className='flex gap-3 items-center justify-items-center'>
                         <Image src={BitcoinLogo} alt='bitcoin logo' className='w-12 h-12 md:w-12 md:h-12 xl:w-20 xl:h-20' />
-                        <h2 className='font-bold xl:text-custom-logo text-5xl md:text-5xl xl:text-6xl leading-none text-custom-purple'>warnet</h2>
+                        <h2 className='font-bold xl:text-custom-logo text-5xl md:text-5xl xl:text-6xl leading-none text-brand-purple'>warnet</h2>
                     </section>
                     <p className='text-2xl md:text-2xl lg:text-3xl xl:text-4xl'>Monitor and analyze the emergent behaviors of P2P networks</p>
                 </div>
@@ -24,13 +24,18 @@ const HomePage = () => {
                     <p>Break the warnet before it comes to mainnet</p>
                     <p>Monitor extreme and yet unknown network behaviors</p>
                     <Link
-                        className='py-5 px-6 border-2 text-center text-custom-purple border-custom-purple sm:w-fit whitespace-nowrap'
+                        className='py-5 px-6 border-2 text-center text-brand-purple border-brand-purple sm:w-fit whitespace-nowrap font-medium'
                         href='https://github.com/bitcoin-dev-project/warnet'
                         target='_blank'
                     >
                         download now
                     </Link>
-                    {/* <button className='py-5 px-6 border-2 text-custom-purple border-custom-purple sm:w-fit whitespace-nowrap'>quick start</button> */}
+                    <Link
+                        className='py-5 px-6 border-2 text-center sm:w-fit whitespace-nowrap'
+                        href='/start'
+                    >
+                        generate graph
+                    </Link>
                 </div>
             </div>
 
