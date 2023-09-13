@@ -53,10 +53,9 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
             },
             data: [
               { "@": { key: "label" }, "#": node.data.label },
-              { "@": { key: "size" }, "#": node.data.size },
-              { "@": { key: "version" }, "#": node.data.version },
-              { "@": { key: "latency" }, "#": node.data.latency },
-              { "@": { key: "baseFee" }, "#": node.data.baseFee },
+              { "@": { key: "version" }, "#": node.data.version || "" },
+              { "@": { key: "latency" }, "#": node.data.latency || "" },
+              { "@": { key: "baseFee" }, "#": node.data.baseFee || "" },
               { "@": { key: "x" }, "#": node.position.x },
               { "@": { key: "y" }, "#": node.position.y },
               { "@": { key: "bitcoin_conf" }, "#": result },
