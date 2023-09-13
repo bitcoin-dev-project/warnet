@@ -15,20 +15,20 @@ const NodeList = () => {
     return (
       <div 
         data-node-highlight={isSelected || null} 
-        className="data-[node-highlight]:bg-orange-200 data-[node-highlight]:text-black w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium"
+        className="group data-[node-highlight]:bg-brand-gray-medium data-[node-highlight]:text-white w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium"
       >
         <div className='flex h-full items-center gap-2'>
           <span className='w-3 h-3 rounded-full bg-red-300'></span>
           <p>{node?.data?.label}</p>
         </div>
         <div className='flex gap-2 text-black'>
-          <button onClick={() => duplicateNode(node)} className='p-1 hover:text-brand-gray-light'>
+          <button onClick={() => duplicateNode(node)} className='p-1 hover:text-brand-gray-light text-white'>
             <CopyIcon className='' />
           </button>
-          <button onClick={() => handleEditNode(node)} className='p-1 hover:text-brand-gray-light'>
+          <button onClick={() => handleEditNode(node)} className='p-1 hover:text-brand-gray-light text-white'>
             <Pencil1Icon />
           </button>
-          <button onClick={() => deleteNode(node)} className='p-1 hover:text-brand-gray-light'>
+          <button onClick={() => deleteNode(node)} className='p-1 hover:text-brand-gray-light text-white'>
             <TrashIcon />
           </button>
         </div>
