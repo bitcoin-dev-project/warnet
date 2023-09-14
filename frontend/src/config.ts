@@ -10,8 +10,11 @@ const BITCOIN_CORE_BINARY_VERSIONS = [
   "22.1",
   "23.0",
   "24.0",
-  "24.1",
+  "24.0.1",
   "25.0",
+  "0.21.0",
+  "0.21.1",
+  "0.20.1"
 ] as const;
 
 const NODE_LATENCY = [

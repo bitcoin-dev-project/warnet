@@ -64,6 +64,7 @@ export type NodeGraphContext = {
     d?:Node<GraphNode>
   ) => void;
   showGraph: boolean;
+  forceGraph: () => void;
   showGraphFunc: () => void;
   showNodePersonaInfo: () => void;
   nodePersona: NodePersona | null;
@@ -79,7 +80,6 @@ export type NodeGraphContext = {
 };
 
 export type NetworkContext = {
-  steps: NetworkContextExports.Steps;
   selectedNetwork: NetworkTopology;
   setSelectedNetwork: (value: NetworkTopology) => void;
   isDialogOpen: boolean;
@@ -89,12 +89,12 @@ export type NetworkContext = {
   // uploadToNodeGraph: () => void;
   openDialog: () => void;
   closeDialog: () => void;
-  setStep: (step: NetworkContextExports.Steps) => void;
 }
 
 export type SavedNetworkGraph = {
   type: NodePersonaType;
   nodePersona: NodePersona;
   date: Date;
+  graphmlPath?: string
 }
 export type NetworkTopology = Omit<SavedNetworkGraph, "date">
