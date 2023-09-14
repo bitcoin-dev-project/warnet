@@ -5,8 +5,8 @@ Monitor and analyze the emergent behaviours of Bitcoin networks.
 ## Major functionality
 
 * Warnet uses docker to launch a bitcoin network of `n` nodes which are connected to each other according to a network topology from a specification file.
-* Nodes are by default assigned random IP addresses in the 100.0.0.0/8 subnet which ensures randomized `addrman` binning [by Bitcoin Core](https://github.com/bitcoin/bitcoin/blob/8372ab0ea3c88308aabef476e3b9d023ba3fd4b7/src/addrman.h#L66), along with a Tor address.
-* Nodes can be assigned activities which can be programmed using the Bitcoin Core function test [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
+* Nodes are by default assigned random IP addresses in the 100.0.0.0/8 subnet which ensures randomized `addrman` binning [by Bitcoin Core](https://github.com/bitcoin/bitcoin/blob/8372ab0ea3c88308aabef476e3b9d023ba3fd4b7/src/addrman.h#L66), along with a Tor V3 address.
+* Nodes can be assigned scenarios which can be programmed using the Bitcoin Core function test [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
 * Nodes can have traffic shaping parameters assigned to them via the graph using [tc-netem](https://manpages.ubuntu.com/manpages/trusty/man8/tc-netem.8.html) tool.
 * Log files from nodes can be accessed directly
 * Some Bitcoin Core activity is polled and reported via a Graphana dashboard.
@@ -42,8 +42,9 @@ The graphml file has the following specification:
 * `y` specifies the node's y position when rendered in a GUI
 * `version` specifies the node's Bitcoin Core major version, or built branch
 * `bitcoin_config` is a comma-separated list of values the node should apply to it's bitcoin.conf, using bitcoin.conf syntax
+* `tc_netem` is a `tc-netem` command as a string beginning with "tc qdisc add dev eth0 root netem"
 
-`version` should be either a version number from the pre-compiled binary list on https://bitcoincore.org/bin/ **or** a built branch using `<user>/<repo>#<branch>` syntax.
+`version` should be either a version number from the pre-compiled binary list on https://bitcoincore.org/bin/ **or** a branch to be compiled from GitHub using `<user>/<repo>#<branch>` syntax.
 
 Nodes can be added to the graph as follows:
 
@@ -68,6 +69,8 @@ Or for a custom built branch with traffic shaping rules applied:
 <data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
 </node>
 ```
+
+`x`, `y`, `version`, `bitcoin_config` and `tc_netem` datafields are optional for all nodes.
 
 ### Edge attributes
 
@@ -120,9 +123,6 @@ To start `warnet` in the foreground with your venv activated simply run:
 warnet
 ```
 
-> [!NOTE]
-> `warnetd` also accepts a `--daemon` option which runs the process in the background.
-
 Run `warnet --help` to see a list of options.
 
 Once `warnet` is running it can be interacted with using the cli tool `warcli`.
@@ -155,7 +155,7 @@ Once or more nodes in a network can run a scenario, which constitutes a set of a
 Scenarios are written using the Bitcoin Core test framework for functional testing, with some modifications: most notably that `self.nodes[]` represents an array of dockerized `bitcoind` nodes.
 The resultant scenario files can be run with a python interpreter and used to control many nodes in the network simultaneously.
 
-See `/src/scenarios` for examples of how these can be written.
+See `src/scenarios` for examples of how these can be written.
 
 To see available scenarios (loaded from the default directory):
 
@@ -163,19 +163,16 @@ To see available scenarios (loaded from the default directory):
 warcli scenarios list
 ```
 
-Once a scenarios is selected it can be run with `warcli scenarios run <scenario_name> [--network=warnet]`, e.g.:
+Once a scenarios is selected it can be run with `warcli scenarios run [--network=warnet] <scenario_name> [scenario_params]`, e.g.:
 
 ```bash
-# Command one node to generate a wallet and fill 100 blocks with 100 txs each
-warcli scenarios run tx_flood
+# Have all nodes generate a block 5 seconds apart in a round-robin
+warcli scenarios run miner_std --allnodes --interval=5
 ```
 
 This will run the run the scenario in the background until it exits or is killed by the user.
 
 ### Stopping
-
-Currently the warnet can be stopped, but **not** stopped, persisted and continued.
-Persisting the warnet during a stoppage is WIP.
 
 To stop the warnet server:
 
@@ -186,6 +183,8 @@ warcli network down
 # stop warnet
 warcli stop
 ```
+
+Warnets can be paused using the `docker-compose pause` with the _docker-compose.yml_ file in the config dir, but exporting snapshots from live warnets is still a WIP.
 
 ## Remote / Cloud Deployment
 
