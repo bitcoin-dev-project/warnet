@@ -38,9 +38,7 @@ class MinerStd(WarnetTestFramework):
             block = self.generatetoaddress(self.nodes[current_miner], 1, addr)
             self.log.info(f"generated block from node {current_miner}: {block}")
             if self.options.allnodes:
-                current_miner = current_miner + 1
-                if current_miner >= self.num_nodes:
-                    current_miner = 0
+                current_miner = (current_miner + 1) % self.num_nodes
             sleep(self.options.interval)
 
 
