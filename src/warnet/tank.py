@@ -7,6 +7,7 @@ import logging
 import shutil
 from copy import deepcopy
 from pathlib import Path
+import re
 from docker.models.containers import Container
 from templates import TEMPLATES
 from services.dns_seed import IP_ADDR as DNS_IP_ADDR
@@ -78,32 +79,26 @@ class Tank:
             self.conf = node["bitcoin_config"]
         if "tc_netem" in node:
             self.netem = node["tc_netem"]
-        with open(self.warnet.fork_observer_config, "a") as f:
-            f.write(
-                f"""
-    [[networks.nodes]]
-    id = {self.index}
-    name = "Node {self.index}"
-    description = "Warnet tank {self.index}"
-    rpc_host = "{self.ipv4}"
-    rpc_port = {self.rpc_port}
-    rpc_user = "{self.rpc_user}"
-    rpc_password = "{self.rpc_password}"
-"""
-            )
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.write_torrc()
         return self
 
     @classmethod
-    def from_docker_env(cls, network, index):
+    def from_docker_compose_service(cls, service, network):
+        rex = fr"{network}_{CONTAINER_PREFIX_BITCOIND}_([0-9]{{6}})"
+        match = re.match(rex, service["container_name"])
+        if match is None:
+            return None
+
         self = cls()
-        self.index = int(index)
+        self.index = int(match.group(1))
         self.docker_network = network
-        self._ipv4 = self.container.attrs["NetworkSettings"]["Networks"][
-            self.docker_network
-        ]["IPAddress"]
+        self._ipv4 = service["networks"][self.docker_network]["ipv4_address"]
+        if "BITCOIN_VERSION" in service["build"]["args"]:
+            self.version = service["build"]["args"]["BITCOIN_VERSION"]
+        else:
+            self.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
         return self
 
     @property

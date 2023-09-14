@@ -367,47 +367,6 @@ def bubble_exception_str(func):
     return wrapper
 
 
-def save_running_scenario(scenario: str, pid: int, config_dir: Path):
-    with open(config_dir / RUNNING_PROC_FILE, "a") as file:
-        file.write(f"{scenario}\t{pid}\n")
-
-
-def load_running_scenarios(config_dir: Path) -> Dict[str, int]:
-    scenarios = {}
-    if os.path.exists(config_dir / RUNNING_PROC_FILE):
-        with open(os.path.join(config_dir, RUNNING_PROC_FILE), "r") as file:
-            for line in file.readlines():
-                scenario, pid = line.strip().split("\t")
-                scenarios[scenario] = int(pid)
-    return scenarios
-
-
-def remove_stopped_scenario(scenario: str, config_dir: Path):
-    lines = []
-    with open(config_dir / RUNNING_PROC_FILE, "r") as file:
-        lines = file.readlines()
-
-    with open(config_dir / RUNNING_PROC_FILE, "w") as file:
-        for line in lines:
-            if not line.startswith(scenario):
-                file.write(line)
-
-
-def update_running_scenarios_file(config_dir: Path, running_scenarios: Dict[str, int]):
-    with open(config_dir / RUNNING_PROC_FILE, "w") as file:
-        for scenario, pid in running_scenarios.items():
-            file.write(f"{scenario}\t{pid}\n")
-
-    # Check if each PID is still running
-    still_running = {}
-    for scenario, pid in running_scenarios.items():
-        try:
-            os.kill(pid, 0)  # Will raise an error if the process doesn't exist
-            still_running[scenario] = pid
-        except OSError:
-            pass
-
-
 def remove_version_prefix(version_str):
     if version_str.startswith("0."):
         return version_str[2:]

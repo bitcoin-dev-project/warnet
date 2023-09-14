@@ -13,7 +13,8 @@ logger = logging.getLogger("warnet.client")
 
 
 def get_bitcoin_debug_log(network: str, index: int) -> str:
-    tank = Tank.from_docker_env(network, index)
+    warnet = Warnet.from_network(network)
+    tank = warnet.tanks[index]
     subdir = "/" if tank.bitcoin_network == "main" else f"{tank.bitcoin_network}/"
     data, stat = tank.container.get_archive(f"/home/bitcoin/.bitcoin/{subdir}debug.log")
     out = ""
@@ -27,7 +28,8 @@ def get_bitcoin_debug_log(network: str, index: int) -> str:
 
 
 def get_bitcoin_cli(network: str, index: int, method: str, params=None) -> str:
-    tank = Tank.from_docker_env(network, index)
+    warnet = Warnet.from_network(network)
+    tank = warnet.tanks[index]
     if params:
         cmd = f"bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
@@ -38,8 +40,9 @@ def get_bitcoin_cli(network: str, index: int, method: str, params=None) -> str:
 def get_messages(
     network: str, src_index: int, dst_index: int
 ) -> List[Optional[Dict[str, Any]]]:
-    src_node = Tank.from_docker_env(network, src_index)
-    dst_node = Tank.from_docker_env(network, dst_index)
+    warnet = Warnet.from_network(network)
+    src_node = warnet.tanks[src_index]
+    dst_node = warnet.tanks[dst_index]
     # start with the IP of the peer
     dst_ip = dst_node.ipv4
     # find the corresponding message capture folder
@@ -96,6 +99,6 @@ def compose_down(network="warnet") -> bool:
     """
     Run docker-compose down on a warnet
     """
-    wn = Warnet.from_network(network=network)
+    wn = Warnet.from_network(network)
     wn.docker_compose_down()
     return True

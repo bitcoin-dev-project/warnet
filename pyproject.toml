@@ -18,7 +18,6 @@ dependencies = [
     "docker==6.1.3",
     "flask==2.3.3",
     "Flask-JSONRPC==2.2.2",
-    "gunicorn==21.2.0",
     "jsonschema",
     "jsonrpcserver==5.0.3",
     "jsonrpcclient==4.0.0",
@@ -29,7 +28,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-warnet = "warnet.warnetd:run_gunicorn"
+warnet = "warnet.server:run_server"
 warcli = "warnet.cli.main:cli"
 
 [tool.black]

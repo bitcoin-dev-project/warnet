@@ -19,7 +19,8 @@ def list():
     """
     try:
         result = rpc_call("list", None)
-        print(result)
+        for sc_name, sc_help in result:
+            print(f"{sc_name.ljust(20)}{sc_help}")
     except Exception as e:
         print(f"Error listing scenarios: {e}")
 
@@ -48,7 +49,12 @@ def active(network: str = "warnet"):
     """
     try:
         result = rpc_call("list_running_scenarios", {"network": network})
-        print(result)
+
+        template = "\t%-8.8s%-65.64s%-10.9s\n"
+        sc_str = template % ("PID", "Command", "Active")
+        for sc in result:
+            sc_str += template % (sc["pid"], sc["cmd"], sc["active"])
+        print(sc_str)
     except Exception as e:
         print(f"Error listing scenarios: {e}")
 
@@ -58,7 +64,7 @@ def active(network: str = "warnet"):
 @click.option("--network", default="warnet", show_default=True)
 def stop(pid: int, network: str = "warnet"):
     """
-    Stop scenario with <pid> from running on <--network>
+    Stop scenario with ID <id> from running on <--network>
     """
     try:
         params = {"pid": pid, "network": network}
