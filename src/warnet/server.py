@@ -227,13 +227,13 @@ class Server():
 
 
     def up(self, network: str = "warnet") -> str:
-        wn = Warnet.from_network(network=network, tanks=False)
+        wn = Warnet.from_network(network)
 
         def thread_start(wn):
             try:
                 wn.docker_compose_up()
                 # Update warnet from docker here to get ip addresses
-                wn = Warnet.from_docker_env(network)
+                wn = Warnet.from_network(network)
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -263,6 +263,7 @@ class Server():
                 wn.write_bitcoin_confs()
                 wn.write_docker_compose()
                 wn.write_prometheus_config()
+                wn.write_fork_observer_config()
                 wn.docker_compose_build_up()
                 wn.generate_zone_file_from_tanks()
                 wn.apply_zone_file()
