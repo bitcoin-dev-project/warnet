@@ -155,14 +155,14 @@ class Tank:
             return
 
         # Apply the network condition to the container
-        rcode, result = self.exec(self.netem)
-        if rcode == 0:
+        try:
+            self.exec(self.netem)
             logger.info(
                 f"Successfully applied network conditions to {self.container_name}: `{self.netem}`"
             )
-        else:
+        except Exception as e:
             logger.error(
-                f"Error applying network conditions to {self.container_name}: `{self.netem}` ({result})"
+                f"Error applying network conditions to {self.container_name}: `{self.netem}` ({e})"
             )
 
     def write_bitcoin_conf(self, base_bitcoin_conf):
