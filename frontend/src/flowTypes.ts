@@ -94,7 +94,7 @@ export type NetworkContext = {
 export type SavedNetworkGraph = {
   type: NodePersonaType;
   nodePersona: NodePersona;
-  date: Date;
+  date?: Date;
   graphmlPath?: string
 }
 export type NetworkTopology = Omit<SavedNetworkGraph, "date">
