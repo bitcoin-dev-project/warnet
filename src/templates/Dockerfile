@@ -82,7 +82,6 @@ RUN set -ex \
     && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/local/bin/
-COPY check_dns.sh /check_dns.sh
 COPY docker-entrypoint.sh /entrypoint.sh
 COPY torrc /etc/tor/torrc
 RUN mkdir $BITCOIN_DATA
