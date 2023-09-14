@@ -22,6 +22,9 @@ class WarnetTestFramework(BitcoinTestFramework):
     def run_test(self):
         pass
 
+    def sync_all(self):
+        pass
+
     # The following functions are chopped-up hacks of
     # the original methods from BitcoinTestFramework
 
@@ -35,7 +38,7 @@ class WarnetTestFramework(BitcoinTestFramework):
         ch.setFormatter(formatter)
         self.log.addHandler(ch)
 
-        warnet = Warnet.from_docker_env(self.options.network)
+        warnet = Warnet.from_network(self.options.network)
         for i, tank in enumerate(warnet.tanks):
             ip = tank.ipv4
             self.log.info(f"Adding TestNode {i} from {tank.container_name} with IP {ip}")

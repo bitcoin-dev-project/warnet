@@ -135,13 +135,13 @@ def messages(node_a, node_b, network):
 @cli.command()
 def stop():
     """
-    Stop warnetd.
+    Stop warnet.
     """
     try:
         result = rpc_call("stop", None)
         richprint(result)
     except Exception as e:
-        richprint(f"Error stopping warnetd: {e}")
+        richprint(f"Error stopping warnet: {e}")
 
 
 if __name__ == "__main__":
