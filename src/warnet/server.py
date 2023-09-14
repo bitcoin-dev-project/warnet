@@ -206,7 +206,7 @@ class Server():
             return f"Exception {e}"
 
 
-    def stop_scenario(self, pid: int, network: str = "warnet") -> str:
+    def stop_scenario(self, pid: int) -> str:
         for sc in self.running_scenarios:
             if pid == sc["pid"]:
                 sc["proc"].terminate()
@@ -215,7 +215,7 @@ class Server():
         return f"Could not find scenario with PID {pid}."
 
 
-    def list_running_scenarios(self, network: str = "warnet") -> List[Dict]:
+    def list_running_scenarios(self) -> List[Dict]:
         return [{
             "pid": sc["pid"],
             "cmd": sc["cmd"],
