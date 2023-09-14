@@ -70,8 +70,7 @@ class WarnetTestFramework(BitcoinTestFramework):
             node.rpc_connected = True
             self.nodes.append(node)
 
-        # Make sure the scenario has at least as many nodes as it needs
-        assert self.num_nodes <= len(self.nodes)
+        self.num_nodes = len(self.nodes)
 
         # Set up temp directory and start logging
         if self.options.tmpdir:
