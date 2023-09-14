@@ -84,7 +84,6 @@ class Tank:
         self.extra_build_args = node.get("build_args", "")
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.write_torrc()
         return self
 
     @classmethod
@@ -194,13 +193,6 @@ class Tank:
             file.write(conf_file)
         self.conf_file = path
 
-    def write_torrc(self):
-        src_tor_conf_file = TEMPLATES / "torrc"
-
-        dest_path = self.config_dir / "torrc"
-        shutil.copyfile(src_tor_conf_file, dest_path)
-        self.torrc_file = dest_path
-
     def add_services(self, services):
         assert self.index is not None
         assert self.conf_file is not None
@@ -237,7 +229,6 @@ class Tank:
                 "build": build,
                 "volumes": [
                     f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
-                    f"{self.torrc_file}:/etc/tor/torrc_original",
                 ],
                 "networks": {
                     self.docker_network: {
