@@ -42,13 +42,12 @@ def run(scenario, network, additional_args):
 
 
 @scenarios.command()
-@click.option("--network", default="warnet", show_default=True)
-def active(network: str = "warnet"):
+def active():
     """
-    List running scenarios on <--network> (default=warnet) as "name": "pid" pairs
+    List running scenarios
     """
     try:
-        result = rpc_call("list_running_scenarios", {"network": network})
+        result = rpc_call("list_running_scenarios", {})
 
         template = "\t%-8.8s%-65.64s%-10.9s\n"
         sc_str = template % ("PID", "Command", "Active")
@@ -61,13 +60,12 @@ def active(network: str = "warnet"):
 
 @scenarios.command()
 @click.argument("pid", type=int)
-@click.option("--network", default="warnet", show_default=True)
-def stop(pid: int, network: str = "warnet"):
+def stop(pid: int):
     """
-    Stop scenario with ID <id> from running on <--network>
+    Stop scenario with PID <pid> from running
     """
     try:
-        params = {"pid": pid, "network": network}
+        params = {"pid": pid}
         res = rpc_call("stop_scenario", params)
         print(res)
     except Exception as e:
