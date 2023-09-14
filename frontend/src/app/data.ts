@@ -203,7 +203,6 @@ export const defaultNodePersona: NodePersona = {
 
 export const tempSavednetwork: SavedNetworkGraph[] = [
   {
-    date: new Date("2023-09-10"),
     type: "custom",
     nodePersona: {
       id: 4,
@@ -217,7 +216,6 @@ export const tempSavednetwork: SavedNetworkGraph[] = [
     },
   },
   {
-    date: new Date("2023-09-10"),
     type: "prebuilt",
     graphmlPath: "barabasi_albert_graph_n100_m3_pos.graphml",
     nodePersona: {
@@ -232,7 +230,6 @@ export const tempSavednetwork: SavedNetworkGraph[] = [
     },
   },
   {
-    date: new Date("2023-09-10"),
     type: "prebuilt",
     graphmlPath: "navigable_small_world_graph_n10_p1_q3_r2_dim2_pos.graphml",
     nodePersona: {
@@ -247,7 +244,6 @@ export const tempSavednetwork: SavedNetworkGraph[] = [
     },
   },
   {
-    date: new Date("2023-09-10"),
     type: "prebuilt",
     graphmlPath: "random_geometric-graph_n100_r0.2.graphml",
     nodePersona: {
@@ -262,7 +258,6 @@ export const tempSavednetwork: SavedNetworkGraph[] = [
     },
   },
   {
-    date: new Date("2023-09-10"),
     type: "prebuilt",
     graphmlPath: "wheel_graph_n100_pos.graphml",
     nodePersona: {
