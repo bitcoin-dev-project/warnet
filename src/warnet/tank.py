@@ -4,7 +4,7 @@
 
 import docker
 import logging
-import shutil
+import os
 from copy import deepcopy
 from pathlib import Path
 import re
@@ -220,6 +220,10 @@ class Tank:
             {
                 "container_name": self.container_name,
                 "build": build,
+                "environment": {
+                    "UID": os.getuid(),
+                    "GID": os.getgid(),
+                },
                 "volumes": [
                     f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
                 ],
