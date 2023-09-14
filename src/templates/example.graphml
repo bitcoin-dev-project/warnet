@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
   <key attr.name="version" attr.type="string" for="node" id="version"/>
   <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
+  <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w0</data>
+        <data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
     </node>
     <node id="1">
         <data key="version">25.0</data>
