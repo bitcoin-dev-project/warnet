@@ -197,7 +197,8 @@ class Server():
             self.running_scenarios.append({
                 "pid": proc.pid,
                 "cmd": f"{scenario} {' '.join(additional_args)}",
-                "proc": proc
+                "proc": proc,
+                "network": network,
             })
 
             return f"Running scenario {scenario} with PID {proc.pid} in the background..."
@@ -219,7 +220,8 @@ class Server():
         return [{
             "pid": sc["pid"],
             "cmd": sc["cmd"],
-            "active": sc["proc"].poll() is None
+            "active": sc["proc"].poll() is None,
+            "network": sc["network"],
         } for sc in self.running_scenarios]
 
 
