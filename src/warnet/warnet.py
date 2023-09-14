@@ -39,12 +39,7 @@ class Warnet:
         self.graph = None
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
-        self.fork_observer_config = self.config_dir / FO_CONF_NAME
-        logger.info(
-            f"copying config {TEMPLATES / FO_CONF_NAME} to {self.fork_observer_config}"
-        )
-        shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
-        # shutil.copy(TEMPLATES / FLUENT_CONF, self.config_dir)
+
 
     def __str__(self) -> str:
         template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
@@ -87,41 +82,35 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_network(
-        cls, config_dir: Path = Path(), network: str = "warnet", tanks=True
-    ):
-        self = cls(config_dir)
-        self.config_dir = gen_config_dir(network)
-        self.graph = networkx.read_graphml(
-            Path(self.config_dir / self.graph_name), node_type=int
-        )
-        if tanks:
-            self.tanks_from_graph()
-        return self
-
-    @classmethod
-    @bubble_exception_str
-    def from_docker_env(cls, network_name):
+    def from_network(cls, network_name):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir)
-        self.graph = networkx.read_graphml(
-            Path(self.config_dir / self.graph_name), node_type=int
-        )
         self.docker_network = network_name
-        index = 0
-        while index <= 999999:
-            try:
-                self.tanks.append(Tank.from_docker_env(self.docker_network, index))
-                index = index + 1
-            except:
-                assert index == len(self.tanks)
-                break
+
+        # Get tank names, versions and IP addresses from docker-compose
+        docker_compose_path = self.config_dir / "docker-compose.yml"
+        compose = None
+        with open(docker_compose_path, "r") as file:
+            compose = yaml.safe_load(file)
+        for service_name in compose["services"]:
+            tank = Tank.from_docker_compose_service(compose["services"][service_name], network_name)
+            if tank is not None:
+                self.tanks.append(tank)
+
+        # Get network graph edges from graph file (required for network restarts)
+        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
+
         return self
 
     @property
     @bubble_exception_str
     def zone_file_path(self):
         return self.config_dir / ZONE_FILE_NAME
+
+    @property
+    @bubble_exception_str
+    def fork_observer_config(self):
+        return self.config_dir / FO_CONF_NAME
 
     @bubble_exception_str
     def tanks_from_graph(self):
@@ -185,6 +174,9 @@ class Warnet:
 
     @bubble_exception_str
     def connect_edges(self):
+        if self.graph is None:
+            return
+
         for edge in self.graph.edges():
             (src, dst) = edge
             src_tank = self.tanks[src]
@@ -327,3 +319,22 @@ class Warnet:
             logger.info(f"Wrote file: {prometheus_path}")
         except Exception as e:
             logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
+
+
+    @bubble_exception_str
+    def write_fork_observer_config(self):
+        shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
+        with open(self.fork_observer_config, "a") as f:
+            for tank in self.tanks:
+                f.write(f"""
+                    [[networks.nodes]]
+                    id = {tank.index}
+                    name = "Node {tank.index}"
+                    description = "Warnet tank {tank.index}"
+                    rpc_host = "{tank.ipv4}"
+                    rpc_port = {tank.rpc_port}
+                    rpc_user = "{tank.rpc_user}"
+                    rpc_password = "{tank.rpc_password}"
+                """)
+        logger.info(f"Wrote file: {self.fork_observer_config}")
+
