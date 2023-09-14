@@ -5,9 +5,7 @@ import shutil
 import signal
 import subprocess
 import sys
-import time
 import threading
-from collections import defaultdict
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
@@ -24,7 +22,6 @@ from warnet.client import (
     compose_down,
 )
 from warnet.utils import (
-    exponential_backoff,
     gen_config_dir,
 )
 
@@ -47,7 +44,7 @@ class Server():
         self.setup_rpc()
 
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
-        self.logger = None
+        self.logger: logging.Logger
         self.setup_logging()
 
 
