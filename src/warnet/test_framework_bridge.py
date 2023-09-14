@@ -3,6 +3,7 @@ import configparser
 import logging
 import os
 import random
+import signal
 import sys
 import tempfile
 from test_framework.p2p import NetworkThread
@@ -25,10 +26,16 @@ class WarnetTestFramework(BitcoinTestFramework):
     def sync_all(self):
         pass
 
+    def handle_sigterm(self, signum, frame):
+        print("SIGTERM received, stopping...")
+        self.shutdown()
+        sys.exit(0)
+
     # The following functions are chopped-up hacks of
     # the original methods from BitcoinTestFramework
 
     def setup(self):
+        signal.signal(signal.SIGTERM, self.handle_sigterm)
         # hacked from _start_logging()
         # Scenarios will log plain messages to stdout only, which will can redirected by warnet
         self.log = logging.getLogger()

@@ -5,9 +5,7 @@ import shutil
 import signal
 import subprocess
 import sys
-import time
 import threading
-from collections import defaultdict
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
@@ -24,7 +22,6 @@ from warnet.client import (
     compose_down,
 )
 from warnet.utils import (
-    exponential_backoff,
     gen_config_dir,
 )
 
@@ -47,7 +44,7 @@ class Server():
         self.setup_rpc()
 
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
-        self.logger = None
+        self.logger: logging.Logger
         self.setup_logging()
 
 
@@ -200,7 +197,8 @@ class Server():
             self.running_scenarios.append({
                 "pid": proc.pid,
                 "cmd": f"{scenario} {' '.join(additional_args)}",
-                "proc": proc
+                "proc": proc,
+                "network": network,
             })
 
             return f"Running scenario {scenario} with PID {proc.pid} in the background..."
@@ -209,20 +207,23 @@ class Server():
             return f"Exception {e}"
 
 
-    def stop_scenario(self, pid: int, network: str = "warnet") -> str:
-        for sc in self.running_scenarios:
-            if pid == sc["pid"]:
-                sc["proc"].terminate()
-                return f"Stopped scenario with PID {pid}."
+    def stop_scenario(self, pid: int) -> str:
+        matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
+        if matching_scenarios:
+            matching_scenarios[0]["proc"].terminate() # sends SIGTERM
+            # Remove from running list
+            self.running_scenarios = [sc for sc in self.running_scenarios if sc["pid"] != pid]
+            return f"Stopped scenario with PID {pid}."
+        else:
+            return f"Could not find scenario with PID {pid}."
 
-        return f"Could not find scenario with PID {pid}."
 
-
-    def list_running_scenarios(self, network: str = "warnet") -> List[Dict]:
+    def list_running_scenarios(self) -> List[Dict]:
         return [{
             "pid": sc["pid"],
             "cmd": sc["cmd"],
-            "active": sc["proc"].poll() is None
+            "active": sc["proc"].poll() is None,
+            "network": sc["network"],
         } for sc in self.running_scenarios]
 
 
