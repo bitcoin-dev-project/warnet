@@ -1,6 +1,6 @@
 import { GraphEdge, GraphNode } from "@/flowTypes";
 import { parse } from "js2xmlparser";
-import { Edge, Node } from "reactflow";
+import type { Edge, Node } from "reactflow";
 
 type GraphElement = {
   nodes: Node<GraphNode>[];
