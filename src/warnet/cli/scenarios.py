@@ -44,15 +44,15 @@ def run(scenario, network, additional_args):
 @scenarios.command()
 def active():
     """
-    List running scenarios
+    List running scenarios "name": "pid" pairs
     """
     try:
         result = rpc_call("list_running_scenarios", {})
 
-        template = "\t%-8.8s%-65.64s%-10.9s\n"
-        sc_str = template % ("PID", "Command", "Active")
+        template = "\t%-8.8s%-65.64s%-10.10s%-10.9s\n"
+        sc_str = template % ("PID", "Command", "Network", "Active")
         for sc in result:
-            sc_str += template % (sc["pid"], sc["cmd"], sc["active"])
+            sc_str += template % (sc["pid"], sc["cmd"], sc["network"], sc["active"])
         print(sc_str)
     except Exception as e:
         print(f"Error listing scenarios: {e}")
