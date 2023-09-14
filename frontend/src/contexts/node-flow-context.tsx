@@ -10,8 +10,10 @@ import {
 } from "@/flowTypes";
 import { defaultNodePersona } from "@/app/data";
 import { v4 } from "uuid";
-import { Edge, Node, useEdgesState, useNodesState } from "reactflow";
+import { Edge, Node, useEdgesState, useNodesState, Position } from "reactflow";
 import generateGraphML from "@/helpers/generate-graphml";
+import dagre from '@dagrejs/dagre';
+
 export const nodeFlowContext = React.createContext<NodeGraphContext>(null!);
 
 export const NodeGraphFlowProvider = ({
@@ -33,6 +35,39 @@ export const NodeGraphFlowProvider = ({
   const closeDialog = () => {
     setIsDialogOpen(false);
   };
+
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  const forceGraph = () => {
+    dagreGraph.setGraph({ rankdir: 'LR' });
+
+    nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: 150, height: 50 });
+    });
+
+    edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    const layoutedNodes = nodes.map((node) => {
+      const nodeWithPosition = dagreGraph.node(node.id);
+      node.targetPosition = Position.Left;
+      node.sourcePosition = Position.Right;
+      // we need to pass a slightly different position in order to notify react flow about the change
+      // @TODO how can we change the position handling so that we dont need this hack?
+      node.position = {
+        x: nodeWithPosition.x + Math.random() / 1000,
+        y: nodeWithPosition.y,
+      };
+
+      return node;
+    });
+
+    setNodes(layoutedNodes)
+  }
 
   const setNodePersonaFunc = ({ type, nodePersona }: NetworkTopology) => {
     setNodePersonaType(type);
@@ -165,6 +200,7 @@ export const NodeGraphFlowProvider = ({
         editNode,
         saveEditedNode,
         selectNode,
+        forceGraph,
         // setNodeInfo,
         showGraphFunc,
         openDialog,

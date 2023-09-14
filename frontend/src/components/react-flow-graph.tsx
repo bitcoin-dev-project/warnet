@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useCallback, useMemo } from "react";
 import Sidebar from "./sidebar";
 import NodeInfo from "./node-info-dialog";
@@ -18,6 +17,7 @@ const ReactFlowGraph = () => {
     setEdges,
     onNodesChange,
     onEdgesChange,
+    forceGraph
   } = useNodeFlowContext();
   const onConnect = useCallback(
     (params: any) => {
@@ -38,6 +38,7 @@ const ReactFlowGraph = () => {
   const handlePaneClick = (e: React.MouseEvent<Element, MouseEvent>) => {
     selectNode(null)
   }
+
   return (
     <>
       <Sidebar />
@@ -49,6 +50,7 @@ const ReactFlowGraph = () => {
         <ReactFlow
           nodes={nodes || []}
           edges={edges || []}
+          onInit={forceGraph}
           onConnect={onConnect}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
