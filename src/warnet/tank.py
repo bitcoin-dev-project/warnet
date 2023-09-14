@@ -32,8 +32,6 @@ class Tank:
         self.bitcoin_network = "regtest"
         self.index = None
         self.version = "25.0"
-        self.conf = ""
-        self.conf_file = None
         self.torrc_file = None
         self.netem = None
         self.rpc_port = 18443
@@ -44,15 +42,14 @@ class Tank:
         self._ipv4 = None
         self._container_name = None
         self._exporter_name = None
-        self.config_dir = Path()
+        self.extra_bitcoind_args = ""
 
     def __str__(self) -> str:
         return (
             f"Tank(\n"
             f"\tIndex: {self.index}\n"
             f"\tVersion: {self.version}\n"
-            f"\tConf: {self.conf}\n"
-            f"\tConf File: {self.conf_file}\n"
+            f"\tExtra bitcoind args: {self.extra_bitcoind_args}\n"
             f"\tNetem: {self.netem}\n"
             f"\tIPv4: {self._ipv4}\n"
             f"\t)"
@@ -76,11 +73,9 @@ class Tank:
                     )
             self.version = node["version"]
         if "bitcoin_config" in node:
-            self.conf = node["bitcoin_config"]
+            self.extra_bitcoind_args = node["bitcoin_config"]
         if "tc_netem" in node:
             self.netem = node["tc_netem"]
-        self.config_dir = self.warnet.config_dir / str(self.suffix)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
         return self
 
     @classmethod
@@ -164,32 +159,8 @@ class Tank:
                 f"Error applying network conditions to {self.container_name}: `{self.netem}` ({result})"
             )
 
-    def write_bitcoin_conf(self, base_bitcoin_conf):
-        conf = deepcopy(base_bitcoin_conf)
-        options = self.conf.split(",")
-        for option in options:
-            option = option.strip()
-            if option:
-                if "=" in option:
-                    key, value = option.split("=")
-                else:
-                    key, value = option, "1"
-                conf[self.bitcoin_network].append((key, value))
-
-        conf[self.bitcoin_network].append(("rpcuser", self.rpc_user))
-        conf[self.bitcoin_network].append(("rpcpassword", self.rpc_password))
-        conf[self.bitcoin_network].append(("rpcport", self.rpc_port))
-
-        conf_file = dump_bitcoin_conf(conf)
-        path = self.config_dir / f"bitcoin.conf"
-        logger.info(f"Wrote file {path}")
-        with open(path, "w") as file:
-            file.write(conf_file)
-        self.conf_file = path
-
     def add_services(self, services):
         assert self.index is not None
-        assert self.conf_file is not None
         services[self.container_name] = {}
 
         # Setup bitcoind, either release binary or build from source
@@ -221,12 +192,10 @@ class Tank:
                 "container_name": self.container_name,
                 "build": build,
                 "environment": {
+                    "BITCOIND_ARGS": self.extra_bitcoind_args,
                     "UID": os.getuid(),
                     "GID": os.getgid(),
                 },
-                "volumes": [
-                    f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
-                ],
                 "networks": {
                     self.docker_network: {
                         "ipv4_address": f"{self.ipv4}",

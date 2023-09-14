@@ -20,7 +20,7 @@ from services.fork_observer import ForkObserver
 # from services.fluentd import FLUENT_CONF, Fluentd, FLUENT_IP
 from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
+from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -43,9 +43,9 @@ class Warnet:
 
     def __str__(self) -> str:
         template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
-        tanks_str = template % ("Index", "Version", "Conf", "Netem", "IPv4")
+        tanks_str = template % ("Index", "Version", "Args", "Netem", "IPv4")
         for tank in self.tanks:
-            tanks_str += template % (tank.index, tank.version, tank.conf, tank.netem, tank.ipv4)
+            tanks_str += template % (tank.index, tank.version, tank.extra_bitcoind_args, tank.netem, tank.ipv4)
         return (
             f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
@@ -121,14 +121,6 @@ class Warnet:
                 )
             self.tanks.append(Tank.from_graph_node(node_id, self))
         logger.info(f"Imported {len(self.tanks)} tanks from graph")
-
-    @bubble_exception_str
-    def write_bitcoin_confs(self):
-        with open(TEMPLATES / "bitcoin.conf", "r") as file:
-            text = file.read()
-        base_bitcoin_conf = parse_bitcoin_conf(text)
-        for tank in self.tanks:
-            tank.write_bitcoin_conf(base_bitcoin_conf)
 
     @bubble_exception_str
     def apply_network_conditions(self):

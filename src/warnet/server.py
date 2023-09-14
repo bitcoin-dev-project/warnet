@@ -261,7 +261,6 @@ class Server():
 
         def thread_start(wn):
             try:
-                wn.write_bitcoin_confs()
                 wn.write_docker_compose()
                 wn.write_prometheus_config()
                 wn.write_fork_observer_config()
@@ -315,7 +314,6 @@ class Server():
                 f"Config dir {config_dir} already exists, not overwriting existing warnet"
             )
         wn = Warnet.from_graph_file(graph_file, config_dir, network)
-        wn.write_bitcoin_confs()
         wn.write_docker_compose()
         docker_compose_path = wn.config_dir / "docker-compose.yml"
         with open(docker_compose_path, "r") as f:

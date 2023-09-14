@@ -41,7 +41,7 @@ The graphml file has the following specification:
 * `x` specifies the node's x position when rendered in a GUI
 * `y` specifies the node's y position when rendered in a GUI
 * `version` specifies the node's Bitcoin Core major version, or built branch
-* `bitcoin_config` is a comma-separated list of values the node should apply to it's bitcoin.conf, using bitcoin.conf syntax
+* `bitcoin_config` is a comma-separated list of values the node should apply to it's bitcoin.conf, using bitcoind CLI syntax, ie. `-option=value`
 
 `version` should be either a version number from the pre-compiled binary list on https://bitcoincore.org/bin/ **or** a built branch using `<user>/<repo>#<branch>` syntax.
 

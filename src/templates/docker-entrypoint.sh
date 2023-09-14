@@ -41,6 +41,13 @@ fi
 # Wait for the dns-seed to start returning results
 ./check_dns.sh
 
+if [ "$1" = "bitcoind" ]; then
+  if [ -n "$BITCOIND_ARGS" ]; then
+    echo "$0: appending BITCOIND_ARGS to bitcoind command"
+    set -- "$@" $BITCOIND_ARGS
+  fi
+fi
+
 if [ "$1" = "bitcoind" ] || [ "$1" = "bitcoin-cli" ] || [ "$1" = "bitcoin-tx" ]; then
   echo
   exec gosu bitcoin "$@"

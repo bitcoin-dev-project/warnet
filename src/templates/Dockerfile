@@ -85,6 +85,10 @@ COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/loca
 COPY check_dns.sh /check_dns.sh
 COPY docker-entrypoint.sh /entrypoint.sh
 COPY torrc /etc/tor/torrc
+RUN mkdir $BITCOIN_DATA
+COPY bitcoin.conf $BITCOIN_DATA/bitcoin.conf
+ARG BITCOIND_ARGS
+ENV BITCOIND_ARGS=$BITCOIND_ARGS
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
