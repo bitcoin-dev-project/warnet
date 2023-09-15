@@ -6,28 +6,10 @@ import { useNodeFlowContext } from "@/contexts/node-flow-context";
 import { SavedNetworkGraph } from "@/flowTypes";
 import downloadGraph from "@/helpers/download-graphml";
 import generateGraphML from "@/helpers/generate-graphml";
+import Link from "next/link";
 
 const NetworkDialog = () => {
-  const {
-    isDialogOpen,
-    closeDialog,
-    networkList,
-    selectedNetwork,
-    setSelectedNetwork,
-  } = useNetworkContext();
-  const { setNodePersonaFunc, showGraphFunc } = useNodeFlowContext();
-
-  const graphNextStep = (network?: SavedNetworkGraph) => {
-    if (network) {
-      setSelectedNetwork(network);
-    }
-    setNodePersonaFunc({
-      type: network ? network.type : selectedNetwork.type,
-      nodePersona: network ? network.nodePersona : selectedNetwork.nodePersona,
-    });
-    showGraphFunc();
-    closeDialog();
-  };
+  const { isDialogOpen, networkList } = useNetworkContext();
 
   const handleDownloadGraph = (network: SavedNetworkGraph) => {
     if (network.type === "prebuilt" && network.graphmlPath) {
@@ -55,12 +37,9 @@ const NetworkDialog = () => {
             These network topology configs can be used to generate a local
             warnet with warnet-cli
           </p>
-          <button
-            className="ml-auto bg-blue-600 p-4"
-            onClick={() => graphNextStep()}
-          >
+          <Link className="ml-auto bg-blue-600 p-4" href={`?network=new`}>
             Create New Config +
-          </button>
+          </Link>
           <table className="init_dialog_table_config">
             <thead className="bg-brand-gray-medium text-brand-text-light font-semibold text-sm">
               <tr className="h-[60px] text-left">
@@ -83,12 +62,18 @@ const NetworkDialog = () => {
                       {/* <td>{network.date.toISOString()}</td> */}
                       <td className="w-[30%]">
                         <div className="flex flex-wrap gap-4">
-                          <button
+                          <Link
+                            className="flex-grow border border-brand-gray-light px-4 py-2 min-w-[80px] text-white capitalize"
+                            href={`?network=${network.nodePersona.name}`}
+                          >
+                            edit
+                          </Link>
+                          {/* <button
                             className="flex-grow border border-brand-gray-light px-4 py-2 min-w-[80px] text-white capitalize"
                             onClick={() => graphNextStep(network)}
                           >
                             edit
-                          </button>
+                          </button> */}
                           <button
                             onClick={() => handleDownloadGraph(network)}
                             className="bg-blue-600 px-4 py-2 min-w-[80px] text-white capitalize"
@@ -105,12 +90,12 @@ const NetworkDialog = () => {
                   <tr>
                     <td className="absolute w-full flex justify-center">
                       <div className="py-8 flex justify-center">
-                        <button
+                        <Link
                           className="ml-auto bg-blue-600 p-4"
-                          onClick={() => graphNextStep()}
+                          href={`?network=new`}
                         >
                           Create New Config +
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>

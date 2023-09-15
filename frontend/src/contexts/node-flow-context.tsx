@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
 import {
   GraphEdge,
@@ -7,12 +7,17 @@ import {
   NodeGraphContext,
   NodePersona,
   NodePersonaType,
+  SavedNetworkGraph,
 } from "@/flowTypes";
-import { defaultNodePersona } from "@/app/data";
+import { defaultNodePersona, newNetwork, tempSavednetwork } from "@/app/data";
 import { v4 } from "uuid";
 import { Edge, Node, useEdgesState, useNodesState, Position } from "reactflow";
 import generateGraphML from "@/helpers/generate-graphml";
-import dagre from '@dagrejs/dagre';
+import dagre from "@dagrejs/dagre";
+// import { useRouter } from "next/router";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useNetworkContext } from "./network-context";
+import { readXML } from "@/helpers/generate-network-from-graphml";
 
 export const nodeFlowContext = React.createContext<NodeGraphContext>(null!);
 
@@ -22,40 +27,134 @@ export const NodeGraphFlowProvider = ({
   children: React.ReactNode;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
-  const [showGraph, setShowGraph] = useState<boolean>(false);
+  // const [showGraph, setShowGraph] = useState<boolean>(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<GraphEdge>([]);
   const [nodePersonaType, setNodePersonaType] =
     useState<NodePersonaType | null>(null);
-  const [nodePersona, setNodePersona] = useState<NodePersona | null>(
-    defaultNodePersona
-  );
+  const [nodePersona, setNodePersona] = useState<NodePersona | null>(null);
   const [nodeInfo, setNodeInfo] = useState<Node<GraphNode> | null>(null);
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
     setIsDialogOpen(false);
   };
 
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  const hasForcedGraph = useRef(false)
 
-  const forceGraph = () => {
+  const { networkList } = useNetworkContext();
+
+  const router = useRouter()
+  const searchParams = useSearchParams();
+  const networkQuery = searchParams.get("network");
+  const showGraph = Boolean(networkQuery);
+
+  function reset() {
+    setIsDialogOpen(false)
+    setNodes([])
+    setEdges([])
+    setNodePersonaType(null)
+    setNodeInfo(null)
+    setNodePersona(null)
+  }
+
+  async function getGraphDetails(network: SavedNetworkGraph) {
+    if (network.graphmlPath) {
+      const { nodes, edges } = await readXML(network.graphmlPath);
+      if (nodes?.length && edges?.length) {
+        const builtNetwork: SavedNetworkGraph = {
+          ...network,
+          nodePersona: {
+            ...network.nodePersona,
+            peers: nodes.length,
+            nodes,
+            edges,
+          },
+        };
+        return builtNetwork;
+      }
+    }
+  }
+
+  useEffect(() => {
+    async function processPrebuiltGraph (network: SavedNetworkGraph) {
+      const graphDetails = await getGraphDetails(network)
+      if (graphDetails?.nodePersona.nodes.length) {
+        setNodePersonaFunc({
+          type: graphDetails.type,
+          nodePersona: graphDetails.nodePersona,
+        });
+      }
+    }
+
+    if (networkQuery) {
+      if (networkQuery === "new") {
+        setNodePersonaFunc({
+          type: newNetwork.type,
+          nodePersona: newNetwork.nodePersona
+        })
+      }
+      const selectedNetwork = networkList.find(
+        (network) => network.nodePersona.name === networkQuery
+      );
+
+      if (!selectedNetwork) {
+        router.push("?network=new")
+      }
+
+      if (selectedNetwork?.type === "prebuilt") {
+        processPrebuiltGraph(selectedNetwork)
+      } else if (selectedNetwork?.type === "custom") {
+        setNodePersonaFunc({
+          type: selectedNetwork.type,
+          nodePersona: selectedNetwork.nodePersona,
+        });
+        if (!hasForcedGraph.current) {
+          forceGraph({
+            provisionedNodes: selectedNetwork.nodePersona.nodes,
+            provisionedEdges: selectedNetwork.nodePersona.edges
+          })
+        }
+      } else {
+        return
+      }
+    } else {
+      reset()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [networkQuery, networkList]);
+
+  
+
+  const forceGraph = useCallback((optional?: {
+    provisionedNodes: Node<GraphNode>[],
+    provisionedEdges: Edge<GraphEdge>[],
+  }) => {
     // don't force graph for prebuilt topologies
-    if (nodePersonaType === "prebuilt") return
-    
-    dagreGraph.setGraph({ rankdir: 'LR' });
+    if (nodePersonaType === "prebuilt") return;
 
-    nodes.forEach((node) => {
+    let internalNodes = optional?.provisionedNodes ?? nodes
+    let internalEdges = optional?.provisionedEdges ?? edges
+    if (!internalNodes.length) return;
+
+
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+    dagreGraph.setGraph({ rankdir: "LR" });
+
+    internalNodes.forEach((node) => {
       dagreGraph.setNode(node.id, { width: 150, height: 50 });
     });
 
-    edges.forEach((edge) => {
+    internalEdges.forEach((edge) => {
       dagreGraph.setEdge(edge.source, edge.target);
     });
 
     dagre.layout(dagreGraph);
 
-    const layoutedNodes = nodes.map((node) => {
+    hasForcedGraph.current = true
+
+    const layoutedNodes = internalNodes.map((node) => {
       const nodeWithPosition = dagreGraph.node(node.id);
       node.targetPosition = Position.Left;
       node.sourcePosition = Position.Right;
@@ -69,19 +168,19 @@ export const NodeGraphFlowProvider = ({
       return node;
     });
 
-    setNodes(layoutedNodes)
-  }
+    setNodes(layoutedNodes);
+  }, [nodes, edges]);
 
-  const setNodePersonaFunc = ({ type, nodePersona }: NetworkTopology) => {
+  function setNodePersonaFunc({ type, nodePersona }: NetworkTopology) {
     setNodePersonaType(type);
     setNodePersona(nodePersona);
     setNodes(nodePersona.nodes);
-    setNodeEdges(nodePersona.edges);
+    setEdges(nodePersona.edges);
   };
 
   const showGraphFunc = () => {
     // setSteps(2);
-    setShowGraph(true);
+    // setShowGraph(true);
   };
 
   const showNodePersonaInfo = () => {
@@ -130,17 +229,17 @@ export const NodeGraphFlowProvider = ({
 
   const selectNode = (id: Node["id"] | null) => {
     if (!id) {
-      setNodeInfo(null)
-      return
+      setNodeInfo(null);
+      return;
     }
-    const node = nodes.find((_node) => _node.id === id)
+    const node = nodes.find((_node) => _node.id === id);
     if (node) {
-      setNodeInfo(node)
+      setNodeInfo(node);
     }
   };
 
   const editNode = (node: Node<GraphNode>) => {
-    setNodeInfo(node)
+    setNodeInfo(node);
     openDialog();
   };
 

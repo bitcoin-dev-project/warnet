@@ -19,6 +19,7 @@ const ReactFlowGraph = () => {
     onEdgesChange,
     forceGraph
   } = useNodeFlowContext();
+
   const onConnect = useCallback(
     (params: any) => {
       if (params.source === params.target) return
@@ -26,6 +27,7 @@ const ReactFlowGraph = () => {
     },
     [setEdges]
   );
+
   const nodeTypes = useMemo(() => ({ draggable: DraggableNode }), []);
   if (!showGraph) {
     return null;

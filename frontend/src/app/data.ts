@@ -175,38 +175,43 @@ export const defaultNodePersona: NodePersona = {
   nodes: defaultNodesData,
 };
 
-// export const newNetwork: NodePersona = {
-//   id: 0,
-//   name: "Alice",
-//   version: "22.0",
-//   latency: "10ms",
-//   peers: 8,
-//   baseFee: 0.5,
-//   edges: [],
-//   nodes: [{
-//     id: "0",
-//     type:"draggable",
-//     data: {
-//     id: "0",
-//     label: "node 0",
-//     version: "25.0",
-//     latency: "0ms",
-//     size: 10,
-//     baseFee: 0.5,
-//     },
-//     position:{
-//       x:100,
-//       y:100,
-//     }
-//   }],
-// }
+export const newNetwork: SavedNetworkGraph = {
+  type: "custom",
+  nodePersona: {
+    id: 0,
+    name: "New network",
+    version: "22.0",
+    latency: "10ms",
+    peers: 8,
+    baseFee: 0.5,
+    edges: [],
+    nodes: [
+      {
+        id: "0",
+        type: "draggable",
+        data: {
+          id: "0",
+          label: "node 0",
+          version: "25.0",
+          latency: "0ms",
+          size: 10,
+          baseFee: 0.5,
+        },
+        position: {
+          x: 100,
+          y: 100,
+        },
+      },
+    ],
+  }
+};
 
 export const tempSavednetwork: SavedNetworkGraph[] = [
   {
     type: "custom",
     nodePersona: {
       id: 4,
-      name: "Mini bitcoin network",
+      name: "mini_bitcoin_network",
       version: "22.0",
       latency: "10ms",
       peers: 8,
