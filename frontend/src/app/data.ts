@@ -245,10 +245,10 @@ export const tempSavednetwork: SavedNetworkGraph[] = [
   },
   {
     type: "prebuilt",
-    graphmlPath: "random_geometric-graph_n100_r0.2.graphml",
+    graphmlPath: "random_internet_as_graph_n100_pos.graphml",
     nodePersona: {
       id: 2,
-      name: "random_geometric_graph",
+      name: "random_internet_as_graph",
       version: "22.0",
       latency: "10ms",
       peers: 100,
@@ -267,8 +267,8 @@ export const tempSavednetwork: SavedNetworkGraph[] = [
       latency: "10ms",
       peers: 100,
       baseFee: 0.5,
-      edges: [],
       nodes: [],
+      edges: [],
     },
   },
 ];

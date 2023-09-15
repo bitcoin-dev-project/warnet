@@ -1,8 +1,8 @@
+import { GRAPHML_DIR } from "@/config";
 
-const graphmlDIR = "graphml"
 const downloadGraph = async (path: string) => {
   try {
-    const response = await fetch(graphmlDIR + "/" + path);
+    const response = await fetch(GRAPHML_DIR + "/" + path);
     if (!response.ok) {
       throw new Error('Failed to fetch the XML file');
     }
