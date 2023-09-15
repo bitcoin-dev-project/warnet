@@ -9,7 +9,6 @@ import {
   NodePersonaType,
 } from "@/flowTypes";
 import { defaultNodePersona } from "@/app/data";
-import { v4 } from "uuid";
 import { Edge, Node, useEdgesState, useNodesState } from "reactflow";
 import generateGraphML from "@/helpers/generate-graphml";
 export const nodeFlowContext = React.createContext<NodeGraphContext>(null!);
@@ -55,10 +54,6 @@ export const NodeGraphFlowProvider = ({
   };
 
   const generateNodeGraph = () => {
-    // const nodeGraph = {
-    //   nodes: nodes,
-    //   edges: edges,
-    // };
     generateGraphML({ nodes, edges });
   };
 
@@ -108,7 +103,6 @@ export const NodeGraphFlowProvider = ({
 
   const duplicateNode = (node: Node<GraphNode>) => {
     const id = (nodes[nodes.length - 1]?.id ?? 0) + 1;
-    const length = nodes.length;
     const duplicateNode = {
       ...node,
       id,
@@ -165,7 +159,6 @@ export const NodeGraphFlowProvider = ({
         editNode,
         saveEditedNode,
         selectNode,
-        // setNodeInfo,
         showGraphFunc,
         openDialog,
         closeDialog,

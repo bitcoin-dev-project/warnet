@@ -76,10 +76,10 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
   const xml = parse("graphml", graphmlData);
   const blob = new Blob([xml], { type: "application/xml" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "graph.graphml";
-  a.click();
+  const downloadLink = document.createElement("a");
+  downloadLink.href = url;
+  downloadLink.download = "graph.graphml";
+  downloadLink.click();
 };
 
 export default generateGraphML;

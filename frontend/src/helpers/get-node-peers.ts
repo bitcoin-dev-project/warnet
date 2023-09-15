@@ -3,8 +3,8 @@ import { Edge, Node } from "reactflow";
 
 const getNodePeers = (
   nodeId: number | string,
-  nodes: Node<Partial<GraphNode>>[],
-  edges: Edge<Partial<GraphEdge>>[]
+  nodes: Node<GraphNode>[],
+  edges: Edge<GraphEdge>[]
 ) => {
   const nodeEdges = edges.filter(
     (edge) => edge.source === nodeId || edge.target === nodeId

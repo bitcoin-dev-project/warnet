@@ -3,12 +3,8 @@ import React, { useState } from "react";
 import { defaultEdgesData, defaultNodesData, tempSavednetwork } from "@/app/data";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/config";
 import {
-  GraphEdge,
-  GraphNode,
   NetworkContext,
   NetworkTopology,
-  NodePersona,
-  NodePersonaType,
   SavedNetworkGraph,
 } from "@/flowTypes";
 
@@ -71,7 +67,6 @@ export const NetworkProvider = ({
   children: React.ReactNode;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
-  // const [showGraph, setShowGraph] = useState<boolean>(false);
   const [selectedNetwork, setSelectedNetwork] = useState(defaultNetworkTopology)
   const [networkList, setNetworkList] = useState<SavedNetworkGraph[]>(
     tempSavednetwork

@@ -6,7 +6,6 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 
 import NodeAccordion from "./node-accordion";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
-import DefaultSelectBox from "./default-select";
 
 const DialogBox = () => {
   const {

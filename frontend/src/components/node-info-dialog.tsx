@@ -5,7 +5,7 @@ import {
   RAM_OPTIONS,
 } from "@/config";
 import * as Dialog from "@radix-ui/react-dialog";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import DefaultSelectBox from "./default-select";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
 import { parseBitcoinConf } from "@/helpers/parse-conf-file";

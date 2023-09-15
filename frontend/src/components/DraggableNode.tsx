@@ -1,6 +1,5 @@
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
 import { GraphNode } from "@/flowTypes";
-import { useCallback } from "react";
 import { Handle, Position } from "reactflow";
 
 interface IDraggableNode {

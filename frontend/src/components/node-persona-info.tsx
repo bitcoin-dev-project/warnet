@@ -3,8 +3,7 @@ import { BITCOIN_CORE_BINARY_VERSIONS, NODE_LATENCY } from "@/config";
 import { useNodeFlowContext } from "@/contexts/node-flow-context";
 
 const NodePersonaInfo = () => {
-  const { nodePersonaType, nodePersona, closeDialog, showGraphFunc } =
-    useNodeFlowContext();
+  const { nodePersona } = useNodeFlowContext();
 
   return (
     <section className={` w-[330px] h-[300px] bg-white rounded-md p-5`}>

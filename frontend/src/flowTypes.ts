@@ -1,4 +1,4 @@
-import { Edge, EdgeChange, Node, NodeChange, OnEdgesChange, OnNodesChange } from "reactflow";
+import { Edge, Node, OnEdgesChange, OnNodesChange } from "reactflow";
 import { BITCOIN_CORE_BINARY_VERSIONS, CPU_CORES, NODE_LATENCY, RAM_OPTIONS } from "./config";
 import * as NetworkContextExports from "./contexts/network-context";
 import { Dispatch } from "react";
@@ -86,7 +86,6 @@ export type NetworkContext = {
   networkList: SavedNetworkGraph[];
   networkTopologyList: NetworkTopology[];
   setNetworkList: (list: SavedNetworkGraph[]) => void;
-  // uploadToNodeGraph: () => void;
   openDialog: () => void;
   closeDialog: () => void;
   setStep: (step: NetworkContextExports.Steps) => void;
