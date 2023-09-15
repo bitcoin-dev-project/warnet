@@ -8,6 +8,7 @@ import {
   SavedNetworkGraph,
 } from "@/flowTypes";
 import { readXML } from "@/helpers/generate-network-from-graphml";
+import { useSearchParams } from "next/navigation";
 
 export const networkContext = React.createContext<NetworkContext>(null!);
 
@@ -44,46 +45,20 @@ export const NetworkProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(true);
+  // const [isDialogOpen, setIsDialogOpen] = useState<boolean>(true);
+  const searchParams = useSearchParams()
+  const networkQuery = searchParams.get("network")
+  const isDialogOpen = Boolean(!networkQuery)
+
   const [selectedNetwork, setSelectedNetwork] = useState(newNetworkTopology);
   const [networkList, setNetworkList] =
-    useState<SavedNetworkGraph[]>([]);
+    useState<SavedNetworkGraph[]>(tempSavednetwork);
 
-  // async function feet() {
-  //   const res = await fetch("graphml/wheel_graph_n100_pos.graphml");
-  //   console.log(res);
-  // }
-  // feet();
-  useEffect(() => {
-    async function getGraphDetails() {
-      for (const network of tempSavednetwork) {
-        if (network.graphmlPath) {
-          const {nodes, edges} = await readXML(network.graphmlPath)
-          if (nodes?.length && edges?.length) {
-            const builtNetwork: SavedNetworkGraph = {
-              ...network,
-              nodePersona: {
-                ...network.nodePersona,
-                peers: nodes.length,
-                nodes,
-                edges
-              }
-            }
-            setNetworkList(prev => ([...prev, builtNetwork]))
-          }
-        }
-        if (network.type === "custom" && !network.graphmlPath) {
-          setNetworkList(prev => ([...prev, network]))
-        }
-      }
-    }
-    getGraphDetails()
-    return () => {};
-  }, []);
-
-  const openDialog = () => setIsDialogOpen(true);
+  const openDialog = () => {
+    // setIsDialogOpen(true);
+  }
   const closeDialog = () => {
-    setIsDialogOpen(false);
+    // setIsDialogOpen(false);
   };
 
   return (
