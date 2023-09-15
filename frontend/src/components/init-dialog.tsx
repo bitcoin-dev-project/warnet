@@ -101,14 +101,21 @@ const NetworkDialog = () => {
                   );
                 })
               ) : (
-                <div className="py-8 w-full flex justify-center">
-                  <button
-                    className="ml-auto bg-blue-600 p-4"
-                    onClick={() => graphNextStep()}
-                  >
-                    Create New Config +
-                  </button>
-                </div>
+                <>
+                  <tr>
+                    <td className="absolute w-full flex justify-center">
+                      <div className="py-8 flex justify-center">
+                        <button
+                          className="ml-auto bg-blue-600 p-4"
+                          onClick={() => graphNextStep()}
+                        >
+                          Create New Config +
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr className="h-[120px]"></tr>
+                </>
               )}
             </tbody>
           </table>

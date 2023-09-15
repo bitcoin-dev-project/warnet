@@ -84,7 +84,6 @@ export type NetworkContext = {
   setSelectedNetwork: (value: NetworkTopology) => void;
   isDialogOpen: boolean;
   networkList: SavedNetworkGraph[];
-  networkTopologyList: NetworkTopology[];
   setNetworkList: (list: SavedNetworkGraph[]) => void;
   // uploadToNodeGraph: () => void;
   openDialog: () => void;

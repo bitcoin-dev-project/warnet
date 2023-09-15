@@ -40,6 +40,9 @@ export const NodeGraphFlowProvider = ({
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   const forceGraph = () => {
+    // don't force graph for prebuilt topologies
+    if (nodePersonaType === "prebuilt") return
+    
     dagreGraph.setGraph({ rankdir: 'LR' });
 
     nodes.forEach((node) => {

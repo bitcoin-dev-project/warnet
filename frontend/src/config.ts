@@ -2,6 +2,7 @@ const CANVAS_WIDTH = 700 as const;
 const CANVAS_HEIGHT = 700 as const;
 const LINK_DISTANCE = 150 as const;
 const NODE_ATTACHMENT_POINT = 10 as const;
+const GRAPHML_DIR = "graphml"
 
 const BITCOIN_CORE_BINARY_VERSIONS = [
   "20.0",
@@ -44,6 +45,7 @@ const CPU_CORES = [
 ] as const;
 
 export {
+  GRAPHML_DIR,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
   LINK_DISTANCE,
