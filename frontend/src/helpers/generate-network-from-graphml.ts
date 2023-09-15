@@ -44,7 +44,8 @@ export const readXML = async (path: string, configObj?: Partial<NodePersona>) : 
             if (!singleNode.data) {
               singleNode.data = {}
             }
-
+            singleNode.data.id = id
+            
             const value = data["_"]
             const mappedLabel = mapping[data?.$?.key]
   
