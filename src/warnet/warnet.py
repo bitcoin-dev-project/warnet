@@ -254,15 +254,15 @@ class Warnet:
 
         # Initialize services and add them to the compose
         services = [
-            Prometheus(self.docker_network, self.config_dir),
-            NodeExporter(self.docker_network),
-            Grafana(self.docker_network),
+            # Prometheus(self.docker_network, self.config_dir),
+            # NodeExporter(self.docker_network),
+            # Grafana(self.docker_network),
             Tor(self.docker_network, TEMPLATES),
             ForkObserver(self.docker_network, self.fork_observer_config),
             # Fluentd(self.docker_network, self.config_dir),
         ]
-        if dns:
-            services.append(DnsSeed(self.docker_network, TEMPLATES, self.config_dir))
+        # if dns:
+        #     services.append(DnsSeed(self.docker_network, TEMPLATES, self.config_dir))
 
         for service_obj in services:
             service_name = service_obj.__class__.__name__.lower()
