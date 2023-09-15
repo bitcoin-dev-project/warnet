@@ -26,6 +26,14 @@ class DnsSeed(BaseService):
                     "ipv4_address": f"{IP_ADDR}",
                 }
             },
+            "healthcheck": {
+                "test": ["CMD", "nslookup", "localhost"],
+                "interval": "30s",
+                "timeout": "10s",
+                "start_period": "10s",
+                "retries": "3",
+            },
+
         }
         # Copy files for dockerfile
         shutil.copy(str(self.templates / ZONE_FILE_NAME), config_dir)

@@ -1,4 +1,10 @@
 FROM ubuntu/bind9:9.16-20.04_beta
+
+# for healthcheck
+RUN apt-get update && \
+    apt-get install -y dnsutils && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY invalid.zone /etc/bind/invalid.zone
 COPY named.conf.local /etc/bind/named.conf.local
 
