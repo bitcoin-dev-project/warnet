@@ -16,10 +16,10 @@ const HomePage = () => {
                         <Image src={BitcoinLogo} alt='bitcoin logo' className='w-12 h-12 md:w-12 md:h-12 xl:w-20 xl:h-20' />
                         <h2 className='font-bold xl:text-custom-logo text-5xl md:text-5xl xl:text-6xl leading-none text-brand-purple'>warnet</h2>
                     </section>
-                    <p className='text-2xl md:text-2xl lg:text-3xl xl:text-4xl'>Monitor and analyze the emergent behaviors of P2P networks</p>
+                    <p className='text-white dark:text-white text-2xl md:text-2xl lg:text-3xl xl:text-4xl'>Monitor and analyze the emergent behaviors of P2P networks</p>
                 </div>
 
-                <div className='flex flex-col gap-9 text-base md:text-lg lg:text-2xl font-normal text-custom-gray'>
+                <div className='text-white dark:text-white flex flex-col gap-9 text-base md:text-lg lg:text-2xl font-normal text-custom-gray'>
                     <p>Build a stronger, more resilient Bitcoin</p>
                     <p>Break the warnet before it comes to mainnet</p>
                     <p>Monitor extreme and yet unknown network behaviors</p>
@@ -31,7 +31,7 @@ const HomePage = () => {
                         download now
                     </Link>
                     <Link
-                        className='py-5 px-6 border-2 text-center sm:w-fit whitespace-nowrap'
+                        className='text-white dark:text-white py-5 px-6 border-2 text-center sm:w-fit whitespace-nowrap'
                         href='/start'
                     >
                         generate graph
