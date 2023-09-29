@@ -6,7 +6,6 @@ from typing import List, Optional, Any, Dict
 import docker
 
 from warnet.utils import parse_raw_messages
-from warnet.tank import Tank
 from warnet.warnet import Warnet
 
 logger = logging.getLogger("warnet.client")
