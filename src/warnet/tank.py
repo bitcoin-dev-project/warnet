@@ -132,7 +132,10 @@ class Tank:
     @property
     def container(self) -> Container:
         if self._container is None:
-            self._container = docker.from_env().containers.get(self.container_name)
+            try:
+                self._container = docker.from_env().containers.get(self.container_name)
+            except:
+                pass
         return self._container
 
     @exponential_backoff()
