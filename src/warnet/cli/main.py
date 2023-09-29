@@ -133,6 +133,25 @@ def messages(node_a, node_b, network):
 
 
 @cli.command()
+@click.argument("pattern", type=str, required=True)
+@click.option("--network", default="warnet", show_default=True)
+def grep_logs(pattern, network):
+    """
+    Grep combined logs via fluentd using regex [pattern]
+    """
+
+    try:
+        result = rpc_call(
+            "grep_logs", {"network": network, "pattern": pattern}
+        )
+        print(result)
+    except Exception as e:
+        print(
+                f"Error fetching combined log: {e}"
+        )
+
+
+@cli.command()
 def stop():
     """
     Stop warnet.

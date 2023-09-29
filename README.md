@@ -9,7 +9,8 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 * A local Tor authority provides an internal onion network and each node is reachable by a Tor V3 address.
 * Scenarios can be run across the network which can be programmed using the Bitcoin Core functional [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
 * Nodes can have traffic shaping parameters assigned to them via the graph using [tc-netem](https://manpages.ubuntu.com/manpages/trusty/man8/tc-netem.8.html) tool.
-* Log files from nodes can be accessed directly.
+* Log files from nodes can be accessed directly
+* A unified log file can be grepped using regex
 * Some Bitcoin Core activity is polled and reported via a Graphana dashboard.
 * P2P messages between any two nodes can be retrieved in chronological order.
 
