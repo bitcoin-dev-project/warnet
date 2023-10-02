@@ -4,6 +4,7 @@ from subprocess import Popen, run, PIPE
 from tempfile import mkdtemp
 from time import sleep
 from warnet.cli.rpc import rpc_call
+from warnet.warnet import Warnet
 from warnet.utils import exponential_backoff
 
 class TestBase:
@@ -40,7 +41,8 @@ class TestBase:
             # likely did not succeed or was never executed.
             print(f"Error stopping server: {e}")
             print("Attempting to cleanup docker network")
-            run(["docker", "network", "rm", f"{self.network_name}"])
+            wn = Warnet.from_network(self.network_name)
+            wn.docker_compose_down()
 
         print("\nRemaining server output:")
         print(self.logfile.read())
@@ -98,11 +100,25 @@ class TestBase:
     def stop_server(self):
         self.cleanup()
 
+
+    def wait_for_predicate(self, predicate, timeout=5*60, interval=5):
+        while True:
+            # Inside the loop, this continuously prints the log output.
+            # It will read whatever has been written to the file
+            # since the last read.
+            print(self.logfile.read())
+            if predicate():
+                break
+            sleep(interval)
+            timeout -= interval
+            if timeout < 0:
+                raise Exception(f"Timed out waiting for predicate Truth")
+
+
     # Poll the warnet server for container status
     # Block until all tanks are running
     def wait_for_all_tanks_status(self, target="running", timeout=20*60, interval=5):
-        print(f"Waiting for all tanks to reach '{target}'")
-        while True:
+        def check_status():
             tanks = self.rpc("status", {"network": self.network_name})
             stats = {
                 "total": len(tanks)
@@ -112,17 +128,11 @@ class TestBase:
                 if status not in stats:
                     stats[status] = 0
                 stats[status] += 1
-            # Inside the loop, this continuously logs the build process.
-            # It will read whatever has been written to the file
-            # since the last read.
-            print(self.logfile.read())
-            # Print status
             print(f"Waiting for all tanks to reach '{target}': {stats}")
             # All tanks are running, proceed
             if target in stats and stats[target] == stats["total"]:
-                break
-            # tick tock next health check
-            sleep(interval)
-            timeout -= interval
-            if timeout < 0:
-                raise Exception(f"Timed out waiting for all tanks to reach '{target}'")
+                return True
+            else:
+                return False
+        self.wait_for_predicate(check_status, timeout, interval)
+

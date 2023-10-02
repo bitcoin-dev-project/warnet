@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key attr.name="version" attr.type="string" for="node" id="version"/>
+  <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
+  <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
+  <graph edgedefault="directed">
+    <node id="0">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w0</data>
+    </node>
+    <node id="1">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w1</data>
+    </node>
+    <node id="2">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w2</data>
+    </node>
+    <node id="3">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w3</data>
+    </node>
+    <node id="4">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w4</data>
+    </node>
+    <node id="5">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w5</data>
+    </node>
+    <node id="6">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w6</data>
+    </node>
+    <node id="7">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w7</data>
+    </node>
+    <node id="8">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w8</data>
+    </node>
+    <node id="9">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w9</data>
+    </node>
+    <node id="10">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w10</data>
+    </node>
+    <node id="11">
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w11</data>
+    </node>
+    <!-- connect the nodes in a ring to start -->
+    <edge id="11" source="0" target="1"></edge>
+    <edge id="12" source="1" target="2"></edge>
+    <edge id="13" source="2" target="3"></edge>
+    <edge id="14" source="3" target="4"></edge>
+    <edge id="15" source="4" target="5"></edge>
+    <edge id="16" source="5" target="6"></edge>
+    <edge id="17" source="6" target="7"></edge>
+    <edge id="18" source="7" target="8"></edge>
+    <edge id="19" source="8" target="9"></edge>
+    <edge id="20" source="9" target="10"></edge>
+    <edge id="21" source="10" target="11"></edge>
+    <edge id="21" source="11" target="0"></edge>
+  </graph>
+</graphml>
