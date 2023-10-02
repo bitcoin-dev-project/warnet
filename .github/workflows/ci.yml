@@ -8,11 +8,14 @@ on:
 
 jobs:
   test:
-    name: Install and run test
+    name: Install and run tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt install -y docker docker-compose
       - run: pip install --upgrade pip
       - run: pip install -e .
-      - run: ./test/init_test.py
+      # This is our test runner
+      - run: ./test/build_branch_test.py
+      - run: ./test/scenarios_test.py
+      - run: ./test/v25_net_test.py
