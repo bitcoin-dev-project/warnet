@@ -7,15 +7,27 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Install and run tests
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt install -y docker docker-compose
       - run: pip install --upgrade pip
       - run: pip install -e .
-      # This is our test runner
       - run: ./test/build_branch_test.py
+  scenarios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install -y docker docker-compose
+      - run: pip install --upgrade pip
+      - run: pip install -e .
       - run: ./test/scenarios_test.py
+  onion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install -y docker docker-compose
+      - run: pip install --upgrade pip
+      - run: pip install -e .
       - run: ./test/v25_net_test.py
