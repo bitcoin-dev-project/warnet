@@ -1,6 +1,7 @@
 import concurrent.futures
 import logging
 import threading
+from datetime import datetime
 from typing import List, Optional, Any, Dict
 
 import docker
@@ -13,17 +14,18 @@ logger = logging.getLogger("warnet.client")
 
 def get_bitcoin_debug_log(network: str, index: int) -> str:
     warnet = Warnet.from_network(network)
-    tank = warnet.tanks[index]
-    subdir = "/" if tank.bitcoin_network == "main" else f"{tank.bitcoin_network}/"
-    data, stat = tank.container.get_archive(f"/home/bitcoin/.bitcoin/{subdir}debug.log")
-    out = ""
-    for chunk in data:
-        out += chunk.decode()
-    # slice off tar archive header
-    out = out[512:]
-    # slice off end padding
-    out = out[: stat["size"]]
-    return out
+    docker = warnet.docker
+    container_name = warnet.tanks[index].container_name
+    now = datetime.utcnow()
+
+    logs = docker.api.logs(
+        container=container_name,
+        stdout=True,
+        stderr=True,
+        stream=False,
+        until=now,
+    )
+    return logs.decode('utf-8')
 
 
 def get_bitcoin_cli(network: str, index: int, method: str, params=None) -> str:
