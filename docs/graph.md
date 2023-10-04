@@ -67,7 +67,11 @@ Edges can be added between the nodes as follows:
 </edge>
 ```
 
-## Example
+## Examples
 
-[example.graphml](../src/templates/example.graphml)
+1. [example.graphml](../src/templates/example.graphml) -- This is the default graph.
+2. [random_internet_as_graph_n100_pos.graphml](../graphs/random_internet_as_graph_n100_pos.graphml)
+
+![random_internet_as_graph_n100](../docs/random_internet_as_graph_n100.png)
+*random_internet_as_graph_n100*
 
