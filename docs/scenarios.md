@@ -41,4 +41,9 @@ $ warcli scenarios stop 14683
 Stopped scenario with PID 14683.
 ```
 
+## Add scenarios
+
+To add your own scenario make a copy of one of the existing python tests in src/scenarios/ and write the desired scenario.
+Save this file back into the same src/scenarios/ directory and it will be listed and available for running using the aforementioned commands.
+
 # Next: [Network Topology](graph.md)
