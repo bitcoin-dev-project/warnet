@@ -6,7 +6,6 @@ The graphml file has the following specification:
 ```graphml
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
 <key attr.name="label" attr.type="string" for="node" id="label"/>
-<key attr.name="Edge Label" attr.type="string" for="edge" id="edgelabel"/>
 <key attr.name="x" attr.type="float" for="node" id="x"/>
 <key attr.name="y" attr.type="float" for="node" id="y"/>
 <key attr.name="version" attr.type="string" for="node" id="version"/>
@@ -59,9 +58,7 @@ Or for a custom built branch with traffic shaping rules applied:
 
 `x`, `y`, `version`, `bitcoin_config` and `tc_netem` datafields are optional for all nodes.
 
-## Edge attributes
-
-* `edgelabel` specifies an edge's label
+## Edges
 
 Edges can be added between the nodes as follows:
 
