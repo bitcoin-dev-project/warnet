@@ -250,6 +250,13 @@ class Tank:
                         "condition": "service_healthy"
                     }
                 },
+                "healthcheck": {
+                    "test": ["CMD", "pidof", "bitcoind"],
+                    "interval": "5s",            # Check every 5 seconds
+                    "timeout": "1s",             # Give the check 1 second to complete
+                    "start_period": "5s",       # Start checking after 2 seconds
+                    "retries": 3
+                },
                 "logging": {
                     "driver": "fluentd",
                     "options": {
