@@ -313,14 +313,14 @@ class Warnet:
         # grep: disable-exporters
         # for tank in self.tanks:
         #     tank.add_scrapers(config["scrape_configs"])
-
-        prometheus_path = self.config_dir / "prometheus.yml"
-        try:
-            with open(prometheus_path, "w") as file:
-                yaml.dump(config, file)
-            logger.info(f"Wrote file: {prometheus_path}")
-        except Exception as e:
-            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
+        #
+        # prometheus_path = self.config_dir / "prometheus.yml"
+        # try:
+        #     with open(prometheus_path, "w") as file:
+        #         yaml.dump(config, file)
+        #     logger.info(f"Wrote file: {prometheus_path}")
+        # except Exception as e:
+        #     logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
 
     @bubble_exception_str
