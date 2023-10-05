@@ -263,7 +263,8 @@ class Server():
             try:
                 wn.write_bitcoin_confs()
                 wn.write_docker_compose()
-                wn.write_prometheus_config()
+                # grep: disable-exporters
+                # wn.write_prometheus_config()
                 wn.write_fork_observer_config()
                 wn.docker_compose_build_up()
                 wn.generate_zone_file_from_tanks()

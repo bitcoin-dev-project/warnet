@@ -253,19 +253,20 @@ class Tank:
             }
         )
 
+        # grep: disable-exporters
         # Add the prometheus data exporter in a neighboring container
-        services[self.exporter_name] = {
-            "image": "jvstein/bitcoin-prometheus-exporter",
-            "container_name": self.exporter_name,
-            "environment": {
-                "BITCOIN_RPC_HOST": self.container_name,
-                "BITCOIN_RPC_PORT": self.rpc_port,
-                "BITCOIN_RPC_USER": self.rpc_user,
-                "BITCOIN_RPC_PASSWORD": self.rpc_password,
-            },
-            "ports": [f"{8335 + self.index}:9332"],
-            "networks": [self.docker_network],
-        }
+        # services[self.exporter_name] = {
+        #     "image": "jvstein/bitcoin-prometheus-exporter",
+        #     "container_name": self.exporter_name,
+        #     "environment": {
+        #         "BITCOIN_RPC_HOST": self.container_name,
+        #         "BITCOIN_RPC_PORT": self.rpc_port,
+        #         "BITCOIN_RPC_USER": self.rpc_user,
+        #         "BITCOIN_RPC_PASSWORD": self.rpc_password,
+        #     },
+        #     "ports": [f"{8335 + self.index}:9332"],
+        #     "networks": [self.docker_network],
+        # }
 
     def add_scrapers(self, scrapers):
         scrapers.append(
