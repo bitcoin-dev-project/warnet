@@ -13,7 +13,7 @@ base.wait_for_all_tanks_status(target="running")
 
 # Use rpc instead of warcli so we get raw JSON object
 scenarios = base.rpc("scenarios_list")
-assert len(scenarios) == 3
+assert len(scenarios) == 4
 
 # Exponential backoff will repeat this command until it succeeds.
 # That's when we are ready for scenarios

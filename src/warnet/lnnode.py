@@ -1,7 +1,9 @@
 
 import docker
+import json
 from docker.models.containers import Container
 from warnet.utils import (
+    exponential_backoff,
     generate_ipv4_addr
 )
 
@@ -41,7 +43,8 @@ class LNNode:
             f"--bitcoind.rpchost={self.tank.ipv4}:{self.tank.rpc_port}",
             f"--bitcoind.zmqpubrawblock=tcp://{self.tank.ipv4}:28332",
             f"--bitcoind.zmqpubrawtx=tcp://{self.tank.ipv4}:28333",
-            f"--externalip={self.ipv4}"
+            f"--externalip={self.ipv4}",
+            f"--alias={self.container_name}"
         ]
         services[self.container_name] = {
             "container_name": self.container_name,
@@ -58,3 +61,33 @@ class LNNode:
                 "ipv4_address": self.tank.ipv4
             }
         }
+
+    @exponential_backoff(max_retries=20, max_delay=300)
+    def lncli(self, cmd):
+        cmd = f"lncli --network=regtest {cmd}"
+        result = self.container.exec_run(cmd=cmd)
+        if result.exit_code != 0:
+            raise Exception(
+                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}"
+            )
+        return result.output.decode("utf-8")
+
+    def getnewaddress(self):
+        res = json.loads(self.lncli("newaddress p2wkh"))
+        return res["address"]
+
+    def getURI(self):
+        res = json.loads(self.lncli("getinfo"))
+        return res["uris"][0]
+
+    def open_channel_to_tank(self, index, amt):
+        tank = self.warnet.tanks[index]
+        [pubkey, host] = tank.lnnode.getURI().split('@')
+        res = json.loads(self.lncli(f"openchannel --node_key={pubkey} --connect={host} --local_amt={amt}"))
+        return res
+
+    def connect_to_tank(self, index):
+        tank = self.warnet.tanks[index]
+        uri = tank.lnnode.getURI()
+        res = self.lncli(f"connect {uri}")
+        return res
