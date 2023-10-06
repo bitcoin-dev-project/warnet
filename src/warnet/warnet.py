@@ -1,10 +1,12 @@
 """
-  Warnet is the top-level class for a simulated network.
+Warnet is the top-level class for a simulated network.
 """
 
 import docker
 import logging
 import networkx
+# defuse stdlib xml via experimental monkeypatch
+import defusedxml; defusedxml.defuse_stdlib()
 import shutil
 import subprocess
 import yaml
