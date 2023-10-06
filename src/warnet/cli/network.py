@@ -60,3 +60,30 @@ def down(network: str = "warnet"):
     except Exception as e:
         print(f"Error running docker-compose down on network {network}: {e}")
 
+
+@network.command()
+@click.option("--network", default="warnet", show_default=True)
+def info(network: str = "warnet"):
+    """
+    Get info about a warnet named <--network> (default: "warnet").
+    """
+    try:
+        result = rpc_call("info", {"network": network})
+        print(result)
+    except Exception as e:
+        print(f"Error getting info about network {network}: {e}")
+
+
+@network.command()
+@click.option("--network", default="warnet", show_default=True)
+def status(network: str = "warnet"):
+    """
+    Get status of a warnet named <--network> (default: "warnet").
+    """
+    try:
+        result = rpc_call("status", {"network": network})
+        for tank in result:
+            print(f"{tank['container_name']}: {tank['status']}")
+    except Exception as e:
+        print(f"Error getting status of network {network}: {e}")
+

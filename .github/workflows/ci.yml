@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install -y docker docker-compose
+      - run: pip install --upgrade pip
+      - run: pip install -e .
+      - run: ./test/build_branch_test.py
+  scenarios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install -y docker docker-compose
+      - run: pip install --upgrade pip
+      - run: pip install -e .
+      - run: ./test/scenarios_test.py
+  onion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install -y docker docker-compose
+      - run: pip install --upgrade pip
+      - run: pip install -e .
+      - run: ./test/v25_net_test.py

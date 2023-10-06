@@ -87,6 +87,8 @@ class Server():
         self.jsonrpc.register(self.up)
         self.jsonrpc.register(self.from_file)
         self.jsonrpc.register(self.down)
+        self.jsonrpc.register(self.info)
+        self.jsonrpc.register(self.status)
         # Debug
         self.jsonrpc.register(self.update_dns_seeder)
         self.jsonrpc.register(self.generate_compose)
@@ -290,6 +292,28 @@ class Server():
             return "Stopping warnet"
         except Exception as e:
             return f"Exception {e}"
+
+
+    def info(self, network: str = "warnet") -> str:
+        """
+        Get info about a warnet network named <network>
+        """
+        wn = Warnet.from_network(network)
+        return f"{wn}"
+
+
+    def status(self, network: str = "warnet") -> List[dict]:
+        """
+        Get running status of a warnet network named <network>
+        """
+        wn = Warnet.from_network(network)
+        stats = []
+        for tank in wn.tanks:
+            status = tank.container.status if tank.container is not None else None
+            stats.append({
+            "container_name": tank.container_name,
+            "status": status})
+        return stats
 
 
     def update_dns_seeder(self, graph_file: str, network: str = "warnet") -> str:
