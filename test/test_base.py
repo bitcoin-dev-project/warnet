@@ -1,4 +1,6 @@
 import atexit
+import os
+import signal
 from pathlib import Path
 from subprocess import Popen, run, PIPE
 from tempfile import mkdtemp
@@ -17,45 +19,63 @@ class TestBase:
         self.network_name = self.tmpdir.name
         self.logfile = None
         self.server = None
+        self.network = False
 
         atexit.register(self.cleanup)
 
         print(f"\nWarnet test base started")
 
-
-    def cleanup(self, signum = None, frame = None):
-        if self.server is None:
-            return
-
+    def _cleanup_docker(self):
         try:
-            print("\nStopping network")
-            self.warcli("network down")
-
-            self.wait_for_all_tanks_status(target="none", timeout=60, interval=1)
-
-            print("\nStopping server")
-            self.warcli("stop", False)
-        except Exception as e:
-            # Remove the temporary docker network when we quit.
-            # If the warnet server exited prematurely then docker-compose down
-            # likely did not succeed or was never executed.
-            print(f"Error stopping server: {e}")
             print("Attempting to cleanup docker network")
             wn = Warnet.from_network(self.network_name)
             wn.docker_compose_down()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
 
-        print("\nRemaining server output:")
-        print(self.logfile.read())
-        self.logfile.close()
+    def _cleanup_network(self):
+        if self.network:
+            try:
+                print("\nStopping network")
+                self.warcli("network down")
 
-        self.logfile = None
-        self.server.terminate()
-        self.server = None
+                self.wait_for_all_tanks_status(target="none", timeout=60, interval=1)
 
+                print("\nStopping server")
+                self.warcli("stop", False)
+            except Exception as e:
+                # Remove the temporary docker network when we quit.
+                # If the warnet server exited prematurely then docker-compose down
+                # likely did not succeed or was never executed.
+                print(f"Error stopping server: {e}")
+                self._cleanup_docker()
+
+    def _cleanup_server(self):
+        # kill the server process by its PID if it still survives
+        if self.server:
+            print(f"killing server with pid {self.server.pid}")
+            os.killpg(os.getpgid(self.server.pid), signal.SIGTERM)
+
+    def cleanup(self, signum = None, frame = None):
+        if not self.server:
+            return
+
+        self._cleanup_network()
+        self._cleanup_server()
+
+        if self.logfile:
+            print("\nRemaining server output:")
+            print(self.logfile.read())
+            self.logfile.close()
+            self.logfile = None
 
     # Execute a warcli RPC using command line (always returns string)
     def warcli(self, str, network=True):
         cmd = ["warcli"] + str.split()
+        if "network" in cmd and ("start" in cmd or "up" in cmd):
+            self.network = True
         if network:
             cmd += ["--network", self.network_name]
         proc = run(
@@ -64,17 +84,16 @@ class TestBase:
             stderr=PIPE)
         return proc.stdout.decode().strip()
 
-
     # Execute a warnet RPC API call directly (may return dict or list)
     def rpc(self, method, params = []):
+        if "network" in method and ("from_file" in params or "up" in params):
+            self.network = True
         return rpc_call(method, params)
-
 
     # Repeatedly execute an RPC until it succeeds
     @exponential_backoff()
     def wait_for_rpc(self, method, params = []):
         return rpc_call(method, params)
-
 
     # Start the Warnet server and wait for RPC interface to respond
     def start_server(self):
@@ -87,7 +106,8 @@ class TestBase:
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
         self.server = Popen(
             f"warnet > {self.logfilepath}",
-            shell=True)
+            shell=True,
+            preexec_fn=os.setsid)  # This sets up a new session and process group
 
         print("\nWaiting for RPC")
         # doesn't require anything docker-related
@@ -95,11 +115,9 @@ class TestBase:
         # open the log file for reading for the duration of the test
         self.logfile = open(self.logfilepath, "r")
 
-
     # Quit
     def stop_server(self):
         self.cleanup()
-
 
     def wait_for_predicate(self, predicate, timeout=5*60, interval=5):
         while True:
@@ -113,7 +131,6 @@ class TestBase:
             timeout -= interval
             if timeout < 0:
                 raise Exception(f"Timed out waiting for predicate Truth")
-
 
     # Poll the warnet server for container status
     # Block until all tanks are running
