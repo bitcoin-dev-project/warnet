@@ -320,8 +320,14 @@ class Server():
         for tank in wn.tanks:
             status = tank.container.status if tank.container is not None else None
             stats.append({
-            "container_name": tank.container_name,
-            "status": status})
+                "container_name": tank.container_name,
+                "status": status})
+            if tank.lnnode is not None:
+                ln_status = tank.lnnode.container.status if tank.lnnode.container is not None else None
+                stats.append({
+                    "container_name": tank.lnnode.container_name,
+                    "status": ln_status})
+
         return stats
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:

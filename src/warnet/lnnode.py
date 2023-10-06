@@ -51,5 +51,10 @@ class LNNode:
                 self.tank.docker_network: {
                     "ipv4_address": f"{self.ipv4}",
                 }
+            },
+            "tank": {
+                "index": self.tank.index,
+                "container_name": self.tank.container_name,
+                "ipv4_address": self.tank.ipv4
             }
         }

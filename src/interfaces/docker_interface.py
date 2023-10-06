@@ -19,6 +19,7 @@ from services.grafana import Grafana
 from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
+from warnet.lnnode import LNNode
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
 
 
@@ -275,6 +276,8 @@ class DockerInterface(ContainerInterface):
         defaults += f" -rpcuser={tank.rpc_user}"
         defaults += f" -rpcpassword={tank.rpc_password}"
         defaults += f" -rpcport={tank.rpc_port}"
+        defaults +=  " -zmqpubrawblock=0.0.0.0:28332"
+        defaults +=  " -zmqpubrawtx=0.0.0.0:28333"
         return defaults
 
     def copy_configs(self, tank):
@@ -331,6 +334,17 @@ class DockerInterface(ContainerInterface):
             }
         )
 
+        if tank.lnnode is not None:
+            tank.lnnode.add_services(services)
+            services[tank.container_name].update(
+            {
+                "lnnode": {
+                    "container_name": tank.lnnode.container_name,
+                    "ipv4_address": tank.lnnode.ipv4,
+                    "impl": tank.lnnode.impl
+                }
+            })
+
         # grep: disable-exporters
         # Add the prometheus data exporter in a neighboring container
         # services[self.exporter_name] = {
@@ -376,11 +390,14 @@ class DockerInterface(ContainerInterface):
             return None
 
         index = int(match.group(1))
-        t = Tank(index, warnet.config_dir, warnet)
-        t._ipv4 = service["networks"][t.network_name]["ipv4_address"]
+        tank = Tank(index, warnet.config_dir, warnet)
+        tank._ipv4 = service["networks"][tank.network_name]["ipv4_address"]
         if "image" in service:
-            t.version = service["image"].split(":")[1]
+            tank.version = service["image"].split(":")[1]
         else:
-            t.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
-        return t
-
+            tank.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
+        if "lnnode" in service:
+            tank.lnnode = LNNode(warnet, tank, service["lnnode"]["impl"])
+            tank.lnnode.container_name = service["lnnode"]["container_name"]
+            tank.lnnode.ipv4 = service["lnnode"]["ipv4_address"]
+        return tank
