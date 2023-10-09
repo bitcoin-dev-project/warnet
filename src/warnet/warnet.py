@@ -115,8 +115,10 @@ class Warnet:
         if self.graph is None:
             return
 
-        for edge in self.graph.edges():
-            (src, dst) = edge
+        for edge in self.graph.edges(data=True):
+            (src, dst, data) = edge
+            if "channel" in data:
+                continue
             src_tank = self.tanks[src]
             dst_ip = self.tanks[dst].ipv4
             # <= 20.2 doesn't have addpeeraddress
@@ -132,6 +134,10 @@ class Warnet:
     @bubble_exception_str
     def warnet_build(self):
         self.container_interface.build()
+
+    @bubble_exception_str
+    def get_ln_node_from_tank(self, index):
+        return self.tanks[index].lnnode
 
     @bubble_exception_str
     def warnet_up(self):

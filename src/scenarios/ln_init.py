@@ -14,55 +14,63 @@ class LNInit(WarnetTestFramework):
 
     def run_test(self):
         self.log.info("Get LN nodes and wallet addresses")
-        lnd0 = self.warnet.tanks[0].lnnode
-        lnd1 = self.warnet.tanks[1].lnnode
-        lnd2 = self.warnet.tanks[2].lnnode
-        adr0 = lnd0.getnewaddress()
-        adr1 = lnd1.getnewaddress()
-        adr2 = lnd2.getnewaddress()
+        recv_addrs = []
+        for tank in self.warnet.tanks:
+            if tank.lnnode is not None:
+                recv_addrs.append(tank.lnnode.getnewaddress())
 
         self.log.info("Fund LN wallets")
         miner = ensure_miner(self.nodes[3])
         addr = miner.getnewaddress()
         self.generatetoaddress(self.nodes[3], 110, addr)
-        miner.sendtoaddress(adr0, 50)
-        miner.sendtoaddress(adr1, 50)
-        miner.sendtoaddress(adr2, 50)
+        for addr in recv_addrs:
+            miner.sendtoaddress(addr, 50)
         self.generatetoaddress(self.nodes[3], 1, addr)
 
         self.log.info("Open channels")
-        tx0 = lnd0.open_channel_to_tank(1, 100000)["funding_txid"]
-        tx1 = lnd1.open_channel_to_tank(2, 100000)["funding_txid"]
+        # TODO: This might belong in Warnet class as connect_ln_edges()
+        #       but that would need to ensure spendable funds first.
+        #       For now we consider this scenario "special".
+        opening_txs = []
+        ln_edges = []
+        for edge in self.warnet.graph.edges(data=True):
+            (src, dst, data) = edge
+            if "channel" in data:
+                src_node = self.warnet.get_ln_node_from_tank(src)
+                assert src_node is not None
+                assert self.warnet.get_ln_node_from_tank(dst) is not None
+                ln_edges.append(edge)
+                tx = src_node.open_channel_to_tank(dst, data["channel"])["funding_txid"]
+                opening_txs.append(tx)
 
-        self.log.info("Waiting for channel open tx in mempool")
+
+        self.log.info("Waiting for all channel open txs in mempool")
         while True:
+            all_set = True
             mp = self.nodes[3].getrawmempool()
-            if tx0 in mp and tx1 in mp:
+            for tx in opening_txs:
+                if tx not in mp:
+                    all_set = False
+            if all_set:
                 break
             sleep(2)
 
         self.log.info("Confirming channel opens")
         self.generatetoaddress(self.nodes[3], 6, addr)
 
-        self.log.info("Waiting for graph gossip")
+        self.log.info("Waiting for graph gossip sync")
         while True:
-            edges = json.loads(lnd0.lncli("describegraph"))["edges"]
-            if len(edges) == 2:
+            all_set = True
+            for tank in self.warnet.tanks:
+                if tank.lnnode is not None:
+                    edges = json.loads(tank.lnnode.lncli("describegraph"))["edges"]
+                    if len(edges) != len(ln_edges):
+                        all_set = False
+            if all_set:
                 break
             sleep(2)
 
-        self.log.info("Test LN payment")
-        inv = json.loads(lnd2.lncli("addinvoice --amt=1234"))["payment_request"]
-        self.log.info(inv)
-        lnd0.lncli(f"payinvoice -f {inv}")
-
-        self.log.info("Waiting for payment success")
-        while True:
-            invs = json.loads(lnd2.lncli("listinvoices"))["invoices"]
-            if len(invs) > 0:
-                if invs[0]["state"] == "SETTLED":
-                    break
-            sleep(2)
+        self.log.info(f"Warnet LN ready with {len(recv_addrs)} nodes and {len(ln_edges)} channels.")
 
 if __name__ == "__main__":
     LNInit().main()
