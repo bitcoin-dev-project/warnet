@@ -20,5 +20,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 - [CLI Commands](docs/warcli.md)
 - [Scenarios](docs/scenarios.md)
 - [Network Topology](docs/graph.md)
+- [API-Server Setup](docs/api-server.md)
 
 ![warnet-art](docs/machines.webp)
+
