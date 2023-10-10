@@ -86,6 +86,7 @@ class Server():
         self.jsonrpc.register(self.network_down)
         self.jsonrpc.register(self.network_info)
         self.jsonrpc.register(self.network_status)
+        self.jsonrpc.register(self.network_export)
         # Graph
         self.jsonrpc.register(self.graph_generate)
         # Debug
@@ -155,6 +156,22 @@ class Server():
 
         except Exception as e:
             raise Exception(f"{e}")
+
+
+    def network_export(self, network: str) -> str:
+        """
+        Export all data for sim-ln to subdirectory
+        """
+        try:
+            wn = Warnet.from_network(network)
+            subdir = os.path.join(wn.config_dir, "simln")
+            os.makedirs(subdir, exist_ok=True)
+            wn.export(subdir)
+        except Exception as e:
+            self.logger.error(f"Exception occurred while exporting network: {e}")
+            return f"Exception {e}"
+        return subdir
+
 
     def scenarios_list(self) -> List[tuple]:
         """
@@ -327,7 +344,6 @@ class Server():
                 stats.append({
                     "container_name": tank.lnnode.container_name,
                     "status": ln_status})
-
         return stats
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:

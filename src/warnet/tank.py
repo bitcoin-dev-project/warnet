@@ -148,3 +148,7 @@ class Tank:
             logger.error(
                 f"Error applying network conditions to {self.container_name}: `{self.netem}` ({e})"
             )
+
+    def export(self, config, subdir):
+        if self.lnnode is not None:
+            self.lnnode.export(config, subdir)

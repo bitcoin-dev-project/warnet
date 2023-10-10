@@ -2,10 +2,11 @@
   Warnet is the top-level class for a simulated network.
 """
 
+import json
 import logging
 import networkx
+import os
 import shutil
-import yaml
 from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
@@ -166,4 +167,14 @@ class Warnet:
                     rpc_password = "{tank.rpc_password}"
                 """)
         logger.info(f"Wrote file: {self.fork_observer_config}")
+
+
+    @bubble_exception_str
+    def export(self, subdir):
+        config = {"nodes": []}
+        for tank in self.tanks:
+            tank.export(config, subdir)
+        config_path = os.path.join(subdir, "sim.json")
+        with open(config_path, "a") as f:
+            json.dump(config, f)
 

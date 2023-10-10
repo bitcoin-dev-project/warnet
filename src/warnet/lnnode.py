@@ -1,7 +1,9 @@
 
 import docker
 import json
+import os
 from docker.models.containers import Container
+from warnet.client import get_file_from_container
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr
@@ -44,6 +46,7 @@ class LNNode:
             f"--bitcoind.zmqpubrawblock=tcp://{self.tank.ipv4}:28332",
             f"--bitcoind.zmqpubrawtx=tcp://{self.tank.ipv4}:28333",
             f"--externalip={self.ipv4}",
+            f"--rpclisten=0.0.0.0:10009",
             f"--alias={self.container_name}"
         ]
         services[self.container_name] = {
@@ -91,3 +94,27 @@ class LNNode:
         uri = tank.lnnode.getURI()
         res = self.lncli(f"connect {uri}")
         return res
+
+    def export(self, config, subdir):
+        macaroon_filename = f"{self.container_name}_admin.macaroon"
+        cert_filename = f"{self.container_name}_tls.cert"
+        macaroon_path = os.path.join(subdir, macaroon_filename)
+        cert_path = os.path.join(subdir, cert_filename)
+        macaroon = get_file_from_container(self.container, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
+        cert = get_file_from_container(self.container, "/root/.lnd/tls.cert")
+
+        with open(macaroon_path, "wb") as f:
+            f.write(macaroon)
+
+        with open(cert_path, "wb") as f:
+            f.write(cert)
+
+        config["nodes"].append({
+            "LND": {
+                "id": self.container_name,
+                "address": f"https://{self.ipv4}:10009",
+                "macaroon": macaroon_path,
+                "cert": cert_path
+            }
+        })
+

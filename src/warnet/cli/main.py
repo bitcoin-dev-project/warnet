@@ -146,7 +146,7 @@ def grep_logs(pattern, network):
     except Exception as e:
         print(
                 f"Error fetching combined log: {e}"
-        )
+            )
 
 
 @cli.command()
