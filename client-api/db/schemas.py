@@ -13,7 +13,7 @@ class Network(NetworkBase):
     owner_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserBase(BaseModel):
     email: str
@@ -32,4 +32,4 @@ class User(UserBase):
     networks: list[Network] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
