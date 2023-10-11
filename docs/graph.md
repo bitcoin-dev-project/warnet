@@ -75,3 +75,5 @@ Edges can be added between the nodes as follows:
 ![random_internet_as_graph_n100](../docs/random_internet_as_graph_n100.png)
 *random_internet_as_graph_n100*
 
+
+# Next: [Collecting Data](data.md)
