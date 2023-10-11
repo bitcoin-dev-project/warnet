@@ -31,3 +31,11 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install -e .
       - run: ./test/v25_net_test.py
+  rpc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: sudo apt install -y docker docker-compose
+      - run: pip install --upgrade pip
+      - run: pip install -e .
+      - run: ./test/rpc_test.py
