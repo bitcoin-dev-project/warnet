@@ -62,7 +62,7 @@ class TestBase:
             cmd,
             stdout=PIPE,
             stderr=PIPE)
-        return proc.stdout.decode()
+        return proc.stdout.decode().strip()
 
 
     # Execute a warnet RPC API call directly (may return dict or list)
