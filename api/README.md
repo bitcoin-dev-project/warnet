@@ -11,7 +11,7 @@ cp .env.sample .env
 2. Run the docker daemon
 
 ```bash
-docker-compose -f api-compose.yml up -d
+docker compose -f api-compose.yml up -d
 ```
 
 3. We use Postgresql as a data store. You can access it locally by using this connection string.

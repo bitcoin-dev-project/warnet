@@ -193,7 +193,7 @@ class Warnet:
 
     @bubble_exception_str
     def docker_compose_build_up(self):
-        command = ["docker-compose", "-p", self.docker_network, "up", "-d", "--build"]
+        command = ["docker", "compose", "-p", self.docker_network, "up", "-d", "--build"]
         try:
             with subprocess.Popen(
                 command,
@@ -210,7 +210,7 @@ class Warnet:
 
     @bubble_exception_str
     def docker_compose_up(self):
-        command = ["docker-compose", "-p", self.docker_network, "up", "-d"]
+        command = ["docker", "compose", "-p", self.docker_network, "up", "-d"]
         try:
             with subprocess.Popen(
                 command,
@@ -227,7 +227,7 @@ class Warnet:
 
     @bubble_exception_str
     def docker_compose_down(self):
-        command = ["docker-compose", "down"]
+        command = ["docker", "compose", "down"]
         try:
             with subprocess.Popen(
                 command,

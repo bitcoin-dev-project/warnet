@@ -37,9 +37,9 @@ warcli
   + network
   |   + start  Build and run a new Warnet network from a graph file (default: src/templates/example.graphml)
   |   |          ex: warcli network start ~/docs/cool_network.graphml --network=sweet
-  |   + up     Run "docker-compose up" on a given network
+  |   + up     Run "docker compose up" on a given network
   |   |          ex: warcli network up --network=sweet
-  |   + down   Run "docker-compose down" on a given network
+  |   + down   Run "docker compose down" on a given network
   |              ex: warcli network down --network=sweet
   + debug
       + generate_compose
