@@ -39,7 +39,7 @@ def start(
 @click.option("--network", default="warnet", show_default=True)
 def up(network: str = "warnet"):
     """
-    Run 'docker-compose up' on a warnet named <--network> (default: "warnet").
+    Run 'docker compose up' on a warnet named <--network> (default: "warnet").
     """
     try:
         result = rpc_call("up", {"network": network})
@@ -52,13 +52,13 @@ def up(network: str = "warnet"):
 @click.option("--network", default="warnet", show_default=True)
 def down(network: str = "warnet"):
     """
-    Run 'docker-compose down on a warnet named <--network> (default: "warnet").
+    Run 'docker compose down on a warnet named <--network> (default: "warnet").
     """
     try:
         result = rpc_call("down", {"network": network})
         print(result)
     except Exception as e:
-        print(f"Error running docker-compose down on network {network}: {e}")
+        print(f"Error running docker compose down on network {network}: {e}")
 
 
 @network.command()

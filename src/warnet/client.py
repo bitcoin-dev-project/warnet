@@ -98,7 +98,7 @@ def stop_network(network="warnet") -> bool:
 
 def compose_down(network="warnet") -> bool:
     """
-    Run docker-compose down on a warnet
+    Run docker compose down on a warnet
     """
     wn = Warnet.from_network(network)
     wn.docker_compose_down()
