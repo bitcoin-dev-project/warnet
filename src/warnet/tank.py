@@ -251,7 +251,7 @@ class Tank:
                     }
                 },
                 "healthcheck": {
-                    "test": ["CMD", "pidof", "bitcoind"],
+                    "test": ["CMD-SHELL", f"bitcoin-cli -rpcport={self.rpc_port} -rpcuser={self.rpc_user} -rpcpassword={self.rpc_password} getblockcount"],
                     "interval": "5s",            # Check every 5 seconds
                     "timeout": "1s",             # Give the check 1 second to complete
                     "start_period": "5s",       # Start checking after 2 seconds
