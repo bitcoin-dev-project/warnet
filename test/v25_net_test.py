@@ -14,18 +14,28 @@ base.wait_for_all_tanks_status(target="running")
 
 onion_addr = None
 
+
+def wait_for_reachability():
+    global onion_addr
+    info = json.loads(base.warcli("rpc 0 getnetworkinfo"))
+    for net in info["networks"]:
+        if net["name"] == "ipv4":
+            if not net["reachable"]:
+                return False
+        if net["name"] == "onion":
+            if not net["reachable"]:
+                return False
+    if not len(info["localaddresses"]) == 2:
+        return False
+    for addr in info["localaddresses"]:
+        assert "100." in addr["address"] or ".onion" in addr["address"]
+        if ".onion" in addr["address"]:
+            onion_addr = addr["address"]
+            return True
+
 print("\nChecking IPv4 and onion reachability")
-info = json.loads(base.warcli("rpc 0 getnetworkinfo"))
-for net in info["networks"]:
-    if net["name"] == "ipv4":
-        assert net["reachable"]
-    if net["name"] == "onion":
-        assert net["reachable"]
-assert len(info["localaddresses"]) == 2
-for addr in info["localaddresses"]:
-    assert "100." in addr["address"] or ".onion" in addr["address"]
-    if ".onion" in addr["address"]:
-        onion_addr = addr["address"]
+base.wait_for_predicate(wait_for_reachability, timeout=10*60)
+
 
 print("\nAttempting addnode to onion peer")
 base.warcli(f"rpc 1 addnode --params={onion_addr} --params=add")
