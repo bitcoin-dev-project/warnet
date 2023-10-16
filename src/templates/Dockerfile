@@ -81,6 +81,7 @@ COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/loca
 COPY docker_entrypoint.sh /entrypoint.sh
 COPY torrc /etc/tor/torrc
 COPY bitcoin.conf /home/bitcoin/.bitcoin/bitcoin.conf
+COPY asmap.dat /home/bitcoin/.bitcoin/regtest/asmap.dat
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332

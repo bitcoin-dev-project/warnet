@@ -30,6 +30,7 @@ DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 WARNET_ENTRYPOINT_NAME = "warnet_entrypoint.sh"
 DOCKER_ENTRYPOINT_NAME = "docker_entrypoint.sh"
+ASMAP_DAT_NAME = "asmap.dat"
 
 
 logger = logging.getLogger("tank")
@@ -55,6 +56,7 @@ class Tank:
         self.torrc_path = config_dir / TORRC_NAME
         self.warnet_entrypoint = config_dir / WARNET_ENTRYPOINT_NAME
         self.docker_entrypoint = config_dir / DOCKER_ENTRYPOINT_NAME
+        self.as_map_dat_path = config_dir / ASMAP_DAT_NAME
         self._container = None
         self._suffix = None
         self._ipv4 = None
@@ -225,10 +227,15 @@ class Tank:
         assert self.dockerfile_path
         shutil.copyfile(Path(TEMPLATES) / DOCKERFILE_NAME, self.dockerfile_path)
 
+    def copy_asmap(self):
+        assert self.dockerfile_path
+        shutil.copyfile(self.warnet.as_map_dat_path, self.as_map_dat_path)
+
     def copy_configs(self):
         self.copy_torrc()
         self.copy_entrypoints()
         self.copy_dockerfile()
+        self.copy_asmap()
 
     def add_services(self, services):
         assert self.index is not None

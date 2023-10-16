@@ -26,8 +26,9 @@ from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_st
 
 
 FO_CONF_NAME = "fork_observer_config.toml"
-ASMAP_TXT_PATH = "asmap.txt"
-ASMAP_DAT_PATH = "asmap.dat"
+ASMAP_TXT_NAME = "asmap.txt"
+ASMAP_DAT_NAME = "asmap.dat"
+
 
 logger = logging.getLogger("warnet")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -46,8 +47,8 @@ class Warnet:
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
         self.a_systems = set()
-        self.as_map_txt_path = config_dir / ASMAP_TXT_PATH
-        self.as_map_dat_path = config_dir / ASMAP_DAT_PATH
+        self.as_map_txt_path = config_dir / ASMAP_TXT_NAME
+        self.as_map_dat_path = config_dir / ASMAP_DAT_NAME
 
     def __str__(self) -> str:
         template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
