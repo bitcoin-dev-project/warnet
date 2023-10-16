@@ -4,14 +4,17 @@
 
 import docker
 import logging
+import io
 import networkx
 import shutil
 import subprocess
+import sys
 import yaml
 from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
 
+import external.buildmap as buildmap
 from services.prometheus import Prometheus
 from services.node_exporter import NodeExporter
 from services.grafana import Grafana
@@ -21,8 +24,12 @@ from services.fluentd import Fluentd
 from warnet.tank import Tank
 from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
 
-logger = logging.getLogger("warnet")
+
 FO_CONF_NAME = "fork_observer_config.toml"
+ASMAP_TXT_PATH = "asmap.txt"
+ASMAP_DAT_PATH = "asmap.dat"
+
+logger = logging.getLogger("warnet")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
@@ -38,7 +45,9 @@ class Warnet:
         self.graph: Optional[networkx.Graph] = None
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
-
+        self.a_systems = set()
+        self.as_map_txt_path = config_dir / ASMAP_TXT_PATH
+        self.as_map_dat_path = config_dir / ASMAP_DAT_PATH
 
     def __str__(self) -> str:
         template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
@@ -122,6 +131,39 @@ class Warnet:
                 )
             self.tanks.append(Tank.from_graph_node(node_id, self))
         logger.info(f"Imported {len(self.tanks)} tanks from graph")
+        self.generate_as_map()
+
+    def generate_as_map(self):
+        # Write AS mappings to file
+        with open(self.as_map_txt_path, "w") as f:
+            for tank in self.tanks:
+                f.write(f"{tank.ipv4}/32 AS{tank.autonomous_system}\n")
+
+        # Yes, read back into a string...
+        with open(self.as_map_txt_path, "r") as f:
+            file_content = f.read()
+
+        buffer = io.StringIO(file_content)
+        sys.stdin = buffer
+
+        entries = []
+        logger.info("AS map: Loading")
+        buildmap.Parse(entries)
+        logger.info(f"AS map: Read {len(entries)} prefixes")
+        logger.info("AS map: Constructing trie")
+        tree = buildmap.BuildTree(entries)
+        logger.info("AS map: Compacting tree")
+        tree, _ = buildmap.CompactTree(tree, True)
+        logger.info("AS map: Computing inner prefixes")
+        tree, _, _ = buildmap.PropTree(tree, True)
+
+        ser = buildmap.TreeSer(tree, None)
+        logger.info(f"AS map: Total bits: {len(ser)}")
+        with open(self.as_map_dat_path, "wb") as f:
+            f.write(bytes(buildmap.EncodeBytes(ser)))
+
+        # Reset sys.stdin to its original state
+        sys.stdin = sys.__stdin__
 
     @bubble_exception_str
     def write_bitcoin_confs(self):

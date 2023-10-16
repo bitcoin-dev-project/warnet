@@ -15,6 +15,7 @@ from templates import TEMPLATES
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr,
+    generate_as,
     sanitize_tc_netem_command,
     dump_bitcoin_conf,
     SUPPORTED_TAGS,
@@ -57,6 +58,7 @@ class Tank:
         self._container = None
         self._suffix = None
         self._ipv4 = None
+        self._a_system = None
         self._container_name = None
         self._exporter_name = None
         self.extra_build_args = ""
@@ -124,6 +126,12 @@ class Tank:
         if self._ipv4 is None:
             self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
         return self._ipv4
+
+    @property
+    def autonomous_system(self):
+        if self._a_system is None:
+            self._a_system = generate_as(self.warnet)
+        return self._a_system
 
     @property
     def container_name(self):

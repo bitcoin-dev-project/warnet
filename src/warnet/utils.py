@@ -123,6 +123,14 @@ def generate_ipv4_addr(subnet):
             return ip_str
 
 
+def generate_as(warnet):
+    while True:
+        as_number = random.randint(1, 64496) # I think these are not "reserved"
+        if as_number not in warnet.a_systems:
+            warnet.a_systems.add(as_number)
+            return as_number
+
+
 def sanitize_tc_netem_command(command: str) -> bool:
     """
     Sanitize the tc-netem command to ensure it's valid and safe to execute, as we run it as root on a container.
