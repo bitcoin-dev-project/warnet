@@ -4,11 +4,13 @@
 
 import docker
 import logging
+import re
 import shutil
+
 from copy import deepcopy
 from pathlib import Path
-import re
 from docker.models.containers import Container
+
 from templates import TEMPLATES
 from services.dns_seed import IP_ADDR as DNS_IP_ADDR
 from warnet.utils import (
@@ -18,35 +20,48 @@ from warnet.utils import (
     dump_bitcoin_conf,
     SUPPORTED_TAGS,
     get_architecture,
+    set_execute_permission,
 )
+
 
 CONTAINER_PREFIX_BITCOIND = "tank"
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
+DOCKERFILE_NAME = "Dockerfile"
+DNS_SCRIPT_NAME = "check_dns.sh"
+TORRC_NAME = "torrc"
+WARNET_ENTRYPOINT_NAME = "warnet_entrypoint.sh"
+DOCKER_ENTRYPOINT_NAME = "docker_entrypoint.sh"
+
+
 logger = logging.getLogger("tank")
 
 
 class Tank:
     DEFAULT_BUILD_ARGS = "--disable-tests --with-incompatible-bdb --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --enable-debug "
 
-    def __init__(self):
-        self.warnet = None
-        self.docker_network = "warnet"
-        self.bitcoin_network = "regtest"
-        self.index = None
+    def __init__(self, index:int, config_dir: Path, warnet):
+        self.index = index
+        self.config_dir = config_dir
+        self.warnet = warnet
+        self.docker_network = warnet.docker_network
+        self.bitcoin_network = warnet.bitcoin_network
         self.version = "25.0"
         self.conf = ""
         self.conf_file = None
-        self.torrc_file = None
         self.netem = None
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
+        self.dockerfile_path = config_dir / DOCKERFILE_NAME
+        self.dns_path = config_dir / DNS_SCRIPT_NAME
+        self.torrc_path = config_dir / TORRC_NAME
+        self.warnet_entrypoint = config_dir / WARNET_ENTRYPOINT_NAME
+        self.docker_entrypoint = config_dir / DOCKER_ENTRYPOINT_NAME
         self._container = None
         self._suffix = None
         self._ipv4 = None
         self._container_name = None
         self._exporter_name = None
-        self.config_dir = Path()
         self.extra_build_args = ""
 
     def __str__(self) -> str:
@@ -64,12 +79,11 @@ class Tank:
     @classmethod
     def from_graph_node(cls, index, warnet):
         assert index is not None
+        index = int(index)
+        config_dir = warnet.config_dir / str(f"{index:06}")
+        config_dir.mkdir(parents=True, exist_ok=True)
 
-        self = cls()
-        self.warnet = warnet
-        self.docker_network = warnet.docker_network
-        self.bitcoin_network = warnet.bitcoin_network
-        self.index = int(index)
+        self = cls(index, config_dir, warnet)
         node = warnet.graph.nodes[index]
         version = node.get("version")
         if version:
@@ -87,15 +101,14 @@ class Tank:
         return self
 
     @classmethod
-    def from_docker_compose_service(cls, service, network):
+    def from_docker_compose_service(cls, service, network, config_dir, warnet):
         rex = fr"{network}_{CONTAINER_PREFIX_BITCOIND}_([0-9]{{6}})"
         match = re.match(rex, service["container_name"])
         if match is None:
             return None
 
-        self = cls()
-        self.index = int(match.group(1))
-        self.docker_network = network
+        index = int(match.group(1))
+        self = cls(index, config_dir, warnet)
         self._ipv4 = service["networks"][self.docker_network]["ipv4_address"]
         if "BITCOIN_VERSION" in service["build"]["args"]:
             self.version = service["build"]["args"]["BITCOIN_VERSION"]
@@ -193,18 +206,44 @@ class Tank:
             file.write(conf_file)
         self.conf_file = path
 
+    def copy_check_dns(self):
+        shutil.copyfile(Path(TEMPLATES) / DNS_SCRIPT_NAME, self.dns_path)
+        set_execute_permission(self.dns_path)
+
+    def copy_torrc(self):
+        shutil.copyfile(Path(TEMPLATES) / TORRC_NAME, self.torrc_path)
+
+    def copy_entrypoints(self):
+        shutil.copyfile(Path(TEMPLATES) / WARNET_ENTRYPOINT_NAME, self.warnet_entrypoint)
+        set_execute_permission(self.warnet_entrypoint)
+
+        shutil.copyfile(Path(TEMPLATES) / DOCKER_ENTRYPOINT_NAME, self.docker_entrypoint)
+        set_execute_permission(self.docker_entrypoint)
+
+    def copy_dockerfile(self):
+        assert self.dockerfile_path
+        shutil.copyfile(Path(TEMPLATES) / DOCKERFILE_NAME, self.dockerfile_path)
+
+    def copy_configs(self):
+        self.copy_check_dns()
+        self.copy_torrc()
+        self.copy_entrypoints()
+        self.copy_dockerfile()
+
     def add_services(self, services):
         assert self.index is not None
         assert self.conf_file is not None
         services[self.container_name] = {}
+
+        self.copy_configs()
 
         # Setup bitcoind, either release binary or build from source
         if "/" and "#" in self.version:
             # it's a git branch, building step is necessary
             repo, branch = self.version.split("#")
             build = {
-                "context": str(TEMPLATES),
-                "dockerfile": str(TEMPLATES / "Dockerfile"),
+                "context": str(self.config_dir),
+                "dockerfile": str(self.dockerfile_path),
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
@@ -214,8 +253,8 @@ class Tank:
         else:
             # assume it's a release version, get the binary
             build = {
-                "context": str(TEMPLATES),
-                "dockerfile": str(TEMPLATES / f"Dockerfile"),
+                "context": str(self.config_dir),
+                "dockerfile": str(self.dockerfile_path),
                 "args": {
                     "ARCH": get_architecture(),
                     "BITCOIN_URL": "https://bitcoincore.org/bin",
@@ -227,9 +266,6 @@ class Tank:
             {
                 "container_name": self.container_name,
                 "build": build,
-                "volumes": [
-                    f"{self.conf_file}:/home/bitcoin/.bitcoin/bitcoin.conf",
-                ],
                 "networks": {
                     self.docker_network: {
                         "ipv4_address": f"{self.ipv4}",

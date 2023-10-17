@@ -93,7 +93,7 @@ class Warnet:
         with open(docker_compose_path, "r") as file:
             compose = yaml.safe_load(file)
         for service_name in compose["services"]:
-            tank = Tank.from_docker_compose_service(compose["services"][service_name], network_name)
+            tank = Tank.from_docker_compose_service(compose["services"][service_name], network_name, config_dir, self)
             if tank is not None:
                 self.tanks.append(tank)
 
