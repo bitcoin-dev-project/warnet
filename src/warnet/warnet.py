@@ -10,7 +10,7 @@ import subprocess
 import yaml
 from pathlib import Path
 from templates import TEMPLATES
-from typing import List
+from typing import List, Optional
 
 from services.prometheus import Prometheus
 from services.node_exporter import NodeExporter
@@ -36,7 +36,7 @@ class Warnet:
         self.bitcoin_network: str = "regtest"
         self.docker_network: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
-        self.graph = None
+        self.graph: Optional[networkx.Graph] = None
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
 
@@ -114,6 +114,8 @@ class Warnet:
 
     @bubble_exception_str
     def tanks_from_graph(self):
+        if not self.graph:
+            return
         for node_id in self.graph.nodes():
             if int(node_id) != len(self.tanks):
                 raise Exception(

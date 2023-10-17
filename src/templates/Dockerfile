@@ -5,6 +5,7 @@ ARG ARCH
 ARG BITCOIN_VERSION
 ARG REPO
 ARG BRANCH
+ARG BUILD_ARGS
 ARG BITCOIN_URL
 
 # install or build
@@ -37,12 +38,7 @@ RUN set -ex \
         git clone --depth 1 --branch "${BRANCH}" "https://github.com/${REPO}"; \
         cd /build/bitcoin; \
         ./autogen.sh; \
-        ./configure \
-            --disable-tests \
-            --without-gui \
-            --disable-bench \
-            --disable-fuzz-binary \
-            --enable-suppress-external-warnings; \
+        ./configure ${BUILD_ARGS}; \
         make -j$(nproc); \
         make install; \
     fi

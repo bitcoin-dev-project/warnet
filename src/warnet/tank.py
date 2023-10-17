@@ -26,6 +26,8 @@ logger = logging.getLogger("tank")
 
 
 class Tank:
+    DEFAULT_BUILD_ARGS = "--disable-tests --with-incompatible-bdb --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --enable-debug "
+
     def __init__(self):
         self.warnet = None
         self.docker_network = "warnet"
@@ -45,6 +47,7 @@ class Tank:
         self._container_name = None
         self._exporter_name = None
         self.config_dir = Path()
+        self.extra_build_args = ""
 
     def __str__(self) -> str:
         return (
@@ -68,17 +71,17 @@ class Tank:
         self.bitcoin_network = warnet.bitcoin_network
         self.index = int(index)
         node = warnet.graph.nodes[index]
-        if "version" in node:
-            if not "/" and "#" in self.version:
-                if node["version"] not in SUPPORTED_TAGS:
+        version = node.get("version")
+        if version:
+            if not ("/" in version and "#" in version):
+                if version not in SUPPORTED_TAGS:
                     raise Exception(
-                        f"Unsupported version: can't be generated from Docker images: {node['version']}"
+                        f"Unsupported version: can't be generated from Docker images: {version}"
                     )
-            self.version = node["version"]
-        if "bitcoin_config" in node:
-            self.conf = node["bitcoin_config"]
-        if "tc_netem" in node:
-            self.netem = node["tc_netem"]
+            self.version = version
+        self.conf = node.get("bitcoin_config")
+        self.netem = node.get("tc_netem")
+        self.extra_build_args = node.get("build_args", "")
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.write_torrc()
@@ -213,6 +216,7 @@ class Tank:
                 "args": {
                     "REPO": repo,
                     "BRANCH": branch,
+                    "BUILD_ARGS": f"{self.DEFAULT_BUILD_ARGS + self.extra_build_args}",
                 },
             }
         else:

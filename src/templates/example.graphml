@@ -2,6 +2,7 @@
   <key attr.name="version" attr.type="string" for="node" id="version"/>
   <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
   <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
+  <key attr.name="build_args" attr.type="string" for="node" id="build_args"/>
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">25.0</data>
@@ -52,6 +53,7 @@
     <node id="11">
       <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
       <data key="bitcoin_config">sensitiverelayowntx=1,uacomment=sensitive_relay</data>
+      <data key="build_args">--disable-zmq --disable-fuzz</data>
     </node>
     <!-- provide addrs for 8 full + 2 block outbound connections -->
     <edge id="0" source="11" target="0"></edge>
