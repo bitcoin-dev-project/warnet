@@ -20,4 +20,10 @@ def check_peers():
     return len(info0) == 1 and len(info1) == 1
 base.wait_for_predicate(check_peers)
 
+print("\nCheck build flags were processed")
+release_help = base.get_tank(0).exec("bitcoind -h")
+build_help = base.get_tank(1).exec("bitcoind -h")
+assert "zmqpubhashblock" in release_help
+assert "zmqpubhashblock" not in build_help
+
 base.stop_server()

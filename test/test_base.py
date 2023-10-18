@@ -115,6 +115,11 @@ class TestBase:
                 raise Exception(f"Timed out waiting for predicate Truth")
 
 
+    def get_tank(self, index):
+        wn = Warnet.from_network(self.network_name)
+        return wn.tanks[index]
+
+
     # Poll the warnet server for container status
     # Block until all tanks are running
     def wait_for_all_tanks_status(self, target="running", timeout=20*60, interval=5):
