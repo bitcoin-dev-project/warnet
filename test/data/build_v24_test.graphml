@@ -2,6 +2,7 @@
   <key attr.name="version" attr.type="string" for="node" id="version"/>
   <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
   <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
+  <key attr.name="build_args" attr.type="string" for="node" id="build_args"/>
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">25.0</data>
@@ -10,6 +11,7 @@
     <node id="1">
       <data key="version">bitcoin/bitcoin#24.x</data>
       <data key="bitcoin_config">uacomment=v24_build</data>
+      <data key="build_args">--disable-zmq</data>
     </node>
     <edge id="0" source="0" target="1"></edge>
   </graph>
