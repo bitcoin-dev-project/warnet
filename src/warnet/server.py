@@ -373,7 +373,7 @@ def run_server():
     # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
     # "If the debug flag is set the server will automatically reload
     # for code changes and show a debugger in case an exception happened."
-    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=True)
+    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
 
 
 if __name__ == "__main__":
