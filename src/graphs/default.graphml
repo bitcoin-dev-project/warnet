@@ -7,7 +7,6 @@
     <node id="0">
         <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w0</data>
-        <data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
     </node>
     <node id="1">
         <data key="version">25.0</data>
@@ -49,35 +48,21 @@
         <data key="version">25.0</data>
         <data key="bitcoin_config">uacomment=w10</data>
     </node>
-    <!-- test this pull request -->
     <node id="11">
-      <data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
-      <data key="bitcoin_config">sensitiverelayowntx=1,uacomment=sensitive_relay</data>
-      <data key="build_args">--disable-zmq --disable-fuzz</data>
+        <data key="version">25.0</data>
+        <data key="bitcoin_config">uacomment=w11</data>
     </node>
-    <!-- provide addrs for 8 full + 2 block outbound connections -->
-    <edge id="0" source="11" target="0"></edge>
-    <edge id="1" source="11" target="1"></edge>
-    <edge id="2" source="11" target="2"></edge>
-    <edge id="3" source="11" target="3"></edge>
-    <edge id="4" source="11" target="4"></edge>
-    <edge id="5" source="11" target="5"></edge>
-    <edge id="6" source="11" target="6"></edge>
-    <edge id="7" source="11" target="7"></edge>
-    <edge id="8" source="11" target="8"></edge>
-    <edge id="9" source="11" target="9"></edge>
-    <edge id="10" source="11" target="10"></edge>
-    <!-- connect the release-version nodes in a ring to start -->
-    <edge id="11" source="0" target="1"></edge>
-    <edge id="12" source="1" target="2"></edge>
-    <edge id="13" source="2" target="3"></edge>
-    <edge id="14" source="3" target="4"></edge>
-    <edge id="15" source="4" target="5"></edge>
-    <edge id="16" source="5" target="6"></edge>
-    <edge id="17" source="6" target="7"></edge>
-    <edge id="18" source="7" target="8"></edge>
-    <edge id="19" source="8" target="9"></edge>
-    <edge id="20" source="9" target="10"></edge>
-    <edge id="21" source="10" target="0"></edge>
+    <!-- connect the nodes in a ring to start -->
+    <edge id="1" source="0" target="1"></edge>
+    <edge id="2" source="1" target="2"></edge>
+    <edge id="3" source="2" target="3"></edge>
+    <edge id="4" source="3" target="4"></edge>
+    <edge id="5" source="4" target="5"></edge>
+    <edge id="6" source="5" target="6"></edge>
+    <edge id="7" source="6" target="7"></edge>
+    <edge id="8" source="7" target="8"></edge>
+    <edge id="9" source="8" target="9"></edge>
+    <edge id="10" source="9" target="10"></edge>
+    <edge id="11" source="10" target="0"></edge>
   </graph>
 </graphml>

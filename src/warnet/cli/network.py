@@ -3,24 +3,21 @@ from pathlib import Path
 import click
 from rich import print
 
-from templates import TEMPLATES
+from graphs import GRAPHS
 from warnet.cli.rpc import rpc_call
 
-EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
-
+DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
 
 @click.group(name="network")
 def network():
     """Network commands"""
 
-
-
 @network.command()
-@click.argument("graph_file", default=EXAMPLE_GRAPH_FILE, type=click.Path())
+@click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
 @click.option("--force", default=False, is_flag=True, type=bool)
 @click.option("--network", default="warnet", show_default=True)
 def start(
-    graph_file: Path = EXAMPLE_GRAPH_FILE, force: bool = False, network: str = "warnet"
+    graph_file: Path = DEFAULT_GRAPH_FILE, force: bool = False, network: str = "warnet"
 ):
     """
     Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")

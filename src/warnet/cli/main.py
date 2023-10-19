@@ -1,14 +1,10 @@
 import click
 from rich import print as richprint
 
-from templates import TEMPLATES
 from warnet.cli.debug import debug
 from warnet.cli.network import network
 from warnet.cli.rpc import rpc_call
 from warnet.cli.scenarios import scenarios
-
-EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
-
 
 @click.group()
 def cli():
