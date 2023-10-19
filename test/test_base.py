@@ -91,7 +91,7 @@ class TestBase:
 
         print("\nWaiting for RPC")
         # doesn't require anything docker-related
-        self.wait_for_rpc("list")
+        self.wait_for_rpc("scenarios_list")
         # open the log file for reading for the duration of the test
         self.logfile = open(self.logfilepath, "r")
 
@@ -124,7 +124,7 @@ class TestBase:
     # Block until all tanks are running
     def wait_for_all_tanks_status(self, target="running", timeout=20*60, interval=5):
         def check_status():
-            tanks = self.rpc("status", {"network": self.network_name})
+            tanks = self.rpc("network_status", {"network": self.network_name})
             stats = {
                 "total": len(tanks)
             }

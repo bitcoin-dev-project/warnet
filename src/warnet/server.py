@@ -74,28 +74,28 @@ class Server():
 
     def setup_rpc(self):
         # Tanks
-        self.jsonrpc.register(self.bcli)
-        self.jsonrpc.register(self.debug_log)
-        self.jsonrpc.register(self.messages)
+        self.jsonrpc.register(self.tank_bcli)
+        self.jsonrpc.register(self.tank_debug_log)
+        self.jsonrpc.register(self.tank_messages)
         # Scenarios
-        self.jsonrpc.register(self.list)
-        self.jsonrpc.register(self.run)
-        self.jsonrpc.register(self.stop_scenario)
-        self.jsonrpc.register(self.list_running_scenarios)
+        self.jsonrpc.register(self.scenarios_list)
+        self.jsonrpc.register(self.scenarios_run)
+        self.jsonrpc.register(self.scenarios_stop)
+        self.jsonrpc.register(self.scenarios_list_running)
         # Networks
-        self.jsonrpc.register(self.up)
-        self.jsonrpc.register(self.from_file)
-        self.jsonrpc.register(self.down)
-        self.jsonrpc.register(self.info)
-        self.jsonrpc.register(self.status)
+        self.jsonrpc.register(self.network_up)
+        self.jsonrpc.register(self.network_from_file)
+        self.jsonrpc.register(self.network_down)
+        self.jsonrpc.register(self.network_info)
+        self.jsonrpc.register(self.network_status)
         # Debug
         self.jsonrpc.register(self.generate_compose)
         # Server
-        self.jsonrpc.register(self.stop)
+        self.jsonrpc.register(self.server_stop)
         # Logs
-        self.jsonrpc.register(self.grep_logs)
+        self.jsonrpc.register(self.logs_grep)
 
-    def bcli(self, node: int, method: str, params: List[str] = [], network: str = "warnet") -> str:
+    def tank_bcli(self, node: int, method: str, params: List[str] = [], network: str = "warnet") -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
@@ -105,7 +105,7 @@ class Server():
         except Exception as e:
             raise Exception(f"{e}")
 
-    def debug_log(self, network: str, node: int) -> str:
+    def tank_debug_log(self, network: str, node: int) -> str:
         """
         Fetch the Bitcoin Core debug log from <node>
         """
@@ -115,7 +115,7 @@ class Server():
         except Exception as e:
             raise Exception(f"{e}")
 
-    def messages(self, network: str, node_a: int, node_b: int) -> str:
+    def tank_messages(self, network: str, node_a: int, node_b: int) -> str:
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
@@ -153,7 +153,7 @@ class Server():
         except Exception as e:
             raise Exception(f"{e}")
 
-    def list(self) -> List[tuple]:
+    def scenarios_list(self) -> List[tuple]:
         """
         List available scenarios in the Warnet Test Framework
         """
@@ -167,7 +167,7 @@ class Server():
         except Exception as e:
             return [f"Exception {e}"]
 
-    def run(self, scenario: str, additional_args: List[str], network: str = "warnet") -> str:
+    def scenarios_run(self, scenario: str, additional_args: List[str], network: str = "warnet") -> str:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
 
@@ -203,7 +203,7 @@ class Server():
             self.logger.error(f"Exception occurred while running the scenario: {e}")
             return f"Exception {e}"
 
-    def stop_scenario(self, pid: int) -> str:
+    def scenarios_stop(self, pid: int) -> str:
         matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
         if matching_scenarios:
             matching_scenarios[0]["proc"].terminate() # sends SIGTERM
@@ -213,7 +213,7 @@ class Server():
         else:
             return f"Could not find scenario with PID {pid}."
 
-    def list_running_scenarios(self) -> List[Dict]:
+    def scenarios_list_running(self) -> List[Dict]:
         return [{
             "pid": sc["pid"],
             "cmd": sc["cmd"],
@@ -221,7 +221,7 @@ class Server():
             "network": sc["network"],
         } for sc in self.running_scenarios]
 
-    def up(self, network: str = "warnet") -> str:
+    def network_up(self, network: str = "warnet") -> str:
         wn = Warnet.from_network(network)
 
         def thread_start(wn):
@@ -240,7 +240,7 @@ class Server():
         threading.Thread(target=lambda: thread_start(wn)).start()
         return f"Resuming warnet..."
 
-    def from_file(self, graph_file: str, force: bool = False, network: str = "warnet") -> str:
+    def network_from_file(self, graph_file: str, force: bool = False, network: str = "warnet") -> str:
         """
         Run a warnet with topology loaded from a <graph_file>
         """
@@ -271,7 +271,7 @@ class Server():
         threading.Thread(target=lambda: thread_start(wn)).start()
         return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
 
-    def down(self, network: str = "warnet") -> str:
+    def network_down(self, network: str = "warnet") -> str:
         """
         Stop all docker containers in <network>.
         """
@@ -281,14 +281,15 @@ class Server():
         except Exception as e:
             return f"Exception {e}"
 
-    def info(self, network: str = "warnet") -> str:
+    def network_info(self, network: str = "warnet") -> str:
         """
         Get info about a warnet network named <network>
         """
         wn = Warnet.from_network(network)
         return f"{wn}"
 
-    def status(self, network: str = "warnet") -> List[dict]:
+
+    def network_status(self, network: str = "warnet") -> List[dict]:
         """
         Get running status of a warnet network named <network>
         """
@@ -317,14 +318,14 @@ class Server():
         with open(docker_compose_path, "r") as f:
             return f.read()
 
-    def stop(self) -> str:
+    def server_stop(self) -> str:
         """
         Stop warnet.
         """
         os.kill(os.getppid(), signal.SIGTERM)
         return "Stopping warnet server..."
 
-    def grep_logs(self, pattern: str, network: str = "warnet") -> str:
+    def logs_grep(self, pattern: str, network: str = "warnet") -> str:
         """
         Grep the logs from the fluentd container for a regex pattern
         """

@@ -14,7 +14,7 @@ def list():
     List available scenarios in the Warnet Test Framework
     """
     try:
-        result = rpc_call("list", None)
+        result = rpc_call("scenarios_list", None)
         for sc_name, sc_help in result:
             print(f"{sc_name.ljust(20)}{sc_help}")
     except Exception as e:
@@ -31,7 +31,7 @@ def run(scenario, network, additional_args):
     """
     try:
         params = {"scenario": scenario, "additional_args": additional_args, "network": network}
-        res = rpc_call("run", params)
+        res = rpc_call("scenarios_run", params)
         print(res)
     except Exception as e:
         print(f"Error running scenario: {e}")
@@ -43,7 +43,7 @@ def active():
     List running scenarios "name": "pid" pairs
     """
     try:
-        result = rpc_call("list_running_scenarios", {})
+        result = rpc_call("scenarios_list_running", {})
 
         template = "\t%-8.8s%-65.64s%-10.10s%-10.9s\n"
         sc_str = template % ("PID", "Command", "Network", "Active")
@@ -62,7 +62,7 @@ def stop(pid: int):
     """
     try:
         params = {"pid": pid}
-        res = rpc_call("stop_scenario", params)
+        res = rpc_call("scenarios_stop", params)
         print(res)
     except Exception as e:
         print(f"Error stopping scenario: {e}")
