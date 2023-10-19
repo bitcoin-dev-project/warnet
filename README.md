@@ -18,9 +18,9 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 
 - [Installation](docs/install.md)
 - [Running Warnet](docs/running.md)
+- [Network Topology](docs/graph.md)
 - [CLI Commands](docs/warcli.md)
 - [Scenarios](docs/scenarios.md)
-- [Network Topology](docs/graph.md)
 - [Data Collection](docs/data.md)
 
 ![warnet-art](docs/machines.webp)

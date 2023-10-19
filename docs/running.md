@@ -11,4 +11,4 @@ To start the server in the foreground simply run:
 ```bash
 warnet
 ```
-# Next: [`warcli` commands](warcli.md)
+# Next: [Network Topology](graph.md)
