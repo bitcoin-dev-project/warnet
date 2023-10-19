@@ -1,4 +1,4 @@
-name: CI
+name: Test
 
 on:
   push:
@@ -11,31 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install -y docker docker-compose
-      - run: pip install --upgrade pip
-      - run: pip install -e .
+      - uses: ./.github/actions
       - run: ./test/build_branch_test.py
   scenarios:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install -y docker docker-compose
-      - run: pip install --upgrade pip
-      - run: pip install -e .
+      - uses: ./.github/actions
       - run: ./test/scenarios_test.py
   onion:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install -y docker docker-compose
-      - run: pip install --upgrade pip
-      - run: pip install -e .
+      - uses: ./.github/actions
       - run: ./test/v25_net_test.py
   rpc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt install -y docker docker-compose
-      - run: pip install --upgrade pip
-      - run: pip install -e .
+      - uses: ./.github/actions
       - run: ./test/rpc_test.py
