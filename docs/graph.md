@@ -1,7 +1,22 @@
 # Warnet Network Topology
 
 Warnet creates a Bitcoin network using a network topology from a [graphml](https://graphml.graphdrawing.org/specification.html) file.
-The graphml file has the following specification:
+
+Before any scenarios or RPC commands can be executed, a Warnet network must be started from a graph.
+See [warcli.md](warcli.md) for more details on these commands.
+
+To start a network called `"warnet"` from the [default graph file](../src/graphs/default.graphml)
+which consists of 12 Bitcoin Core v25.0 nodes connected in a ring:
+```
+warcli network start
+```
+
+To start a network with custom configurations:
+```
+warcli network start <path/to/file.graphml> --network="network_name"
+```
+
+## GraphML file specification
 
 ```graphml
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
@@ -20,7 +35,7 @@ The graphml file has the following specification:
 </graphml>
 
 ```
-## Node attributes
+### Node attributes
 
 * `id` should be a unique integer identifier
 * `label` [optional] specifies the node's label
@@ -58,7 +73,7 @@ Or for a custom built branch with traffic shaping rules applied:
 
 `x`, `y`, `version`, `bitcoin_config` and `tc_netem` datafields are optional for all nodes.
 
-## Edges
+### Edges
 
 Edges can be added between the nodes as follows:
 
@@ -69,11 +84,11 @@ Edges can be added between the nodes as follows:
 
 ## Examples
 
-1. [example.graphml](../src/templates/example.graphml) -- This is the default graph.
-2. [random_internet_as_graph_n100_pos.graphml](../graphs/random_internet_as_graph_n100_pos.graphml)
+1. [example.graphml](../src/graphs/default.graphml) -- This is the default graph.
+2. [random_internet_as_graph_n100_pos.graphml](../src/graphs/random_internet_as_graph_n100_pos.graphml)
 
 ![random_internet_as_graph_n100](../docs/random_internet_as_graph_n100.png)
 *random_internet_as_graph_n100*
 
 
-# Next: [Collecting Data](data.md)
+# Next: [`warcli` commands](warcli.md)

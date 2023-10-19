@@ -1,11 +1,7 @@
 import click
 from rich import print
 
-from templates import TEMPLATES
 from warnet.cli.rpc import rpc_call
-
-EXAMPLE_GRAPH_FILE = TEMPLATES / "example.graphml"
-
 
 @click.group(name="debug")
 def debug():
