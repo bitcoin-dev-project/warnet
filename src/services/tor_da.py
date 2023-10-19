@@ -13,7 +13,8 @@ class TorDA(BaseService):
                 "context": str(self.templates),
                 "dockerfile": DOCKERFILE,
             },
-            "container_name": f"{self.docker_network}_tor",
+            "container_name": f"{self.docker_network}-tor",
+            "image": f"{self.docker_network}-tor",
             "networks": {
                 self.docker_network: {
                     "ipv4_address": DIRECTORY_AUTHORITY_IP,

@@ -11,7 +11,7 @@ class Fluentd(BaseService):
         super().__init__(docker_network, config_dir)
         self.service = {
             "image": "fluent/fluentd:v1.16-debian-1",  # Debian version is recommended officially since it has jemalloc support.
-            "container_name": f"{self.docker_network}_fluentd",
+            "container_name": f"{self.docker_network}-fluentd",
             "ports": [
                 f"{self.PORT}:{self.PORT}"
             ],

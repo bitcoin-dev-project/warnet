@@ -383,7 +383,7 @@ class DockerInterface(ContainerInterface):
                 warnet.tanks.append(tank)
 
     def tank_from_deployment(self, service, warnet):
-        rex = fr"{warnet.network_name}_{CONTAINER_PREFIX_BITCOIND}_([0-9]{{6}})"
+        rex = fr"{warnet.network_name}-{CONTAINER_PREFIX_BITCOIND}-([0-9]{{6}})"
         # Not a tank, maybe a scaled service
         if not "container_name" in service:
             return None
