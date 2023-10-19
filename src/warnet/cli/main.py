@@ -84,7 +84,7 @@ def rpc(node, method, params, network):
 
     try:
         result = rpc_call(
-            "bcli",
+            "tank_bcli",
             {"network": network, "node": node, "method": method_str, "params": params},
         )
         richprint(result)
@@ -100,7 +100,7 @@ def debug_log(node, network):
     Fetch the Bitcoin Core debug log from <node> in [network]
     """
     try:
-        result = rpc_call("debug_log", {"node": node, "network": network})
+        result = rpc_call("tank_debug_log", {"node": node, "network": network})
         print(result)
     except Exception as e:
         richprint(f"In our pursuit of knowledge from node {node}, we were thwarted: {e}")
@@ -119,7 +119,7 @@ def messages(node_a, node_b, network):
     logging.warning(f"got args: {node_a}, {node_b}, {network}")
     try:
         result = rpc_call(
-            "messages", {"network": network, "node_a": node_a, "node_b": node_b}
+            "tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}
         )
         richprint(result)
     except Exception as e:
@@ -138,7 +138,7 @@ def grep_logs(pattern, network):
 
     try:
         result = rpc_call(
-            "grep_logs", {"network": network, "pattern": pattern}
+            "logs_grep", {"network": network, "pattern": pattern}
         )
         print(result)
     except Exception as e:
@@ -153,7 +153,7 @@ def stop():
     Stop warnet.
     """
     try:
-        result = rpc_call("stop", None)
+        result = rpc_call("server_stop", None)
         richprint(result)
     except Exception as e:
         richprint(f"Error stopping warnet: {e}")

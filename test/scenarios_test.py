@@ -12,7 +12,7 @@ print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
 
 # Use rpc instead of warcli so we get raw JSON object
-scenarios = base.rpc("list")
+scenarios = base.rpc("scenarios_list")
 assert len(scenarios) == 3
 
 # Exponential backoff will repeat this command until it succeeds.
@@ -24,7 +24,7 @@ base.warcli("scenarios run miner_std --allnodes --interval=1")
 
 def check_blocks():
     # Ensure the scenario is still working
-    running = base.rpc("list_running_scenarios")
+    running = base.rpc("scenarios_list_running")
     assert len(running) == 1
     assert running[0]["active"]
     assert "miner_std" in running[0]["cmd"]
@@ -35,13 +35,13 @@ def check_blocks():
 base.wait_for_predicate(check_blocks)
 
 # Stop scenario
-running = base.rpc("list_running_scenarios")
+running = base.rpc("scenarios_list_running")
 assert len(running) == 1
 assert running[0]["active"]
 base.warcli(f"scenarios stop {running[0]['pid']}", False)
 
 def check_stop():
-    running = base.rpc("list_running_scenarios")
+    running = base.rpc("scenarios_list_running")
     print(f"Waiting for scenario to stop: {running}")
     return len(running) == 0
 base.wait_for_predicate(check_stop)

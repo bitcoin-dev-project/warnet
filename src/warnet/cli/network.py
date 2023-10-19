@@ -24,7 +24,7 @@ def start(
     """
     try:
         result = rpc_call(
-            "from_file",
+            "network_from_file",
             {"graph_file": str(graph_file), "force": force, "network": network},
         )
         print(result)
@@ -39,7 +39,7 @@ def up(network: str = "warnet"):
     Run 'docker compose up' on a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("up", {"network": network})
+        result = rpc_call("network_up", {"network": network})
         print(result)
     except Exception as e:
         print(f"Error creating network: {e}")
@@ -52,7 +52,7 @@ def down(network: str = "warnet"):
     Run 'docker compose down on a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("down", {"network": network})
+        result = rpc_call("network_down", {"network": network})
         print(result)
     except Exception as e:
         print(f"Error running docker compose down on network {network}: {e}")
@@ -65,7 +65,7 @@ def info(network: str = "warnet"):
     Get info about a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("info", {"network": network})
+        result = rpc_call("network_info", {"network": network})
         print(result)
     except Exception as e:
         print(f"Error getting info about network {network}: {e}")
@@ -78,7 +78,7 @@ def status(network: str = "warnet"):
     Get status of a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("status", {"network": network})
+        result = rpc_call("network_status", {"network": network})
         for tank in result:
             print(f"{tank['container_name']}: {tank['status']}")
     except Exception as e:
