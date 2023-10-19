@@ -20,4 +20,4 @@ TestingDirAuthVoteExit *
 TestingDirAuthVoteHSDir *
 V3AuthNIntervalsValid 2
 
-# `Address <w.x.y.z>` will be added by docker-entrypoint.sh
+# `Address <w.x.y.z>` will be added by docker_entrypoint.sh

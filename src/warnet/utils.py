@@ -5,6 +5,7 @@ import logging
 import os
 import random
 import re
+import stat
 import subprocess
 import sys
 import time
@@ -395,3 +396,10 @@ def version_cmp_ge(version_str, target_str):
         return True
 
     return version_parts >= target_parts
+
+
+def set_execute_permission(file_path):
+    current_permissions = os.stat(file_path).st_mode
+    os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+

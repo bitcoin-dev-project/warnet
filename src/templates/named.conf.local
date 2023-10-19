@@ -1,4 +1,0 @@
-zone "invalid" {
-    type master;
-    file "/etc/bind/invalid.zone";
-};

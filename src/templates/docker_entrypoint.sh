@@ -3,7 +3,6 @@ set -e
 
 # Add bitcoin user to tor group to read the auth cookie
 usermod -a -G debian-tor bitcoin
-cp /etc/tor/torrc_original /etc/tor/torrc
 echo "Address $(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)" >> /etc/tor/torrc
 mkdir -p /home/debian-tor/.tor/keys
 chown -R debian-tor:debian-tor /home/debian-tor
@@ -38,9 +37,6 @@ if [ "$(echo "$1" | cut -c1)" = "-" ] || [ "$1" = "bitcoind" ]; then
 
   set -- "$@" -datadir="$BITCOIN_DATA"
 fi
-
-# Wait for the dns-seed to start returning results
-./check_dns.sh
 
 if [ "$1" = "bitcoind" ] || [ "$1" = "bitcoin-cli" ] || [ "$1" = "bitcoin-tx" ]; then
   echo

@@ -18,7 +18,6 @@ from services.grafana import Grafana
 from services.tor import Tor
 from services.fork_observer import ForkObserver
 from services.fluentd import Fluentd
-from services.dns_seed import DnsSeed, ZONE_FILE_NAME, DNS_SEED_NAME
 from warnet.tank import Tank
 from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
 
@@ -93,7 +92,7 @@ class Warnet:
         with open(docker_compose_path, "r") as file:
             compose = yaml.safe_load(file)
         for service_name in compose["services"]:
-            tank = Tank.from_docker_compose_service(compose["services"][service_name], network_name)
+            tank = Tank.from_docker_compose_service(compose["services"][service_name], network_name, config_dir, self)
             if tank is not None:
                 self.tanks.append(tank)
 
@@ -136,43 +135,6 @@ class Warnet:
     def apply_network_conditions(self):
         for tank in self.tanks:
             tank.apply_network_conditions()
-
-    @bubble_exception_str
-    def generate_zone_file_from_tanks(self):
-        records_list = [
-            f"x9.dummySeed.invalid.     300 IN  A   {tank.ipv4}" for tank in self.tanks
-        ]
-        content = []
-        with open(str(TEMPLATES / ZONE_FILE_NAME), "r") as f:
-            content = [line.rstrip() for line in f]
-
-        # TODO: Really we should also read active SOA value from dns-seed, and increment from there
-
-        content.extend(records_list)
-        # Join the content into a single string and escape single quotes for echoing
-        content_str = "\n".join(content).replace("'", "'\\''")
-        with open(self.config_dir / ZONE_FILE_NAME, "w") as f:
-            f.write(content_str)
-
-    @bubble_exception_str
-    def apply_zone_file(self):
-        """
-        Sync the dns seed list served by dns-seed with currently active Tanks.
-        """
-        seeder = self.docker.containers.get(f"{self.docker_network}_{DNS_SEED_NAME}")
-
-        # Read the content from the generated zone file
-        with open(self.config_dir / ZONE_FILE_NAME, "r") as f:
-            content_str = f.read().replace("'", "'\\''")
-
-        # Overwrite all existing content
-        result = seeder.exec_run(
-            f"sh -c 'echo \"{content_str}\" > /etc/bind/invalid.zone'"
-        )
-        logger.debug(f"result of updating {ZONE_FILE_NAME}: {result}")
-
-        # Reload that single zone only
-        seeder.exec_run("rndc reload invalid")
 
     @bubble_exception_str
     def connect_edges(self):
@@ -245,7 +207,7 @@ class Warnet:
             )
 
     @bubble_exception_str
-    def write_docker_compose(self, dns=True):
+    def write_docker_compose(self):
         compose = {
             "version": "3.8",
             "networks": {
@@ -272,8 +234,6 @@ class Warnet:
             ForkObserver(self.docker_network, self.fork_observer_config),
             Fluentd(self.docker_network, self.config_dir),
         ]
-        if dns:
-            services.append(DnsSeed(self.docker_network, TEMPLATES, self.config_dir))
 
         for service_obj in services:
             service_name = service_obj.__class__.__name__.lower()

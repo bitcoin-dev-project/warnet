@@ -43,8 +43,6 @@ warcli
   |              ex: warcli network down --network=sweet
   + debug
       + generate_compose
-      |
-      + update_dns_seed
 ```
 
 # Next: [Scenarios](scenarios.md)
