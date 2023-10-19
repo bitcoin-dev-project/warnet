@@ -38,9 +38,6 @@ if [ "$(echo "$1" | cut -c1)" = "-" ] || [ "$1" = "bitcoind" ]; then
   set -- "$@" -datadir="$BITCOIN_DATA"
 fi
 
-# Wait for the dns-seed to start returning results
-./check_dns.sh
-
 if [ "$1" = "bitcoind" ] || [ "$1" = "bitcoin-cli" ] || [ "$1" = "bitcoin-tx" ]; then
   echo
   exec gosu bitcoin "$@"

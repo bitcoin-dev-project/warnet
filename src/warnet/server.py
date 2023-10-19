@@ -89,7 +89,6 @@ class Server():
         self.jsonrpc.register(self.info)
         self.jsonrpc.register(self.status)
         # Debug
-        self.jsonrpc.register(self.update_dns_seeder)
         self.jsonrpc.register(self.generate_compose)
         # Server
         self.jsonrpc.register(self.stop)
@@ -261,8 +260,6 @@ class Server():
                 # wn.write_prometheus_config()
                 wn.write_fork_observer_config()
                 wn.docker_compose_build_up()
-                wn.generate_zone_file_from_tanks()
-                wn.apply_zone_file()
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -291,7 +288,6 @@ class Server():
         wn = Warnet.from_network(network)
         return f"{wn}"
 
-
     def status(self, network: str = "warnet") -> List[dict]:
         """
         Get running status of a warnet network named <network>
@@ -304,19 +300,6 @@ class Server():
             "container_name": tank.container_name,
             "status": status})
         return stats
-
-    def update_dns_seeder(self, graph_file: str, network: str = "warnet") -> str:
-        try:
-            config_dir = gen_config_dir(network)
-            wn = Warnet.from_graph_file(graph_file, config_dir, network)
-            wn.generate_zone_file_from_tanks()
-            wn.apply_zone_file()
-            with open(wn.zone_file_path, "r") as f:
-                zone_file = f.read()
-
-            return f"DNS seeder update using zone file:\n{zone_file}"
-        except Exception as e:
-            return f"DNS seeder not updated due to exception: {e}"
 
     def generate_compose(self, graph_file: str, network: str = "warnet") -> str:
         """

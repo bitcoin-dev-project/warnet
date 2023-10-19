@@ -12,7 +12,6 @@ from pathlib import Path
 from docker.models.containers import Container
 
 from templates import TEMPLATES
-from services.dns_seed import IP_ADDR as DNS_IP_ADDR
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr,
@@ -27,7 +26,6 @@ from warnet.utils import (
 CONTAINER_PREFIX_BITCOIND = "tank"
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 DOCKERFILE_NAME = "Dockerfile"
-DNS_SCRIPT_NAME = "check_dns.sh"
 TORRC_NAME = "torrc"
 WARNET_ENTRYPOINT_NAME = "warnet_entrypoint.sh"
 DOCKER_ENTRYPOINT_NAME = "docker_entrypoint.sh"
@@ -53,7 +51,6 @@ class Tank:
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
         self.dockerfile_path = config_dir / DOCKERFILE_NAME
-        self.dns_path = config_dir / DNS_SCRIPT_NAME
         self.torrc_path = config_dir / TORRC_NAME
         self.warnet_entrypoint = config_dir / WARNET_ENTRYPOINT_NAME
         self.docker_entrypoint = config_dir / DOCKER_ENTRYPOINT_NAME
@@ -206,10 +203,6 @@ class Tank:
             file.write(conf_file)
         self.conf_file = path
 
-    def copy_check_dns(self):
-        shutil.copyfile(Path(TEMPLATES) / DNS_SCRIPT_NAME, self.dns_path)
-        set_execute_permission(self.dns_path)
-
     def copy_torrc(self):
         shutil.copyfile(Path(TEMPLATES) / TORRC_NAME, self.torrc_path)
 
@@ -225,7 +218,6 @@ class Tank:
         shutil.copyfile(Path(TEMPLATES) / DOCKERFILE_NAME, self.dockerfile_path)
 
     def copy_configs(self):
-        self.copy_check_dns()
         self.copy_torrc()
         self.copy_entrypoints()
         self.copy_dockerfile()
@@ -271,11 +263,9 @@ class Tank:
                         "ipv4_address": f"{self.ipv4}",
                     }
                 },
-                "extra_hosts": [f"dummySeed.invalid:{DNS_IP_ADDR}"], # hack to trick regtest into doing dns lookups
                 "labels": {"warnet": "tank"},
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
-                "dns": [DNS_IP_ADDR],
                 "depends_on": {
                     "fluentd": {
                         "condition": "service_healthy"
