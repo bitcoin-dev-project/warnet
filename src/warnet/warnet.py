@@ -2,11 +2,9 @@
   Warnet is the top-level class for a simulated network.
 """
 
-import docker
 import logging
 import networkx
 import shutil
-import subprocess
 import yaml
 from pathlib import Path
 from templates import TEMPLATES
@@ -15,30 +13,26 @@ from typing import List, Optional
 from services.prometheus import Prometheus
 from services.node_exporter import NodeExporter
 from services.grafana import Grafana
-from services.tor import Tor
-from services.fork_observer import ForkObserver
-from services.fluentd import Fluentd
+from interfaces import DockerInterface
 from warnet.tank import Tank
-from warnet.utils import parse_bitcoin_conf, gen_config_dir, bubble_exception_str, version_cmp_ge
+from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
-logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
-logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
 
 class Warnet:
     def __init__(self, config_dir):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.docker = docker.from_env()
+        self.container_interface = DockerInterface("warnet", config_dir)
         self.bitcoin_network: str = "regtest"
-        self.docker_network: str = "warnet"
+        self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
         self.graph: Optional[networkx.Graph] = None
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
-
+        self.deployment_file: Optional[Path] = None
 
     def __str__(self) -> str:
         template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
@@ -49,7 +43,7 @@ class Warnet:
             f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
             f"\tBitcoin Network: {self.bitcoin_network}\n"
-            f"\tDocker Network: {self.docker_network}\n"
+            f"\tDocker Network: {self.network_name}\n"
             f"\tSubnet: {self.subnet}\n"
             f"\tGraph: {self.graph}\n"
             f"Tanks:\n{tanks_str}"
@@ -64,7 +58,7 @@ class Warnet:
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(graph_file, destination)
-        self.docker_network = network
+        self.network_name = network
         self.graph = networkx.read_graphml(graph_file, node_type=int)
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
@@ -84,18 +78,8 @@ class Warnet:
     def from_network(cls, network_name):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir)
-        self.docker_network = network_name
-
-        # Get tank names, versions and IP addresses from docker-compose
-        docker_compose_path = self.config_dir / "docker-compose.yml"
-        compose = None
-        with open(docker_compose_path, "r") as file:
-            compose = yaml.safe_load(file)
-        for service_name in compose["services"]:
-            tank = Tank.from_docker_compose_service(compose["services"][service_name], network_name, config_dir, self)
-            if tank is not None:
-                self.tanks.append(tank)
-
+        self.network_name = network_name
+        self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
 
@@ -124,14 +108,6 @@ class Warnet:
         logger.info(f"Imported {len(self.tanks)} tanks from graph")
 
     @bubble_exception_str
-    def write_bitcoin_confs(self):
-        with open(TEMPLATES / "bitcoin.conf", "r") as file:
-            text = file.read()
-        base_bitcoin_conf = parse_bitcoin_conf(text)
-        for tank in self.tanks:
-            tank.write_bitcoin_conf(base_bitcoin_conf)
-
-    @bubble_exception_str
     def apply_network_conditions(self):
         for tank in self.tanks:
             tank.apply_network_conditions()
@@ -156,98 +132,19 @@ class Warnet:
             src_tank.exec(cmd=cmd, user="bitcoin")
 
     @bubble_exception_str
-    def docker_compose_build_up(self):
-        command = ["docker", "compose", "-p", self.docker_network, "up", "-d", "--build"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                for line in process.stdout:
-                    logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
+    def warnet_build(self):
+        self.container_interface.build()
 
     @bubble_exception_str
-    def docker_compose_up(self):
-        command = ["docker", "compose", "-p", self.docker_network, "up", "-d"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                for line in process.stdout:
-                    logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
+    def warnet_up(self):
+        self.container_interface.up()
 
     @bubble_exception_str
-    def docker_compose_down(self):
-        command = ["docker", "compose", "down"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                for line in process.stdout:
-                    logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
+    def warnet_down(self):
+        self.container_interface.down()
 
-    @bubble_exception_str
-    def write_docker_compose(self):
-        compose = {
-            "version": "3.8",
-            "networks": {
-                self.docker_network: {
-                    "name": self.docker_network,
-                    "ipam": {"config": [{"subnet": self.subnet}]},
-                }
-            },
-            "volumes": {"grafana-storage": None},
-            "services": {},
-        }
-
-        # Pass services object to each tank so they can add whatever they need.
-        for tank in self.tanks:
-            tank.add_services(compose["services"])
-
-        # Initialize services and add them to the compose
-        services = [
-            # grep: disable-exporters
-            # Prometheus(self.docker_network, self.config_dir),
-            # NodeExporter(self.docker_network),
-            # Grafana(self.docker_network),
-            Tor(self.docker_network, TEMPLATES),
-            ForkObserver(self.docker_network, self.fork_observer_config),
-            Fluentd(self.docker_network, self.config_dir),
-        ]
-
-        for service_obj in services:
-            service_name = service_obj.__class__.__name__.lower()
-            compose["services"][service_name] = service_obj.get_service()
-
-        docker_compose_path = self.config_dir / "docker-compose.yml"
-        try:
-            with open(docker_compose_path, "w") as file:
-                yaml.dump(compose, file)
-            logger.info(f"Wrote file: {docker_compose_path}")
-        except Exception as e:
-            logger.error(
-                f"An error occurred while writing to {docker_compose_path}: {e}"
-            )
+    def generate_deployment(self):
+        self.container_interface.generate_deployment_file(self)
 
     @bubble_exception_str
     def write_prometheus_config(self):

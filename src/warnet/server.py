@@ -16,12 +16,6 @@ from flask_jsonrpc.app import JSONRPC
 
 import scenarios
 from warnet.warnet import Warnet
-from warnet.client import (
-    get_bitcoin_cli,
-    get_bitcoin_debug_log,
-    get_messages,
-    compose_down,
-)
 from warnet.utils import (
     gen_config_dir,
 )
@@ -89,7 +83,7 @@ class Server():
         self.jsonrpc.register(self.network_info)
         self.jsonrpc.register(self.network_status)
         # Debug
-        self.jsonrpc.register(self.generate_compose)
+        self.jsonrpc.register(self.generate_deployment)
         # Server
         self.jsonrpc.register(self.server_stop)
         # Logs
@@ -99,8 +93,9 @@ class Server():
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
+        wn = Warnet.from_network(network)
         try:
-            result = get_bitcoin_cli(network, node, method, params)
+            result = wn.container_interface.get_bitcoin_cli(wn.tanks[node].container_name, method, params)
             return str(result)
         except Exception as e:
             raise Exception(f"{e}")
@@ -109,8 +104,9 @@ class Server():
         """
         Fetch the Bitcoin Core debug log from <node>
         """
+        wn = Warnet.from_network(network)
         try:
-            result = get_bitcoin_debug_log(network, node)
+            result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
             return str(result)
         except Exception as e:
             raise Exception(f"{e}")
@@ -119,9 +115,10 @@ class Server():
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
+        wn = Warnet.from_network(network)
         try:
             messages = [
-                msg for msg in get_messages(network, node_a, node_b) if msg is not None
+                msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].container_name, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
             ]
             if not messages:
                 return f"No messages found between {node_a} and {node_b}"
@@ -226,7 +223,7 @@ class Server():
 
         def thread_start(wn):
             try:
-                wn.docker_compose_up()
+                wn.container_interface.up()
                 # Update warnet from docker here to get ip addresses
                 wn = Warnet.from_network(network)
                 wn.apply_network_conditions()
@@ -237,7 +234,9 @@ class Server():
             except Exception as e:
                 self.logger.error(f"Exception {e}")
 
-        threading.Thread(target=lambda: thread_start(wn)).start()
+        t = threading.Thread(target=lambda: thread_start(wn))
+        t.daemon
+        t.start()
         return f"Resuming warnet..."
 
     def network_from_file(self, graph_file: str, force: bool = False, network: str = "warnet") -> str:
@@ -254,12 +253,12 @@ class Server():
 
         def thread_start(wn):
             try:
-                wn.write_bitcoin_confs()
-                wn.write_docker_compose()
+                wn.generate_deployment()
                 # grep: disable-exporters
                 # wn.write_prometheus_config()
                 wn.write_fork_observer_config()
-                wn.docker_compose_build_up()
+                wn.warnet_build()
+                wn.warnet_up()
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -268,15 +267,18 @@ class Server():
             except Exception as e:
                 self.logger.error(f"Exception {e}")
 
-        threading.Thread(target=lambda: thread_start(wn)).start()
+        t = threading.Thread(target=lambda: thread_start(wn))
+        t.daemon
+        t.start()
         return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
 
     def network_down(self, network: str = "warnet") -> str:
         """
-        Stop all docker containers in <network>.
+        Stop all containers in <network>.
         """
+        wn = Warnet.from_network(network)
         try:
-            _ = compose_down(network)
+            wn.warnet_down()
             return "Stopping warnet"
         except Exception as e:
             return f"Exception {e}"
@@ -302,9 +304,9 @@ class Server():
             "status": status})
         return stats
 
-    def generate_compose(self, graph_file: str, network: str = "warnet") -> str:
+    def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:
         """
-        Generate the docker compose file for a graph file and return import
+        Generate the deployment file for a graph file
         """
         config_dir = gen_config_dir(network)
         if config_dir.exists():
@@ -312,10 +314,10 @@ class Server():
                 f"Config dir {config_dir} already exists, not overwriting existing warnet"
             )
         wn = Warnet.from_graph_file(graph_file, config_dir, network)
-        wn.write_bitcoin_confs()
-        wn.write_docker_compose()
-        docker_compose_path = wn.config_dir / "docker-compose.yml"
-        with open(docker_compose_path, "r") as f:
+        wn.generate_deployment()
+        if not wn.deployment_file.is_file():
+            return f"No deployment file found at {wn.deployment_file}"
+        with open(wn.deployment_file, "r") as f:
             return f.read()
 
     def server_stop(self) -> str:
@@ -330,27 +332,8 @@ class Server():
         Grep the logs from the fluentd container for a regex pattern
         """
         container_name = f"{network}_fluentd"
-        compiled_pattern = re.compile(pattern)
-
-        warnet = Warnet.from_network(network)
-        docker = warnet.docker
-
-        now = datetime.utcnow()
-        log_stream = docker.api.logs(
-            container=container_name,
-            stdout=True,
-            stderr=True,
-            stream=True,
-            until=now,
-        )
-
-        matching_logs = []
-        for log_entry in log_stream:
-            log_entry_str = log_entry.decode('utf-8').strip()
-            if compiled_pattern.search(log_entry_str):
-                matching_logs.append(log_entry_str)
-
-        return '\n'.join(matching_logs)
+        wn = Warnet.from_network(network)
+        return wn.container_interface.logs_grep(pattern, container_name)
 
 
 def run_server():
