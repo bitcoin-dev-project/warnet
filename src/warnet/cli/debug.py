@@ -11,7 +11,7 @@ def debug():
 @debug.command()
 @click.argument("graph_file", type=str)
 @click.option("--network", default="warnet", show_default=True)
-def generate_compose(graph_file: str, network: str = "warnet"):
+def generate_compose(graph_file: str, network: str):
     """
     Generate the docker-compose file for a given <graph_file> and <--network> (default: "warnet") name and return it.
     """

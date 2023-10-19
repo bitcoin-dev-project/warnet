@@ -6,19 +6,20 @@ from rich import print
 from graphs import GRAPHS
 from warnet.cli.rpc import rpc_call
 
+
 DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
+
 
 @click.group(name="network")
 def network():
     """Network commands"""
 
+
 @network.command()
 @click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
 @click.option("--force", default=False, is_flag=True, type=bool)
 @click.option("--network", default="warnet", show_default=True)
-def start(
-    graph_file: Path = DEFAULT_GRAPH_FILE, force: bool = False, network: str = "warnet"
-):
+def start(graph_file: Path, force: bool, network: str):
     """
     Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
     """
@@ -34,7 +35,7 @@ def start(
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
-def up(network: str = "warnet"):
+def up(network: str):
     """
     Run 'docker compose up' on a warnet named <--network> (default: "warnet").
     """
@@ -47,7 +48,7 @@ def up(network: str = "warnet"):
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
-def down(network: str = "warnet"):
+def down(network: str):
     """
     Run 'docker compose down on a warnet named <--network> (default: "warnet").
     """
@@ -60,7 +61,7 @@ def down(network: str = "warnet"):
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
-def info(network: str = "warnet"):
+def info(network: str):
     """
     Get info about a warnet named <--network> (default: "warnet").
     """
@@ -73,7 +74,7 @@ def info(network: str = "warnet"):
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
-def status(network: str = "warnet"):
+def status(network: str):
     """
     Get status of a warnet named <--network> (default: "warnet").
     """
