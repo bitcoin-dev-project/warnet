@@ -89,7 +89,6 @@ class Server():
         self.jsonrpc.register(self.network_info)
         self.jsonrpc.register(self.network_status)
         # Debug
-        self.jsonrpc.register(self.update_dns_seeder)
         self.jsonrpc.register(self.generate_compose)
         # Server
         self.jsonrpc.register(self.server_stop)
