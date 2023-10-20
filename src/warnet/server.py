@@ -41,6 +41,7 @@ class Server():
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
         self.logger: logging.Logger
         self.setup_logging()
+        self.networks = {}
 
     def setup_logging(self):
         # Ensure the directory exists
@@ -89,11 +90,15 @@ class Server():
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
+
+    def get_warnet(self, network):
+        return self.networks.setdefault(network, Warnet.from_network(network))
+
     def tank_bcli(self, node: int, method: str, params: List[str] = [], network: str = "warnet") -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         try:
             result = wn.container_interface.get_bitcoin_cli(wn.tanks[node].container_name, method, params)
             return str(result)
@@ -104,7 +109,7 @@ class Server():
         """
         Fetch the Bitcoin Core debug log from <node>
         """
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         try:
             result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
             return str(result)
@@ -115,7 +120,7 @@ class Server():
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         try:
             messages = [
                 msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].container_name, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
@@ -219,13 +224,13 @@ class Server():
         } for sc in self.running_scenarios]
 
     def network_up(self, network: str = "warnet") -> str:
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
 
         def thread_start(wn):
             try:
                 wn.container_interface.up()
                 # Update warnet from docker here to get ip addresses
-                wn = Warnet.from_network(network)
+                wn = self.get_warnet(network)
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -249,6 +254,7 @@ class Server():
                 shutil.rmtree(config_dir)
             else:
                 return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
+        # Note: Don't add to self.networks here, always better to use the deployment files
         wn = Warnet.from_graph_file(graph_file, config_dir, network)
 
         def thread_start(wn):
@@ -276,7 +282,7 @@ class Server():
         """
         Stop all containers in <network>.
         """
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         try:
             wn.warnet_down()
             return "Stopping warnet"
@@ -287,7 +293,7 @@ class Server():
         """
         Get info about a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         return f"{wn}"
 
 
@@ -295,7 +301,7 @@ class Server():
         """
         Get running status of a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         stats = []
         for tank in wn.tanks:
             status = tank.container.status if tank.container is not None else None
@@ -332,7 +338,7 @@ class Server():
         Grep the logs from the fluentd container for a regex pattern
         """
         container_name = f"{network}_fluentd"
-        wn = Warnet.from_network(network)
+        wn = self.get_warnet(network)
         return wn.container_interface.logs_grep(pattern, container_name)
 
 
