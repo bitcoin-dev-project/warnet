@@ -2,16 +2,18 @@ import shutil
 from templates import TEMPLATES
 from .base_service import BaseService
 
+
 FLUENT_CONF = "fluent.conf"
+
 
 class Fluentd(BaseService):
     PORT = 24224
 
-    def __init__(self, docker_network, config_dir):
-        super().__init__(docker_network, config_dir)
+    def __init__(self, network_name, config_dir):
+        super().__init__(network_name, config_dir)
         self.service = {
             "image": "fluent/fluentd:v1.16-debian-1",  # Debian version is recommended officially since it has jemalloc support.
-            "container_name": f"{self.docker_network}_fluentd",
+            "container_name": f"{self.network_name}_fluentd",
             "ports": [
                 f"{self.PORT}:{self.PORT}"
             ],
