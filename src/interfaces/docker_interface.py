@@ -13,9 +13,9 @@ from docker.models.containers import Container
 
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
-from services.tor import Tor
-from services.fork_observer import ForkObserver
-from services.fluentd import Fluentd
+from services.tor import TorABC
+from services.fork_observer import ForkObserverABC
+from services.fluentd import FluentdABC
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
 from warnet.utils import bubble_exception_str, parse_raw_messages, parse_bitcoin_conf, dump_bitcoin_conf, get_architecture, set_execute_permission
@@ -209,14 +209,14 @@ class DockerInterface(ContainerInterface):
             # Prometheus(self.network_name, self.config_dir),
             # NodeExporter(self.network_name),
             # Grafana(self.network_name),
-            Tor(warnet.network_name, TEMPLATES),
-            ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            Fluentd(warnet.network_name, warnet.config_dir),
+            DockerTor(warnet.network_name, TEMPLATES),
+            DockerForkObserver(warnet.network_name, warnet.fork_observer_config),
+            DockerFluentd(warnet.network_name, warnet.config_dir),
         ]
 
         for service_obj in services:
-            service_name = service_obj.__class__.__name__.lower()
-            compose["services"][service_name] = service_obj.get_service()
+            service_name = service_obj.name.lower()
+            compose["services"][service_name] = service_obj.add_to_deployment()
 
         docker_compose_path = warnet.config_dir / "docker-compose.yml"
         try:
@@ -390,3 +390,70 @@ class DockerInterface(ContainerInterface):
             t.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
         return t
 
+
+class DockerFluentd(FluentdABC):
+
+    def __init__(self, network_name, config_dir):
+        super().__init__(network_name, config_dir)
+        self.service = {
+            "image": "fluent/fluentd:v1.16-debian-1",  # Debian version is recommended officially since it has jemalloc support.
+            "container_name": f"{self.network_name}_fluentd",
+            "ports": [
+                f"{self.PORT}:{self.PORT}"
+            ],
+            "volumes": [
+                f"{self.config_dir / self.FLUENT_CONF}:/fluentd/etc/{self.FLUENT_CONF}"
+            ],
+            "command": ["/bin/sh", "-c", f"fluentd -c /fluentd/etc/{self.FLUENT_CONF}"],
+            "healthcheck": {
+                "test": ["CMD", "/bin/bash", "-c", f"cat < /dev/null > /dev/tcp/localhost/{self.PORT}"],
+                "interval": "5s",           # Check every 5 seconds
+                "timeout": "1s",            # Give the check 1 second to complete
+                "start_period": "2s",       # Start checking after 2 seconds
+                "retries": 3
+            }
+        }
+
+        shutil.copy(TEMPLATES / self.FLUENT_CONF, config_dir)
+
+    def add_to_deployment(self):
+        return self.service
+
+
+class DockerTor(TorABC):
+    DIRECTORY_AUTHORITY_IP = "100.20.15.18"
+    DOCKERFILE = "Dockerfile_tor_da"
+
+    def __init__(self, network_name, templates):
+        super().__init__(network_name, templates)
+        self.service = {
+            "build": {
+                "context": str(self.templates),
+                "dockerfile": self.DOCKERFILE,
+            },
+            "container_name": f"{self.network_name}_tor",
+            "networks": {
+                self.network_name: {
+                    "ipv4_address": self.DIRECTORY_AUTHORITY_IP,
+                }
+            },
+        }
+
+    def add_to_deployment(self):
+        return self.service
+
+
+class DockerForkObserver(ForkObserverABC):
+
+    def __init__(self, network_name, fork_observer_config):
+        super().__init__(network_name, fork_observer_config)
+        self.service = {
+            "image": "b10c/fork-observer:latest",
+            "container_name": f"{self.network_name}_fork-observer",
+            "ports": [f"{self.PORT}:2323"],
+            "volumes": [f"{self.fork_observer_config}:/app/config.toml"],
+            "networks": [self.network_name],
+        }
+
+    def add_to_deployment(self):
+        return self.service
