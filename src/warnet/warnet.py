@@ -12,7 +12,7 @@ from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
 
-from interfaces import DockerInterface
+from interfaces import DockerInterface, KubernetesInterface
 from warnet.tank import Tank
 from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
 
@@ -21,10 +21,10 @@ FO_CONF_NAME = "fork_observer_config.toml"
 
 
 class Warnet:
-    def __init__(self, config_dir):
+    def __init__(self, config_dir, backend):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = DockerInterface(config_dir)
+        self.container_interface = DockerInterface(config_dir) if backend == "docker" else KubernetesInterface("warnet", config_dir)
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
@@ -91,9 +91,9 @@ class Warnet:
     @classmethod
     @bubble_exception_str
     def from_graph_file(
-        cls, base64_graph: str, config_dir: Path, network: str = "warnet"
+            cls, base64_graph: str, config_dir: Path, network: str = "warnet", backend: str = "docker",
     ):
-        self = cls(config_dir)
+        self = cls(config_dir, backend)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         graph_file = base64.b64decode(base64_graph)
@@ -107,8 +107,8 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_graph(cls, graph):
-        self = cls(Path())
+    def from_graph(cls, graph, backend="docker"):
+        self = cls(Path(), backend)
         self.graph = graph
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
@@ -116,13 +116,15 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_network(cls, network_name):
+    def from_network(cls, network_name, backend="docker"):
         config_dir = gen_config_dir(network_name)
-        self = cls(config_dir)
+        self = cls(config_dir, backend)
         self.network_name = network_name
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
+
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
+
         return self
 
     @property

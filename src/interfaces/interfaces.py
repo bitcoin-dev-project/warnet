@@ -17,7 +17,7 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def up(self) -> bool:
+    def up(self, warnet) -> bool:
         """
         Bring an exsiting network that is down, back up.
             e.g. `docker compose -p up -d`

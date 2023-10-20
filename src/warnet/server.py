@@ -27,7 +27,8 @@ from warnet.utils import (
 WARNET_SERVER_PORT = 9276
 
 class Server():
-    def __init__(self):
+    def __init__(self, backend):
+        self.backend = backend
         system = os.name
         if system == 'nt' or platform.system() == "Windows":
             self.basedir = os.path.join(os.path.expanduser("~"), "warnet")
@@ -107,7 +108,7 @@ class Server():
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             result = wn.container_interface.get_bitcoin_cli(wn.tanks[node], method, params)
             return str(result)
@@ -118,7 +119,7 @@ class Server():
         """
         Fetch the Bitcoin Core debug log from <node>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
             return str(result)
@@ -129,7 +130,7 @@ class Server():
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             messages = [
                 msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].container_name, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
@@ -249,13 +250,13 @@ class Server():
         } for sc in self.running_scenarios]
 
     def network_up(self, network: str = "warnet") -> str:
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
 
         def thread_start(wn):
             try:
                 wn.container_interface.up()
                 # Update warnet from docker here to get ip addresses
-                wn = Warnet.from_network(network)
+                wn = Warnet.from_network(network, self.backend)
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -320,7 +321,7 @@ class Server():
         """
         Stop all containers in <network>.
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             wn.warnet_down()
             return "Stopping warnet"
@@ -331,7 +332,7 @@ class Server():
         """
         Get info about a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         return wn._warnet_dict_representation()
 
 
@@ -339,7 +340,7 @@ class Server():
         """
         Get running status of a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         stats = []
         for tank in wn.tanks:
             status = tank.container.status if tank.container is not None else None
@@ -376,15 +377,17 @@ class Server():
         """
         Grep the logs from the fluentd container for a regex pattern
         """
-        wn = Warnet.from_network(network)
-        return wn.container_interface.logs_grep(pattern, network)
+        container_name = f"{network}_fluentd"
+        wn = Warnet.from_network(network, self.backend)
+        return wn.container_interface.logs_grep(pattern, container_name)
 
 
 def run_server():
     # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
     # "If the debug flag is set the server will automatically reload
     # for code changes and show a debugger in case an exception happened."
-    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
+    backend = sys.argv[1]
+    Server(backend).app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
 
 
 if __name__ == "__main__":

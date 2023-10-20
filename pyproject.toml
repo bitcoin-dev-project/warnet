@@ -21,6 +21,7 @@ dependencies = [
     "jsonschema",
     "jsonrpcserver==5.0.3",
     "jsonrpcclient==4.0.0",
+    "kubernetes",
     "networkx==3.1",
     "numpy==1.26.0",
     "rich==13.5.2",

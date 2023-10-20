@@ -63,7 +63,7 @@ class DockerInterface(ContainerInterface):
 
 
     @bubble_exception_str
-    def up(self):
+    def up(self, *_):
         command = ["docker", "compose", "up", "--detach"]
         try:
             with subprocess.Popen(
