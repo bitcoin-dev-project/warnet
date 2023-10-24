@@ -11,13 +11,13 @@ def debug():
 @debug.command()
 @click.argument("graph_file", type=str)
 @click.option("--network", default="warnet", show_default=True)
-def generate_compose(graph_file: str, network: str):
+def generate_deployment(graph_file: str, network: str):
     """
-    Generate the docker-compose file for a given <graph_file> and <--network> (default: "warnet") name and return it.
+    Generate the deployment file for a given <graph_file> and <--network> (default: "warnet") name and return it.
     """
     try:
         result = rpc_call(
-            "generate_compose", {"graph_file": graph_file, "network": network}
+            "generate_deployment", {"graph_file": graph_file, "network": network}
         )
         print(result)
     except Exception as e:
