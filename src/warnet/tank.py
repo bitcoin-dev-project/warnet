@@ -73,9 +73,9 @@ class Tank:
                         f"Unsupported version: can't be generated from Docker images: {version}"
                     )
             self.version = version
-        self.conf = node.get("bitcoin_config")
-        self.netem = node.get("tc_netem")
-        self.extra_build_args = node.get("build_args", "")
+        self.conf = node.get("bitcoin_config", self.conf)
+        self.netem = node.get("tc_netem", self.netem)
+        self.extra_build_args = node.get("build_args", self.extra_build_args)
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         return self
