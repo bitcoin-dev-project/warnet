@@ -21,9 +21,9 @@ class Fluentd(BaseService):
             "command": ["/bin/sh", "-c", f"fluentd -c /fluentd/etc/{FLUENT_CONF}"],
             "healthcheck": {
                 "test": ["CMD", "/bin/bash", "-c", f"cat < /dev/null > /dev/tcp/localhost/{self.PORT}"],
-                "interval": "5s",           # Check every 5 seconds
+                "interval": "20s",           # Check every 5 seconds
                 "timeout": "1s",            # Give the check 1 second to complete
-                "start_period": "2s",       # Start checking after 2 seconds
+                "start_period": "5s",       # Start checking after 2 seconds
                 "retries": 3
             }
         }

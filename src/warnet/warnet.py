@@ -5,7 +5,7 @@
 import logging
 import networkx
 import shutil
-import yaml
+import time
 from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
@@ -130,6 +130,7 @@ class Warnet:
                 logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
                 cmd = f'bitcoin-cli addnode "{dst_ip}:18444" onetry'
             src_tank.exec(cmd=cmd, user="bitcoin")
+            time.sleep(0.2)
 
     @bubble_exception_str
     def warnet_build(self):
