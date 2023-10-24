@@ -1,3 +1,4 @@
+import signal
 import logging
 import os
 import pkgutil
@@ -21,6 +22,8 @@ from warnet.utils import (
 WARNET_SERVER_PORT = 9276
 
 class Server():
+    _instance = None
+
     def __init__(self):
         self.basedir = os.environ.get("XDG_STATE_HOME")
         if self.basedir is None:
@@ -39,6 +42,12 @@ class Server():
         self.logger: logging.Logger
         self.setup_logging()
         self.setup_rpc()
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Server, cls).__new__(cls, *args, **kwargs)
+            print("Server initialised")
+        return cls._instance
 
     def setup_logging(self):
         # Ensure the directory exists
@@ -323,7 +332,8 @@ class Server():
         """
         Stop warnet.
         """
-        sys.exit(0)
+        parent_pid = os.getppid()
+        os.kill(parent_pid, signal.SIGTERM)
         return "Stopping warnet server..."
 
     def logs_grep(self, pattern: str, network: str = "warnet") -> str:
@@ -335,11 +345,19 @@ class Server():
         return wn.container_interface.logs_grep(pattern, container_name)
 
 
+server = None
+app = None
+
+
 def run_server():
-    # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
-    # "If the debug flag is set the server will automatically reload
-    # for code changes and show a debugger in case an exception happened."
-    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
+    global server, app
+    if server is None:
+        server = Server()
+    app = server.app
+    from gunicorn.app.wsgiapp import run
+    # Must use a single worker to keep state. Fine for us.
+    sys.argv = [sys.argv[0], "warnet.server:app", "-b", f"0.0.0.0:{WARNET_SERVER_PORT}", "-w", "1"]
+    run()
 
 
 if __name__ == "__main__":
