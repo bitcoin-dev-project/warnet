@@ -1,7 +1,6 @@
 import logging
 import os
 import pkgutil
-import re
 import shutil
 import signal
 import subprocess
@@ -336,12 +335,13 @@ class Server():
         return wn.container_interface.logs_grep(pattern, container_name)
 
 
-def run_server():
-    # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
-    # "If the debug flag is set the server will automatically reload
-    # for code changes and show a debugger in case an exception happened."
-    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
+server = Server()
+app = server.app
 
+def run_server():
+    from gunicorn.app.wsgiapp import run
+    sys.argv = [sys.argv[0], "warnet.server:app", "-b", f"0.0.0.0:{WARNET_SERVER_PORT}", "-w", "1"]
+    run()
 
 if __name__ == "__main__":
     run_server()
