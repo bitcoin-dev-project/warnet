@@ -47,7 +47,7 @@ class TestBase:
             print(f"Error stopping server: {e}")
             print("Attempting to cleanup docker network")
             wn = Warnet.from_network(self.network_name)
-            wn.docker_compose_down()
+            wn.warnet_down()
 
         self.server.terminate()
         self.server = None
