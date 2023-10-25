@@ -152,11 +152,7 @@ def stop():
     """
     Stop warnet.
     """
-    try:
-        result = rpc_call("server_stop", None)
-        richprint(result)
-    except Exception as e:
-        richprint(f"Error stopping warnet: {e}")
+    rpc_call("server_stop", None)
 
 
 if __name__ == "__main__":
