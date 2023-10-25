@@ -124,7 +124,7 @@ class TestBase:
     # Block until all tanks are running
     def wait_for_all_tanks_status(self, target="running", timeout=20*60, interval=5):
         def check_status():
-            tanks = self.rpc("network_status", {"network": self.network_name})
+            tanks = self.wait_for_rpc("network_status", {"network": self.network_name})
             stats = {
                 "total": len(tanks)
             }
