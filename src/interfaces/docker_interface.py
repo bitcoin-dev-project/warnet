@@ -1,13 +1,13 @@
 import logging
 import re
+import shlex
 import shutil
 import subprocess
 import yaml
 
-from datetime import datetime
 from copy import deepcopy
 from pathlib import Path
-from typing import cast
+from typing import cast, Optional, List
 import docker
 from docker.models.containers import Container
 
@@ -32,6 +32,31 @@ logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
 
+def run_subprocess(command: str, config_dir: Path, ret_val: Optional[List[str]] = None) -> bool:
+    args = shlex.split(command)
+    try:
+        with subprocess.Popen(
+            args,
+            cwd=str(config_dir),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        ) as process:
+            logger.debug(f"Running {command} with PID {process.pid}")
+            if process.stdout:
+                for line in process.stdout:
+                    decoded_line = line.decode().strip()
+                    if ret_val is not None:
+                        ret_val.append(decoded_line)
+                    else:
+                        logger.info(decoded_line)
+    except Exception as e:
+        logger.error(
+            f"An error occurred while executing `{' '.join(args)}` in {config_dir}: {e}"
+        )
+        return False
+    return True
+
+
 class DockerInterface(ContainerInterface):
     def __init__(self, network: str, config_dir: Path) -> None:
         super().__init__(network, config_dir)
@@ -39,87 +64,35 @@ class DockerInterface(ContainerInterface):
 
     @bubble_exception_str
     def build(self) -> bool:
-        command = ["docker", "compose", "build"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                logger.debug(f"Running docker compose build with PID {process.pid}")
-                if process.stdout:
-                    for line in process.stdout:
-                        logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
-            return False
-        return True
+        command = "docker compose build"
+        return run_subprocess(command, self.config_dir)
 
 
     @bubble_exception_str
     def up(self):
-        command = ["docker", "compose", "up", "--detach"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                logger.debug(f"Running docker compose up --detach with PID {process.pid}")
-                if process.stdout:
-                    for line in process.stdout:
-                        logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
+        command = "docker compose up --detach"
+        return run_subprocess(command, self.config_dir)
 
     @bubble_exception_str
     def down(self):
-        command = ["docker", "compose", "down"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                logger.debug(f"Running docker compose down with PID {process.pid}")
-                if process.stdout:
-                    for line in process.stdout:
-                        logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
+        command = "docker compose down"
+        return run_subprocess(command, self.config_dir)
 
     def get_container(self, container_name: str) -> Container:
         return cast(Container, self.client.containers.get(container_name))
 
-    def exec_run(self, container_name: str, cmd: str, user: str = "root"):
-        c = self.get_container(container_name)
-        result = c.exec_run(cmd=cmd, user=user)
-        if result.exit_code != 0:
-            raise Exception(
-                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}"
-            )
-        return result.output.decode("utf-8")
+    def exec_run(self, container_name: str, cmd: str, user: str = "root") -> str:
+        command = f"docker exec -it {container_name} gosu {user} {cmd}"
+        result = []
+        run_subprocess(command, self.config_dir, result)
+        return "\n".join(result)
 
     def get_bitcoin_debug_log(self, container_name: str):
-        now = datetime.utcnow()
-
-        logs = self.client.api.logs(
-            container=container_name,
-            stdout=True,
-            stderr=True,
-            stream=False, # return a string
-            until=now,
-        )
-        return cast(bytes, logs).decode('utf8') # cast for typechecker
+        # TODO: technically this is all docker logs, but I think that's ok
+        command = f"docker logs {container_name}"
+        result = []
+        run_subprocess(command, self.config_dir, result)
+        return "\n".join(result)
 
     def get_bitcoin_cli(self, container_name: str, method: str, params=None):
         if params:
@@ -158,25 +131,28 @@ class DockerInterface(ContainerInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
-
-    def logs_grep(self, pattern: str, container_name: str):
+    def logs_grep(self, pattern: str, container_name: str) -> str:
         compiled_pattern = re.compile(pattern)
-
-        now = datetime.utcnow()
-        log_stream = self.client.api.logs(
-            container=container_name,
-            stdout=True,
-            stderr=True,
-            stream=True,
-            until=now,
-        )
-
+        command = f"docker logs {container_name}"
+        args = shlex.split(command)
         matching_logs = []
-        for log_entry in log_stream:
-            log_entry_str = log_entry.decode('utf-8').strip()
-            if compiled_pattern.search(log_entry_str):
-                matching_logs.append(log_entry_str)
 
+        try:
+            with subprocess.Popen(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+            ) as process:
+                logger.debug(f"Running {command} with PID {process.pid}")
+                if process.stdout:
+                    for line in iter(process.stdout.readline, b''):
+                        decoded_line = line.decode().rstrip()
+                        if compiled_pattern.search(decoded_line):
+                            matching_logs.append(decoded_line)
+        except Exception as e:
+            logger.error(
+                f"An error occurred while executing `{' '.join(args)}`: {e}"
+            )
         return '\n'.join(matching_logs)
 
     def _write_bitcoin_confs(self, warnet):
