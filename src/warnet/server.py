@@ -1,9 +1,7 @@
 import logging
 import os
 import pkgutil
-import re
 import shutil
-import signal
 import subprocess
 import sys
 import threading
@@ -324,7 +322,7 @@ class Server():
         """
         Stop warnet.
         """
-        os.kill(os.getppid(), signal.SIGTERM)
+        sys.exit(0)
         return "Stopping warnet server..."
 
     def logs_grep(self, pattern: str, network: str = "warnet") -> str:
