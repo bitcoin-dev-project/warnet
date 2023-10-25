@@ -85,7 +85,7 @@ class DockerInterface(ContainerInterface):
         command = f"docker exec -it {container_name} gosu {user} {cmd}"
         result = []
         run_subprocess(command, self.config_dir, result)
-        return "\n".join(result)
+        return "".join(result)
 
     def get_bitcoin_debug_log(self, container_name: str):
         # TODO: technically this is all docker logs, but I think that's ok
