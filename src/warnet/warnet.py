@@ -87,11 +87,6 @@ class Warnet:
 
     @property
     @bubble_exception_str
-    def zone_file_path(self):
-        return self.config_dir / ZONE_FILE_NAME
-
-    @property
-    @bubble_exception_str
     def fork_observer_config(self):
         return self.config_dir / FO_CONF_NAME
 
