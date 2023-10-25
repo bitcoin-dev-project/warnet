@@ -2,6 +2,7 @@ import logging
 import os
 import pkgutil
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -318,12 +319,11 @@ class Server():
         with open(wn.deployment_file, "r") as f:
             return f.read()
 
-    def server_stop(self) -> str:
+    def server_stop(self):
         """
         Stop warnet.
         """
-        sys.exit(0)
-        return "Stopping warnet server..."
+        os.kill(os.getpid(), signal.SIGINT)
 
     def logs_grep(self, pattern: str, network: str = "warnet") -> str:
         """
