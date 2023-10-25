@@ -22,12 +22,12 @@ FO_CONF_NAME = "fork_observer_config.toml"
 
 
 class Warnet:
-    def __init__(self, config_dir):
+    def __init__(self, config_dir, network_name = "warnet"):
         self.config_dir: Path = config_dir
+        self.network_name = network_name
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = DockerInterface("warnet", config_dir)
+        self.container_interface = DockerInterface(self.network_name, config_dir)
         self.bitcoin_network: str = "regtest"
-        self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
         self.graph: Optional[networkx.Graph] = None
         self.graph_name = "graph.graphml"
@@ -54,7 +54,7 @@ class Warnet:
     def from_graph_file(
         cls, graph_file: str, config_dir: Path, network: str = "warnet"
     ):
-        self = cls(config_dir)
+        self = cls(config_dir, network)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(graph_file, destination)
@@ -66,8 +66,8 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_graph(cls, graph):
-        self = cls(Path())
+    def from_graph(cls, graph, network: str = "warnet"):
+        self = cls(Path(), network)
         self.graph = graph
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
@@ -77,8 +77,7 @@ class Warnet:
     @bubble_exception_str
     def from_network(cls, network_name):
         config_dir = gen_config_dir(network_name)
-        self = cls(config_dir)
-        self.network_name = network_name
+        self = cls(config_dir, network_name)
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
