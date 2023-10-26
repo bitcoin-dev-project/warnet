@@ -18,8 +18,9 @@ class TestBase:
         self.logfilepath = self.tmpdir / "warnet" / "warnet.log"
 
         # Use the same dir name for the warnet network name
-        self.network_name = self.tmpdir.name
-        self.logfile = None
+        # but sanitize hyphens which make docker frown :-(
+        self.network_name = self.tmpdir.name.replace("-", "")
+
         self.server = None
 
         atexit.register(self.cleanup)
@@ -48,11 +49,6 @@ class TestBase:
             wn = Warnet.from_network(self.network_name)
             wn.docker_compose_down()
 
-        print("\nRemaining server output:")
-        print(self.logfile.read())
-        self.logfile.close()
-
-        self.logfile = None
         self.server.terminate()
         self.server = None
 
@@ -96,8 +92,6 @@ class TestBase:
         print("\nWaiting for RPC")
         # doesn't require anything docker-related
         self.wait_for_rpc("scenarios_list")
-        # open the log file for reading for the duration of the test
-        self.logfile = open(self.logfilepath, "r")
 
 
     # Quit
@@ -107,10 +101,6 @@ class TestBase:
 
     def wait_for_predicate(self, predicate, timeout=5*60, interval=5):
         while True:
-            # Inside the loop, this continuously prints the log output.
-            # It will read whatever has been written to the file
-            # since the last read.
-            print(self.logfile.read())
             if predicate():
                 break
             sleep(interval)
