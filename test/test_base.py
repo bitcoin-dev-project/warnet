@@ -14,7 +14,8 @@ class TestBase:
         self.logfilepath = self.tmpdir / "warnet.log"
 
         # Use the same dir name for the warnet network name
-        self.network_name = self.tmpdir.name
+        # but sanitize hyphens which make docker frown :-(
+        self.network_name = self.tmpdir.name.replace("-", "")
         self.logfile = None
         self.server = None
 
