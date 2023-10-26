@@ -1,4 +1,5 @@
 import atexit
+import os
 from pathlib import Path
 from subprocess import Popen, run, PIPE
 from tempfile import mkdtemp
@@ -11,7 +12,10 @@ class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
         self.tmpdir = Path(mkdtemp(prefix="warnet_test_"))
-        self.logfilepath = self.tmpdir / "warnet.log"
+
+        os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
+
+        self.logfilepath = self.tmpdir / "warnet" / "warnet.log"
 
         # Use the same dir name for the warnet network name
         self.network_name = self.tmpdir.name
@@ -86,7 +90,7 @@ class TestBase:
 
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
         self.server = Popen(
-            f"warnet > {self.logfilepath}",
+            f"warnet",
             shell=True)
 
         print("\nWaiting for RPC")
