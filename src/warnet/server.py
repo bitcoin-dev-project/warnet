@@ -9,34 +9,32 @@ import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
+from pathlib import Path
 from typing import List, Dict
 from flask import Flask, request
 from flask_jsonrpc.app import JSONRPC
 
 import scenarios
 from warnet.warnet import Warnet
-from warnet.utils import (
-    gen_config_dir,
-)
 
 WARNET_SERVER_PORT = 9276
 
 class Server():
     def __init__(self):
-        self.basedir = os.environ.get("XDG_STATE_HOME")
+        self.basedir = Path(os.environ.get("XDG_STATE_HOME"))
         if self.basedir is None:
             # ~/.warnet/warnet.log
-            self.basedir = os.path.join(os.environ["HOME"], ".warnet")
+            self.basedir = Path(os.environ["HOME"]) / ".warnet"
         else:
             # XDG_STATE_HOME / warnet / warnet.log
-            self.basedir = os.path.join(self.basedir, "warnet")
+            self.basedir = self.basedir / "warnet"
 
         self.running_scenarios = []
 
         self.app = Flask(__name__)
         self.jsonrpc = JSONRPC(self.app, "/api")
 
-        self.log_file_path = os.path.join(self.basedir, "warnet.log")
+        self.log_file_path = self.basedir / "warnet.log"
         self.logger: logging.Logger
         self.setup_logging()
         self.setup_rpc()
@@ -93,7 +91,7 @@ class Server():
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         try:
             result = wn.container_interface.get_bitcoin_cli(wn.tanks[node].container_name, method, params)
             return str(result)
@@ -104,7 +102,7 @@ class Server():
         """
         Fetch the Bitcoin Core debug log from <node>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         try:
             result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
             return str(result)
@@ -115,7 +113,7 @@ class Server():
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         try:
             messages = [
                 msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].container_name, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
@@ -219,13 +217,13 @@ class Server():
         } for sc in self.running_scenarios]
 
     def network_up(self, network: str = "warnet") -> str:
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
 
         def thread_start(wn):
             try:
                 wn.container_interface.up()
                 # Update warnet from docker here to get ip addresses
-                wn = Warnet.from_network(network)
+                wn = Warnet.from_network(self.basedir, network)
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -243,7 +241,7 @@ class Server():
         """
         Run a warnet with topology loaded from a <graph_file>
         """
-        config_dir = gen_config_dir(network)
+        config_dir = self.basedir / network
         if config_dir.exists():
             if force:
                 shutil.rmtree(config_dir)
@@ -276,7 +274,7 @@ class Server():
         """
         Stop all containers in <network>.
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         try:
             wn.warnet_down()
             return "Stopping warnet"
@@ -287,7 +285,7 @@ class Server():
         """
         Get info about a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         return f"{wn}"
 
 
@@ -295,7 +293,7 @@ class Server():
         """
         Get running status of a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         stats = []
         for tank in wn.tanks:
             status = tank.container.status if tank.container is not None else None
@@ -308,7 +306,7 @@ class Server():
         """
         Generate the deployment file for a graph file
         """
-        config_dir = gen_config_dir(network)
+        config_dir = self.basedir / network
         if config_dir.exists():
             return (
                 f"Config dir {config_dir} already exists, not overwriting existing warnet"
@@ -331,7 +329,7 @@ class Server():
         Grep the logs from the fluentd container for a regex pattern
         """
         container_name = f"{network}_fluentd"
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(self.basedir, network)
         return wn.container_interface.logs_grep(pattern, container_name)
 
 

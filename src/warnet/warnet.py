@@ -15,7 +15,7 @@ from services.node_exporter import NodeExporter
 from services.grafana import Grafana
 from interfaces import DockerInterface
 from warnet.tank import Tank
-from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
+from warnet.utils import bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -75,8 +75,8 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_network(cls, network_name):
-        config_dir = gen_config_dir(network_name)
+    def from_network(cls, basedir, network_name):
+        config_dir = basedir / network_name
         self = cls(config_dir, network_name)
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
