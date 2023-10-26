@@ -340,15 +340,6 @@ def parse_raw_messages(blob, outbound):
     return messages
 
 
-def gen_config_dir(network: str) -> Path:
-    """
-    Determine a config dir based on network name
-    """
-    config_dir = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.warnet"))
-    config_dir = Path(config_dir) / "warnet" / network
-    return config_dir
-
-
 def bubble_exception_str(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
