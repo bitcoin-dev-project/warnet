@@ -82,13 +82,7 @@ class Warnet:
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
-
         return self
-
-    @property
-    @bubble_exception_str
-    def zone_file_path(self):
-        return self.config_dir / ZONE_FILE_NAME
 
     @property
     @bubble_exception_str
