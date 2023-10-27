@@ -1,4 +1,5 @@
 import atexit
+import os
 from pathlib import Path
 from subprocess import Popen, run, PIPE
 from tempfile import mkdtemp
@@ -11,11 +12,15 @@ class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
         self.tmpdir = Path(mkdtemp(prefix="warnet_test_"))
-        self.logfilepath = self.tmpdir / "warnet.log"
+
+        os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
+
+        self.logfilepath = self.tmpdir / "warnet" / "warnet.log"
 
         # Use the same dir name for the warnet network name
-        self.network_name = self.tmpdir.name
-        self.logfile = None
+        # but sanitize hyphens which make docker frown :-(
+        self.network_name = self.tmpdir.name.replace("-", "")
+
         self.server = None
 
         atexit.register(self.cleanup)
@@ -42,13 +47,8 @@ class TestBase:
             print(f"Error stopping server: {e}")
             print("Attempting to cleanup docker network")
             wn = Warnet.from_network(self.network_name)
-            wn.docker_compose_down()
+            wn.warnet_down()
 
-        print("\nRemaining server output:")
-        print(self.logfile.read())
-        self.logfile.close()
-
-        self.logfile = None
         self.server.terminate()
         self.server = None
 
@@ -86,14 +86,12 @@ class TestBase:
 
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
         self.server = Popen(
-            f"warnet > {self.logfilepath}",
+            f"warnet",
             shell=True)
 
         print("\nWaiting for RPC")
         # doesn't require anything docker-related
         self.wait_for_rpc("scenarios_list")
-        # open the log file for reading for the duration of the test
-        self.logfile = open(self.logfilepath, "r")
 
 
     # Quit
@@ -103,10 +101,6 @@ class TestBase:
 
     def wait_for_predicate(self, predicate, timeout=5*60, interval=5):
         while True:
-            # Inside the loop, this continuously prints the log output.
-            # It will read whatever has been written to the file
-            # since the last read.
-            print(self.logfile.read())
             if predicate():
                 break
             sleep(interval)
@@ -124,7 +118,7 @@ class TestBase:
     # Block until all tanks are running
     def wait_for_all_tanks_status(self, target="running", timeout=20*60, interval=5):
         def check_status():
-            tanks = self.rpc("network_status", {"network": self.network_name})
+            tanks = self.wait_for_rpc("network_status", {"network": self.network_name})
             stats = {
                 "total": len(tanks)
             }

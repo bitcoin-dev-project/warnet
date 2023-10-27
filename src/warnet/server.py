@@ -34,11 +34,11 @@ class Server():
 
         self.app = Flask(__name__)
         self.jsonrpc = JSONRPC(self.app, "/api")
-        self.setup_rpc()
 
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
         self.logger: logging.Logger
         self.setup_logging()
+        self.setup_rpc()
 
     def setup_logging(self):
         # Ensure the directory exists
@@ -58,6 +58,7 @@ class Server():
         # Disable urllib3.connectionpool logging
         logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
         self.logger = logging.getLogger("warnet")
+        self.logger.info("Logging started")
 
         def log_request():
             self.logger.debug(request.json)
