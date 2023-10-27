@@ -4,8 +4,7 @@ from pathlib import Path
 
 class ContainerInterface(ABC):
 
-    def __init__(self, network: str, config_dir: Path) -> None:
-        self.network = network
+    def __init__(self, config_dir: Path) -> None:
         self.config_dir = config_dir
         self.client = None
 

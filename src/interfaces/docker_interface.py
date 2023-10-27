@@ -33,8 +33,8 @@ logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
 
 class DockerInterface(ContainerInterface):
-    def __init__(self, network: str, config_dir: Path) -> None:
-        super().__init__(network, config_dir)
+    def __init__(self, config_dir: Path) -> None:
+        super().__init__(config_dir)
         self.client = docker.DockerClient = docker.from_env()
 
     @bubble_exception_str
@@ -206,9 +206,9 @@ class DockerInterface(ContainerInterface):
         # Initialize services and add them to the compose
         services = [
             # grep: disable-exporters
-            # Prometheus(self.network_name, self.config_dir),
-            # NodeExporter(self.network_name),
-            # Grafana(self.network_name),
+            # Prometheus(warnet.network_name, self.config_dir),
+            # NodeExporter(warnet.network_name),
+            # Grafana(warnet.network_name),
             Tor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
             Fluentd(warnet.network_name, warnet.config_dir),

@@ -25,7 +25,7 @@ class Warnet:
     def __init__(self, config_dir):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = DockerInterface("warnet", config_dir)
+        self.container_interface = DockerInterface(config_dir)
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
