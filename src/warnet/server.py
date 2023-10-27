@@ -17,6 +17,7 @@ import scenarios
 from warnet.warnet import Warnet
 from warnet.utils import (
     gen_config_dir,
+    terminate_backoff,
 )
 
 WARNET_SERVER_PORT = 9276
@@ -334,6 +335,7 @@ class Server():
         """
         parent_pid = os.getppid()
         os.kill(parent_pid, signal.SIGTERM)
+        terminate_backoff.set() # kill any exponential backoffs that might be sleeping
         return "Stopping warnet server..."
 
     def logs_grep(self, pattern: str, network: str = "warnet") -> str:

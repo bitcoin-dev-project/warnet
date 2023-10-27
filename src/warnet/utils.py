@@ -8,10 +8,9 @@ import re
 import stat
 import subprocess
 import sys
-import time
+import threading
 from io import BytesIO
 from pathlib import Path
-from typing import Dict
 
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
@@ -32,7 +31,13 @@ SUPPORTED_TAGS = [
     "0.16.3",
     "0.15.2",
 ]
-RUNNING_PROC_FILE = "running_scenarios.dat"
+
+
+terminate_backoff = threading.Event()
+
+
+def interruptible_sleep(seconds):
+    terminate_backoff.wait(timeout=seconds)
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -54,16 +59,23 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
                     return func(*args, **kwargs)
                 except Exception as e:
                     error_msg = str(e).replace("\n", " ").replace("\t", " ")
-                    logger.error(f"rpc error: {error_msg}")
+                    logger.warning(f"RPC error: {error_msg}")
+
+                    # Check for termination request
+                    if terminate_backoff.is_set():
+                        logger.warning("Termination requested. Exiting backoff loop.")
+                        return "Termination Requested"
+
                     retries += 1
                     if retries == max_retries:
                         raise e
-                    delay = min(base_delay * (2**retries), max_delay)
-                    logger.warning(f"exponential_backoff: retry in {delay} seconds...")
-                    time.sleep(delay)
 
+                    delay = min(base_delay * (2 ** retries), max_delay)
+                    logger.warning(f"Exponential backoff: retry in {delay} seconds...")
+
+                    # Use interruptible sleep instead of time.sleep()
+                    interruptible_sleep(delay)
         return wrapper
-
     return decorator
 
 
@@ -401,5 +413,4 @@ def version_cmp_ge(version_str, target_str):
 def set_execute_permission(file_path):
     current_permissions = os.stat(file_path).st_mode
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
 
