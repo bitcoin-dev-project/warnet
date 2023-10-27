@@ -25,7 +25,7 @@ class Warnet:
     def __init__(self, config_dir):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = DockerInterface("warnet", config_dir)
+        self.container_interface = DockerInterface(config_dir)
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
@@ -82,13 +82,7 @@ class Warnet:
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
-
         return self
-
-    @property
-    @bubble_exception_str
-    def zone_file_path(self):
-        return self.config_dir / ZONE_FILE_NAME
 
     @property
     @bubble_exception_str
