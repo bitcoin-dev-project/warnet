@@ -1,6 +1,6 @@
 # Common
-Log info file /var/log/tor/debug.log
-Log info stdout
+Log err file /var/log/tor/debug.log
+Log err stdout
 DataDirectory /home/debian-tor/.tor
 RunAsDaemon 0
 ControlPort 9051
