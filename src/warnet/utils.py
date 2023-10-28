@@ -11,7 +11,6 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import Dict
 
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
@@ -20,19 +19,11 @@ from test_framework.messages import ser_uint256
 logger = logging.getLogger("utils")
 
 SUPPORTED_TAGS = [
-    "25.0",
-    "24.1",
+    "25.1",
+    "24.2",
     "23.2",
-    "22.1",
-    "0.21.2",
-    "0.20.2",
-    "0.19.1",
-    "0.18.1",
-    "0.17.2",
-    "0.16.3",
-    "0.15.2",
+    "22.2",
 ]
-RUNNING_PROC_FILE = "running_scenarios.dat"
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -403,3 +394,17 @@ def set_execute_permission(file_path):
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
+def default_bitcoin_conf_args() -> str:
+    default_conf: Path = Path.cwd() / "src" / "templates" / "bitcoin.conf"
+
+    with default_conf.open("r") as f:
+        defaults = parse_bitcoin_conf(f.read())
+
+    conf_args = []
+
+    for section, kvs in defaults.items():
+        # Skip section names, just focus on key-value pairs
+        for key, value in kvs:
+            conf_args.append(f"-{key}={value}")
+
+    return " ".join(conf_args)
