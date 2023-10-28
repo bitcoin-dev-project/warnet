@@ -14,8 +14,8 @@ RUN set -ex \
         ca-certificates \
         wget \
     && if [ -n "${BITCOIN_URL}" ]; then \
-        wget "${BITCOIN_URL}/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-${ARCH}-linux-gnu.tar.gz"; \
-        tar -xzf "bitcoin-${BITCOIN_VERSION}-${ARCH}-linux-gnu.tar.gz" -C /usr/local --strip-components=1; \
+        wget "${BITCOIN_URL}/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-${ARCH}.tar.gz"; \
+        tar -xzf "bitcoin-${BITCOIN_VERSION}-${ARCH}.tar.gz" -C /usr/local --strip-components=1; \
     fi \
     && if [ -n "${REPO}" ]; then \
         apt-get install -y \
@@ -49,10 +49,13 @@ FROM debian:bookworm-slim
 ARG UID=3338
 ARG GID=3338
 ARG REPO
+ARG WARNET=0
+ARG BITCOIN_ARGS
 # env var overrides
 ENV UID=$UID
 ENV GID=$GID
 ENV BITCOIN_DATA=/home/bitcoin/.bitcoin
+ENV BITCOIN_ARGS=$BITCOIN_ARGS
 
 RUN set -ex \
     && groupadd --gid ${GID} bitcoin \
@@ -78,9 +81,9 @@ RUN set -ex \
     && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/local/bin/
-COPY docker_entrypoint.sh /entrypoint.sh
-COPY torrc /etc/tor/torrc
-COPY bitcoin.conf /home/bitcoin/.bitcoin/bitcoin.conf
+COPY entrypoint.sh /entrypoint.sh
+# Warnet torrc using test network
+COPY torrc /etc/tor/warnet-torrc
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
