@@ -119,12 +119,12 @@ class DockerInterface(ContainerInterface):
         )
         return cast(bytes, logs).decode('utf8') # cast for typechecker
 
-    def get_bitcoin_cli(self, container_name: str, method: str, params=None):
+    def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:
-            cmd = f"bitcoin-cli {method} {' '.join(map(str, params))}"
+            cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
-            cmd = f"bitcoin-cli {method}"
-        return self.exec_run(container_name, cmd, user="bitcoin")
+            cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
+        return self.exec_run(tank.container_name, cmd, user="bitcoin")
 
     def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest"):
         src_node = self.get_container(a_name)

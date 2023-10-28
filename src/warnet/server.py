@@ -94,7 +94,7 @@ class Server():
         """
         wn = Warnet.from_network(network)
         try:
-            result = wn.container_interface.get_bitcoin_cli(wn.tanks[node].container_name, method, params)
+            result = wn.container_interface.get_bitcoin_cli(wn.tanks[node], method, params)
             return str(result)
         except Exception as e:
             raise Exception(f"{e}")
