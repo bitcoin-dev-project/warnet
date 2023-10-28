@@ -118,11 +118,11 @@ class Warnet:
             # <= 20.2 doesn't have addpeeraddress
             res = version_cmp_ge(src_tank.version, "0.21.0")
             if res:
-                logger.info(f"Using `addpeeraddress` to connect tanks {src} to {dst}")
-                cmd = f"bitcoin-cli addpeeraddress {dst_ip} 18444"
+                cmd = f"bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addpeeraddress {dst_ip} 18444"
+                logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
             else:
-                logger.info(f"Using `addnode` to connect tanks {src} to {dst}")
-                cmd = f'bitcoin-cli addnode "{dst_ip}:18444" onetry'
+                cmd = f'bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode "{dst_ip}:18444" onetry'
+                logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
             src_tank.exec(cmd=cmd, user="bitcoin")
 
     @bubble_exception_str
