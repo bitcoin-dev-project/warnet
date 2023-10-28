@@ -1,5 +1,4 @@
 # Common
-Log err file /var/log/tor/debug.log
 Log err stdout
 DataDirectory /home/debian-tor/.tor
 RunAsDaemon 0
@@ -27,5 +26,25 @@ V3AuthoritativeDirectory 1
 ContactInfo winston_churchill@warnet.dev
 ORPort 9001 IPv4Only
 DirPort 9030 IPv4Only
+
+
+# Reduce resource usage
+MaxMemInQueues 64 Mbytes
+BridgeRecordUsageByCountry 0
+DirReqStatistics 0
+ExtraInfoStatistics 0
+HiddenServiceStatistics 0
+OverloadStatistics 0
+PaddingStatistics 0
+BandwidthBurst 10 Mbytes
+BandwidthRate 10 Mbytes
+ConstrainedSockets 1
+ConstrainedSockSize 8192 Bytes
+
+DoSCircuitCreationEnabled 0
+DoSCircuitCreationDefenseType 1
+
+TestingV3AuthInitialDistDelay 30 seconds
+TestingV3AuthInitialVotingInterval 60 seconds
 
 Address 100.20.15.18
