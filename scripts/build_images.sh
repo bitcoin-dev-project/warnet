@@ -4,10 +4,8 @@
 docker buildx create --use
 
 # Image and Registry info
-IMAGE_NAME="bitcoin-core"
-DOCKER_REGISTRY="registry.gitlab.com/willcl-ark1/warnet-registry-test"
+DOCKER_REGISTRY="bitcoindevproject/bitcoin-core"
 BITCOIN_URL="https://bitcoincore.org/bin"
-echo "IMAGE_NAME=$IMAGE_NAME"
 echo "DOCKER_REGISTRY=$DOCKER_REGISTRY"
 echo "BITCOIN_URL=$BITCOIN_URL"
 
@@ -22,11 +20,11 @@ declare -A ARCH_MAP=(
 
 # Tags and their supported architectures
 declare -A VERSION_ARCH_MAP=(
-    ["25.1"]="amd64 arm64 armhf"
-    ["24.2"]="amd64 arm64 armhf"
-    ["23.2"]="amd64 arm64 armhf"
-    ["22.1"]="amd64 arm64 armhf"
     ["0.21.2"]="amd64 arm64 armhf"
+    ["22.1"]="amd64 arm64 armhf"
+    ["23.2"]="amd64 arm64 armhf"
+    ["24.2"]="amd64 arm64 armhf"
+    ["25.1"]="amd64 arm64 armhf"
 )
 
 if [ -d "src/templates" ]; then
@@ -49,8 +47,7 @@ for VERSION in "${!VERSION_ARCH_MAP[@]}"; do
         echo "URL_ARCH=$URL_ARCH"
 
         IMAGE_TAG="$VERSION-$DOCKER_ARCH"
-        IMAGE_FULL_NAME="$DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
-        echo "IMAGE_NAME=$IMAGE_NAME"
+        IMAGE_FULL_NAME="$DOCKER_REGISTRY:$IMAGE_TAG"
         echo "IMAGE_FULL_NAME=$IMAGE_FULL_NAME"
 
         # Use Buildx to build the image for the specified architecture
@@ -66,6 +63,6 @@ for VERSION in "${!VERSION_ARCH_MAP[@]}"; do
     done
 
     # Create the manifest list for each version under the same repository
-    MANIFEST_TAG="$DOCKER_REGISTRY/$IMAGE_NAME:$VERSION"
+    MANIFEST_TAG="$DOCKER_REGISTRY:$VERSION"
     docker buildx imagetools create --tag "$MANIFEST_TAG" "${IMAGES_LIST[@]}"
 done
