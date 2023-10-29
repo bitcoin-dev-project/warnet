@@ -3,11 +3,10 @@ Log err stdout
 DataDirectory /home/debian-tor/.tor
 RunAsDaemon 0
 ControlPort 9051
-ORPort 9001 IPv4Only
 CookieAuthentication 1
 CookieAuthFileGroupReadable 1
 DataDirectoryGroupReadable 1
-
+ORPort 9001
 ExitPolicy accept *:*
 TestingTorNetwork 1
 ClientUseIPv6 0
@@ -16,19 +15,13 @@ ClientUseIPv4 1
 # Relay
 DirAuthority orport=9001 no-v2 v3ident=15E09A6BE3619593076D8324A2E1DBEEAD4539CD 100.20.15.18:9030 03E942A4F12D85B2CF7CBA4E910F321AE98EC233
 AssumeReachable 1
-
-# Directory Authority
-DirPort 9030 IPv4Only
-AuthoritativeDirectory 1
-V3AuthoritativeDirectory 1
 PathsNeededToBuildCircuits 0.25
 TestingDirAuthVoteExit *
 TestingDirAuthVoteHSDir *
 V3AuthNIntervalsValid 2
-ContactInfo winston_churchill@warnet.dev
 
 # Reduce resource usage
-MaxMemInQueues 200 Mbytes
+MaxMemInQueues 64 Mbytes
 BridgeRecordUsageByCountry 0
 DirReqStatistics 0
 ExtraInfoStatistics 0
@@ -37,5 +30,8 @@ OverloadStatistics 0
 PaddingStatistics 0
 ConstrainedSockets 1
 ConstrainedSockSize 8192 Bytes
+# NumEntryGuards 1
+# NumDirectoryGuards 1
+# UseMicrodescriptors 1
 
-Address 100.20.15.18
+# `Address <w.x.y.z>` will be added by tor-entrypoint.sh
