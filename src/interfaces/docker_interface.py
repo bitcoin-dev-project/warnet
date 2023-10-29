@@ -17,6 +17,7 @@ from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
 from services.grafana import Grafana
 from services.tor_da import TorDA
+from services.tor_relay import TorRelay
 from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
@@ -64,7 +65,8 @@ class DockerInterface(ContainerInterface):
 
     @bubble_exception_str
     def up(self):
-        command = ["docker", "compose", "up", "--detach"]
+        # Give ourselves a good chance at making circuits with 10 relays
+        command = ["docker", "compose", "up", "--scale", "torrelay=10", "--detach"]
         try:
             with subprocess.Popen(
                 command,
@@ -244,6 +246,7 @@ class DockerInterface(ContainerInterface):
             Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
             TorDA(warnet.network_name, TEMPLATES),
+            TorRelay(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
             # Fluentd(warnet.network_name, warnet.config_dir),
         ]
@@ -371,6 +374,9 @@ class DockerInterface(ContainerInterface):
 
     def tank_from_deployment(self, service, warnet):
         rex = fr"{warnet.network_name}_{CONTAINER_PREFIX_BITCOIND}_([0-9]{{6}})"
+        # Not a tank, maybe a scaled service
+        if not "container_name" in service:
+            return None
         match = re.match(rex, service["container_name"])
         if match is None:
             return None
