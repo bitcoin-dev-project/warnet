@@ -20,6 +20,12 @@ class CAdvisor(BaseService):
             ],
             "networks": [self.docker_network],
             "privileged": True,
-            "devices": ["/dev/kmsg"]
+            "devices": ["/dev/kmsg"],
+            "command": [
+                "-housekeeping_interval=30s",
+                "-docker_only=true",
+                "-storage_duration=1m0s",
+                "-disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp"
+            ]
         }
 
