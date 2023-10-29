@@ -201,7 +201,7 @@ class DockerInterface(ContainerInterface):
             # NodeExporter(warnet.network_name),
             # Grafana(warnet.network_name),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            Fluentd(warnet.network_name, warnet.config_dir),
+            # Fluentd(warnet.network_name, warnet.config_dir),
         ]
 
         for service_obj in services:
@@ -275,24 +275,13 @@ class DockerInterface(ContainerInterface):
                 "labels": {"warnet": "tank"},
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
-                "depends_on": {
-                    "fluentd": {
-                        "condition": "service_healthy"
-                    }
-                },
                 "healthcheck": {
                     "test": ["CMD", "pidof", "bitcoind"],
-                    "interval": "5s",            # Check every 5 seconds
+                    "interval": "10s",           # Check every 10 seconds
                     "timeout": "1s",             # Give the check 1 second to complete
                     "start_period": "5s",        # Start checking after 5 seconds
                     "retries": 3
                 },
-                "logging": {
-                    "driver": "fluentd",
-                    "options": {
-                        "tag": "{{.Name}}"
-                    }
-                }
             }
         )
 
