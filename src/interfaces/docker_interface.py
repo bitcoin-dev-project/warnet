@@ -16,7 +16,7 @@ from services import SERVICES
 from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
 from services.grafana import Grafana
-from services.tor import Tor
+from services.tor_da import TorDA
 from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
@@ -243,7 +243,7 @@ class DockerInterface(ContainerInterface):
             # NodeExporter(warnet.network_name),
             Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
-            Tor(warnet.network_name, TEMPLATES),
+            TorDA(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
             # Fluentd(warnet.network_name, warnet.config_dir),
         ]
