@@ -6,7 +6,6 @@ ControlPort 9051
 CookieAuthentication 1
 CookieAuthFileGroupReadable 1
 DataDirectoryGroupReadable 1
-ORPort 9001
 TestingTorNetwork 1
 ClientUseIPv6 0
 ClientUseIPv4 1
