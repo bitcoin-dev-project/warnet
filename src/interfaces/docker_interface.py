@@ -1,5 +1,6 @@
 import logging
 import re
+import shutil
 import subprocess
 import yaml
 
@@ -11,6 +12,7 @@ from docker.models.containers import Container
 
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
+from services import SERVICES
 from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
 from services.grafana import Grafana
@@ -26,6 +28,7 @@ DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "registry.gitlab.com/willcl-ark1/warnet-registry-test/bitcoin-core"
+GRAFANA_PROVISIONING = "grafana-provisioning"
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -200,16 +203,6 @@ class DockerInterface(ContainerInterface):
         config = {
             "global": {"scrape_interval": "15s"},
             "scrape_configs": [
-                # {
-                #     "job_name": "prometheus",
-                #     "scrape_interval": "5s",
-                #     "static_configs": [{"targets": ["localhost:9090"]}],
-                # },
-                # {
-                #     "job_name": "node-exporter",
-                #     "scrape_interval": "5s",
-                #     "static_configs": [{"targets": ["node-exporter:9100"]}],
-                # },
                 {
                     "job_name": "cadvisor",
                     "scrape_interval": "15s",
@@ -218,10 +211,6 @@ class DockerInterface(ContainerInterface):
             ],
         }
 
-        # grep: disable-exporters
-        # for tank in self.tanks:
-        #     tank.add_scrapers(config["scrape_configs"])
-        #
         prometheus_path = self.config_dir / "prometheus.yml"
         try:
             with open(prometheus_path, "w") as file:
@@ -229,7 +218,6 @@ class DockerInterface(ContainerInterface):
             logger.info(f"Wrote file: {prometheus_path}")
         except Exception as e:
             logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
-
 
     def _write_docker_compose(self, warnet):
         compose = {
@@ -278,6 +266,10 @@ class DockerInterface(ContainerInterface):
         self._write_docker_compose(warnet)
         self.write_prometheus_config(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
+        logger.debug(f"{SERVICES=}")
+        logger.debug(f"{SERVICES / GRAFANA_PROVISIONING=}")
+        logger.debug(f"{self.config_dir=}")
+        shutil.copytree(SERVICES / GRAFANA_PROVISIONING, self.config_dir / GRAFANA_PROVISIONING, dirs_exist_ok=True)
 
 
     def default_config_args(self, tank):
@@ -288,7 +280,6 @@ class DockerInterface(ContainerInterface):
         return defaults
 
     def copy_configs(self, tank):
-        import shutil
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
         shutil.copyfile(TEMPLATES / TORRC_NAME, tank.config_dir / TORRC_NAME)
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
