@@ -12,9 +12,9 @@ from docker.models.containers import Container
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
 from services.cadvisor import CAdvisor
-from services.tor import Tor
 from services.fork_observer import ForkObserver
-from services.fluentd import Fluentd
+from services.tor import Tor
+from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
@@ -195,6 +195,41 @@ class DockerInterface(ContainerInterface):
 
         return '\n'.join(sorted_logs)
 
+    def write_prometheus_config(self, warnet):
+        config = {
+            "global": {"scrape_interval": "15s"},
+            "scrape_configs": [
+                # {
+                #     "job_name": "prometheus",
+                #     "scrape_interval": "5s",
+                #     "static_configs": [{"targets": ["localhost:9090"]}],
+                # },
+                # {
+                #     "job_name": "node-exporter",
+                #     "scrape_interval": "5s",
+                #     "static_configs": [{"targets": ["node-exporter:9100"]}],
+                # },
+                {
+                    "job_name": "cadvisor",
+                    "scrape_interval": "5s",
+                    "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
+                },
+            ],
+        }
+
+        # grep: disable-exporters
+        # for tank in self.tanks:
+        #     tank.add_scrapers(config["scrape_configs"])
+        #
+        prometheus_path = self.config_dir / "prometheus.yml"
+        try:
+            with open(prometheus_path, "w") as file:
+                yaml.dump(config, file)
+            logger.info(f"Wrote file: {prometheus_path}")
+        except Exception as e:
+            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
+
+
     def _write_docker_compose(self, warnet):
         compose = {
             "version": "3.8",
@@ -215,7 +250,7 @@ class DockerInterface(ContainerInterface):
         # Initialize services and add them to the compose
         services = [
             # grep: disable-exporters
-            # Prometheus(warnet.network_name, self.config_dir),
+            Prometheus(warnet.network_name, self.config_dir),
             # NodeExporter(warnet.network_name),
             # Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
@@ -240,6 +275,7 @@ class DockerInterface(ContainerInterface):
 
     def generate_deployment_file(self, warnet):
         self._write_docker_compose(warnet)
+        self.write_prometheus_config(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
 
 

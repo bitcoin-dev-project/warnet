@@ -10,9 +10,6 @@ from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
 
-from services.prometheus import Prometheus
-from services.node_exporter import NodeExporter
-from services.grafana import Grafana
 from interfaces import DockerInterface
 from warnet.tank import Tank
 from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
@@ -139,42 +136,6 @@ class Warnet:
 
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
-
-    @bubble_exception_str
-    def write_prometheus_config(self):
-        config = {
-            "global": {"scrape_interval": "15s"},
-            "scrape_configs": [
-                {
-                    "job_name": "prometheus",
-                    "scrape_interval": "5s",
-                    "static_configs": [{"targets": ["localhost:9090"]}],
-                },
-                {
-                    "job_name": "node-exporter",
-                    "scrape_interval": "5s",
-                    "static_configs": [{"targets": ["node-exporter:9100"]}],
-                },
-                {
-                    "job_name": "cadvisor",
-                    "scrape_interval": "5s",
-                    "static_configs": [{"targets": ["cadvisor:8080"]}],
-                },
-            ],
-        }
-
-        # grep: disable-exporters
-        # for tank in self.tanks:
-        #     tank.add_scrapers(config["scrape_configs"])
-        #
-        # prometheus_path = self.config_dir / "prometheus.yml"
-        # try:
-        #     with open(prometheus_path, "w") as file:
-        #         yaml.dump(config, file)
-        #     logger.info(f"Wrote file: {prometheus_path}")
-        # except Exception as e:
-        #     logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
-
 
     @bubble_exception_str
     def write_fork_observer_config(self):
