@@ -5,7 +5,7 @@ import yaml
 
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import cast, List, Tuple
 import docker
 from docker.models.containers import Container
 
@@ -157,26 +157,42 @@ class DockerInterface(ContainerInterface):
         return messages
 
 
-    def logs_grep(self, pattern: str, network: str):
+    def get_containers_in_network(self, network: str) -> List[str]:
+        # Return list of container names in the specified network
+        containers = []
+        for container in self.client.containers.list(filters={"network": network}):
+            containers.append(container.name)
+        logger.debug(f"Got containers: {containers}")
+        return containers
+
+    def logs_grep(self, pattern: str, network: str) -> str:
         compiled_pattern = re.compile(pattern)
-        container_name = self.get_container(f"{network}_fluentd").name
+        containers = self.get_containers_in_network(network)
 
-        now = datetime.utcnow()
-        log_stream = self.client.api.logs(
-            container=container_name,
-            stdout=True,
-            stderr=True,
-            stream=True,
-            until=now,
-        )
+        all_matching_logs: List[Tuple[str, str]] = []
 
-        matching_logs = []
-        for log_entry in log_stream:
-            log_entry_str = log_entry.decode('utf-8').strip()
-            if compiled_pattern.search(log_entry_str):
-                matching_logs.append(log_entry_str)
+        for container_name in containers:
+            logger.debug(f"Fetching logs from {container_name}")
+            logs = self.client.api.logs(
+                container=container_name,
+                stdout=True,
+                stderr=True,
+                stream=False,
+            )
+            logs = logs.decode("utf-8").splitlines()
 
-        return '\n'.join(matching_logs)
+            for log_entry in logs:
+                log_entry_str = log_entry.strip()
+                if compiled_pattern.search(log_entry_str):
+                    all_matching_logs.append((container_name, log_entry_str))
+
+        # Sort by timestamp; Python's default tuple sorting will sort by the second element, which is the timestamp
+        all_matching_logs.sort(key=lambda x: x[1])
+
+        # Format and join the sorted logs
+        sorted_logs = [f"{container} {log}" for container, log in all_matching_logs]
+
+        return '\n'.join(sorted_logs)
 
     def _write_docker_compose(self, warnet):
         compose = {
