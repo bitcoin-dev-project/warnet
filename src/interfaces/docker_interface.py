@@ -210,7 +210,7 @@ class DockerInterface(ContainerInterface):
                 # },
                 {
                     "job_name": "cadvisor",
-                    "scrape_interval": "5s",
+                    "scrape_interval": "15s",
                     "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
                 },
             ],
