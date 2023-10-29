@@ -330,9 +330,8 @@ class Server():
         """
         Grep the logs from the fluentd container for a regex pattern
         """
-        container_name = f"{network}_fluentd"
         wn = Warnet.from_network(network)
-        return wn.container_interface.logs_grep(pattern, container_name)
+        return wn.container_interface.logs_grep(pattern)
 
 
 def run_server():
