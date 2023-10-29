@@ -11,6 +11,7 @@ from docker.models.containers import Container
 
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
+from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
 from services.fluentd import Fluentd
 from templates import TEMPLATES
@@ -216,6 +217,7 @@ class DockerInterface(ContainerInterface):
             # Prometheus(warnet.network_name, self.config_dir),
             # NodeExporter(warnet.network_name),
             # Grafana(warnet.network_name),
+            CAdvisor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
             # Fluentd(warnet.network_name, warnet.config_dir),
         ]
