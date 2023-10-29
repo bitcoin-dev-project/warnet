@@ -30,6 +30,5 @@ ConstrainedSockets 1
 ConstrainedSockSize 8192 Bytes
 NumEntryGuards 1
 NumDirectoryGuards 1
-UseMicrodescriptors 1
 
 # `Address <w.x.y.z>` will be added by docker_entrypoint.sh
