@@ -156,8 +156,9 @@ class DockerInterface(ContainerInterface):
         return messages
 
 
-    def logs_grep(self, pattern: str, container_name: str):
+    def logs_grep(self, pattern: str, network: str):
         compiled_pattern = re.compile(pattern)
+        container_name = self.get_container(f"{network}_fluentd").name
 
         now = datetime.utcnow()
         log_stream = self.client.api.logs(
