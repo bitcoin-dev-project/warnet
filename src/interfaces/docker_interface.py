@@ -28,7 +28,7 @@ DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
-DOCKER_REGISTRY = "registry.gitlab.com/willcl-ark1/warnet-registry-test/bitcoin-core"
+DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
 GRAFANA_PROVISIONING = "grafana-provisioning"
 
 logger = logging.getLogger("docker-interface")
