@@ -73,6 +73,10 @@ class Server():
         self.logger = logging.getLogger("warnet")
         self.logger.info("Logging started")
 
+        if self.backend == "k8s":
+            # if using k8s as a backend, tone the logging down
+            logging.getLogger("kubernetes.client.rest").setLevel(logging.WARNING)
+
         def log_request():
             self.logger.debug(request.json)
 
@@ -254,7 +258,7 @@ class Server():
 
         def thread_start(wn):
             try:
-                wn.container_interface.up()
+                # wn.container_interface.up()
                 # Update warnet from docker here to get ip addresses
                 wn = Warnet.from_network(network, self.backend)
                 wn.apply_network_conditions()
@@ -280,14 +284,14 @@ class Server():
                 shutil.rmtree(config_dir)
             else:
                 return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
-        wn = Warnet.from_graph_file(graph_file, config_dir, network)
+        wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
 
         def thread_start(wn):
             try:
                 wn.generate_deployment()
                 # grep: disable-exporters
                 # wn.write_prometheus_config()
-                wn.write_fork_observer_config()
+                # wn.write_fork_observer_config()
                 wn.warnet_build()
                 wn.warnet_up()
                 wn.apply_network_conditions()
@@ -359,7 +363,7 @@ class Server():
             return (
                 f"Config dir {config_dir} already exists, not overwriting existing warnet"
             )
-        wn = Warnet.from_graph_file(graph_file, config_dir, network)
+        wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
         wn.generate_deployment()
         if not wn.deployment_file.is_file():
             return f"No deployment file found at {wn.deployment_file}"
@@ -377,7 +381,7 @@ class Server():
         """
         Grep the logs from the fluentd container for a regex pattern
         """
-        container_name = f"{network}_fluentd"
+        container_name = f"fluentd"
         wn = Warnet.from_network(network, self.backend)
         return wn.container_interface.logs_grep(pattern, container_name)
 

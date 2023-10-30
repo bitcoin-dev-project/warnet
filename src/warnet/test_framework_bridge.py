@@ -45,8 +45,8 @@ class WarnetTestFramework(BitcoinTestFramework):
         ch.setFormatter(formatter)
         self.log.addHandler(ch)
 
-        self.warnet = Warnet.from_network(self.options.network)
-        for i, tank in enumerate(self.warnet.tanks):
+        warnet = Warnet.from_network(self.options.network, backend="k8s")
+        for i, tank in enumerate(warnet.tanks):
             ip = tank.ipv4
             self.log.info(f"Adding TestNode {i} from {tank.container_name} with IP {ip}")
             node = TestNode(
