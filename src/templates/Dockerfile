@@ -49,6 +49,7 @@ FROM debian:bookworm-slim
 ARG UID=3338
 ARG GID=3338
 ARG REPO
+ARG TOR=0
 ARG WARNET=0
 ARG BITCOIN_ARGS
 # env var overrides
@@ -56,6 +57,8 @@ ENV UID=$UID
 ENV GID=$GID
 ENV BITCOIN_DATA=/home/bitcoin/.bitcoin
 ENV BITCOIN_ARGS=$BITCOIN_ARGS
+ENV TOR=$TOR
+ENV WARNET=$WARNET
 
 RUN set -ex \
     && groupadd --gid ${GID} bitcoin \
@@ -65,6 +68,7 @@ RUN set -ex \
         dnsutils \
         gosu \
         iproute2 \
+        tor \
     && if [ -n "${REPO}" ]; then \
         apt-get install -y --no-install-recommends \
             libboost-dev \
@@ -81,6 +85,8 @@ RUN set -ex \
 
 COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/local/bin/
 COPY entrypoint.sh /entrypoint.sh
+# Warnet torrc using test network
+COPY torrc /etc/tor/warnet-torr
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
