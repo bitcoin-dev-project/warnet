@@ -1,21 +1,6 @@
 #!/bin/bash
 set -e
 
-# Add bitcoin user to tor group to read the auth cookie
-usermod -a -G debian-tor bitcoin
-
-# ===========Tor setup===========
-# Use custom torrc for warnet
-if [ "$WARNET" -eq 1 ]; then
-    mv /etc/tor/warnet-torrc /etc/tor/torrc
-fi
-echo "Address $(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)" >> /etc/tor/torrc
-mkdir -p /home/debian-tor/.tor/keys
-chown -R debian-tor:debian-tor /home/debian-tor
-# Start tor in the background
-gosu debian-tor tor &
-# ===============================
-
 if [ -n "${UID+x}" ] && [ "${UID}" != "0" ]; then
   usermod -u "$UID" bitcoin
 fi
