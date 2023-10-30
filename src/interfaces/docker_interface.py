@@ -11,10 +11,8 @@ from docker.models.containers import Container
 
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
-from services.tor_da import TorDA
 from services.fork_observer import ForkObserver
 from services.fluentd import Fluentd
-from services.tor_relay import TorRelay
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
@@ -60,8 +58,7 @@ class DockerInterface(ContainerInterface):
 
     @bubble_exception_str
     def up(self):
-        # Give ourselves a good chance at making circuits with 10 relays
-        command = ["docker", "compose", "up", "--scale", "torrelay=10", "--detach"]
+        command = ["docker", "compose", "up", "--detach"]
         try:
             with subprocess.Popen(
                 command,
@@ -202,8 +199,6 @@ class DockerInterface(ContainerInterface):
             # Prometheus(warnet.network_name, self.config_dir),
             # NodeExporter(warnet.network_name),
             # Grafana(warnet.network_name),
-            TorDA(warnet.network_name, TEMPLATES),
-            TorRelay(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
             Fluentd(warnet.network_name, warnet.config_dir),
         ]
@@ -269,7 +264,6 @@ class DockerInterface(ContainerInterface):
             {
                 "container_name": tank.container_name,
                 "environment": {
-                    "WARNET": "1",
                     "BITCOIN_ARGS": self.default_config_args(tank)
                 },
                 "networks": {
