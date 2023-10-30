@@ -1,11 +1,9 @@
 import logging
 import re
-import shutil
 import subprocess
 import yaml
 
 from datetime import datetime
-from copy import deepcopy
 from pathlib import Path
 from typing import cast
 import docker
@@ -13,19 +11,18 @@ from docker.models.containers import Container
 
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
-from services.tor import Tor
 from services.fork_observer import ForkObserver
 from services.fluentd import Fluentd
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
-from warnet.utils import bubble_exception_str, parse_raw_messages, parse_bitcoin_conf, dump_bitcoin_conf, get_architecture, set_execute_permission
+from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
 
 
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
-WARNET_ENTRYPOINT_NAME = "warnet_entrypoint.sh"
-DOCKER_ENTRYPOINT_NAME = "docker_entrypoint.sh"
+ENTRYPOINT_NAME = "entrypoint.sh"
+DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -121,12 +118,12 @@ class DockerInterface(ContainerInterface):
         )
         return cast(bytes, logs).decode('utf8') # cast for typechecker
 
-    def get_bitcoin_cli(self, container_name: str, method: str, params=None):
+    def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:
-            cmd = f"bitcoin-cli {method} {' '.join(map(str, params))}"
+            cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
-            cmd = f"bitcoin-cli {method}"
-        return self.exec_run(container_name, cmd, user="bitcoin")
+            cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
+        return self.exec_run(tank.container_name, cmd, user="bitcoin")
 
     def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest"):
         src_node = self.get_container(a_name)
@@ -179,13 +176,6 @@ class DockerInterface(ContainerInterface):
 
         return '\n'.join(matching_logs)
 
-    def _write_bitcoin_confs(self, warnet):
-        with open(TEMPLATES / "bitcoin.conf", "r") as file:
-            text = file.read()
-        base_bitcoin_conf = parse_bitcoin_conf(text)
-        for tank in warnet.tanks:
-            self.write_bitcoin_conf(tank,base_bitcoin_conf)
-
     def _write_docker_compose(self, warnet):
         compose = {
             "version": "3.8",
@@ -209,7 +199,6 @@ class DockerInterface(ContainerInterface):
             # Prometheus(warnet.network_name, self.config_dir),
             # NodeExporter(warnet.network_name),
             # Grafana(warnet.network_name),
-            Tor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
             Fluentd(warnet.network_name, warnet.config_dir),
         ]
@@ -229,58 +218,28 @@ class DockerInterface(ContainerInterface):
             )
 
     def generate_deployment_file(self, warnet):
-        self._write_bitcoin_confs(warnet)
         self._write_docker_compose(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
 
 
-    def write_bitcoin_conf(self, tank, base_bitcoin_conf):
-        conf = deepcopy(base_bitcoin_conf)
-        options = tank.conf.split(",")
-        for option in options:
-            option = option.strip()
-            if option:
-                if "=" in option:
-                    key, value = option.split("=")
-                else:
-                    key, value = option, "1"
-                conf[tank.bitcoin_network].append((key, value))
-
-        conf[tank.bitcoin_network].append(("rpcuser", tank.rpc_user))
-        conf[tank.bitcoin_network].append(("rpcpassword", tank.rpc_password))
-        conf[tank.bitcoin_network].append(("rpcport", tank.rpc_port))
-
-        conf_file = dump_bitcoin_conf(conf)
-        path = tank.config_dir / f"bitcoin.conf"
-        logger.info(f"Wrote file {path}")
-        with open(path, "w") as file:
-            file.write(conf_file)
-        tank.conf_file = path
-
-    def copy_torrc(self, tank):
-        shutil.copyfile(Path(TEMPLATES) / TORRC_NAME, tank.config_dir/ TORRC_NAME)
-
-    def copy_entrypoints(self, tank):
-        shutil.copyfile(Path(TEMPLATES) / WARNET_ENTRYPOINT_NAME, tank.config_dir / WARNET_ENTRYPOINT_NAME)
-        set_execute_permission(tank.config_dir / WARNET_ENTRYPOINT_NAME)
-
-        shutil.copyfile(Path(TEMPLATES) / DOCKER_ENTRYPOINT_NAME, tank.config_dir / DOCKER_ENTRYPOINT_NAME)
-        set_execute_permission(tank.config_dir / DOCKER_ENTRYPOINT_NAME)
-
-    def copy_dockerfile(self, tank):
-        shutil.copyfile(Path(TEMPLATES) / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
+    def default_config_args(self, tank):
+        defaults = default_bitcoin_conf_args()
+        defaults += f" -rpcuser={tank.rpc_user}"
+        defaults += f" -rpcpassword={tank.rpc_password}"
+        defaults += f" -rpcport={tank.rpc_port}"
+        return defaults
 
     def copy_configs(self, tank):
-        self.copy_torrc(tank)
-        self.copy_entrypoints(tank)
-        self.copy_dockerfile(tank)
+        import shutil
+        shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
+        shutil.copyfile(TEMPLATES / TORRC_NAME, tank.config_dir / TORRC_NAME)
+        shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
+        set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
 
     def add_services(self, tank, services):
         assert tank.index is not None
-        assert tank.conf_file is not None
         services[tank.container_name] = {}
-
-        self.copy_configs(tank)
+        logger.debug(f"{tank.version=}")
 
         # Setup bitcoind, either release binary or build from source
         if "/" and "#" in tank.version:
@@ -295,22 +254,18 @@ class DockerInterface(ContainerInterface):
                     "BUILD_ARGS": f"{tank.DEFAULT_BUILD_ARGS + tank.extra_build_args}",
                 },
             }
+            services[tank.container_name]['build'] = build
+            self.copy_configs(tank)
         else:
-            # assume it's a release version, get the binary
-            build = {
-                "context": str(tank.config_dir),
-                "dockerfile": str(tank.config_dir / DOCKERFILE_NAME),
-                "args": {
-                    "ARCH": get_architecture(),
-                    "BITCOIN_URL": "https://bitcoincore.org/bin",
-                    "BITCOIN_VERSION": f"{tank.version}",
-                },
-            }
-        # Add the bitcoind service
+            image = f"{DOCKER_REGISTRY}:{tank.version}"
+            services[tank.container_name]['image'] = image
+        # Add common bitcoind service details
         services[tank.container_name].update(
             {
                 "container_name": tank.container_name,
-                "build": build,
+                "environment": {
+                    "BITCOIN_ARGS": self.default_config_args(tank)
+                },
                 "networks": {
                     tank.network_name: {
                         "ipv4_address": f"{tank.ipv4}",
@@ -328,7 +283,7 @@ class DockerInterface(ContainerInterface):
                     "test": ["CMD", "pidof", "bitcoind"],
                     "interval": "5s",            # Check every 5 seconds
                     "timeout": "1s",             # Give the check 1 second to complete
-                    "start_period": "5s",       # Start checking after 2 seconds
+                    "start_period": "5s",        # Start checking after 5 seconds
                     "retries": 3
                 },
                 "logging": {
@@ -377,6 +332,9 @@ class DockerInterface(ContainerInterface):
 
     def tank_from_deployment(self, service, warnet):
         rex = fr"{warnet.network_name}_{CONTAINER_PREFIX_BITCOIND}_([0-9]{{6}})"
+        # Not a tank, maybe a scaled service
+        if not "container_name" in service:
+            return None
         match = re.match(rex, service["container_name"])
         if match is None:
             return None
@@ -384,8 +342,8 @@ class DockerInterface(ContainerInterface):
         index = int(match.group(1))
         t = Tank(index, warnet.config_dir, warnet)
         t._ipv4 = service["networks"][t.network_name]["ipv4_address"]
-        if "BITCOIN_VERSION" in service["build"]["args"]:
-            t.version = service["build"]["args"]["BITCOIN_VERSION"]
+        if "image" in service:
+            t.version = service["image"].split(":")[1]
         else:
             t.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
         return t
