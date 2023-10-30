@@ -42,7 +42,7 @@ warcli
   |   + down   Run "docker compose down" on a given network
   |              ex: warcli network down --network=sweet
   + debug
-      + generate_compose
+      + generate-deployment
 ```
 
 # Next: [Scenarios](scenarios.md)
