@@ -82,6 +82,19 @@ Edges can be added between the nodes as follows:
 </edge>
 ```
 
+## Creating graphs
+
+Graphs can be created via the graph menu:
+
+```bash
+# show graph commands
+warcli graph --help
+
+# Create a random internet AS graph of random (supported) version nodes
+warcli graph create n=100 --outfile=random_internet_as_graph_n100.graphml --random
+
+```
+
 ## Examples
 
 1. [example.graphml](../src/graphs/default.graphml) -- This is the default graph.
