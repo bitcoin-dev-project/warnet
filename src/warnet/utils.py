@@ -431,14 +431,19 @@ def create_graph_with_probability(graph_func, params: List, version: str, bitcoi
             return msg
 
     # Attempt to convert numerical values from string to their respective numerical types
+    msg = "Error convering numerical value strings to types "
     for key in kwargs:
         try:
             kwargs[key] = int(kwargs[key])
         except ValueError:
             try:
                 kwargs[key] = float(kwargs[key])
-            except ValueError:
-                pass
+            except ValueError as e:
+                msg += str(e)
+                return msg
+        except Exception as e:
+            msg += str(e)
+            return msg
 
     logger.debug(f"Parsed params: {kwargs}")
 
