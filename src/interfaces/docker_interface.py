@@ -1,5 +1,6 @@
 import logging
 import re
+import shutil
 import subprocess
 import yaml
 
@@ -9,6 +10,7 @@ from typing import cast
 import docker
 from docker.models.containers import Container
 
+from templates import TEMPLATES
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
 from services.fork_observer import ForkObserver
@@ -20,6 +22,7 @@ from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitco
 
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
+FO_CONF_NAME = "fork_observer_config.toml"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
@@ -217,10 +220,26 @@ class DockerInterface(ContainerInterface):
                 f"An error occurred while writing to {docker_compose_path}: {e}"
             )
 
+    def _write_fork_observer_config(self,warnet):
+        shutil.copy(TEMPLATES / FO_CONF_NAME, warnet.fork_observer_config)
+        with open(warnet.fork_observer_config, "a") as f:
+            for tank in warnet.tanks:
+                f.write(f"""
+                    [[networks.nodes]]
+                    id = {tank.index}
+                    name = "Node {tank.index}"
+                    description = "Warnet tank {tank.index}"
+                    rpc_host = "{tank.ipv4}"
+                    rpc_port = {tank.rpc_port}
+                    rpc_user = "{tank.rpc_user}"
+                    rpc_password = "{tank.rpc_password}"
+                """)
+        logger.info(f"Wrote file: {warnet.fork_observer_config}")
+
     def generate_deployment_file(self, warnet):
         self._write_docker_compose(warnet)
+        self._write_fork_observer_config(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
-
 
     def default_config_args(self, tank):
         defaults = default_bitcoin_conf_args()
@@ -229,8 +248,7 @@ class DockerInterface(ContainerInterface):
         defaults += f" -rpcport={tank.rpc_port}"
         return defaults
 
-    def copy_configs(self, tank):
-        import shutil
+    def copy_tank_configs(self, tank):
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
         shutil.copyfile(TEMPLATES / TORRC_NAME, tank.config_dir / TORRC_NAME)
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
@@ -255,7 +273,7 @@ class DockerInterface(ContainerInterface):
                 },
             }
             services[tank.container_name]['build'] = build
-            self.copy_configs(tank)
+            self.copy_tank_configs(tank)
         else:
             image = f"{DOCKER_REGISTRY}:{tank.version}"
             services[tank.container_name]['image'] = image
