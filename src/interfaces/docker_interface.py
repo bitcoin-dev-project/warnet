@@ -248,8 +248,7 @@ class DockerInterface(ContainerInterface):
         defaults += f" -rpcport={tank.rpc_port}"
         return defaults
 
-    def copy_configs(self, tank):
-        import shutil
+    def copy_tank_configs(self, tank):
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
         shutil.copyfile(TEMPLATES / TORRC_NAME, tank.config_dir / TORRC_NAME)
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
@@ -274,7 +273,7 @@ class DockerInterface(ContainerInterface):
                 },
             }
             services[tank.container_name]['build'] = build
-            self.copy_configs(tank)
+            self.copy_tank_configs(tank)
         else:
             image = f"{DOCKER_REGISTRY}:{tank.version}"
             services[tank.container_name]['image'] = image
