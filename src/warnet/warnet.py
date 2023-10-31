@@ -5,9 +5,7 @@
 import logging
 import networkx
 import shutil
-import yaml
 from pathlib import Path
-from templates import TEMPLATES
 from typing import List, Optional
 
 from services.prometheus import Prometheus
@@ -18,7 +16,6 @@ from warnet.tank import Tank
 from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
-FO_CONF_NAME = "fork_observer_config.toml"
 
 
 class Warnet:
@@ -174,22 +171,4 @@ class Warnet:
         #     logger.info(f"Wrote file: {prometheus_path}")
         # except Exception as e:
         #     logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
-
-
-    @bubble_exception_str
-    def write_fork_observer_config(self):
-        shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
-        with open(self.fork_observer_config, "a") as f:
-            for tank in self.tanks:
-                f.write(f"""
-                    [[networks.nodes]]
-                    id = {tank.index}
-                    name = "Node {tank.index}"
-                    description = "Warnet tank {tank.index}"
-                    rpc_host = "{tank.ipv4}"
-                    rpc_port = {tank.rpc_port}
-                    rpc_user = "{tank.rpc_user}"
-                    rpc_password = "{tank.rpc_password}"
-                """)
-        logger.info(f"Wrote file: {self.fork_observer_config}")
 
