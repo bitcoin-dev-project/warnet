@@ -123,7 +123,7 @@
           "step": 2
         }
       ],
-      "title": "CPU Usage per Container (Stacked)",
+      "title": "CPU Usage per Container",
       "type": "timeseries"
     },
     {
@@ -606,7 +606,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -681,7 +681,7 @@
           "step": 240
         }
       ],
-      "title": "Memory Usage per Container (Stacked)",
+      "title": "Memory Usage per Container",
       "type": "timeseries"
     },
     {
@@ -720,7 +720,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "normal"
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -808,7 +808,7 @@
           "step": 2
         }
       ],
-      "title": "Cached Memory per Container (Stacked)",
+      "title": "Cached Memory per Container",
       "type": "timeseries"
     },
     {
@@ -1204,7 +1204,7 @@
           "type": "prometheus",
           "uid": "prometheusdatasource"
         },
-        "definition": "label_values(container_network_transmit_bytes_total, name)",
+        "definition": "label_values(container_network_transmit_bytes_total{container_label_warnet=\"tank\"}, name)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
@@ -1212,7 +1212,7 @@
         "options": [],
         "query": {
           "qryType": 5,
-          "query": "label_values(container_network_transmit_bytes_total, name)",
+          "query": "label_values(container_network_transmit_bytes_total{container_label_warnet=\"tank\"}, name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
