@@ -6,15 +6,20 @@ import subprocess
 import sys
 import threading
 from datetime import datetime
+from io import BytesIO
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
-from typing import List, Dict
+from pathlib import Path
+from typing import List, Dict, Optional
 from flask import Flask, request
 from flask_jsonrpc.app import JSONRPC
+
+import networkx as nx
 
 import scenarios
 from warnet.warnet import Warnet
 from warnet.utils import (
+    create_graph_with_probability,
     gen_config_dir,
 )
 
@@ -81,6 +86,8 @@ class Server():
         self.jsonrpc.register(self.network_down)
         self.jsonrpc.register(self.network_info)
         self.jsonrpc.register(self.network_status)
+        # Graph
+        self.jsonrpc.register(self.graph_generate)
         # Debug
         self.jsonrpc.register(self.generate_deployment)
         # Server
@@ -270,6 +277,20 @@ class Server():
         t.daemon
         t.start()
         return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
+
+    def graph_generate(self, params: List[str], outfile: str, version: str, bitcoin_conf: Optional[str] = None, random: bool = False) -> str:
+        graph_func = nx.generators.random_internet_as_graph
+
+        graph = create_graph_with_probability(graph_func, params, version, bitcoin_conf, random)
+
+        if outfile:
+            file_path = Path(outfile)
+            nx.write_graphml(graph, file_path)
+            return f"Generated graph written to file: {outfile}"
+        bio = BytesIO()
+        nx.write_graphml(graph, bio)
+        xml_data = bio.getvalue()
+        return f"Generated graph:\n\n{xml_data.decode('utf-8')}"
 
     def network_down(self, network: str = "warnet") -> str:
         """

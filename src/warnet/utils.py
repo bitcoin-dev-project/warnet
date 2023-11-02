@@ -11,6 +11,9 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
+from typing import List, Optional
+
+import networkx as nx
 
 from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
@@ -18,12 +21,15 @@ from test_framework.messages import ser_uint256
 
 logger = logging.getLogger("utils")
 
+
 SUPPORTED_TAGS = [
     "25.1",
     "24.2",
     "23.2",
     "22.2",
 ]
+DEFAULT_TAG = SUPPORTED_TAGS[0]
+WEIGHTED_TAGS = [tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)]
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -187,7 +193,7 @@ def parse_bitcoin_conf(file_content):
     return result
 
 
-def dump_bitcoin_conf(conf_dict):
+def dump_bitcoin_conf(conf_dict, for_graph=False):
     """
     Converts a dictionary representation of bitcoin.conf content back to INI-style string.
 
@@ -212,6 +218,9 @@ def dump_bitcoin_conf(conf_dict):
             continue
         for sub_key, sub_value in values:
             result.append(f"{sub_key}={sub_value}")
+
+    if for_graph:
+        return ",".join(result)
 
     # Terminate file with newline
     return "\n".join(result) + "\n"
@@ -408,3 +417,99 @@ def default_bitcoin_conf_args() -> str:
             conf_args.append(f"-{key}={value}")
 
     return " ".join(conf_args)
+
+
+def create_graph_with_probability(graph_func, params: List, version: str, bitcoin_conf: Optional[str], random_version: bool):
+    kwargs = {}
+    for param in params:
+        try:
+            key, value = param.split("=")
+            kwargs[key] = value
+        except ValueError:
+            msg = f"Invalid parameter format: {param}"
+            logger.error(msg)
+            return msg
+
+    # Attempt to convert numerical values from string to their respective numerical types
+    msg = "Error convering numerical value strings to types "
+    for key in kwargs:
+        try:
+            kwargs[key] = int(kwargs[key])
+        except ValueError:
+            try:
+                kwargs[key] = float(kwargs[key])
+            except ValueError as e:
+                msg += str(e)
+                return msg
+        except Exception as e:
+            msg += str(e)
+            return msg
+
+    logger.debug(f"Parsed params: {kwargs}")
+
+    try:
+        graph = graph_func(**kwargs)
+    except TypeError as e:
+        msg = f"Failed to create graph: {e}"
+        logger.error(msg)
+        return msg
+
+    # calculate degree
+    degree_dict = dict(graph.degree(graph.nodes()))
+    nx.set_node_attributes(graph, degree_dict, 'degree')
+
+    # add a default layout
+    pos = nx.spring_layout(graph)
+    for node in graph.nodes():
+        graph.nodes[node]['x'] = float(pos[node][0])
+        graph.nodes[node]['y'] = float(pos[node][1])
+
+    # parse and process conf file
+    conf_contents = ""
+    if bitcoin_conf is not None:
+        conf = Path(bitcoin_conf)
+        if conf.is_file():
+            with open(conf, 'r') as f:
+                # parse INI style conf then dump using for_graph
+                conf_dict = parse_bitcoin_conf(f.read())
+                conf_contents = dump_bitcoin_conf(conf_dict, for_graph=True)
+
+    # populate our custom fields
+    for node in graph.nodes():
+        if random_version:
+            graph.nodes[node]['version'] = random.choice(WEIGHTED_TAGS)
+        else:
+            graph.nodes[node]['version'] = version
+        graph.nodes[node]['bitcoin_config'] = conf_contents
+        graph.nodes[node]['tc_netem'] = ""
+
+    # remove type and customer fields from edges as we don't need 'em!
+    for edge in graph.edges():
+        del graph.edges[edge]["customer"]
+        del graph.edges[edge]["type"]
+
+    convert_unsupported_attributes(graph)
+    return graph
+
+
+def convert_unsupported_attributes(graph):
+    # Sometimes networkx complains about invalid types when writing the graph
+    # (it just generated itself!). Try to convert them here just in case.
+    for _, node_data in graph.nodes(data=True):
+        for key, value in node_data.items():
+            if isinstance(value, set):
+                node_data[key] = list(value)
+            elif isinstance(value, (int, float, str)):
+                continue
+            else:
+                node_data[key] = str(value)
+
+    for _, _, edge_data in graph.edges(data=True):
+        for key, value in edge_data.items():
+            if isinstance(value, set):
+                edge_data[key] = list(value)
+            elif isinstance(value, (int, float, str)):
+                continue
+            else:
+                edge_data[key] = str(value)
+
