@@ -1,18 +1,22 @@
 import logging
 import re
+import shutil
 import subprocess
 import yaml
 
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import cast, List, Tuple
 import docker
 from docker.models.containers import Container
 
 from .interfaces import ContainerInterface
 from warnet.utils import bubble_exception_str, parse_raw_messages
+from services import SERVICES
+from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
-from services.fluentd import Fluentd
+from services.grafana import Grafana
+from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
@@ -23,6 +27,7 @@ DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
+GRAFANA_PROVISIONING = "grafana-provisioning"
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -156,25 +161,62 @@ class DockerInterface(ContainerInterface):
         return messages
 
 
-    def logs_grep(self, pattern: str, container_name: str):
+    def get_containers_in_network(self, network: str) -> List[str]:
+        # Return list of container names in the specified network
+        containers = []
+        for container in self.client.containers.list(filters={"network": network}):
+            containers.append(container.name)
+        logger.debug(f"Got containers: {containers}")
+        return containers
+
+    def logs_grep(self, pattern: str, network: str) -> str:
         compiled_pattern = re.compile(pattern)
+        containers = self.get_containers_in_network(network)
 
-        now = datetime.utcnow()
-        log_stream = self.client.api.logs(
-            container=container_name,
-            stdout=True,
-            stderr=True,
-            stream=True,
-            until=now,
-        )
+        all_matching_logs: List[Tuple[str, str]] = []
 
-        matching_logs = []
-        for log_entry in log_stream:
-            log_entry_str = log_entry.decode('utf-8').strip()
-            if compiled_pattern.search(log_entry_str):
-                matching_logs.append(log_entry_str)
+        for container_name in containers:
+            logger.debug(f"Fetching logs from {container_name}")
+            logs = self.client.api.logs(
+                container=container_name,
+                stdout=True,
+                stderr=True,
+                stream=False,
+            )
+            logs = logs.decode("utf-8").splitlines()
 
-        return '\n'.join(matching_logs)
+            for log_entry in logs:
+                log_entry_str = log_entry.strip()
+                if compiled_pattern.search(log_entry_str):
+                    all_matching_logs.append((container_name, log_entry_str))
+
+        # Sort by timestamp; Python's default tuple sorting will sort by the second element, which is the timestamp
+        all_matching_logs.sort(key=lambda x: x[1])
+
+        # Format and join the sorted logs
+        sorted_logs = [f"{container} {log}" for container, log in all_matching_logs]
+
+        return '\n'.join(sorted_logs)
+
+    def write_prometheus_config(self, warnet):
+        config = {
+            "global": {"scrape_interval": "15s"},
+            "scrape_configs": [
+                {
+                    "job_name": "cadvisor",
+                    "scrape_interval": "15s",
+                    "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
+                },
+            ],
+        }
+
+        prometheus_path = self.config_dir / "prometheus.yml"
+        try:
+            with open(prometheus_path, "w") as file:
+                yaml.dump(config, file)
+            logger.info(f"Wrote file: {prometheus_path}")
+        except Exception as e:
+            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
     def _write_docker_compose(self, warnet):
         compose = {
@@ -196,11 +238,12 @@ class DockerInterface(ContainerInterface):
         # Initialize services and add them to the compose
         services = [
             # grep: disable-exporters
-            # Prometheus(warnet.network_name, self.config_dir),
+            Prometheus(warnet.network_name, self.config_dir),
             # NodeExporter(warnet.network_name),
-            # Grafana(warnet.network_name),
+            Grafana(warnet.network_name),
+            CAdvisor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            Fluentd(warnet.network_name, warnet.config_dir),
+            # Fluentd(warnet.network_name, warnet.config_dir),
         ]
 
         for service_obj in services:
@@ -219,7 +262,12 @@ class DockerInterface(ContainerInterface):
 
     def generate_deployment_file(self, warnet):
         self._write_docker_compose(warnet)
+        self.write_prometheus_config(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
+        logger.debug(f"{SERVICES=}")
+        logger.debug(f"{SERVICES / GRAFANA_PROVISIONING=}")
+        logger.debug(f"{self.config_dir=}")
+        shutil.copytree(SERVICES / GRAFANA_PROVISIONING, self.config_dir / GRAFANA_PROVISIONING, dirs_exist_ok=True)
 
 
     def default_config_args(self, tank):
@@ -230,7 +278,6 @@ class DockerInterface(ContainerInterface):
         return defaults
 
     def copy_configs(self, tank):
-        import shutil
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
         shutil.copyfile(TEMPLATES / TORRC_NAME, tank.config_dir / TORRC_NAME)
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
@@ -274,24 +321,13 @@ class DockerInterface(ContainerInterface):
                 "labels": {"warnet": "tank"},
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
-                "depends_on": {
-                    "fluentd": {
-                        "condition": "service_healthy"
-                    }
-                },
                 "healthcheck": {
                     "test": ["CMD", "pidof", "bitcoind"],
-                    "interval": "5s",            # Check every 5 seconds
+                    "interval": "10s",           # Check every 10 seconds
                     "timeout": "1s",             # Give the check 1 second to complete
                     "start_period": "5s",        # Start checking after 5 seconds
                     "retries": 3
                 },
-                "logging": {
-                    "driver": "fluentd",
-                    "options": {
-                        "tag": "{{.Name}}"
-                    }
-                }
             }
         )
 

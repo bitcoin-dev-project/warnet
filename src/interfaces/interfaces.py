@@ -68,9 +68,9 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def logs_grep(self, pattern: str, container_name: str):
+    def logs_grep(self, pattern: str, network: str):
         """
-        Grep unified logs matching [pattern] from [container_name]
+        Grep logs from all containers matching [pattern] from [network]
         """
         raise NotImplementedError("This method should be overridden by child class")
 

@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-Install docker engine and it's `compose` plugin for your system: https://docs.docker.com/engine/install/
+Install docker engine and its `compose` plugin for your system: https://docs.docker.com/engine/install/
 
 e.g. For Ubuntu:
 

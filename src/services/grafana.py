@@ -10,6 +10,11 @@ class Grafana(BaseService):
             "image": "grafana/grafana:latest",
             "container_name": f"{self.docker_network}_grafana",
             "ports": [f"3000:{PORT}"],
-            "volumes": ["grafana-storage:/var/lib/grafana"],
+            "volumes": [
+                "grafana-storage:/var/lib/grafana",
+                f"{self.config_dir}/grafana-provisioning/datasources:/etc/grafana/provisioning/datasources",
+                f"{self.config_dir}/grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards"
+            ],
             "networks": [self.docker_network],
+            "environment": ["GF_LOG_LEVEL=debug"],
         }
