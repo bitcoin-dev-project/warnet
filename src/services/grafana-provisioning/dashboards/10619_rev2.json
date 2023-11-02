@@ -1204,7 +1204,7 @@
           "type": "prometheus",
           "uid": "prometheusdatasource"
         },
-        "definition": "label_values(container_network_transmit_bytes_total, name)",
+        "definition": "label_values(container_network_transmit_bytes_total{container_label_warnet=\"tank\"}, name)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
@@ -1212,7 +1212,7 @@
         "options": [],
         "query": {
           "qryType": 5,
-          "query": "label_values(container_network_transmit_bytes_total, name)",
+          "query": "label_values(container_network_transmit_bytes_total{container_label_warnet=\"tank\"}, name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
