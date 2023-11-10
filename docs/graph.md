@@ -90,9 +90,11 @@ Graphs can be created via the graph menu:
 # show graph commands
 warcli graph --help
 
-# Create a random internet AS graph of random (supported) version nodes
-warcli graph create n=100 --outfile=random_internet_as_graph_n100.graphml --random
+# Create an erdos renyi graph using edge connection probability of 0.3 and default bitcoin version (v25.1)
+warcli graph create n=100 p=0.3 --outfile=random_internet_as_graph_n100.graphml
 
+# Create an erdos renyi graph using default edge connection probability of p=0.2 and using random bitcoin versions
+warcli graph create n=250 --outfile=random_internet_as_graph_n100.graphml --random
 ```
 
 ## Examples

@@ -454,6 +454,16 @@ def create_graph_with_probability(graph_func, params: List, version: str, bitcoi
         logger.error(msg)
         return msg
 
+    # Ensure each node has at least 8 edges
+    for node in graph.nodes():
+        while graph.degree(node) < 8:
+            # Choose a random node to connect to
+            # Make sure it's not the same node and they aren't already connected
+            potential_nodes = [n for n in range(kwargs["n"]) if n != node and not graph.has_edge(node, n)]
+            if potential_nodes:
+                chosen_node = random.choice(potential_nodes)
+                graph.add_edge(node, chosen_node)
+
     # calculate degree
     degree_dict = dict(graph.degree(graph.nodes()))
     nx.set_node_attributes(graph, degree_dict, 'degree')
@@ -482,11 +492,6 @@ def create_graph_with_probability(graph_func, params: List, version: str, bitcoi
             graph.nodes[node]['version'] = version
         graph.nodes[node]['bitcoin_config'] = conf_contents
         graph.nodes[node]['tc_netem'] = ""
-
-    # remove type and customer fields from edges as we don't need 'em!
-    for edge in graph.edges():
-        del graph.edges[edge]["customer"]
-        del graph.edges[edge]["type"]
 
     convert_unsupported_attributes(graph)
     return graph
