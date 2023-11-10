@@ -377,7 +377,10 @@ class Server:
         random: bool = False,
     ) -> str:
         try:
-            graph_func = nx.generators.random_internet_as_graph
+            graph_func = nx.generators.erdos_renyi_graph
+            # Default connectivity probability of 0.2
+            if not any(param.startswith("p=") for param in params):
+                params.append("p=0.2")
 
             graph = create_graph_with_probability(graph_func, params, version, bitcoin_conf, random)
 
