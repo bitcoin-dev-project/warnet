@@ -6,6 +6,7 @@ import random
 import signal
 import sys
 import tempfile
+from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
     BitcoinTestFramework,
@@ -15,6 +16,14 @@ from test_framework.test_framework import (
 from test_framework.test_node import TestNode
 from test_framework.util import get_rpc_proxy, PortSeed
 from warnet.warnet import Warnet
+
+
+# Ensure that all RPC calls are made with brand new http connections
+def auth_proxy_request(self, method, path, postdata):
+    self._set_conn() # creates new http client connection
+    return self.oldrequest(method, path, postdata)
+AuthServiceProxy.oldrequest = AuthServiceProxy._request
+AuthServiceProxy._request = auth_proxy_request
 
 
 class WarnetTestFramework(BitcoinTestFramework):
