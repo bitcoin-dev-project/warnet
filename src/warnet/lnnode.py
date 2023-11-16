@@ -110,11 +110,9 @@ class LNNode:
             f.write(cert)
 
         config["nodes"].append({
-            "LND": {
-                "id": self.container_name,
-                "address": f"https://{self.ipv4}:10009",
-                "macaroon": macaroon_path,
-                "cert": cert_path
-            }
+            "id": self.container_name,
+            "address": f"https://{self.ipv4}:10009",
+            "macaroon": macaroon_path,
+            "cert": cert_path
         })
 
