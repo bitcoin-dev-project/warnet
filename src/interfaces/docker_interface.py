@@ -340,10 +340,10 @@ class DockerInterface(ContainerInterface):
             tank.lnnode.add_services(services)
             services[tank.container_name].update(
             {
-                "lnnode": {
-                    "container_name": tank.lnnode.container_name,
-                    "ipv4_address": tank.lnnode.ipv4,
-                    "impl": tank.lnnode.impl
+                "labels": {
+                    "lnnode_container_name": tank.lnnode.container_name,
+                    "lnnode_ipv4_address": tank.lnnode.ipv4,
+                    "lnnode_impl": tank.lnnode.impl
                 }
             })
 
@@ -398,8 +398,10 @@ class DockerInterface(ContainerInterface):
             tank.version = service["image"].split(":")[1]
         else:
             tank.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
-        if "lnnode" in service:
-            tank.lnnode = LNNode(warnet, tank, service["lnnode"]["impl"])
-            tank.lnnode.container_name = service["lnnode"]["container_name"]
-            tank.lnnode.ipv4 = service["lnnode"]["ipv4_address"]
+
+        labels = service.get("labels", {})
+        if "lnnode_impl" in labels:
+            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"])
+            tank.lnnode.container_name = labels.get("lnnode_container_name")
+            tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
         return tank
