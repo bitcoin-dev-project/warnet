@@ -104,8 +104,8 @@ class LNNode:
         cert_filename = f"{self.container_name}_tls.cert"
         macaroon_path = os.path.join(subdir, macaroon_filename)
         cert_path = os.path.join(subdir, cert_filename)
-        macaroon = self.warnet.container_interface.get_file_from_container(self.container, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
-        cert = self.warnet.container_interface.get_file_from_container(self.container, "/root/.lnd/tls.cert")
+        macaroon = self.warnet.container_interface.get_file_from_container(self.container_name, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
+        cert = self.warnet.container_interface.get_file_from_container(self.container_name, "/root/.lnd/tls.cert")
 
         with open(macaroon_path, "wb") as f:
             f.write(macaroon)
