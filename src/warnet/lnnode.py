@@ -61,7 +61,12 @@ class LNNode:
                 "tank_index": self.tank.index,
                 "tank_container_name": self.tank.container_name,
                 "tank_ipv4_address": self.tank.ipv4
-            }
+            },
+            "depends_on":
+                {
+                    self.tank.container_name: {"condition": "service_healthy"}
+                },
+            "restart": "on-failure"
         }
 
     @exponential_backoff(max_retries=20, max_delay=300)

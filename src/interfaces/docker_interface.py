@@ -278,8 +278,8 @@ class DockerInterface(ContainerInterface):
         defaults += f" -rpcuser={tank.rpc_user}"
         defaults += f" -rpcpassword={tank.rpc_password}"
         defaults += f" -rpcport={tank.rpc_port}"
-        defaults +=  " -zmqpubrawblock=0.0.0.0:28332"
-        defaults +=  " -zmqpubrawtx=0.0.0.0:28333"
+        defaults +=  " -zmqpubrawblock=tcp://0.0.0.0:28332"
+        defaults +=  " -zmqpubrawtx=tcp://0.0.0.0:28333"
         return defaults
 
     def copy_configs(self, tank):
