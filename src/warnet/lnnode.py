@@ -17,7 +17,7 @@ class LNNode:
         assert impl == "lnd"
         self.impl = impl
         self._container = None
-        self.container_name = f"{self.tank.docker_network}_{CONTAINER_PREFIX_LN}_{self.tank.suffix}"
+        self.container_name = f"{self.tank.network_name}_{CONTAINER_PREFIX_LN}_{self.tank.suffix}"
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
 
     @property
@@ -53,7 +53,7 @@ class LNNode:
             "image": "lightninglabs/lnd:v0.17.0-beta",
             "command": " ".join(args),
             "networks": {
-                self.tank.docker_network: {
+                self.tank.network_name: {
                     "ipv4_address": f"{self.ipv4}",
                 }
             },
