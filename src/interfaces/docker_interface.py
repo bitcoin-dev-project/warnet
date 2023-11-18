@@ -131,8 +131,19 @@ class DockerInterface(ContainerInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
         return self.exec_run(tank.container_name, cmd, user="bitcoin")
 
+    def get_file_from_container(self, container_name, path):
+        container = self.get_container(container_name)
+        data, stat = container.get_archive(path)
+        out = b""
+        for chunk in data:
+            out += chunk
+        # slice off tar archive header
+        out = out[512:]
+        # slice off end padding
+        out = out[: stat["size"]]
+        return out
+
     def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest"):
-        src_node = self.get_container(a_name)
         # start with the IP of the peer
         # find the corresponding message capture folder
         # (which may include the internal port if connection is inbound)
@@ -145,22 +156,13 @@ class DockerInterface(ContainerInterface):
         for dir_name in dirs:
             if b_ipv4 in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                    data, stat = src_node.get_archive(
-                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
-                    )
-                    blob = b""
-                    for chunk in data:
-                        blob += chunk
-                    # slice off tar archive header
-                    blob = blob[512:]
-                    # slice off end padding
-                    blob = blob[: stat["size"]]
-                    # parse
+                    blob = self.get_file_from_container(
+                        a_name,
+                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}")
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json
         messages.sort(key=lambda x: x["time"])
         return messages
-
 
     def get_containers_in_network(self, network: str) -> List[str]:
         # Return list of container names in the specified network

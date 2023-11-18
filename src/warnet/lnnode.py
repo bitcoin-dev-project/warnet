@@ -3,7 +3,6 @@ import docker
 import json
 import os
 from docker.models.containers import Container
-from warnet.client import get_file_from_container
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr
@@ -100,8 +99,8 @@ class LNNode:
         cert_filename = f"{self.container_name}_tls.cert"
         macaroon_path = os.path.join(subdir, macaroon_filename)
         cert_path = os.path.join(subdir, cert_filename)
-        macaroon = get_file_from_container(self.container, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
-        cert = get_file_from_container(self.container, "/root/.lnd/tls.cert")
+        macaroon = self.warnet.container_interface.get_file_from_container(self.container, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
+        cert = self.warnet.container_interface.get_file_from_container(self.container, "/root/.lnd/tls.cert")
 
         with open(macaroon_path, "wb") as f:
             f.write(macaroon)
