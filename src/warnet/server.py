@@ -2,6 +2,7 @@ import logging
 import os
 import pkgutil
 import shutil
+import platform
 import subprocess
 import sys
 import threading
@@ -27,13 +28,19 @@ WARNET_SERVER_PORT = 9276
 
 class Server():
     def __init__(self):
-        self.basedir = os.environ.get("XDG_STATE_HOME")
-        if self.basedir is None:
-            # ~/.warnet/warnet.log
-            self.basedir = os.path.join(os.environ["HOME"], ".warnet")
+        system = os.name
+        if system == 'nt' or platform.system() == "Windows":
+            self.basedir = os.path.join(os.path.expanduser("~"), "warnet")
+        elif system == 'posix' or platform.system() == "Linux" or platform.system() == "Darwin":
+            self.basedir = os.environ.get("XDG_STATE_HOME")
+            if self.basedir is None:
+                # ~/.warnet/warnet.log
+                self.basedir = os.path.join(os.environ["HOME"], ".warnet")
+            else:
+                # XDG_STATE_HOME / warnet / warnet.log
+                self.basedir = os.path.join(self.basedir, "warnet")
         else:
-            # XDG_STATE_HOME / warnet / warnet.log
-            self.basedir = os.path.join(self.basedir, "warnet")
+            raise NotImplementedError("Unsupported operating system")
 
         self.running_scenarios = []
 
