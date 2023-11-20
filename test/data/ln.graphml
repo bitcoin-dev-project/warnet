@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key attr.name="version"        attr.type="string" for="node" id="version"/>
+  <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
+  <key attr.name="tc_netem"       attr.type="string" for="node" id="tc_netem"/>
+  <key attr.name="ln"             attr.type="string" for="node" id="ln"/>
+  <key attr.name="channel"        attr.type="string" for="edge" id="channel"/>
+  <graph edgedefault="directed">
+    <node id="0">
+        <data key="version">25.1</data>
+        <data key="bitcoin_config">uacomment=w0</data>
+        <data key="ln">lnd</data>
+    </node>
+    <node id="1">
+        <data key="version">25.1</data>
+        <data key="bitcoin_config">uacomment=w1</data>
+        <data key="ln">lnd</data>
+    </node>
+    <node id="2">
+        <data key="version">25.1</data>
+        <data key="bitcoin_config">uacomment=w2</data>
+        <data key="ln">lnd</data>
+    </node>
+    <node id="3">
+        <data key="version">25.1</data>
+        <data key="bitcoin_config">uacomment=w3</data>
+    </node>
+    <edge id="1" source="0" target="1"></edge>
+    <edge id="2" source="1" target="2"></edge>
+    <edge id="3" source="2" target="3"></edge>
+    <edge id="4" source="3" target="0"></edge>
+    <!-- LN channels -->
+    <edge id="5" source="0" target="1">
+        <data key="channel">100000</data>
+    </edge>
+    <edge id="6" source="1" target="2">
+        <data key="channel">100000</data>
+    </edge>
+  </graph>
+</graphml>

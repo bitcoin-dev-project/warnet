@@ -19,6 +19,7 @@ from services.grafana import Grafana
 from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
+from warnet.lnnode import LNNode
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
 
 
@@ -130,8 +131,19 @@ class DockerInterface(ContainerInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
         return self.exec_run(tank.container_name, cmd, user="bitcoin")
 
+    def get_file(self, container_name, file_path):
+        container = self.get_container(container_name)
+        data, stat = container.get_archive(file_path)
+        out = b""
+        for chunk in data:
+            out += chunk
+        # slice off tar archive header
+        out = out[512:]
+        # slice off end padding
+        out = out[: stat["size"]]
+        return out
+
     def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest"):
-        src_node = self.get_container(a_name)
         # start with the IP of the peer
         # find the corresponding message capture folder
         # (which may include the internal port if connection is inbound)
@@ -144,22 +156,13 @@ class DockerInterface(ContainerInterface):
         for dir_name in dirs:
             if b_ipv4 in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                    data, stat = src_node.get_archive(
-                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
-                    )
-                    blob = b""
-                    for chunk in data:
-                        blob += chunk
-                    # slice off tar archive header
-                    blob = blob[512:]
-                    # slice off end padding
-                    blob = blob[: stat["size"]]
-                    # parse
+                    blob = self.get_file(
+                        a_name,
+                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}")
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json
         messages.sort(key=lambda x: x["time"])
         return messages
-
 
     def get_containers_in_network(self, network: str) -> List[str]:
         # Return list of container names in the specified network
@@ -275,6 +278,8 @@ class DockerInterface(ContainerInterface):
         defaults += f" -rpcuser={tank.rpc_user}"
         defaults += f" -rpcpassword={tank.rpc_password}"
         defaults += f" -rpcport={tank.rpc_port}"
+        defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
+        defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
 
     def copy_configs(self, tank):
@@ -331,6 +336,17 @@ class DockerInterface(ContainerInterface):
             }
         )
 
+        if tank.lnnode is not None:
+            tank.lnnode.add_services(services)
+            services[tank.container_name].update(
+            {
+                "labels": {
+                    "lnnode_container_name": tank.lnnode.container_name,
+                    "lnnode_ipv4_address": tank.lnnode.ipv4,
+                    "lnnode_impl": tank.lnnode.impl
+                }
+            })
+
         # grep: disable-exporters
         # Add the prometheus data exporter in a neighboring container
         # services[self.exporter_name] = {
@@ -376,11 +392,16 @@ class DockerInterface(ContainerInterface):
             return None
 
         index = int(match.group(1))
-        t = Tank(index, warnet.config_dir, warnet)
-        t._ipv4 = service["networks"][t.network_name]["ipv4_address"]
+        tank = Tank(index, warnet.config_dir, warnet)
+        tank._ipv4 = service["networks"][tank.network_name]["ipv4_address"]
         if "image" in service:
-            t.version = service["image"].split(":")[1]
+            tank.version = service["image"].split(":")[1]
         else:
-            t.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
-        return t
+            tank.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
 
+        labels = service.get("labels", {})
+        if "lnnode_impl" in labels:
+            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"])
+            tank.lnnode.container_name = labels.get("lnnode_container_name")
+            tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
+        return tank

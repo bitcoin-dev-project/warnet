@@ -22,5 +22,6 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 - [Scenarios](docs/scenarios.md)
 - [Data Collection](docs/data.md)
 - [Monitoring](docs/monitoring.md)
+- [Lightning Network](docs/lightning.md)
 
 ![warnet-art](docs/machines.webp)

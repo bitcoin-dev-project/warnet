@@ -2,10 +2,11 @@
   Warnet is the top-level class for a simulated network.
 """
 
+import json
 import logging
 import networkx
+import os
 import shutil
-import yaml
 from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
@@ -32,10 +33,17 @@ class Warnet:
         self.deployment_file: Optional[Path] = None
 
     def __str__(self) -> str:
-        template = "\t%-8.8s%-25.24s%-25.24s%-25.24s%-18.18s\n"
-        tanks_str = template % ("Index", "Version", "Conf", "Netem", "IPv4")
+        # TODO: bitcoin_conf and tc_netem can be added back in to this table
+        #       if we write a helper function that can text-wrap inside a column
+        template =       "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
+        tanks_str = template % ("Index",   "Version",   "IPv4",      "LN",        "LN IPv4")
         for tank in self.tanks:
-            tanks_str += template % (tank.index, tank.version, tank.conf, tank.netem, tank.ipv4)
+            tanks_str += template % (
+                tank.index,
+                tank.version,
+                tank.ipv4,
+                tank.lnnode.impl if tank.lnnode is not None else None,
+                tank.lnnode.ipv4 if tank.lnnode is not None else None)
         return (
             f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
@@ -108,8 +116,10 @@ class Warnet:
         if self.graph is None:
             return
 
-        for edge in self.graph.edges():
-            (src, dst) = edge
+        for edge in self.graph.edges(data=True):
+            (src, dst, data) = edge
+            if "channel" in data:
+                continue
             src_tank = self.tanks[src]
             dst_ip = self.tanks[dst].ipv4
             # <= 20.2 doesn't have addpeeraddress
@@ -125,6 +135,10 @@ class Warnet:
     @bubble_exception_str
     def warnet_build(self):
         self.container_interface.build()
+
+    @bubble_exception_str
+    def get_ln_node_from_tank(self, index):
+        return self.tanks[index].lnnode
 
     @bubble_exception_str
     def warnet_up(self):
@@ -153,4 +167,14 @@ class Warnet:
                     rpc_password = "{tank.rpc_password}"
                 """)
         logger.info(f"Wrote file: {self.fork_observer_config}")
+
+
+    @bubble_exception_str
+    def export(self, subdir):
+        config = {"nodes": []}
+        for tank in self.tanks:
+            tank.export(config, subdir)
+        config_path = os.path.join(subdir, "sim.json")
+        with open(config_path, "a") as f:
+            json.dump(config, f)
 

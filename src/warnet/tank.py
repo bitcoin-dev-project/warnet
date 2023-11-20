@@ -5,7 +5,7 @@ Tanks are containerized bitcoind nodes
 import logging
 
 from pathlib import Path
-
+from warnet.lnnode import LNNode
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr,
@@ -43,6 +43,9 @@ class Tank:
         self._container_name = None
         self._exporter_name = None
         self.extra_build_args = ""
+        self.lnnode = None
+        self.zmqblockport = 28332
+        self.zmqtxport = 28333
 
     def __str__(self) -> str:
         return (
@@ -57,13 +60,15 @@ class Tank:
         )
 
     @classmethod
-    def from_graph_node(cls, index, warnet):
+    def from_graph_node(cls, index, warnet, tank=None):
         assert index is not None
         index = int(index)
         config_dir = warnet.config_dir / str(f"{index:06}")
         config_dir.mkdir(parents=True, exist_ok=True)
 
-        self = cls(index, config_dir, warnet)
+        self = tank
+        if self is None:
+            self = cls(index, config_dir, warnet)
         node = warnet.graph.nodes[index]
         version = node.get("version")
         if version:
@@ -76,6 +81,10 @@ class Tank:
         self.conf = node.get("bitcoin_config", self.conf)
         self.netem = node.get("tc_netem", self.netem)
         self.extra_build_args = node.get("build_args", self.extra_build_args)
+
+        if "ln" in node:
+            self.lnnode = LNNode(self.warnet, self, node["ln"])
+
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
         return self
@@ -142,3 +151,6 @@ class Tank:
                 f"Error applying network conditions to {self.container_name}: `{self.netem}` ({e})"
             )
 
+    def export(self, config, subdir):
+        if self.lnnode is not None:
+            self.lnnode.export(config, subdir)

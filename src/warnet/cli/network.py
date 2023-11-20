@@ -85,3 +85,20 @@ def status(network: str):
     except Exception as e:
         print(f"Error getting status of network {network}: {e}")
 
+
+
+@network.command()
+@click.option("--network", default="warnet", show_default=True)
+def export(network):
+    """
+    Export all data for sim-ln to subdirectory
+    """
+    try:
+        result = rpc_call(
+            "network_export", {"network": network}
+        )
+        print(result)
+    except Exception as e:
+        print(
+            f"Error exporting network: {e}"
+        )

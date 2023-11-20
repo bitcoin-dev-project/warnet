@@ -160,3 +160,12 @@ class TestBase:
                 return False
         self.wait_for_predicate(check_status, timeout, interval)
 
+    def wait_for_all_scenarios(self):
+        def check_scenarios():
+            scns = self.rpc("scenarios_list_running")
+            for scn in scns:
+                if scn["active"]:
+                    return False
+            return True
+        self.wait_for_predicate(check_scenarios)
+
