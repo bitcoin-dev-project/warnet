@@ -44,6 +44,8 @@ class Tank:
         self._exporter_name = None
         self.extra_build_args = ""
         self.lnnode = None
+        self.zmqblockport = 28332
+        self.zmqtxport = 28333
 
     def __str__(self) -> str:
         return (

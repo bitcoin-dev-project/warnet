@@ -65,7 +65,7 @@ With a network running, execute: `warcli network export` with optional argument
 node credentials like SSL certificates and macaroons into a local directory as
 well as generate a JSON file required by sim-ln.
 
-Example:
+Example (see sim-ln docs for exact API):
 
 ```
 $ warcli network export
@@ -75,7 +75,7 @@ $ ls /Users/bitcoin-dev-project/.warnet/warnet/warnet/simln
 sim.json                         warnet_ln_000000_tls.cert        warnet_ln_000001_tls.cert        warnet_ln_000002_tls.cert
 warnet_ln_000000_admin.macaroon  warnet_ln_000001_admin.macaroon  warnet_ln_000002_admin.macaroon
 
-$ sim-cli /Users/bitcoin-dev-project/.warnet/warnet/warnet/simln/sim.json 
+$ sim-cli --data-dir /Users/bitcoin-dev-project/.warnet/warnet/warnet/simln
 2023-11-18T16:58:28.731Z INFO  [sim_cli] Connected to warnet_ln_000000 - Node ID: 031b1404744431b01ee4fa2bfc3c5caa1f1044ff5a9cb553d2c8ec6eb0f9d8040c.
 2023-11-18T16:58:28.747Z INFO  [sim_cli] Connected to warnet_ln_000001 - Node ID: 02318b75bd91bf6265b30fe97f8ebbb0eda85194cf9d4467d43374de0248c7bf05.
 2023-11-18T16:58:28.760Z INFO  [sim_cli] Connected to warnet_ln_000002 - Node ID: 0393aa24d777e2391b5238c485ecce08b35bd9aa4ddf4f2226016107c6829804d5.

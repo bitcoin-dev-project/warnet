@@ -131,9 +131,9 @@ class DockerInterface(ContainerInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
         return self.exec_run(tank.container_name, cmd, user="bitcoin")
 
-    def get_file_from_container(self, container_name, path):
+    def get_file(self, container_name, file_path):
         container = self.get_container(container_name)
-        data, stat = container.get_archive(path)
+        data, stat = container.get_archive(file_path)
         out = b""
         for chunk in data:
             out += chunk
@@ -156,7 +156,7 @@ class DockerInterface(ContainerInterface):
         for dir_name in dirs:
             if b_ipv4 in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                    blob = self.get_file_from_container(
+                    blob = self.get_file(
                         a_name,
                         f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}")
                     json = parse_raw_messages(blob, outbound)
@@ -278,8 +278,8 @@ class DockerInterface(ContainerInterface):
         defaults += f" -rpcuser={tank.rpc_user}"
         defaults += f" -rpcpassword={tank.rpc_password}"
         defaults += f" -rpcport={tank.rpc_port}"
-        defaults +=  " -zmqpubrawblock=tcp://0.0.0.0:28332"
-        defaults +=  " -zmqpubrawtx=tcp://0.0.0.0:28333"
+        defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
+        defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
 
     def copy_configs(self, tank):

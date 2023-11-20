@@ -19,6 +19,7 @@ class LNNode:
         self._container = None
         self.container_name = f"{self.tank.network_name}_{CONTAINER_PREFIX_LN}_{self.tank.suffix}"
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
+        self.rpc_port = 10009
 
     @property
     def container(self) -> Container:
@@ -42,10 +43,10 @@ class LNNode:
             f"--bitcoind.rpcuser={self.tank.rpc_user}",
             f"--bitcoind.rpcpass={self.tank.rpc_password}",
             f"--bitcoind.rpchost={self.tank.ipv4}:{self.tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://{self.tank.ipv4}:28332",
-            f"--bitcoind.zmqpubrawtx=tcp://{self.tank.ipv4}:28333",
+            f"--bitcoind.zmqpubrawblock=tcp://{self.tank.ipv4}:{self.tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx=tcp://{self.tank.ipv4}:{self.tank.zmqtxport}",
             f"--externalip={self.ipv4}",
-            f"--rpclisten=0.0.0.0:10009",
+            f"--rpclisten=0.0.0.0:{self.rpc_port}",
             f"--alias={self.container_name}"
         ]
         services[self.container_name] = {
@@ -104,8 +105,8 @@ class LNNode:
         cert_filename = f"{self.container_name}_tls.cert"
         macaroon_path = os.path.join(subdir, macaroon_filename)
         cert_path = os.path.join(subdir, cert_filename)
-        macaroon = self.warnet.container_interface.get_file_from_container(self.container_name, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
-        cert = self.warnet.container_interface.get_file_from_container(self.container_name, "/root/.lnd/tls.cert")
+        macaroon = self.warnet.container_interface.get_file(self.container_name, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
+        cert = self.warnet.container_interface.get_file(self.container_name, "/root/.lnd/tls.cert")
 
         with open(macaroon_path, "wb") as f:
             f.write(macaroon)
@@ -115,7 +116,7 @@ class LNNode:
 
         config["nodes"].append({
             "id": self.container_name,
-            "address": f"https://{self.ipv4}:10009",
+            "address": f"https://{self.ipv4}:{self.rpc_port}",
             "macaroon": macaroon_path,
             "cert": cert_path
         })

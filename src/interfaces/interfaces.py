@@ -61,7 +61,7 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_file_from_container(self, container_name: str, path: str):
+    def get_file(self, container_name: str, file_path: str):
         """
         Read a file from inside a container
         """
