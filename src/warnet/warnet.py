@@ -2,6 +2,7 @@
   Warnet is the top-level class for a simulated network.
 """
 
+import base64
 import json
 import logging
 import networkx
@@ -57,14 +58,16 @@ class Warnet:
     @classmethod
     @bubble_exception_str
     def from_graph_file(
-        cls, graph_file: str, config_dir: Path, network: str = "warnet"
+        cls, base64_graph: str, config_dir: Path, network: str = "warnet"
     ):
         self = cls(config_dir)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(graph_file, destination)
+        graph_file = base64.b64decode(base64_graph)
+        with open(destination, "wb") as f:
+            f.write(graph_file)
         self.network_name = network
-        self.graph = networkx.read_graphml(graph_file, node_type=int)
+        self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int)
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self

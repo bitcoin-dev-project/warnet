@@ -292,7 +292,7 @@ class Server():
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
-                    f"Created warnet named '{network}' from graph file {graph_file}"
+                    f"Created warnet named '{network}'"
                 )
             except Exception as e:
                 self.logger.error(f"Exception {e}")
