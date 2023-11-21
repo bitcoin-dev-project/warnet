@@ -55,6 +55,39 @@ class Warnet:
             f"Tanks:\n{tanks_str}"
         )
 
+    def _warnet_dict_representation(self) -> dict:
+        repr = {}
+        # Warnet
+        repr["warnet_headers"] = ["Temp dir", "Bitcoin network", "Docker network", "Subnet", "Graph"]
+        repr["warnet"] = [[str(self.config_dir), self.bitcoin_network, self.network_name, self.subnet, str(self.graph)]]
+
+        # Tanks
+        tank_headers = ["Index", "Version", "IPv4", "bitcoin conf", "tc_netem", "LN", "LN IPv4"]
+        has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
+        tanks = []
+        for tank in self.tanks:
+            tank_data = [
+                tank.index,
+                tank.version,
+                tank.ipv4,
+                tank.conf,
+                tank.netem
+            ]
+            if has_ln:
+                tank_data.extend([
+                    tank.lnnode.impl if tank.lnnode else '',
+                    tank.lnnode.ipv4 if tank.lnnode else ''
+                ])
+            tanks.append(tank_data)
+        if not has_ln:
+            tank_headers.remove("LN")
+            tank_headers.remove("LN IPv4")
+
+        repr["tank_headers"] = tank_headers
+        repr["tanks"] = tanks
+
+        return repr
+
     @classmethod
     @bubble_exception_str
     def from_graph_file(

@@ -11,7 +11,7 @@ from io import BytesIO
 from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from flask import Flask, request
 from flask_jsonrpc.app import JSONRPC
 
@@ -269,7 +269,7 @@ class Server():
         t.start()
         return f"Resuming warnet..."
 
-    def network_from_file(self, graph_file: str, force: bool = False, network: str = "warnet") -> str:
+    def network_from_file(self, graph_file: str, force: bool = False, network: str = "warnet") -> Union[dict, str]:
         """
         Run a warnet with topology loaded from a <graph_file>
         """
@@ -300,7 +300,7 @@ class Server():
         t = threading.Thread(target=lambda: thread_start(wn))
         t.daemon = True
         t.start()
-        return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
+        return wn._warnet_dict_representation()
 
     def graph_generate(self, params: List[str], outfile: str, version: str, bitcoin_conf: Optional[str] = None, random: bool = False) -> str:
         graph_func = nx.generators.random_internet_as_graph
@@ -327,15 +327,15 @@ class Server():
         except Exception as e:
             return f"Exception {e}"
 
-    def network_info(self, network: str = "warnet") -> str:
+    def network_info(self, network: str = "warnet") -> dict:
         """
         Get info about a warnet network named <network>
         """
         wn = Warnet.from_network(network)
-        return f"{wn}"
+        return wn._warnet_dict_representation()
 
 
-    def network_status(self, network: str = "warnet") -> List[dict]:
+    def network_status(self, network: str = "warnet") -> List:
         """
         Get running status of a warnet network named <network>
         """
@@ -343,14 +343,10 @@ class Server():
         stats = []
         for tank in wn.tanks:
             status = tank.container.status if tank.container is not None else None
-            stats.append({
-                "container_name": tank.container_name,
-                "status": status})
+            stats.append([tank.container_name, status])
             if tank.lnnode is not None:
                 ln_status = tank.lnnode.container.status if tank.lnnode.container is not None else None
-                stats.append({
-                    "container_name": tank.lnnode.container_name,
-                    "status": ln_status})
+                stats.append([tank.lnnode.container_name, ln_status])
         return stats
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:

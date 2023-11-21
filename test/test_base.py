@@ -148,7 +148,7 @@ class TestBase:
                 "total": len(tanks)
             }
             for tank in tanks:
-                status = tank["status"] if tank["status"] is not None else "none"
+                status = tank[1] if tank[1] is not None else "none"
                 if status not in stats:
                     stats[status] = 0
                 stats[status] += 1
