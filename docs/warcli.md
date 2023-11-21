@@ -111,7 +111,7 @@ Start a warnet with topology loaded from a <graph_file> into <--network> (defaul
 options:
 | name       | type   | required   | default                                                             |
 |------------|--------|------------|---------------------------------------------------------------------|
-| graph_file | Path   | False      | /Users/matthewzipkin/Desktop/work/warnet/src/graphs/default.graphml |
+| graph_file | Path   | False      | /path/to/repo/warnet/src/graphs/default.graphml |
 | force      | Bool   | False      | False                                                               |
 | network    | String | False      | warnet                                                              |
 | help       | Bool   | False      | False                                                               |
