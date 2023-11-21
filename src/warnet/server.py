@@ -265,7 +265,7 @@ class Server():
                 self.logger.error(f"Exception {e}")
 
         t = threading.Thread(target=lambda: thread_start(wn))
-        t.daemon
+        t.daemon = True
         t.start()
         return f"Resuming warnet..."
 
@@ -298,7 +298,7 @@ class Server():
                 self.logger.error(f"Exception {e}")
 
         t = threading.Thread(target=lambda: thread_start(wn))
-        t.daemon
+        t.daemon = True
         t.start()
         return f"Starting warnet network named '{network}' with the following parameters:\n{wn}"
 
