@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import click
@@ -24,9 +25,12 @@ def start(graph_file: Path, force: bool, network: str):
     Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
     """
     try:
+        encoded_graph_file = ""
+        with open(graph_file, "rb") as graph_file_buffer:
+            encoded_graph_file = base64.b64encode(graph_file_buffer.read()).decode("utf-8")
         result = rpc_call(
             "network_from_file",
-            {"graph_file": str(graph_file), "force": force, "network": network},
+            {"graph_file": encoded_graph_file, "force": force, "network": network},
         )
         print(result)
     except Exception as e:
