@@ -14,18 +14,8 @@ Execute `warcli --help` or `warcli help` to see a list of command categories.
 
 ## API Commands
 
-### debug generate-compose
-Generate the docker-compose file for a given <graph_file> and <--network> (default: "warnet") name and return it.
-
-options:
-| name       | type   | required   | default   |
-|------------|--------|------------|-----------|
-| graph_file | String | True       |           |
-| network    | String | False      | warnet    |
-| help       | Bool   | False      | False     |
-
-### debug-log
-Fetch the Bitcoin Core debug log from <node> in [network]
+### `warcli debug-log`
+Fetch the Bitcoin Core debug log from \<node> in [network]
 
 options:
 | name    | type   | required   | default   |
@@ -34,7 +24,72 @@ options:
 | network | String | False      | warnet    |
 | help    | Bool   | False      | False     |
 
-### graph create
+### `warcli grep-logs`
+Grep combined logs via fluentd using regex [pattern]
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| pattern | String | True       |           |
+| network | String | False      | warnet    |
+| help    | Bool   | False      | False     |
+
+### `warcli help`
+Display help information for the given command.
+    If no command is given, display help for the main CLI.
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| command | String | False      |           |
+| help    | Bool   | False      | False     |
+
+### `warcli messages`
+Fetch messages sent between \<node_a> and \<node_b> in \<network>
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| node_a  | Int    | True       |           |
+| node_b  | Int    | True       |           |
+| network | String | False      | warnet    |
+| help    | Bool   | False      | False     |
+
+### `warcli rpc`
+Call bitcoin-cli \<method> \<params> on \<node> in \<--network>
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| node    | Int    | True       |           |
+| method  | String | False      |           |
+| params  | String | False      | ()        |
+| network | String | False      | warnet    |
+| help    | Bool   | False      | False     |
+
+### `warcli stop`
+Stop warnet.
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| help   | Bool   | False      | False     |
+
+## Debug
+
+### `warcli debug generate-compose`
+Generate the docker-compose file for a given \<graph_file> and \<--network> (default: "warnet") name and return it.
+
+options:
+| name       | type   | required   | default   |
+|------------|--------|------------|-----------|
+| graph_file | String | True       |           |
+| network    | String | False      | warnet    |
+| help       | Bool   | False      | False     |
+
+## Graph
+
+### `warcli graph create`
 Create a graph file of type random AS graph with [params]
 
 options:
@@ -47,39 +102,10 @@ options:
 | random       | Bool   | False      |       0   |
 | help         | Bool   | False      |       0   |
 
-### grep-logs
-Grep combined logs via fluentd using regex [pattern]
+## Network
 
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| pattern | String | True       |           |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
-
-### help
-Display help information for the given command.
-    If no command is given, display help for the main CLI.
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| command | String | False      |           |
-| help    | Bool   | False      | False     |
-
-### messages
-Fetch messages sent between <node_a> and <node_b> in <network>
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node_a  | Int    | True       |           |
-| node_b  | Int    | True       |           |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
-
-### network down
-Run 'docker compose down on a warnet named <--network> (default: "warnet").
+### `warcli network down`
+Run 'docker compose down on a warnet named \<--network> (default: "warnet").
 
 options:
 | name    | type   | required   | default   |
@@ -87,7 +113,7 @@ options:
 | network | String | False      | warnet    |
 | help    | Bool   | False      | False     |
 
-### network export
+### `warcli network export`
 Export all data for sim-ln to subdirectory
 
 options:
@@ -96,8 +122,8 @@ options:
 | network | String | False      | warnet    |
 | help    | Bool   | False      | False     |
 
-### network info
-Get info about a warnet named <--network> (default: "warnet").
+### `warcli network info`
+Get info about a warnet named \<--network> (default: "warnet").
 
 options:
 | name    | type   | required   | default   |
@@ -105,8 +131,8 @@ options:
 | network | String | False      | warnet    |
 | help    | Bool   | False      | False     |
 
-### network start
-Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
+### `warcli network start`
+Start a warnet with topology loaded from a \<graph_file> into \<--network> (default: "warnet")
 
 options:
 | name       | type   | required   | default                                                             |
@@ -116,8 +142,8 @@ options:
 | network    | String | False      | warnet                                                              |
 | help       | Bool   | False      | False                                                               |
 
-### network status
-Get status of a warnet named <--network> (default: "warnet").
+### `warcli network status`
+Get status of a warnet named \<--network> (default: "warnet").
 
 options:
 | name    | type   | required   | default   |
@@ -125,8 +151,8 @@ options:
 | network | String | False      | warnet    |
 | help    | Bool   | False      | False     |
 
-### network up
-Run 'docker compose up' on a warnet named <--network> (default: "warnet").
+### `warcli network up`
+Run 'docker compose up' on a warnet named \<--network> (default: "warnet").
 
 options:
 | name    | type   | required   | default   |
@@ -134,19 +160,9 @@ options:
 | network | String | False      | warnet    |
 | help    | Bool   | False      | False     |
 
-### rpc
-Call bitcoin-cli <method> <params> on <node> in <--network>
+## Scenarios
 
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node    | Int    | True       |           |
-| method  | String | False      |           |
-| params  | String | False      | ()        |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
-
-### scenarios active
+### `warcli scenarios active`
 List running scenarios "name": "pid" pairs
 
 options:
@@ -154,7 +170,7 @@ options:
 |--------|--------|------------|-----------|
 | help   | Bool   | False      | False     |
 
-### scenarios list
+### `warcli scenarios list`
 List available scenarios in the Warnet Test Framework
 
 options:
@@ -162,8 +178,8 @@ options:
 |--------|--------|------------|-----------|
 | help   | Bool   | False      | False     |
 
-### scenarios run
-Run <scenario> from the Warnet Test Framework on <--network> with optional arguments
+### `warcli scenarios run`
+Run \<scenario> from the Warnet Test Framework on \<--network> with optional arguments
 
 options:
 | name            | type        | required   | default   |
@@ -173,21 +189,13 @@ options:
 | network         | String      | False      | warnet    |
 | help            | Bool        | False      | False     |
 
-### scenarios stop
-Stop scenario with PID <pid> from running
+### `warcli scenarios stop`
+Stop scenario with PID \<pid> from running
 
 options:
 | name   | type   | required   | default   |
 |--------|--------|------------|-----------|
 | pid    | Int    | True       |           |
-| help   | Bool   | False      | False     |
-
-### stop
-Stop warnet.
-
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
 | help   | Bool   | False      | False     |
 
 
