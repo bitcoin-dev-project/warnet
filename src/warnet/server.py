@@ -381,16 +381,19 @@ class Server():
         """
         Grep the logs from the fluentd container for a regex pattern
         """
-        container_name = f"fluentd"
         wn = Warnet.from_network(network, self.backend)
-        return wn.container_interface.logs_grep(pattern, container_name)
+        return wn.container_interface.logs_grep(pattern, network)
 
 
 def run_server():
     # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
     # "If the debug flag is set the server will automatically reload
     # for code changes and show a debugger in case an exception happened."
-    backend = sys.argv[1]
+
+    backend = "docker"
+    if len(sys.argv) > 1:
+        backend = sys.argv[1]
+
     Server(backend).app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
 
 

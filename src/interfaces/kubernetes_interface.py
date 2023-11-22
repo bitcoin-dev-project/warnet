@@ -9,25 +9,23 @@ import time
 import re
 import yaml
 
-from pathlib import Path
 from typing import cast
 
-from .interfaces import ContainerInterface
-from warnet.utils import parse_raw_messages
-from templates import TEMPLATES
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
-from warnet.utils import parse_raw_messages, parse_bitcoin_conf, default_bitcoin_conf_args
+from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
 
 DOCKER_REGISTRY = "bitcoindevproject/warnet-bitcoin-core"
 
 class KubernetesInterface(ContainerInterface):
 
-    def __init__(self, config_dir: Path) -> None:
+    def __init__(self, config_dir: Path, namespace = "default", logs_pod = "fluentd") -> None:
         super().__init__(config_dir)
         # assumes the warnet rpc server is always
         # running inside a k8s cluster as a statefulset
         config.load_incluster_config()
         self.client = client.CoreV1Api()
+        self.namespace = namespace
+        self.logs_pod = logs_pod
 
     def build(self) -> bool:
         # TODO: just return true for now, this is so we can be running either docker or k8s as a backend
@@ -108,13 +106,13 @@ class KubernetesInterface(ContainerInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    def logs_grep(self, pattern: str, pod_name: str, namespace: str = "default"):
+    def logs_grep(self, pattern: str, network: str):
         compiled_pattern = re.compile(pattern)
 
         # Fetch the logs from the pod
         log_stream = self.client.read_namespaced_pod_log(
-                name=pod_name,
-                namespace=namespace,
+                name=self.logs_pod ,
+                namespace=self.namespace,
                 timestamps=True,
                 _preload_content=False,
         )
