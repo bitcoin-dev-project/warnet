@@ -14,7 +14,7 @@ from typing import cast
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
 from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
 
-DOCKER_REGISTRY = "bitcoindevproject/warnet-bitcoin-core"
+DOCKER_REGISTRY = "bitcoindevproject/k8s-bitcoin-core"
 
 class KubernetesInterface(ContainerInterface):
 
@@ -41,7 +41,13 @@ class KubernetesInterface(ContainerInterface):
         Bring an exsiting network down.
             e.g. `docker compose down`
         """
-        raise NotImplementedError("This method should be overridden by child class")
+        raise NotImplementedError("This method isn't implemented yet")
+    
+    def get_file(self, container_name: str, file_path: str):
+        """
+        Read a file from inside a container
+        """
+        raise NotImplementedError("This method isn't implemented yet")
 
     def get_container(self, container_name: str) -> V1Pod:
         return cast(V1Pod, self.client.read_namespaced_pod(name=container_name, namespace="default"))
