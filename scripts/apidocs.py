@@ -9,8 +9,8 @@ doc = ""
 
 def print_cmd(cmd, super=''):
     global doc
-    doc += f"###{super} {cmd['name']}" + "\n"
-    doc += cmd["help"].strip() + "\n"
+    doc += f"### `warcli{super} {cmd['name']}`" + "\n"
+    doc += cmd["help"].strip().replace("<", "\\<") + "\n"
     doc += "\noptions:\n"
     headers = ["name", "type", "required", "default"]
     data = [[
@@ -25,10 +25,14 @@ def print_cmd(cmd, super=''):
 
 with Context(cli) as ctx:
     info = ctx.to_info_dict()
+    # root-level commands first
     for cmd in info["command"]["commands"].values():
         if "commands" not in cmd:
             print_cmd(cmd)
-        else:
+    # then groups of subcommands
+    for cmd in info["command"]["commands"].values():
+        if "commands" in cmd:
+            doc += f"## {cmd['name'].capitalize()}\n\n"
             for subcmd in cmd["commands"].values():
                 print_cmd(subcmd, " " + cmd["name"])
 
