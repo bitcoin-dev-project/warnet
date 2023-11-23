@@ -112,6 +112,7 @@ class KubernetesInterface(ContainerInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
+    # TODO: stop using fluentd and instead interate through all pods?
     def logs_grep(self, pattern: str, network: str):
         compiled_pattern = re.compile(pattern)
 

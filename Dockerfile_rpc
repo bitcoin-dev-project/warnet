@@ -8,7 +8,7 @@ WORKDIR /root/warnet
 COPY . /root/warnet
 RUN pip install .
 
-# Make port 80 available to the world outside this container
+# Make port 9276 available to the world outside this container
 # Change the port if your server is running on a different port
 EXPOSE 9276
 
