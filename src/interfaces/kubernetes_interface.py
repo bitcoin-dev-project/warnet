@@ -36,12 +36,13 @@ class KubernetesInterface(ContainerInterface):
         self.deploy_pods(warnet)
         return True
 
-    def down(self) -> bool:
+    def down(self, warnet) -> bool:
         """
         Bring an exsiting network down.
-            e.g. `docker compose down`
+            e.g. `k delete -f warnet-tanks.yaml`
         """
-        raise NotImplementedError("This method isn't implemented yet")
+        for tank in warnet.tanks:
+            self.client.delete_namespaced_pod(tank.container_name, self.namespace)
     
     def get_file(self, container_name: str, file_path: str):
         """
@@ -237,8 +238,7 @@ class KubernetesInterface(ContainerInterface):
         for tank in warnet.tanks:
             pod = self.create_pod_object(tank)
             tank_resource_files.append(pod)
-            # TODO: dont hardcode namespace, should be specific to a warnet deployment
-            resp = self.client.create_namespaced_pod(namespace="default", body=pod)
+            self.client.create_namespaced_pod(namespace=self.namespace, body=pod)
 
         # now that the pods have had a second to create, 
         # get the ips and set them on the tanks

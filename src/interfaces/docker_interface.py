@@ -82,7 +82,7 @@ class DockerInterface(ContainerInterface):
             )
 
     @bubble_exception_str
-    def down(self):
+    def down(self, warnet):
         command = ["docker", "compose", "down"]
         try:
             with subprocess.Popen(

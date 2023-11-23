@@ -182,7 +182,7 @@ class Warnet:
 
     @bubble_exception_str
     def warnet_down(self):
-        self.container_interface.down()
+        self.container_interface.down(self)
 
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
