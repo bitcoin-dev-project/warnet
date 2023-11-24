@@ -30,46 +30,6 @@ class LNNode:
                 pass
         return self._container
 
-    def add_services(self, services):
-        # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
-        args = [
-            "--noseedbackup",
-            "--norest",
-            "--debuglevel=debug",
-            "--accept-keysend",
-            "--bitcoin.active",
-            "--bitcoin.regtest",
-            "--bitcoin.node=bitcoind",
-            f"--bitcoind.rpcuser={self.tank.rpc_user}",
-            f"--bitcoind.rpcpass={self.tank.rpc_password}",
-            f"--bitcoind.rpchost={self.tank.ipv4}:{self.tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://{self.tank.ipv4}:{self.tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx=tcp://{self.tank.ipv4}:{self.tank.zmqtxport}",
-            f"--externalip={self.ipv4}",
-            f"--rpclisten=0.0.0.0:{self.rpc_port}",
-            f"--alias={self.container_name}"
-        ]
-        services[self.container_name] = {
-            "container_name": self.container_name,
-            "image": "lightninglabs/lnd:v0.17.0-beta",
-            "command": " ".join(args),
-            "networks": {
-                self.tank.network_name: {
-                    "ipv4_address": f"{self.ipv4}",
-                }
-            },
-            "labels": {
-                "tank_index": self.tank.index,
-                "tank_container_name": self.tank.container_name,
-                "tank_ipv4_address": self.tank.ipv4
-            },
-            "depends_on":
-                {
-                    self.tank.container_name: {"condition": "service_healthy"}
-                },
-            "restart": "on-failure"
-        }
-
     @exponential_backoff(max_retries=20, max_delay=300)
     def lncli(self, cmd):
         cmd = f"lncli --network=regtest {cmd}"

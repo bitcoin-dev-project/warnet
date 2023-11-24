@@ -337,15 +337,7 @@ class DockerInterface(ContainerInterface):
         )
 
         if tank.lnnode is not None:
-            tank.lnnode.add_services(services)
-            services[tank.container_name].update(
-            {
-                "labels": {
-                    "lnnode_container_name": tank.lnnode.container_name,
-                    "lnnode_ipv4_address": tank.lnnode.ipv4,
-                    "lnnode_impl": tank.lnnode.impl
-                }
-            })
+            self.add_lnd_service(tank, services)
 
         # grep: disable-exporters
         # Add the prometheus data exporter in a neighboring container
@@ -361,6 +353,54 @@ class DockerInterface(ContainerInterface):
         #     "ports": [f"{8335 + self.index}:9332"],
         #     "networks": [self.docker_network],
         # }
+
+    def add_lnd_service(self, tank, services):
+        # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
+        args = [
+            "--noseedbackup",
+            "--norest",
+            "--debuglevel=debug",
+            "--accept-keysend",
+            "--bitcoin.active",
+            "--bitcoin.regtest",
+            "--bitcoin.node=bitcoind",
+            f"--bitcoind.rpcuser={tank.rpc_user}",
+            f"--bitcoind.rpcpass={tank.rpc_password}",
+            f"--bitcoind.rpchost={tank.ipv4}:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock=tcp://{tank.ipv4}:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx=tcp://{tank.ipv4}:{tank.zmqtxport}",
+            f"--externalip={tank.lnnode.ipv4}",
+            f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
+            f"--alias={tank.lnnode.container_name}"
+        ]
+        services[tank.lnnode.container_name] = {
+            "container_name": tank.lnnode.container_name,
+            "image": "lightninglabs/lnd:v0.17.0-beta",
+            "command": " ".join(args),
+            "networks": {
+                tank.network_name: {
+                    "ipv4_address": f"{tank.lnnode.ipv4}",
+                }
+            },
+            "labels": {
+                "tank_index": tank.index,
+                "tank_container_name": tank.container_name,
+                "tank_ipv4_address": tank.ipv4
+            },
+            "depends_on":
+                {
+                    tank.container_name: {"condition": "service_healthy"}
+                },
+            "restart": "on-failure"
+        }
+        services[tank.container_name].update(
+            {
+                "labels": {
+                    "lnnode_container_name": tank.lnnode.container_name,
+                    "lnnode_ipv4_address": tank.lnnode.ipv4,
+                    "lnnode_impl": tank.lnnode.impl
+                }
+            })
 
     # def add_scrapers(self, scrapers):
     #     scrapers.append(
