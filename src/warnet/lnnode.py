@@ -17,7 +17,7 @@ class LNNode:
         assert impl == "lnd"
         self.impl = impl
         self._container = None
-        self.container_name = f"{self.tank.network_name}_{CONTAINER_PREFIX_LN}_{self.tank.suffix}"
+        self.container_name = f"{self.tank.network_name}-{CONTAINER_PREFIX_LN}-{self.tank.suffix}"
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 

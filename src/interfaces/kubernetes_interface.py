@@ -15,7 +15,8 @@ from typing import cast
 from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
 from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
 
-DOCKER_REGISTRY = "bitcoindevproject/k8s-bitcoin-core"
+DOCKER_REGISTRY_CORE = "bitcoindevproject/k8s-bitcoin-core"
+DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
 
 class KubernetesInterface(ContainerInterface):
 
@@ -80,12 +81,13 @@ class KubernetesInterface(ContainerInterface):
         exec_cmd = ["/bin/sh", "-c", f"su - {user} -c '{cmd}'"]
         result = stream(
                 self.client.connect_get_namespaced_pod_exec, container_name,
-                "default",
+                self.namespace,
+                container="bitcoind",
                 command=exec_cmd,
                 stderr=True,
                 stdin=False,
                 stdout=True,
-                tty=False
+                tty=False,
         )
         # TODO: stream result is just a string, so there is no error code to check
         # ideally, we use a method where we can check for an error code, otherwise we will
@@ -101,6 +103,7 @@ class KubernetesInterface(ContainerInterface):
         logs = self.client.read_namespaced_pod_log(
             name=container_name,
             namespace="default",
+            container="bitcoind",
         )
         return logs
 
@@ -141,6 +144,7 @@ class KubernetesInterface(ContainerInterface):
                 namespace=self.namespace,
                 timestamps=True,
                 _preload_content=False,
+                container="bitcoind"
         )
 
         matching_logs = []
@@ -180,13 +184,14 @@ class KubernetesInterface(ContainerInterface):
         print(pod)
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
-            for env in container.env:
-                if env.name == "BITCOIN_VERSION":
-                    t.version = env.value
-                elif env.name == "REPO":
-                    repo = env.value
-                elif env.name == "BRANCH":
-                    branch = env.value
+            if container.name == "bitcoind" and container.env is not None:
+                for env in container.env:
+                    if env.name == "BITCOIN_VERSION":
+                        t.version = env.value
+                    elif env.name == "REPO":
+                        repo = env.value
+                    elif env.name == "BRANCH":
+                        branch = env.value
         if not hasattr(t, 'version'):
             t.version = f"{repo}#{branch}"
 
@@ -197,8 +202,9 @@ class KubernetesInterface(ContainerInterface):
         defaults += f" -rpcuser={tank.rpc_user}"
         defaults += f" -rpcpassword={tank.rpc_password}"
         defaults += f" -rpcport={tank.rpc_port}"
+        defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
+        defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
-
 
     def create_pod_object(self, tank):
         # Create and return a Pod object
@@ -207,6 +213,38 @@ class KubernetesInterface(ContainerInterface):
         # or one under the users control
         # TODO: support custom builds
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
+        containers = [
+            client.V1Container(
+                name="bitcoind",
+                image=f"{DOCKER_REGISTRY_CORE}:{tank.version}",
+                env=[
+                    client.V1EnvVar(
+                        name="BITCOIN_ARGS",
+                        value=self.default_config_args(tank)
+                    )
+                ],
+                # TODO: this doesnt seem to work as expected?
+                # missing the exec field.
+                # liveness_probe=client.V1Probe(
+                #     failure_threshold=3,
+                #     initial_delay_seconds=5,
+                #     period_seconds=5,
+                #     timeout_seconds=1,
+                #     exec=client.V1ExecAction(
+                #         command=["pidof", "bitcoind"]
+                #     )
+                # ),
+                security_context=client.V1SecurityContext(
+                    privileged=True,
+                    capabilities=client.V1Capabilities(
+                        add=["NET_ADMIN", "NET_RAW"]
+                    )
+                )
+            )
+        ]
+        if tank.lnnode is not None:
+            self.add_lnd_container(tank, containers)
+
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
@@ -215,35 +253,40 @@ class KubernetesInterface(ContainerInterface):
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
                 restart_policy="Never",
-                containers=[
-                    client.V1Container(
-                        name=tank.container_name,
-                        image=f"{DOCKER_REGISTRY}:{tank.version}",
-                        env=[
-                            client.V1EnvVar(
-                                name="BITCOIN_ARGS",
-                                value=self.default_config_args(tank)
-                            )
-                        ],
-                        # TODO: this doesnt seem to work as expected? 
-                        # missing the exec field.
-                        # liveness_probe=client.V1Probe(
-                        #     failure_threshold=3,
-                        #     initial_delay_seconds=5,
-                        #     period_seconds=5,
-                        #     timeout_seconds=1,
-                        #     exec=client.V1ExecAction(
-                        #         command=["pidof", "bitcoind"]
-                        #     )
-                        # ),
-                        security_context=client.V1SecurityContext(
-                            privileged=True,
-                            capabilities=client.V1Capabilities(
-                                add=["NET_ADMIN", "NET_RAW"]
-                            )
-                        )
+                containers=containers
+            )
+        )
+
+
+    def add_lnd_container(self, tank, containers):
+        # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
+        args = [
+            "--noseedbackup",
+            "--norest",
+            "--debuglevel=debug",
+            "--accept-keysend",
+            "--bitcoin.active",
+            "--bitcoin.regtest",
+            "--bitcoin.node=bitcoind",
+            f"--bitcoind.rpcuser={tank.rpc_user}",
+            f"--bitcoind.rpcpass={tank.rpc_password}",
+            f"--bitcoind.rpchost=127.0.0.1:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock=tcp://127.0.0.1:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx=tcp://127.0.0.1:{tank.zmqtxport}",
+            f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
+            f"--alias={tank.lnnode.container_name}"
+        ]
+        containers.append(
+            client.V1Container(
+                name="lnd",
+                image=f"{DOCKER_REGISTRY_LND}",
+                args=args,
+                security_context=client.V1SecurityContext(
+                    privileged=True,
+                    capabilities=client.V1Capabilities(
+                        add=["NET_ADMIN", "NET_RAW"]
                     )
-                ]
+                )
             )
         )
 
