@@ -8,6 +8,7 @@ from kubernetes.stream import stream
 import time
 import re
 import yaml
+import io
 
 from typing import cast
 
@@ -48,7 +49,24 @@ class KubernetesInterface(ContainerInterface):
         """
         Read a file from inside a container
         """
-        raise NotImplementedError("This method isn't implemented yet")
+        exec_command = ['cat', file_path]
+
+        # technically this is pod name not container name
+        resp = stream(self.client.connect_get_namespaced_pod_exec, container_name, self.namespace,
+                      command=exec_command,
+                      stderr=True, stdin=True,
+                      stdout=True, tty=False,
+                      _preload_content=False)
+
+        file = io.BytesIO()
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                file.write(resp.read_stdout())
+            if resp.peek_stderr():
+                raise Exception("Problem copying file from pod" + resp.read_stderr().decode('utf-8'))
+
+        return file.getvalue()
 
     def get_container(self, container_name: str) -> V1Pod:
         return cast(V1Pod, self.client.read_namespaced_pod(name=container_name, namespace="default"))
