@@ -25,7 +25,7 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def down(self) -> bool:
+    def down(self, persist: bool = False) -> bool:
         """
         Bring an exsiting network down.
             e.g. `docker compose down`

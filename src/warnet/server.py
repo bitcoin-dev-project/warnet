@@ -316,13 +316,13 @@ class Server():
         xml_data = bio.getvalue()
         return f"Generated graph:\n\n{xml_data.decode('utf-8')}"
 
-    def network_down(self, network: str = "warnet") -> str:
+    def network_down(self, persist: bool, network: str = "warnet") -> str:
         """
         Stop all containers in <network>.
         """
         wn = Warnet.from_network(network)
         try:
-            wn.warnet_down()
+            wn.warnet_down(persist)
             return "Stopping warnet"
         except Exception as e:
             return f"Exception {e}"

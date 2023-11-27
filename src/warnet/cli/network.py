@@ -52,12 +52,13 @@ def up(network: str):
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
-def down(network: str):
+@click.option('--persist', is_flag=True)
+def down(network: str, persist: bool):
     """
     Run 'docker compose down on a warnet named <--network> (default: "warnet").
     """
     try:
-        result = rpc_call("network_down", {"network": network})
+        result = rpc_call("network_down", {"network": network, "persist": persist})
         print(result)
     except Exception as e:
         print(f"Error running docker compose down on network {network}: {e}")

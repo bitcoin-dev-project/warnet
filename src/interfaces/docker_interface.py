@@ -1,6 +1,7 @@
 import logging
 import re
 import shutil
+import shlex
 import subprocess
 import yaml
 
@@ -82,23 +83,27 @@ class DockerInterface(ContainerInterface):
             )
 
     @bubble_exception_str
-    def down(self):
-        command = ["docker", "compose", "down"]
-        try:
-            with subprocess.Popen(
-                command,
-                cwd=str(self.config_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ) as process:
-                logger.debug(f"Running docker compose down with PID {process.pid}")
-                if process.stdout:
-                    for line in process.stdout:
-                        logger.info(line.decode().rstrip())
-        except Exception as e:
-            logger.error(
-                f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
-            )
+    def down(self, persist):
+        if persist:
+            commands = [shlex.split("docker compose stop"), shlex.split("docker compose rm --force")]
+        else:
+            commands = [shlex.split("docker compose down")]
+        for command in commands:
+            try:
+                with subprocess.Popen(
+                    command,
+                    cwd=str(self.config_dir),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                ) as process:
+                    logger.debug(f"Running {' '.join(command)} with PID {process.pid}")
+                    if process.stdout:
+                        for line in process.stdout:
+                            logger.info(line.decode().rstrip())
+            except Exception as e:
+                logger.error(
+                    f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
+                )
 
     def get_container(self, container_name: str) -> Container:
         return cast(Container, self.client.containers.get(container_name))
