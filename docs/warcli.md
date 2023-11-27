@@ -135,12 +135,12 @@ options:
 Start a warnet with topology loaded from a \<graph_file> into \<--network> (default: "warnet")
 
 options:
-| name       | type   | required   | default                                                             |
-|------------|--------|------------|---------------------------------------------------------------------|
-| graph_file | Path   | False      | /path/to/repo/warnet/src/graphs/default.graphml |
-| force      | Bool   | False      | False                                                               |
-| network    | String | False      | warnet                                                              |
-| help       | Bool   | False      | False                                                               |
+| name       | type   | required   | default                    |
+|------------|--------|------------|----------------------------|
+| graph_file | Path   | False      | src/graphs/default.graphml |
+| force      | Bool   | False      | False                      |
+| network    | String | False      | warnet                     |
+| help       | Bool   | False      | False                      |
 
 ### `warcli network status`
 Get status of a warnet named \<--network> (default: "warnet").

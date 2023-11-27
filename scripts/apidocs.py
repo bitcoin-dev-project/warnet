@@ -17,7 +17,7 @@ def print_cmd(cmd, super=''):
         p['name'],
         p['type']['param_type'],
         p['required'],
-        p['default']
+        p['default'] if p['type']['param_type'] != "Path" else Path(p['default']).relative_to(Path.cwd())
     ] for p in cmd["params"]]
     doc += tabulate(data, headers=headers, tablefmt="github")
     doc += "\n\n"
