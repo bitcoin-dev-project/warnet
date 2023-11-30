@@ -18,7 +18,7 @@ from services.grafana import Grafana
 from services.prometheus import Prometheus
 from templates import TEMPLATES
 from warnet.tank import Tank
-from warnet.status import Status
+from warnet.status import RunningStatus
 from warnet.lnnode import LNNode
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
 
@@ -119,20 +119,20 @@ class ComposeBackend(BackendInterface):
             return None
         return cast(Container, self.client.containers.get(container_name))
 
-    def get_status(self, tank_index: int, service: ServiceType) -> Status:
+    def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
         container = self.get_container(tank_index, service)
         if container is None:
-            return Status.STOPPED
+            return RunningStatus.STOPPED
         match container.status:
             case 'running':
-                return Status.RUNNING
+                return RunningStatus.RUNNING
             case 'exited' | 'dead':
                 if container.attrs['State']['ExitCode'] == 0:
-                    return Status.STOPPED
+                    return RunningStatus.STOPPED
                 else:
-                    return Status.FAILED
+                    return RunningStatus.FAILED
             case _:
-                return Status.PENDING
+                return RunningStatus.PENDING
 
     def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root") -> str:
         c = self.get_container(tank_index, service)

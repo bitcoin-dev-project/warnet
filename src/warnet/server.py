@@ -348,13 +348,13 @@ class Server():
         wn = Warnet.from_network(network, self.backend)
         stats = []
         for tank in wn.tanks:
-            stats.append({
-                "container_name": wn.container_interface.get_container_name(tank.index, ServiceType.BITCOIN),
-                "status": tank.status.name.lower()})
+            status = {
+                "tank_index": tank.index,
+                "bitcoin_status": tank.status.name.lower()
+            }
             if tank.lnnode is not None:
-                stats.append({
-                    "container_name": wn.container_interface.get_container_name(tank.index, ServiceType.LIGHTNING),
-                    "status": tank.lnnode.status.name.lower()})
+                status["lightning_status"] = tank.lnnode.status.name.lower()
+            stats.append(status)
         return stats
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:
@@ -396,6 +396,10 @@ def run_server():
     backend = "docker"
     if len(sys.argv) > 1:
         backend = sys.argv[1]
+
+    if backend not in ["docker", "k8s"]:
+        print(f"Invalid backend {backend}")
+        sys.exit(1)
 
     Server(backend).app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
 

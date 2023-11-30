@@ -6,7 +6,7 @@ from warnet.utils import (
     generate_ipv4_addr
 )
 from backends.backend_interface import BackendInterface, ServiceType
-from .status import Status
+from .status import RunningStatus
 
 class LNNode:
     def __init__(self, warnet, tank, impl, backend: BackendInterface):
@@ -19,7 +19,7 @@ class LNNode:
         self.rpc_port = 10009
 
     @property
-    def status(self) -> Status:
+    def status(self) -> RunningStatus:
         return self.warnet.container_interface.get_status(self.tank.index, ServiceType.LIGHTNING)
 
     @exponential_backoff(max_retries=20, max_delay=300)

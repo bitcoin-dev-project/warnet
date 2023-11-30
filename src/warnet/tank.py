@@ -13,7 +13,7 @@ from warnet.utils import (
     SUPPORTED_TAGS,
 )
 from backends.backend_interface import ServiceType
-from .status import Status
+from .status import RunningStatus
 
 
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
@@ -109,7 +109,7 @@ class Tank:
         return self._exporter_name
 
     @property
-    def status(self) -> Status:
+    def status(self) -> RunningStatus:
         return self.warnet.container_interface.get_status(self.index, ServiceType.BITCOIN)
 
     @exponential_backoff()

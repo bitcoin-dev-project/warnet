@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class Status(Enum):
+class RunningStatus(Enum):
     PENDING = 1
     RUNNING = 2
     STOPPED = 3
