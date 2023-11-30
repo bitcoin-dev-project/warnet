@@ -48,7 +48,7 @@ class WarnetTestFramework(BitcoinTestFramework):
         self.warnet = Warnet.from_network(self.options.network, backend="docker")
         for i, tank in enumerate(self.warnet.tanks):
             ip = tank.ipv4
-            self.log.info(f"Adding TestNode {i} from {tank.container_name} with IP {ip}")
+            self.log.info(f"Adding TestNode {i} from tank {tank.index} with IP {ip}")
             node = TestNode(
                 i,
                 "",  # datadir path

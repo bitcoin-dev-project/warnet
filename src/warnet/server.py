@@ -23,6 +23,7 @@ from warnet.utils import (
     create_graph_with_probability,
     gen_config_dir,
 )
+from backends.backend_interface import ServiceType
 
 WARNET_SERVER_PORT = 9276
 
@@ -125,7 +126,7 @@ class Server():
         """
         wn = Warnet.from_network(network, self.backend)
         try:
-            result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
+            result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].index)
             return str(result)
         except Exception as e:
             raise Exception(f"{e}")
@@ -137,7 +138,7 @@ class Server():
         wn = Warnet.from_network(network, self.backend)
         try:
             messages = [
-                msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].container_name, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
+                msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].index, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
             ]
             if not messages:
                 return f"No messages found between {node_a} and {node_b}"
@@ -347,11 +348,13 @@ class Server():
         wn = Warnet.from_network(network, self.backend)
         stats = []
         for tank in wn.tanks:
-            status = tank.container.status if tank.container is not None else None
-            stats.append([tank.container_name, status])
+            stats.append({
+                "container_name": wn.container_interface.get_container_name(tank.index, ServiceType.BITCOIN),
+                "status": tank.status.name.lower()})
             if tank.lnnode is not None:
-                ln_status = tank.lnnode.container.status if tank.lnnode.container is not None else None
-                stats.append([tank.lnnode.container_name, ln_status])
+                stats.append({
+                    "container_name": wn.container_interface.get_container_name(tank.index, ServiceType.LIGHTNING),
+                    "status": tank.lnnode.status.name.lower()})
         return stats
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:

@@ -1,44 +1,31 @@
 
-import docker
 import json
 import os
-from docker.models.containers import Container
 from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr
 )
-
-CONTAINER_PREFIX_LN = "ln"
+from backends.backend_interface import BackendInterface, ServiceType
+from .status import Status
 
 class LNNode:
-    def __init__(self, warnet, tank, impl):
+    def __init__(self, warnet, tank, impl, backend: BackendInterface):
         self.warnet = warnet
         self.tank = tank
         assert impl == "lnd"
         self.impl = impl
-        self._container = None
-        self.container_name = f"{self.tank.network_name}-{CONTAINER_PREFIX_LN}-{self.tank.suffix}"
+        self.backend = backend
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 
     @property
-    def container(self) -> Container:
-        if self._container is None:
-            try:
-                self._container = docker.from_env().containers.get(self.container_name)
-            except:
-                pass
-        return self._container
+    def status(self) -> Status:
+        return self.warnet.container_interface.get_status(self.tank.index, ServiceType.LIGHTNING)
 
     @exponential_backoff(max_retries=20, max_delay=300)
-    def lncli(self, cmd):
+    def lncli(self, cmd) -> str:
         cmd = f"lncli --network=regtest {cmd}"
-        result = self.container.exec_run(cmd=cmd)
-        if result.exit_code != 0:
-            raise Exception(
-                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}"
-            )
-        return result.output.decode("utf-8")
+        return self.backend.exec_run(self.tank.index, ServiceType.LIGHTNING, cmd)
 
     def getnewaddress(self):
         res = json.loads(self.lncli("newaddress p2wkh"))
@@ -61,12 +48,13 @@ class LNNode:
         return res
 
     def export(self, config, subdir):
-        macaroon_filename = f"{self.container_name}_admin.macaroon"
-        cert_filename = f"{self.container_name}_tls.cert"
+        container_name = self.backend.get_container_name(self.tank.index, ServiceType.LIGHTNING)
+        macaroon_filename = f"{container_name}_admin.macaroon"
+        cert_filename = f"{container_name}_tls.cert"
         macaroon_path = os.path.join(subdir, macaroon_filename)
         cert_path = os.path.join(subdir, cert_filename)
-        macaroon = self.warnet.container_interface.get_file(self.container_name, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
-        cert = self.warnet.container_interface.get_file(self.container_name, "/root/.lnd/tls.cert")
+        macaroon = self.backend.get_file(self.tank.index, ServiceType.LIGHTNING, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
+        cert = self.backend.get_file(self.tank.index, ServiceType.LIGHTNING, "/root/.lnd/tls.cert")
 
         with open(macaroon_path, "wb") as f:
             f.write(macaroon)
@@ -75,7 +63,7 @@ class LNNode:
             f.write(cert)
 
         config["nodes"].append({
-            "id": self.container_name,
+            "id": container_name,
             "address": f"https://{self.ipv4}:{self.rpc_port}",
             "macaroon": macaroon_path,
             "cert": cert_path

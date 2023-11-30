@@ -1,4 +1,4 @@
-from .interfaces import ContainerInterface
+from .backend_interface import BackendInterface, ServiceType
 from pathlib import Path
 
 from kubernetes import client, config
@@ -12,13 +12,15 @@ import io
 
 from typing import cast
 
-from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
+from warnet.tank import Tank
+from warnet.status import Status
 from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
 
 DOCKER_REGISTRY_CORE = "bitcoindevproject/k8s-bitcoin-core"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
+POD_PREFIX = "tank"
 
-class KubernetesInterface(ContainerInterface):
+class KubernetesBackend(BackendInterface):
 
     def __init__(self, config_dir: Path, namespace = "default", logs_pod = "fluentd") -> None:
         super().__init__(config_dir)
@@ -69,10 +71,27 @@ class KubernetesInterface(ContainerInterface):
 
         return file.getvalue()
 
-    def get_container(self, container_name: str) -> V1Pod:
+    def get_pod(self, container_name: str) -> V1Pod:
         return cast(V1Pod, self.client.read_namespaced_pod(name=container_name, namespace="default"))
 
-    def exec_run(self, container_name: str, cmd: str, user: str = "root"):
+    # The following pod phases are available: Pending, Running, Succeeded, Failed, Unknown
+    # We could enhance this by checking the container status as well
+    # For example not able to pull image will be a phase of Pending, but the container status will be ErrImagePull
+    def get_status(self, container_name: str) -> Status:
+        pod = self.client.read_namespaced_pod(name=container_name, namespace=self.namespace)
+        match pod.status.phase.toLowerCase():
+            case 'pending':
+                return Status.PENDING
+            case 'running':
+                return Status.RUNNING
+            case 'succeeded':
+                return Status.STOPPED
+            case 'failed':
+                return Status.FAILED
+            case _:
+                return Status.UNKNOWN
+
+    def exec_run(self, container_name: str, service: ServiceType, cmd: str, user: str = "root"):
 
         # k8s doesn't let us run exec commands as a user, but we can use su
         # because its installed in the bitcoin containers. we will need to rework
@@ -170,7 +189,7 @@ class KubernetesInterface(ContainerInterface):
                 warnet.tanks.append(tank)
 
     def tank_from_deployment(self, pod, warnet):
-        rex = fr"{warnet.network_name}-{CONTAINER_PREFIX_BITCOIND}-([0-9]{{6}})"
+        rex = fr"{warnet.network_name}-{POD_PREFIX}-([0-9]{{6}})"
         match = re.match(rex, pod.metadata.name)
         if match is None:
             return None
@@ -181,7 +200,6 @@ class KubernetesInterface(ContainerInterface):
         # Get IP address from pod status
         t._ipv4 = pod.status.pod_ip
 
-        print(pod)
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
             if container.name == "bitcoind" and container.env is not None:
@@ -260,6 +278,7 @@ class KubernetesInterface(ContainerInterface):
 
     def add_lnd_container(self, tank, containers):
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
+        container_name = "must be replaced"
         args = [
             "--noseedbackup",
             "--norest",
@@ -274,7 +293,7 @@ class KubernetesInterface(ContainerInterface):
             f"--bitcoind.zmqpubrawblock=tcp://127.0.0.1:{tank.zmqblockport}",
             f"--bitcoind.zmqpubrawtx=tcp://127.0.0.1:{tank.zmqtxport}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
-            f"--alias={tank.lnnode.container_name}"
+            f"--alias={tank.index}"
         ]
         containers.append(
             client.V1Container(
@@ -309,7 +328,7 @@ class KubernetesInterface(ContainerInterface):
         for tank in warnet.tanks:
             pod_ip = None
             while not pod_ip:
-                response = self.get_container(tank.container_name)
+                response = self.get_pod(tank.container_name)
                 pod_ip = response.status.pod_ip
                 if not pod_ip:
                     print("Waiting for pod IP...")

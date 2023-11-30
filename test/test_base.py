@@ -39,7 +39,7 @@ class TestBase:
             print("\nStopping network")
             if self.network:
                 self.warcli("network down")
-                self.wait_for_all_tanks_status(target="none", timeout=60, interval=1)
+                self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
 
             print("\nStopping server")
             self.warcli("stop", False)
@@ -148,7 +148,7 @@ class TestBase:
                 "total": len(tanks)
             }
             for tank in tanks:
-                status = tank[1] if tank[1] is not None else "none"
+                status = tank["status"] if tank["status"] is not None else "stopped"
                 if status not in stats:
                     stats[status] = 0
                 stats[status] += 1
