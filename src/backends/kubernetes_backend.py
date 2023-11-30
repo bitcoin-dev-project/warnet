@@ -13,16 +13,18 @@ import io
 from typing import cast
 
 from warnet.tank import Tank
-from warnet.status import Status
+from warnet.status import RunningStatus
 from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
 
 DOCKER_REGISTRY_CORE = "bitcoindevproject/k8s-bitcoin-core"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
 POD_PREFIX = "tank"
+BITCOIN_CONTAINER_NAME = "bitcoin"
+LN_CONTAINER_NAME = "ln"
 
 class KubernetesBackend(BackendInterface):
 
-    def __init__(self, config_dir: Path, namespace = "default", logs_pod = "fluentd") -> None:
+    def __init__(self, config_dir: Path, network_name: str, namespace = "default", logs_pod = "fluentd") -> None:
         super().__init__(config_dir)
         # assumes the warnet rpc server is always
         # running inside a k8s cluster as a statefulset
@@ -30,6 +32,7 @@ class KubernetesBackend(BackendInterface):
         self.client = client.CoreV1Api()
         self.namespace = namespace
         self.logs_pod = logs_pod
+        self.network_name = network_name
 
     def build(self) -> bool:
         # TODO: just return true for now, this is so we can be running either docker or k8s as a backend
@@ -48,18 +51,19 @@ class KubernetesBackend(BackendInterface):
         for tank in warnet.tanks:
             self.client.delete_namespaced_pod(tank.container_name, self.namespace)
     
-    def get_file(self, container_name: str, file_path: str):
+    def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         """
         Read a file from inside a container
         """
+        pod_name = self.get_pod_name(tank_index, service)
         exec_command = ['cat', file_path]
 
-        # technically this is pod name not container name
-        resp = stream(self.client.connect_get_namespaced_pod_exec, container_name, self.namespace,
+        resp = stream(self.client.connect_get_namespaced_pod_exec, pod_name, self.namespace,
                       command=exec_command,
                       stderr=True, stdin=True,
                       stdout=True, tty=False,
-                      _preload_content=False)
+                      _preload_content=False,
+                      container=BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME)
 
         file = io.BytesIO()
         while resp.is_open():
@@ -71,37 +75,43 @@ class KubernetesBackend(BackendInterface):
 
         return file.getvalue()
 
+    def get_pod_name(self, tank_index: int) -> str:
+        return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
+
     def get_pod(self, container_name: str) -> V1Pod:
         return cast(V1Pod, self.client.read_namespaced_pod(name=container_name, namespace="default"))
 
+    # We could enhance this by checking the pod status as well
     # The following pod phases are available: Pending, Running, Succeeded, Failed, Unknown
-    # We could enhance this by checking the container status as well
     # For example not able to pull image will be a phase of Pending, but the container status will be ErrImagePull
-    def get_status(self, container_name: str) -> Status:
-        pod = self.client.read_namespaced_pod(name=container_name, namespace=self.namespace)
-        match pod.status.phase.toLowerCase():
-            case 'pending':
-                return Status.PENDING
-            case 'running':
-                return Status.RUNNING
-            case 'succeeded':
-                return Status.STOPPED
-            case 'failed':
-                return Status.FAILED
-            case _:
-                return Status.UNKNOWN
+    def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
+        pod_name = self.get_pod_name(tank_index)
+        pod = self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+        container_name = BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME
+        for container in pod.spec.containers:
+            if container.name == container_name:
+                match container.state.lower():
+                    case 'waiting':
+                        return RunningStatus.PENDING
+                    case 'terminated':
+                        return RunningStatus.STOPPED
+                    case 'running':
+                        return RunningStatus.RUNNING
+                    case _:
+                        return RunningStatus.UNKNOWN
 
-    def exec_run(self, container_name: str, service: ServiceType, cmd: str, user: str = "root"):
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root"):
 
         # k8s doesn't let us run exec commands as a user, but we can use su
         # because its installed in the bitcoin containers. we will need to rework
         # this command if we decided to remove gosu from the containers
         # TODO: change this if we remove gosu
+        pod_name = self.get_pod_name(tank_index)
         exec_cmd = ["/bin/sh", "-c", f"su - {user} -c '{cmd}'"]
         result = stream(
-                self.client.connect_get_namespaced_pod_exec, container_name,
+                self.client.connect_get_namespaced_pod_exec, pod_name,
                 self.namespace,
-                container="bitcoind",
+                container=BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME,
                 command=exec_cmd,
                 stderr=True,
                 stdin=False,
@@ -118,11 +128,12 @@ class KubernetesBackend(BackendInterface):
         #     )
         return result
 
-    def get_bitcoin_debug_log(self, container_name: str):
+    def get_bitcoin_debug_log(self, tank_index: int):
+        pod_name = self.get_pod_name(tank_index)
         logs = self.client.read_namespaced_pod_log(
-            name=container_name,
-            namespace="default",
-            container="bitcoind",
+            name=pod_name,
+            namespace=self.namespace,
+            container=BITCOIN_CONTAINER_NAME,
         )
         return logs
 
@@ -131,11 +142,11 @@ class KubernetesBackend(BackendInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
-        return self.exec_run(tank.container_name, cmd, user="bitcoin")
+        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd, user="bitcoin")
 
-    def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest", namespace: str = "default"):
+    def get_messages(self, tank_index: int, b_ipv4: str, bitcoin_network: str = "regtest", namespace: str = "default"):
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
-        dirs = self.exec_run(a_name, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture", namespace)
+        dirs = self.exec_run(tank_index, ServiceType.BITCOIN, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture", namespace)
         dirs = dirs.splitlines()
         messages = []
 
@@ -144,7 +155,7 @@ class KubernetesBackend(BackendInterface):
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     # Fetch the file contents from the container
                     file_path = f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
-                    blob = self.exec_run(a_name, f"cat {file_path}", namespace)
+                    blob = self.exec_run(tank_index, ServiceType.BITCOIN, f"cat {file_path}", namespace)
 
                     # Parse the blob
                     json = parse_raw_messages(blob, outbound)
@@ -163,7 +174,6 @@ class KubernetesBackend(BackendInterface):
                 namespace=self.namespace,
                 timestamps=True,
                 _preload_content=False,
-                container="bitcoind"
         )
 
         matching_logs = []
@@ -202,7 +212,7 @@ class KubernetesBackend(BackendInterface):
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
-            if container.name == "bitcoind" and container.env is not None:
+            if container.name == BITCOIN_CONTAINER_NAME and container.env is not None:
                 for env in container.env:
                     if env.name == "BITCOIN_VERSION":
                         t.version = env.value
@@ -233,7 +243,7 @@ class KubernetesBackend(BackendInterface):
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
         containers = [
             client.V1Container(
-                name="bitcoind",
+                name=BITCOIN_CONTAINER_NAME,
                 image=f"{DOCKER_REGISTRY_CORE}:{tank.version}",
                 env=[
                     client.V1EnvVar(
@@ -266,7 +276,7 @@ class KubernetesBackend(BackendInterface):
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
-            metadata=client.V1ObjectMeta(name=tank.container_name, namespace="default"),
+            metadata=client.V1ObjectMeta(name=self.get_pod_name(tank.index), namespace="default"),
             spec=client.V1PodSpec(
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
@@ -278,7 +288,6 @@ class KubernetesBackend(BackendInterface):
 
     def add_lnd_container(self, tank, containers):
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
-        container_name = "must be replaced"
         args = [
             "--noseedbackup",
             "--norest",

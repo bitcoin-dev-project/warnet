@@ -145,13 +145,20 @@ class TestBase:
         def check_status():
             tanks = self.wait_for_rpc("network_status", {"network": self.network_name})
             stats = {
-                "total": len(tanks)
+                "total": 0
             }
             for tank in tanks:
-                status = tank["status"] if tank["status"] is not None else "stopped"
-                if status not in stats:
-                    stats[status] = 0
-                stats[status] += 1
+                stats["total"] += 1
+                bitcoin_status = tank["bitcoin_status"]
+                if bitcoin_status not in stats:
+                    stats[bitcoin_status] = 0
+                stats[bitcoin_status] += 1
+                if "lightning_status" in tank:
+                    stats["total"] += 1
+                    lightning_status = tank["lightning_status"]
+                    if lightning_status not in stats:
+                        stats[lightning_status] = 0
+                    stats[lightning_status] += 1
             print(f"Waiting for all tanks to reach '{target}': {stats}")
             # All tanks are running, proceed
             if target in stats and stats[target] == stats["total"]:

@@ -67,7 +67,7 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_file(self, tank_index: int, file_path: str):
+    def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         """
         Read a file from inside a container
         """
