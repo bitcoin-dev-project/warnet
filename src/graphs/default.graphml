@@ -3,30 +3,37 @@
   <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
   <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
   <key attr.name="build_args" attr.type="string" for="node" id="build_args"/>
+  <key attr.name="exporter" attr.type="boolean" for="node" id="exporter"/>
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">25.1</data>
         <data key="bitcoin_config">-uacomment=w0</data>
+        <data key="exporter">true</data>
     </node>
     <node id="1">
         <data key="version">25.1</data>
         <data key="bitcoin_config">-uacomment=w1</data>
+        <data key="exporter">true</data>
     </node>
     <node id="2">
         <data key="version">25.1</data>
         <data key="bitcoin_config">-uacomment=w2</data>
+        <data key="exporter">true</data>
     </node>
     <node id="3">
         <data key="version">25.1</data>
         <data key="bitcoin_config">-uacomment=w3</data>
+        <data key="exporter">true</data>
     </node>
     <node id="4">
         <data key="version">25.1</data>
         <data key="bitcoin_config">-uacomment=w4</data>
+        <data key="exporter">true</data>
     </node>
     <node id="5">
         <data key="version">25.1</data>
         <data key="bitcoin_config">-uacomment=w5</data>
+        <data key="exporter">true</data>
     </node>
     <node id="6">
         <data key="version">25.1</data>

@@ -16,6 +16,7 @@ from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
 from services.grafana import Grafana
 from services.prometheus import Prometheus
+from services.node_exporter import NodeExporter
 from templates import TEMPLATES
 from warnet.tank import Tank
 from warnet.status import RunningStatus
@@ -239,15 +240,26 @@ class ComposeBackend(BackendInterface):
         return "\n".join(sorted_logs)
 
     def write_prometheus_config(self, warnet):
+        scrape_configs = [
+            {
+                "job_name": "cadvisor",
+                "scrape_interval": "15s",
+                "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
+            }
+        ]
+
+        for tank in warnet.tanks:
+            if tank.exporter:
+                scrape_configs.append(
+                    {
+                        "job_name": tank.exporter_name,
+                        "scrape_interval": "5s",
+                        "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
+                    })
+
         config = {
             "global": {"scrape_interval": "15s"},
-            "scrape_configs": [
-                {
-                    "job_name": "cadvisor",
-                    "scrape_interval": "15s",
-                    "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
-                },
-            ],
+            "scrape_configs": scrape_configs
         }
 
         prometheus_path = self.config_dir / "prometheus.yml"
@@ -277,9 +289,8 @@ class ComposeBackend(BackendInterface):
 
         # Initialize services and add them to the compose
         services = [
-            # grep: disable-exporters
             Prometheus(warnet.network_name, self.config_dir),
-            # NodeExporter(warnet.network_name),
+            NodeExporter(warnet.network_name),
             Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
@@ -376,20 +387,19 @@ class ComposeBackend(BackendInterface):
         if tank.lnnode is not None:
             self.add_lnd_service(tank, services)
 
-        # grep: disable-exporters
         # Add the prometheus data exporter in a neighboring container
-        # services[self.exporter_name] = {
-        #     "image": "jvstein/bitcoin-prometheus-exporter",
-        #     "container_name": self.exporter_name,
-        #     "environment": {
-        #         "BITCOIN_RPC_HOST": self.container_name,
-        #         "BITCOIN_RPC_PORT": self.rpc_port,
-        #         "BITCOIN_RPC_USER": self.rpc_user,
-        #         "BITCOIN_RPC_PASSWORD": self.rpc_password,
-        #     },
-        #     "ports": [f"{8335 + self.index}:9332"],
-        #     "networks": [self.docker_network],
-        # }
+        if tank.exporter:
+            services[tank.exporter_name] = {
+                "image": "jvstein/bitcoin-prometheus-exporter:latest",
+                "container_name": tank.exporter_name,
+                "environment": {
+                    "BITCOIN_RPC_HOST": tank.ipv4,
+                    "BITCOIN_RPC_PORT": tank.rpc_port,
+                    "BITCOIN_RPC_USER": tank.rpc_user,
+                    "BITCOIN_RPC_PASSWORD": tank.rpc_password,
+                },
+                "networks": [tank.network_name]
+            }
 
     def add_lnd_service(self, tank, services):
         ln_container_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
@@ -438,15 +448,6 @@ class ComposeBackend(BackendInterface):
                 }
             }
         )
-
-    # def add_scrapers(self, scrapers):
-    #     scrapers.append(
-    #         {
-    #             "job_name": self.container_name,
-    #             "scrape_interval": "5s",
-    #             "static_configs": [{"targets": [f"{self.exporter_name}:9332"]}],
-    #         }
-    #     )
 
     def warnet_from_deployment(self, warnet):
         # Get tank names, versions and IP addresses from docker-compose
