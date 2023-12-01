@@ -3,12 +3,37 @@ from pathlib import Path
 
 import click
 from rich import print
+from rich.console import Console
+from rich.table import Table
 
 from graphs import GRAPHS
 from warnet.cli.rpc import rpc_call
 
 
 DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
+
+
+def print_repr(wn: dict) -> None:
+    console = Console()
+
+    # Warnet table
+    warnet_table = Table(show_header=True, header_style="bold")
+    for header in wn["warnet_headers"]:
+        warnet_table.add_column(header)
+    for row in wn["warnet"]:
+        warnet_table.add_row(*[str(cell) for cell in row])
+
+    # Tank table
+    tank_table = Table(show_header=True, header_style="bold")
+    for header in wn["tank_headers"]:
+        tank_table.add_column(header)
+    for row in wn["tanks"]:
+        tank_table.add_row(*[str(cell) for cell in row])
+
+    console.print("Warnet:")
+    console.print(warnet_table)
+    console.print("\nTanks:")
+    console.print(tank_table)
 
 
 @click.group(name="network")
@@ -32,7 +57,7 @@ def start(graph_file: Path, force: bool, network: str):
             "network_from_file",
             {"graph_file": encoded_graph_file, "force": force, "network": network},
         )
-        print(result)
+        print_repr(result)
     except Exception as e:
         print(f"Error creating network: {e}")
 
@@ -71,7 +96,7 @@ def info(network: str):
     """
     try:
         result = rpc_call("network_info", {"network": network})
-        print(result)
+        print_repr(result)
     except Exception as e:
         print(f"Error getting info about network {network}: {e}")
 
@@ -84,11 +109,30 @@ def status(network: str):
     """
     try:
         result = rpc_call("network_status", {"network": network})
-        for tank in result:
-            print(f"{tank['container_name']}: {tank['status']}")
-    except Exception as e:
-        print(f"Error getting status of network {network}: {e}")
 
+        # Preprocess the data to add color for "running" status
+        colored_result = []
+        for item in result:
+            if item[1] == "running":
+                colored_item = [item[0], f"[green]{item[1]}[/green]"]
+            else:
+                colored_item = item
+            colored_result.append(colored_item)
+
+        # Create the table
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Container name")
+        table.add_column("Status")
+
+        # Add rows to the table
+        for row in colored_result:
+            table.add_row(*row)
+
+        console = Console()
+        console.print(table)
+
+    except Exception as e:
+        print(f"[red]Error getting status of network {network}: {e}[/red]")
 
 
 @network.command()
@@ -98,11 +142,7 @@ def export(network):
     Export all data for sim-ln to subdirectory
     """
     try:
-        result = rpc_call(
-            "network_export", {"network": network}
-        )
+        result = rpc_call("network_export", {"network": network})
         print(result)
     except Exception as e:
-        print(
-            f"Error exporting network: {e}"
-        )
+        print(f"Error exporting network: {e}")
