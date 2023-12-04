@@ -1,4 +1,4 @@
-from .backend_interface import BackendInterface, ServiceType
+from backends import BackendInterface, ServiceType
 from pathlib import Path
 
 from kubernetes import client, config

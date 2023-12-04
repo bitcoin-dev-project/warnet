@@ -5,7 +5,7 @@ from warnet.utils import (
     exponential_backoff,
     generate_ipv4_addr
 )
-from backends.backend_interface import BackendInterface, ServiceType
+from backends import BackendInterface, ServiceType
 from .status import RunningStatus
 
 class LNNode:

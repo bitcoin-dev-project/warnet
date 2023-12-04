@@ -23,7 +23,6 @@ from warnet.utils import (
     create_graph_with_probability,
     gen_config_dir,
 )
-from backends.backend_interface import ServiceType
 
 WARNET_SERVER_PORT = 9276
 

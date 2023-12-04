@@ -12,7 +12,7 @@ from warnet.utils import (
     sanitize_tc_netem_command,
     SUPPORTED_TAGS,
 )
-from backends.backend_interface import ServiceType
+from backends import ServiceType
 from .status import RunningStatus
 
 

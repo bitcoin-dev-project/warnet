@@ -10,7 +10,7 @@ from typing import cast, List, Tuple
 import docker
 from docker.models.containers import Container
 
-from .backend_interface import BackendInterface, ServiceType
+from backends import BackendInterface, ServiceType
 from services import SERVICES
 from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
