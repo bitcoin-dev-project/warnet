@@ -12,7 +12,7 @@ from warnet.utils import exponential_backoff
 class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
-        self.tmpdir = Path(mkdtemp(prefix="warnet_test_"))
+        self.tmpdir = Path(mkdtemp(prefix="warnet-test-"))
 
         os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
 

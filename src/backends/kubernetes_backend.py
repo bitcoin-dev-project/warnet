@@ -4,6 +4,8 @@ from pathlib import Path
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.stream import stream
+from kubernetes.client.rest import ApiException
+
 
 import time
 import re
@@ -13,6 +15,7 @@ import io
 from typing import cast
 
 from warnet.tank import Tank
+from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
 
@@ -49,13 +52,14 @@ class KubernetesBackend(BackendInterface):
             e.g. `k delete -f warnet-tanks.yaml`
         """
         for tank in warnet.tanks:
-            self.client.delete_namespaced_pod(tank.container_name, self.namespace)
+            pod_name = self.get_pod_name(tank.index)
+            self.client.delete_namespaced_pod(pod_name, self.namespace)
     
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         """
         Read a file from inside a container
         """
-        pod_name = self.get_pod_name(tank_index, service)
+        pod_name = self.get_pod_name(tank_index)
         exec_command = ['cat', file_path]
 
         resp = stream(self.client.connect_get_namespaced_pod_exec, pod_name, self.namespace,
@@ -78,27 +82,31 @@ class KubernetesBackend(BackendInterface):
     def get_pod_name(self, tank_index: int) -> str:
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
 
-    def get_pod(self, container_name: str) -> V1Pod:
-        return cast(V1Pod, self.client.read_namespaced_pod(name=container_name, namespace="default"))
+    def get_pod(self, pod_name: str) -> V1Pod:
+        try:
+            return cast(V1Pod, self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace))
+        except ApiException as e:
+            if e.status == 404:
+                return None
 
     # We could enhance this by checking the pod status as well
     # The following pod phases are available: Pending, Running, Succeeded, Failed, Unknown
     # For example not able to pull image will be a phase of Pending, but the container status will be ErrImagePull
     def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
         pod_name = self.get_pod_name(tank_index)
-        pod = self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+        pod = self.get_pod(pod_name)
+        if pod is None:
+            return RunningStatus.STOPPED
         container_name = BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME
-        for container in pod.spec.containers:
+        for container in pod.status.container_statuses:
             if container.name == container_name:
-                match container.state.lower():
-                    case 'waiting':
-                        return RunningStatus.PENDING
-                    case 'terminated':
-                        return RunningStatus.STOPPED
-                    case 'running':
-                        return RunningStatus.RUNNING
-                    case _:
-                        return RunningStatus.UNKNOWN
+                if container.state.running is not None:
+                    return RunningStatus.RUNNING
+                if container.state.terminated is not None:
+                    return RunningStatus.STOPPED
+                if container.state.waiting is not None:
+                    return RunningStatus.PENDING
+        return RunningStatus.UNKNOWN
 
     def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root"):
 
@@ -212,7 +220,9 @@ class KubernetesBackend(BackendInterface):
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
-            if container.name == BITCOIN_CONTAINER_NAME and container.env is not None:
+            if container.name == BITCOIN_CONTAINER_NAME:
+                if container.env is None:
+                    continue
                 for env in container.env:
                     if env.name == "BITCOIN_VERSION":
                         t.version = env.value
@@ -220,8 +230,10 @@ class KubernetesBackend(BackendInterface):
                         repo = env.value
                     elif env.name == "BRANCH":
                         branch = env.value
-        if not hasattr(t, 'version'):
-            t.version = f"{repo}#{branch}"
+                    if not hasattr(t, 'version'):
+                        t.version = f"{repo}#{branch}"
+            elif container.name == LN_CONTAINER_NAME:
+                t.lnnode = LNNode(warnet, t, "lnd", self)
 
         return t
     
@@ -306,7 +318,7 @@ class KubernetesBackend(BackendInterface):
         ]
         containers.append(
             client.V1Container(
-                name="lnd",
+                name=LN_CONTAINER_NAME,
                 image=f"{DOCKER_REGISTRY_LND}",
                 args=args,
                 security_context=client.V1SecurityContext(

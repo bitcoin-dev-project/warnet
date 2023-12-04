@@ -123,6 +123,8 @@ class Warnet:
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
+        if self.tanks == []:
+            self.tanks_from_graph()
         return self
 
     @property
