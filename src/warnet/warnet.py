@@ -24,7 +24,7 @@ class Warnet:
     def __init__(self, config_dir, backend, network_name: str):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = ComposeBackend(config_dir, network_name) if backend == "docker" else KubernetesBackend(config_dir, network_name)
+        self.container_interface = ComposeBackend(config_dir, network_name) if backend == "compose" else KubernetesBackend(config_dir, network_name)
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
@@ -91,7 +91,7 @@ class Warnet:
     @classmethod
     @bubble_exception_str
     def from_graph_file(
-            cls, base64_graph: str, config_dir: Path, network: str = "warnet", backend: str = "docker",
+            cls, base64_graph: str, config_dir: Path, network: str = "warnet", backend: str = "compose",
     ):
         self = cls(config_dir, backend, network)
         destination = self.config_dir / self.graph_name
@@ -107,7 +107,7 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_graph(cls, graph, backend="docker", network="warnet"):
+    def from_graph(cls, graph, backend="compose", network="warnet"):
         self = cls(Path(), backend, network)
         self.graph = graph
         self.tanks_from_graph()
@@ -116,7 +116,7 @@ class Warnet:
 
     @classmethod
     @bubble_exception_str
-    def from_network(cls, network_name, backend="docker"):
+    def from_network(cls, network_name, backend="compose"):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir, backend, network_name)
         self.network_name = network_name

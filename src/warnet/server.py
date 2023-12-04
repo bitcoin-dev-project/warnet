@@ -393,11 +393,11 @@ def run_server():
     # "If the debug flag is set the server will automatically reload
     # for code changes and show a debugger in case an exception happened."
 
-    backend = "docker"
+    backend = "compose"
     if len(sys.argv) > 1:
         backend = sys.argv[1]
 
-    if backend not in ["docker", "k8s"]:
+    if backend not in ["compose", "k8s"]:
         print(f"Invalid backend {backend}")
         sys.exit(1)
 
