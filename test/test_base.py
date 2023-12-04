@@ -1,5 +1,6 @@
 import atexit
 import os
+import sys
 import threading
 from pathlib import Path
 from subprocess import Popen, run, PIPE, STDOUT
@@ -28,6 +29,14 @@ class TestBase:
         self.network = True
 
         atexit.register(self.cleanup)
+
+        self.backend = "compose"
+        if len(sys.argv) > 1:
+            self.backend = sys.argv[1]
+
+        if self.backend not in ["compose", "k8s"]:
+            print(f"Invalid backend {backend}")
+            sys.exit(1)
 
         print(f"\nWarnet test base started")
 
@@ -102,7 +111,7 @@ class TestBase:
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
         self.server = Popen(
-            "warnet",
+            ["warnet", self.backend],
             stdout=PIPE,
             stderr=STDOUT,
             bufsize=1,

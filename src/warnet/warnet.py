@@ -32,6 +32,7 @@ class Warnet:
         self.graph_name = "graph.graphml"
         self.tanks: List[Tank] = []
         self.deployment_file: Optional[Path] = None
+        self.backend = backend
 
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
@@ -209,6 +210,8 @@ class Warnet:
 
     @bubble_exception_str
     def export(self, subdir):
+        if self.backend != "compose":
+            raise NotImplementedError("Export is only supported for compose backend")
         config = {"nodes": []}
         for tank in self.tanks:
             tank.export(config, subdir)
