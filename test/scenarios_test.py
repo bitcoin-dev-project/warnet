@@ -22,6 +22,7 @@ base.warcli("rpc 0 getblockcount")
 # Start scenario
 base.warcli("scenarios run miner_std --allnodes --interval=1")
 
+
 def check_blocks():
     # Ensure the scenario is still working
     running = base.rpc("scenarios_list_running")
@@ -32,6 +33,8 @@ def check_blocks():
     count = int(base.warcli("rpc 0 getblockcount"))
     print(f"Waiting for 30 blocks: {count}")
     return count >= 30
+
+
 base.wait_for_predicate(check_blocks)
 
 # Stop scenario
@@ -40,10 +43,13 @@ assert len(running) == 1
 assert running[0]["active"]
 base.warcli(f"scenarios stop {running[0]['pid']}", False)
 
+
 def check_stop():
     running = base.rpc("scenarios_list_running")
     print(f"Waiting for scenario to stop: {running}")
     return len(running) == 0
+
+
 base.wait_for_predicate(check_stop)
 
 base.stop_server()

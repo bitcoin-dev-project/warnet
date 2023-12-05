@@ -13,6 +13,5 @@ def rpc_call(rpc_method, params: Optional[Union[Dict[str, Any], Tuple[Any, ...]]
     if isinstance(parsed, Ok):
         return parsed.result
     else:
-        error_message = getattr(parsed, 'message', 'Unknown RPC error')
+        error_message = getattr(parsed, "message", "Unknown RPC error")
         raise Exception(error_message)
-

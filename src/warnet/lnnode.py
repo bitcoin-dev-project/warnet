@@ -1,12 +1,9 @@
-
 import json
 import os
-from warnet.utils import (
-    exponential_backoff,
-    generate_ipv4_addr
-)
+from warnet.utils import exponential_backoff, generate_ipv4_addr
 from backends import BackendInterface, ServiceType
 from .status import RunningStatus
+
 
 class LNNode:
     def __init__(self, warnet, tank, impl, backend: BackendInterface):
@@ -37,8 +34,10 @@ class LNNode:
 
     def open_channel_to_tank(self, index, amt):
         tank = self.warnet.tanks[index]
-        [pubkey, host] = tank.lnnode.getURI().split('@')
-        res = json.loads(self.lncli(f"openchannel --node_key={pubkey} --connect={host} --local_amt={amt}"))
+        [pubkey, host] = tank.lnnode.getURI().split("@")
+        res = json.loads(
+            self.lncli(f"openchannel --node_key={pubkey} --connect={host} --local_amt={amt}")
+        )
         return res
 
     def connect_to_tank(self, index):
@@ -53,7 +52,11 @@ class LNNode:
         cert_filename = f"{container_name}_tls.cert"
         macaroon_path = os.path.join(subdir, macaroon_filename)
         cert_path = os.path.join(subdir, cert_filename)
-        macaroon = self.backend.get_file(self.tank.index, ServiceType.LIGHTNING, "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon")
+        macaroon = self.backend.get_file(
+            self.tank.index,
+            ServiceType.LIGHTNING,
+            "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon",
+        )
         cert = self.backend.get_file(self.tank.index, ServiceType.LIGHTNING, "/root/.lnd/tls.cert")
 
         with open(macaroon_path, "wb") as f:
@@ -62,10 +65,11 @@ class LNNode:
         with open(cert_path, "wb") as f:
             f.write(cert)
 
-        config["nodes"].append({
-            "id": container_name,
-            "address": f"https://{self.ipv4}:{self.rpc_port}",
-            "macaroon": macaroon_path,
-            "cert": cert_path
-        })
-
+        config["nodes"].append(
+            {
+                "id": container_name,
+                "address": f"https://{self.ipv4}:{self.rpc_port}",
+                "macaroon": macaroon_path,
+                "cert": cert_path,
+            }
+        )

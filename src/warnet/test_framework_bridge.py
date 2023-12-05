@@ -16,6 +16,7 @@ from test_framework.test_node import TestNode
 from test_framework.util import get_rpc_proxy, PortSeed
 from warnet.warnet import Warnet
 
+
 class WarnetTestFramework(BitcoinTestFramework):
     def set_test_params(self):
         pass
@@ -39,9 +40,9 @@ class WarnetTestFramework(BitcoinTestFramework):
         # hacked from _start_logging()
         # Scenarios will log plain messages to stdout only, which will can redirected by warnet
         self.log = logging.getLogger()
-        self.log.setLevel(logging.INFO) # set this to DEBUG to see ALL RPC CALLS
+        self.log.setLevel(logging.INFO)  # set this to DEBUG to see ALL RPC CALLS
         ch = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(fmt='%(message)s')
+        formatter = logging.Formatter(fmt="%(message)s")
         ch.setFormatter(formatter)
         self.log.addHandler(ch)
 
@@ -255,9 +256,7 @@ class WarnetTestFramework(BitcoinTestFramework):
         # Running TestShell in a Jupyter notebook causes an additional -f argument
         # To keep TestShell from failing with an "unrecognized argument" error, we add a dummy "-f" argument
         # source: https://stackoverflow.com/questions/48796169/how-to-fix-ipykernel-launcher-py-error-unrecognized-arguments-in-jupyter/56349168#56349168
-        parser.add_argument(
-            "-f", "--fff", help="a dummy argument to fool ipython", default="1"
-        )
+        parser.add_argument("-f", "--fff", help="a dummy argument to fool ipython", default="1")
         self.options = parser.parse_args()
         if self.options.timeout_factor == 0:
             self.options.timeout_factor = 99999

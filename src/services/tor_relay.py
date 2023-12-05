@@ -12,5 +12,5 @@ class TorRelay(BaseService):
                 "context": str(self.templates),
                 "dockerfile": DOCKERFILE,
             },
-            "networks": [ self.docker_network ],
+            "networks": [self.docker_network],
         }

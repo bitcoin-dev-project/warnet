@@ -19,7 +19,9 @@ def graph():
 @click.option("--version", type=str, default=DEFAULT_TAG)
 @click.option("--bitcoin_conf", type=Path)
 @click.option("--random", is_flag=True)
-def create(params: List[str], outfile: Path, version: str, bitcoin_conf: Path, random: bool = False):
+def create(
+    params: List[str], outfile: Path, version: str, bitcoin_conf: Path, random: bool = False
+):
     """
     Create a graph file of type random AS graph with [params]
     """
@@ -31,7 +33,7 @@ def create(params: List[str], outfile: Path, version: str, bitcoin_conf: Path, r
                 "outfile": str(outfile) if outfile else "",
                 "version": version,
                 "bitcoin_conf": str(bitcoin_conf),
-                "random": random
+                "random": random,
             },
         )
         print(result)

@@ -21,14 +21,16 @@ base.warcli("rpc 1 -generate 101")
 
 base.wait_for_predicate(lambda: "101" in base.warcli("rpc 0 getblockcount"))
 
-txid = base.warcli("rpc 1 sendtoaddress --params=bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46 --params=0.1")
+txid = base.warcli(
+    "rpc 1 sendtoaddress --params=bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46 --params=0.1"
+)
 
 base.wait_for_predicate(lambda: txid in base.warcli("rpc 0 getrawmempool"))
 
-node_log = base.warcli('debug-log 1')
+node_log = base.warcli("debug-log 1")
 assert txid in node_log
 
-all_logs = base.warcli(f'grep-logs {txid}')
+all_logs = base.warcli(f"grep-logs {txid}")
 count = all_logs.count("Enqueuing TransactionAddedToMempool")
 # should be at least more than one node
 assert count > 1

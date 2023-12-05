@@ -33,15 +33,18 @@ def wait_for_reachability():
             if ".onion" in addr["address"]:
                 onion_addr = addr["address"]
                 return True
-    except:
+    except Exception:
         return False
 
+
 print("\nChecking IPv4 and onion reachability")
-base.wait_for_predicate(wait_for_reachability, timeout=10*60)
+base.wait_for_predicate(wait_for_reachability, timeout=10 * 60)
 
 
 print("\nAttempting addnode to onion peer")
 base.warcli(f"rpc 1 addnode --params={onion_addr} --params=add")
+
+
 def wait_for_onion_peer():
     peers = json.loads(base.warcli("rpc 0 getpeerinfo"))
     for peer in peers:
@@ -49,7 +52,9 @@ def wait_for_onion_peer():
         if peer["network"] == "onion":
             return True
     return False
+
+
 # Might take up to 10 minutes
-base.wait_for_predicate(wait_for_onion_peer, timeout=10*60)
+base.wait_for_predicate(wait_for_onion_peer, timeout=10 * 60)
 
 base.stop_server()

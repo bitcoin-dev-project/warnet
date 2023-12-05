@@ -5,8 +5,10 @@ class NetworkBase(BaseModel):
     name: str
     status: bool = False
 
+
 class NetworkCreate(NetworkBase):
     pass
+
 
 class Network(NetworkBase):
     id: int
@@ -15,15 +17,19 @@ class Network(NetworkBase):
     class Config:
         orm_mode = True
 
+
 class UserBase(BaseModel):
     email: str
 
+
 class UserCreate(UserBase):
-    uuid: str 
+    uuid: str
     password: str
 
+
 class UserLogin(UserBase):
-    password:str
+    password: str
+
 
 class User(UserBase):
     id: int

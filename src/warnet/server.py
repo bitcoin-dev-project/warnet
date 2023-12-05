@@ -26,13 +26,14 @@ from warnet.utils import (
 
 WARNET_SERVER_PORT = 9276
 
-class Server():
+
+class Server:
     def __init__(self, backend):
         self.backend = backend
         system = os.name
-        if system == 'nt' or platform.system() == "Windows":
+        if system == "nt" or platform.system() == "Windows":
             self.basedir = os.path.join(os.path.expanduser("~"), "warnet")
-        elif system == 'posix' or platform.system() == "Linux" or platform.system() == "Darwin":
+        elif system == "posix" or platform.system() == "Linux" or platform.system() == "Darwin":
             self.basedir = os.environ.get("XDG_STATE_HOME")
             if self.basedir is None:
                 # ~/.warnet/warnet.log
@@ -64,7 +65,7 @@ class Server():
                 RotatingFileHandler(
                     self.log_file_path, maxBytes=16_000_000, backupCount=3, delay=True
                 ),
-                StreamHandler(sys.stdout)
+                StreamHandler(sys.stdout),
             ],
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
@@ -108,7 +109,9 @@ class Server():
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
-    def tank_bcli(self, node: int, method: str, params: List[str] = [], network: str = "warnet") -> str:
+    def tank_bcli(
+        self, node: int, method: str, params: List[str] = [], network: str = "warnet"
+    ) -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
@@ -137,7 +140,11 @@ class Server():
         wn = Warnet.from_network(network, self.backend)
         try:
             messages = [
-                msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].index, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
+                msg
+                for msg in wn.container_interface.get_messages(
+                    wn.tanks[node_a].index, wn.tanks[node_b].ipv4, wn.bitcoin_network
+                )
+                if msg is not None
             ]
             if not messages:
                 return f"No messages found between {node_a} and {node_b}"
@@ -169,7 +176,6 @@ class Server():
         except Exception as e:
             raise Exception(f"{e}")
 
-
     def network_export(self, network: str) -> str:
         """
         Export all data for sim-ln to subdirectory
@@ -183,7 +189,6 @@ class Server():
             self.logger.error(f"Exception occurred while exporting network: {e}")
             return f"Exception {e}"
         return subdir
-
 
     def scenarios_list(self) -> List[tuple]:
         """
@@ -199,7 +204,9 @@ class Server():
         except Exception as e:
             return [f"Exception {e}"]
 
-    def scenarios_run(self, scenario: str, additional_args: List[str], network: str = "warnet") -> str:
+    def scenarios_run(
+        self, scenario: str, additional_args: List[str], network: str = "warnet"
+    ) -> str:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
 
@@ -207,7 +214,11 @@ class Server():
             return f"Scenario {scenario} not found at {scenario_path}."
 
         try:
-            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}", f"--backend={self.backend}"]
+            run_cmd = (
+                [sys.executable, scenario_path]
+                + additional_args
+                + [f"--network={network}", f"--backend={self.backend}"]
+            )
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(
@@ -219,16 +230,19 @@ class Server():
             def proc_logger():
                 for line in proc.stdout:
                     self.logger.info(line.decode().rstrip())
+
             t = threading.Thread(target=lambda: proc_logger())
             t.daemon = True
             t.start()
 
-            self.running_scenarios.append({
-                "pid": proc.pid,
-                "cmd": f"{scenario} {' '.join(additional_args)}",
-                "proc": proc,
-                "network": network,
-            })
+            self.running_scenarios.append(
+                {
+                    "pid": proc.pid,
+                    "cmd": f"{scenario} {' '.join(additional_args)}",
+                    "proc": proc,
+                    "network": network,
+                }
+            )
 
             return f"Running scenario {scenario} with PID {proc.pid} in the background..."
         except Exception as e:
@@ -238,7 +252,7 @@ class Server():
     def scenarios_stop(self, pid: int) -> str:
         matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
         if matching_scenarios:
-            matching_scenarios[0]["proc"].terminate() # sends SIGTERM
+            matching_scenarios[0]["proc"].terminate()  # sends SIGTERM
             # Remove from running list
             self.running_scenarios = [sc for sc in self.running_scenarios if sc["pid"] != pid]
             return f"Stopped scenario with PID {pid}."
@@ -246,12 +260,15 @@ class Server():
             return f"Could not find scenario with PID {pid}."
 
     def scenarios_list_running(self) -> List[Dict]:
-        return [{
-            "pid": sc["pid"],
-            "cmd": sc["cmd"],
-            "active": sc["proc"].poll() is None,
-            "network": sc["network"],
-        } for sc in self.running_scenarios]
+        return [
+            {
+                "pid": sc["pid"],
+                "cmd": sc["cmd"],
+                "active": sc["proc"].poll() is None,
+                "network": sc["network"],
+            }
+            for sc in self.running_scenarios
+        ]
 
     def network_up(self, network: str = "warnet") -> str:
         wn = Warnet.from_network(network, self.backend)
@@ -272,9 +289,11 @@ class Server():
         t = threading.Thread(target=lambda: thread_start(wn))
         t.daemon = True
         t.start()
-        return f"Resuming warnet..."
+        return "Resuming warnet..."
 
-    def network_from_file(self, graph_file: str, force: bool = False, network: str = "warnet") -> Union[dict, str]:
+    def network_from_file(
+        self, graph_file: str, force: bool = False, network: str = "warnet"
+    ) -> Union[dict, str]:
         """
         Run a warnet with topology loaded from a <graph_file>
         """
@@ -296,9 +315,7 @@ class Server():
                 wn.warnet_up()
                 wn.apply_network_conditions()
                 wn.connect_edges()
-                self.logger.info(
-                    f"Created warnet named '{network}'"
-                )
+                self.logger.info(f"Created warnet named '{network}'")
             except Exception as e:
                 self.logger.error(f"Exception {e}")
 
@@ -307,7 +324,14 @@ class Server():
         t.start()
         return wn._warnet_dict_representation()
 
-    def graph_generate(self, params: List[str], outfile: str, version: str, bitcoin_conf: Optional[str] = None, random: bool = False) -> str:
+    def graph_generate(
+        self,
+        params: List[str],
+        outfile: str,
+        version: str,
+        bitcoin_conf: Optional[str] = None,
+        random: bool = False,
+    ) -> str:
         graph_func = nx.generators.random_internet_as_graph
 
         graph = create_graph_with_probability(graph_func, params, version, bitcoin_conf, random)
@@ -339,7 +363,6 @@ class Server():
         wn = Warnet.from_network(network, self.backend)
         return wn._warnet_dict_representation()
 
-
     def network_status(self, network: str = "warnet") -> List:
         """
         Get running status of a warnet network named <network>
@@ -347,10 +370,7 @@ class Server():
         wn = Warnet.from_network(network, self.backend)
         stats = []
         for tank in wn.tanks:
-            status = {
-                "tank_index": tank.index,
-                "bitcoin_status": tank.status.name.lower()
-            }
+            status = {"tank_index": tank.index, "bitcoin_status": tank.status.name.lower()}
             if tank.lnnode is not None:
                 status["lightning_status"] = tank.lnnode.status.name.lower()
             stats.append(status)
@@ -362,9 +382,7 @@ class Server():
         """
         config_dir = gen_config_dir(network)
         if config_dir.exists():
-            return (
-                f"Config dir {config_dir} already exists, not overwriting existing warnet"
-            )
+            return f"Config dir {config_dir} already exists, not overwriting existing warnet"
         wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
         wn.generate_deployment()
         if not wn.deployment_file.is_file():

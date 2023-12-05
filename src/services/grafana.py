@@ -13,7 +13,7 @@ class Grafana(BaseService):
             "volumes": [
                 "grafana-storage:/var/lib/grafana",
                 f"{self.config_dir}/grafana-provisioning/datasources:/etc/grafana/provisioning/datasources",
-                f"{self.config_dir}/grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards"
+                f"{self.config_dir}/grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards",
             ],
             "networks": [self.docker_network],
             "environment": ["GF_LOG_LEVEL=debug"],

@@ -4,6 +4,7 @@ from time import sleep
 from warnet.test_framework_bridge import WarnetTestFramework
 from scenarios.utils import ensure_miner
 
+
 def cli_help():
     return "Fund LN wallets and open channels"
 
@@ -43,7 +44,6 @@ class LNInit(WarnetTestFramework):
                 tx = src_node.open_channel_to_tank(dst, data["channel"])["funding_txid"]
                 opening_txs.append(tx)
 
-
         self.log.info("Waiting for all channel open txs in mempool")
         while True:
             all_set = True
@@ -71,6 +71,7 @@ class LNInit(WarnetTestFramework):
             sleep(2)
 
         self.log.info(f"Warnet LN ready with {len(recv_addrs)} nodes and {len(ln_edges)} channels.")
+
 
 if __name__ == "__main__":
     LNInit().main()
