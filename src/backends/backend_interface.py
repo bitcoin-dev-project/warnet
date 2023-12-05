@@ -1,8 +1,14 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+from enum import Enum
 
 
-class ContainerInterface(ABC):
+class ServiceType(Enum):
+    BITCOIN = 1
+    LIGHTNING = 2
+
+
+class BackendInterface(ABC):
 
     def __init__(self, config_dir: Path) -> None:
         self.config_dir = config_dir
@@ -17,7 +23,7 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def up(self) -> bool:
+    def up(self, warnet) -> bool:
         """
         Bring an exsiting network that is down, back up.
             e.g. `docker compose -p up -d`
@@ -25,7 +31,7 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def down(self) -> bool:
+    def down(self, warnet) -> bool:
         """
         Bring an exsiting network down.
             e.g. `docker compose down`
@@ -33,44 +39,44 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_container(self, container_name: str):
+    def get_status(self, tank_index: int, service: ServiceType):
         """
-        Get a container handle by [container_name]
-        """
-        raise NotImplementedError("This method should be overridden by child class")
-
-    @abstractmethod
-    def exec_run(self, container_name: str, cmd: str, user: str):
-        """
-        Exectute a command on a [container_name]
+        Get the running status of a tank by [tanks_index]
         """
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_bitcoin_debug_log(self, container_name: str):
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str):
         """
-        Fetch debug log from container [container_name]
-        """
-        raise NotImplementedError("This method should be overridden by child class")
-
-    @abstractmethod
-    def get_bitcoin_cli(self, container_name: str, method: str, params=None):
-        """
-        Call `bitcoin-cli` on container [container_name] with [method] and <params>
+        Exectute a command on tank [tank_index] in service [service]
         """
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_file(self, container_name: str, file_path: str):
+    def get_bitcoin_debug_log(self, tank_index: int):
+        """
+        Fetch debug log from tank [tank_index]
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def get_bitcoin_cli(self, tank, method: str, params=None):
+        """
+        Call `bitcoin-cli` on tank [tank_index] with [method] and <params>
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         """
         Read a file from inside a container
         """
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest"):
+    def get_messages(self, tank_index: int, b_ipv4: str, bitcoin_network: str = "regtest"):
         """
-        Get bitcoin messages between containers [a_name] and [b_ipv4] on [bitcoin_network]
+        Get bitcoin messages between containers [tank_index] and [b_ipv4] on [bitcoin_network]
         """
         raise NotImplementedError("This method should be overridden by child class")
 
@@ -82,7 +88,7 @@ class ContainerInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def generate_deployment_file(self, warnet):
+    def generate_deployment_file(self, warnet) -> None:
         """
         Generate a deployment configuration file e.g docker-compose.yml
         Should set warnet.deployment_file
@@ -95,11 +101,3 @@ class ContainerInterface(ABC):
         Rebuild a warnet object from an active deployment
         """
         raise NotImplementedError("This method should be overridden by child class")
-
-    @abstractmethod
-    def tank_from_deployment(self):
-        """
-        Build a tank object from an active deployment
-        """
-        raise NotImplementedError("This method should be overridden by child class")
-

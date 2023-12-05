@@ -12,9 +12,10 @@ from warnet.utils import (
     sanitize_tc_netem_command,
     SUPPORTED_TAGS,
 )
+from backends import ServiceType
+from .status import RunningStatus
 
 
-CONTAINER_PREFIX_BITCOIND = "tank"
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 
 
@@ -37,10 +38,8 @@ class Tank:
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
-        self._container = None
         self._suffix = None
         self._ipv4 = None
-        self._container_name = None
         self._exporter_name = None
         self.extra_build_args = ""
         self.lnnode = None
@@ -83,7 +82,7 @@ class Tank:
         self.extra_build_args = node.get("build_args", self.extra_build_args)
 
         if "ln" in node:
-            self.lnnode = LNNode(self.warnet, self, node["ln"])
+            self.lnnode = LNNode(self.warnet, self, node["ln"], self.warnet.container_interface)
 
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -102,33 +101,20 @@ class Tank:
         return self._ipv4
 
     @property
-    def container_name(self):
-        if self._container_name is None:
-            self._container_name = (
-                f"{self.network_name}_{CONTAINER_PREFIX_BITCOIND}_{self.suffix}"
-            )
-        return self._container_name
-
-    @property
     def exporter_name(self):
         if self._exporter_name is None:
             self._exporter_name = (
-                f"{self.network_name}_{CONTAINER_PREFIX_PROMETHEUS}_{self.suffix}"
+                f"{self.network_name}-{CONTAINER_PREFIX_PROMETHEUS}-{self.suffix}"
             )
         return self._exporter_name
 
     @property
-    def container(self):
-        if self._container is None:
-            try:
-                self._container = self.warnet.container_interface.get_container(self.container_name)
-            except:
-                pass
-        return self._container
+    def status(self) -> RunningStatus:
+        return self.warnet.container_interface.get_status(self.index, ServiceType.BITCOIN)
 
     @exponential_backoff()
     def exec(self, cmd: str, user: str = "root"):
-        return self.warnet.container_interface.exec_run(self.container_name, cmd=cmd, user=user)
+        return self.warnet.container_interface.exec_run(self.index, ServiceType.BITCOIN,  cmd=cmd, user=user)
 
     def apply_network_conditions(self):
         if self.netem is None:
@@ -136,7 +122,7 @@ class Tank:
 
         if not sanitize_tc_netem_command(self.netem):
             logger.warning(
-                f"Not applying unsafe tc-netem conditions to container {self.container_name}: `{self.netem}`"
+                f"Not applying unsafe tc-netem conditions to tank {self.index}: `{self.netem}`"
             )
             return
 
@@ -144,11 +130,11 @@ class Tank:
         try:
             self.exec(self.netem)
             logger.info(
-                f"Successfully applied network conditions to {self.container_name}: `{self.netem}`"
+                f"Successfully applied network conditions to tank {self.index}: `{self.netem}`"
             )
         except Exception as e:
             logger.error(
-                f"Error applying network conditions to {self.container_name}: `{self.netem}` ({e})"
+                f"Error applying network conditions to tank {self.index}: `{self.netem}` ({e})"
             )
 
     def export(self, config, subdir):

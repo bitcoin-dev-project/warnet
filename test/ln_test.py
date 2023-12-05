@@ -15,15 +15,18 @@ print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
 
 
-print("\nTesting warcli network export")
-path = Path(base.warcli("network export")) / "sim.json"
-with open(path, "r") as file:
-    data = json.load(file)
-    print(json.dumps(data, indent=4))
-    assert len(data["nodes"]) == 3
-    for node in data["nodes"]:
-        assert os.path.exists(node["macaroon"])
-        assert os.path.exists(node["cert"])
+if base.backend != "compose":
+    print("\nSkipping network export test, only supported with compose backend")
+else:
+    print("\nTesting warcli network export")
+    path = Path(base.warcli("network export")) / "sim.json"
+    with open(path, "r") as file:
+        data = json.load(file)
+        print(json.dumps(data, indent=4))
+        assert len(data["nodes"]) == 3
+        for node in data["nodes"]:
+            assert os.path.exists(node["macaroon"])
+            assert os.path.exists(node["cert"])
 
 
 print("\nRunning LN Init scenario")

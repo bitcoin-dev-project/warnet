@@ -109,31 +109,13 @@ def status(network: str):
     """
     try:
         result = rpc_call("network_status", {"network": network})
-
-        # Preprocess the data to add color for "running" status
-        colored_result = []
-        for item in result:
-            if item[1] == "running":
-                colored_item = [item[0], f"[green]{item[1]}[/green]"]
-            else:
-                colored_item = item
-            colored_result.append(colored_item)
-
-        # Create the table
-        table = Table(show_header=True, header_style="bold")
-        table.add_column("Container name")
-        table.add_column("Status")
-
-        # Add rows to the table
-        for row in colored_result:
-            table.add_row(*row)
-
-        console = Console()
-        console.print(table)
-
+        for tank in result:
+            lightning_status = ""
+            if 'lightning_status' in tank:
+                lightning_status = f"\tLightning: {tank['lightning_status']}"
+            print(f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}")
     except Exception as e:
-        print(f"[red]Error getting status of network {network}: {e}[/red]")
-
+        print(f"Error getting status of network {network}: {e}")
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)

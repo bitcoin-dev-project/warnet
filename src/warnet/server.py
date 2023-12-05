@@ -27,7 +27,8 @@ from warnet.utils import (
 WARNET_SERVER_PORT = 9276
 
 class Server():
-    def __init__(self):
+    def __init__(self, backend):
+        self.backend = backend
         system = os.name
         if system == 'nt' or platform.system() == "Windows":
             self.basedir = os.path.join(os.path.expanduser("~"), "warnet")
@@ -72,6 +73,10 @@ class Server():
         self.logger = logging.getLogger("warnet")
         self.logger.info("Logging started")
 
+        if self.backend == "k8s":
+            # if using k8s as a backend, tone the logging down
+            logging.getLogger("kubernetes.client.rest").setLevel(logging.WARNING)
+
         def log_request():
             self.logger.debug(request.json)
 
@@ -107,7 +112,7 @@ class Server():
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             result = wn.container_interface.get_bitcoin_cli(wn.tanks[node], method, params)
             return str(result)
@@ -118,9 +123,9 @@ class Server():
         """
         Fetch the Bitcoin Core debug log from <node>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
-            result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
+            result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].index)
             return str(result)
         except Exception as e:
             raise Exception(f"{e}")
@@ -129,10 +134,10 @@ class Server():
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             messages = [
-                msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].container_name, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
+                msg for msg in wn.container_interface.get_messages(wn.tanks[node_a].index, wn.tanks[node_b].ipv4, wn.bitcoin_network) if msg is not None
             ]
             if not messages:
                 return f"No messages found between {node_a} and {node_b}"
@@ -202,7 +207,7 @@ class Server():
             return f"Scenario {scenario} not found at {scenario_path}."
 
         try:
-            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
+            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}", f"--backend={self.backend}"]
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(
@@ -249,13 +254,13 @@ class Server():
         } for sc in self.running_scenarios]
 
     def network_up(self, network: str = "warnet") -> str:
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
 
         def thread_start(wn):
             try:
-                wn.container_interface.up()
+                # wn.container_interface.up()
                 # Update warnet from docker here to get ip addresses
-                wn = Warnet.from_network(network)
+                wn = Warnet.from_network(network, self.backend)
                 wn.apply_network_conditions()
                 wn.connect_edges()
                 self.logger.info(
@@ -279,14 +284,14 @@ class Server():
                 shutil.rmtree(config_dir)
             else:
                 return f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
-        wn = Warnet.from_graph_file(graph_file, config_dir, network)
+        wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
 
         def thread_start(wn):
             try:
                 wn.generate_deployment()
                 # grep: disable-exporters
                 # wn.write_prometheus_config()
-                wn.write_fork_observer_config()
+                # wn.write_fork_observer_config()
                 wn.warnet_build()
                 wn.warnet_up()
                 wn.apply_network_conditions()
@@ -320,7 +325,7 @@ class Server():
         """
         Stop all containers in <network>.
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         try:
             wn.warnet_down()
             return "Stopping warnet"
@@ -331,7 +336,7 @@ class Server():
         """
         Get info about a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         return wn._warnet_dict_representation()
 
 
@@ -339,14 +344,16 @@ class Server():
         """
         Get running status of a warnet network named <network>
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         stats = []
         for tank in wn.tanks:
-            status = tank.container.status if tank.container is not None else None
-            stats.append([tank.container_name, status])
+            status = {
+                "tank_index": tank.index,
+                "bitcoin_status": tank.status.name.lower()
+            }
             if tank.lnnode is not None:
-                ln_status = tank.lnnode.container.status if tank.lnnode.container is not None else None
-                stats.append([tank.lnnode.container_name, ln_status])
+                status["lightning_status"] = tank.lnnode.status.name.lower()
+            stats.append(status)
         return stats
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:
@@ -358,7 +365,7 @@ class Server():
             return (
                 f"Config dir {config_dir} already exists, not overwriting existing warnet"
             )
-        wn = Warnet.from_graph_file(graph_file, config_dir, network)
+        wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
         wn.generate_deployment()
         if not wn.deployment_file.is_file():
             return f"No deployment file found at {wn.deployment_file}"
@@ -376,7 +383,7 @@ class Server():
         """
         Grep the logs from the fluentd container for a regex pattern
         """
-        wn = Warnet.from_network(network)
+        wn = Warnet.from_network(network, self.backend)
         return wn.container_interface.logs_grep(pattern, network)
 
 
@@ -384,7 +391,16 @@ def run_server():
     # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
     # "If the debug flag is set the server will automatically reload
     # for code changes and show a debugger in case an exception happened."
-    Server().app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
+
+    backend = "compose"
+    if len(sys.argv) > 1:
+        backend = sys.argv[1]
+
+    if backend not in ["compose", "k8s"]:
+        print(f"Invalid backend {backend}")
+        sys.exit(1)
+
+    Server(backend).app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
 
 
 if __name__ == "__main__":

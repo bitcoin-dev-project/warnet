@@ -10,15 +10,15 @@ from typing import cast, List, Tuple
 import docker
 from docker.models.containers import Container
 
-from .interfaces import ContainerInterface
-from warnet.utils import bubble_exception_str, parse_raw_messages
+from backends import BackendInterface, ServiceType
 from services import SERVICES
 from services.cadvisor import CAdvisor
 from services.fork_observer import ForkObserver
 from services.grafana import Grafana
 from services.prometheus import Prometheus
 from templates import TEMPLATES
-from warnet.tank import Tank, CONTAINER_PREFIX_BITCOIND
+from warnet.tank import Tank
+from warnet.status import RunningStatus
 from warnet.lnnode import LNNode
 from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
 
@@ -29,16 +29,20 @@ TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
 GRAFANA_PROVISIONING = "grafana-provisioning"
+CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
+CONTAINER_PREFIX_LN = "tank-ln"
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
 logging.getLogger("docker.auth").setLevel(logging.WARNING)
 
 
-class DockerInterface(ContainerInterface):
-    def __init__(self, config_dir: Path) -> None:
+class ComposeBackend(BackendInterface):
+    def __init__(self, config_dir: Path, network_name: str) -> None:
         super().__init__(config_dir)
+        self.network_name = network_name
         self.client = docker.DockerClient = docker.from_env()
+
 
     @bubble_exception_str
     def build(self) -> bool:
@@ -63,7 +67,7 @@ class DockerInterface(ContainerInterface):
 
 
     @bubble_exception_str
-    def up(self):
+    def up(self, *_):
         command = ["docker", "compose", "up", "--detach"]
         try:
             with subprocess.Popen(
@@ -82,7 +86,7 @@ class DockerInterface(ContainerInterface):
             )
 
     @bubble_exception_str
-    def down(self):
+    def down(self, warnet):
         command = ["docker", "compose", "down"]
         try:
             with subprocess.Popen(
@@ -100,19 +104,47 @@ class DockerInterface(ContainerInterface):
                 f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
-    def get_container(self, container_name: str) -> Container:
+    def get_container_name(self, tank_index: int, service: ServiceType) -> str:
+        match service:
+            case ServiceType.BITCOIN:
+                return f"{self.network_name}-{CONTAINER_PREFIX_BITCOIND}-{tank_index:06}"
+            case ServiceType.LIGHTNING:
+                return f"{self.network_name}-{CONTAINER_PREFIX_LN}-{tank_index:06}"
+            case _:
+                raise Exception("Unsupported service type")
+
+    def get_container(self, tank_index: int, service: ServiceType) -> Container:
+        container_name = self.get_container_name(tank_index, service)
+        if len(self.client.containers.list(filters={"name": container_name})) == 0:
+            return None
         return cast(Container, self.client.containers.get(container_name))
 
-    def exec_run(self, container_name: str, cmd: str, user: str = "root"):
-        c = self.get_container(container_name)
+    def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
+        container = self.get_container(tank_index, service)
+        if container is None:
+            return RunningStatus.STOPPED
+        match container.status:
+            case 'running':
+                return RunningStatus.RUNNING
+            case 'exited' | 'dead':
+                if container.attrs['State']['ExitCode'] == 0:
+                    return RunningStatus.STOPPED
+                else:
+                    return RunningStatus.FAILED
+            case _:
+                return RunningStatus.PENDING
+
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root") -> str:
+        c = self.get_container(tank_index, service)
         result = c.exec_run(cmd=cmd, user=user)
         if result.exit_code != 0:
             raise Exception(
-                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}"
+                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')} {cmd}"
             )
         return result.output.decode("utf-8")
 
-    def get_bitcoin_debug_log(self, container_name: str):
+    def get_bitcoin_debug_log(self, tank_index: int):
+        container_name = self.get_container_name(tank_index, ServiceType.BITCOIN)
         now = datetime.utcnow()
 
         logs = self.client.api.logs(
@@ -129,10 +161,10 @@ class DockerInterface(ContainerInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
-        return self.exec_run(tank.container_name, cmd, user="bitcoin")
+        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd, user="bitcoin")
 
-    def get_file(self, container_name, file_path):
-        container = self.get_container(container_name)
+    def get_file(self, tank_index: int, service: ServiceType, file_path: str):
+        container = self.get_container(tank_index, service)
         data, stat = container.get_archive(file_path)
         out = b""
         for chunk in data:
@@ -143,21 +175,22 @@ class DockerInterface(ContainerInterface):
         out = out[: stat["size"]]
         return out
 
-    def get_messages(self, a_name: str, b_ipv4: str, bitcoin_network: str = "regtest"):
+    def get_messages(self, tank_index: int, b_ipv4: str, bitcoin_network: str = "regtest"):
         # start with the IP of the peer
         # find the corresponding message capture folder
         # (which may include the internal port if connection is inbound)
         subdir = (
             "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         )
-        dirs = self.exec_run(a_name, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture")
+        dirs = self.exec_run(tank_index, ServiceType.BITCOIN, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture")
         dirs = dirs.splitlines()
         messages = []
         for dir_name in dirs:
             if b_ipv4 in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     blob = self.get_file(
-                        a_name,
+                        tank_index,
+                        ServiceType.BITCOIN,
                         f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}")
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json
@@ -288,9 +321,10 @@ class DockerInterface(ContainerInterface):
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
         set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
 
-    def add_services(self, tank, services):
+    def add_services(self, tank: Tank, services):
         assert tank.index is not None
-        services[tank.container_name] = {}
+        container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
+        services[container_name] = {}
         logger.debug(f"{tank.version=}")
 
         # Setup bitcoind, either release binary or build from source
@@ -306,15 +340,15 @@ class DockerInterface(ContainerInterface):
                     "BUILD_ARGS": f"{tank.DEFAULT_BUILD_ARGS + tank.extra_build_args}",
                 },
             }
-            services[tank.container_name]['build'] = build
+            services[container_name]['build'] = build
             self.copy_configs(tank)
         else:
             image = f"{DOCKER_REGISTRY}:{tank.version}"
-            services[tank.container_name]['image'] = image
+            services[container_name]['image'] = image
         # Add common bitcoind service details
-        services[tank.container_name].update(
+        services[container_name].update(
             {
-                "container_name": tank.container_name,
+                "container_name": container_name,
                 "environment": {
                     "BITCOIN_ARGS": self.default_config_args(tank)
                 },
@@ -337,15 +371,7 @@ class DockerInterface(ContainerInterface):
         )
 
         if tank.lnnode is not None:
-            tank.lnnode.add_services(services)
-            services[tank.container_name].update(
-            {
-                "labels": {
-                    "lnnode_container_name": tank.lnnode.container_name,
-                    "lnnode_ipv4_address": tank.lnnode.ipv4,
-                    "lnnode_impl": tank.lnnode.impl
-                }
-            })
+            self.add_lnd_service(tank, services)
 
         # grep: disable-exporters
         # Add the prometheus data exporter in a neighboring container
@@ -361,6 +387,56 @@ class DockerInterface(ContainerInterface):
         #     "ports": [f"{8335 + self.index}:9332"],
         #     "networks": [self.docker_network],
         # }
+
+    def add_lnd_service(self, tank, services):
+        ln_container_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
+        bitcoin_container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
+        # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
+        args = [
+            "--noseedbackup",
+            "--norest",
+            "--debuglevel=debug",
+            "--accept-keysend",
+            "--bitcoin.active",
+            "--bitcoin.regtest",
+            "--bitcoin.node=bitcoind",
+            f"--bitcoind.rpcuser={tank.rpc_user}",
+            f"--bitcoind.rpcpass={tank.rpc_password}",
+            f"--bitcoind.rpchost={tank.ipv4}:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock=tcp://{tank.ipv4}:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx=tcp://{tank.ipv4}:{tank.zmqtxport}",
+            f"--externalip={tank.lnnode.ipv4}",
+            f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
+            f"--alias={tank.index}",
+        ]
+        services[ln_container_name] = {
+            "container_name": ln_container_name,
+            "image": "lightninglabs/lnd:v0.17.0-beta",
+            "command": " ".join(args),
+            "networks": {
+                tank.network_name: {
+                    "ipv4_address": f"{tank.lnnode.ipv4}",
+                }
+            },
+            "labels": {
+                "tank_index": tank.index,
+                "tank_container_name": bitcoin_container_name,
+                "tank_ipv4_address": tank.ipv4
+            },
+            "depends_on":
+                {
+                    bitcoin_container_name: {"condition": "service_healthy"}
+                },
+            "restart": "on-failure"
+        }
+        services[bitcoin_container_name].update(
+            {
+                "labels": {
+                    "lnnode_container_name": ln_container_name,
+                    "lnnode_ipv4_address": tank.lnnode.ipv4,
+                    "lnnode_impl": tank.lnnode.impl
+                }
+            })
 
     # def add_scrapers(self, scrapers):
     #     scrapers.append(
@@ -383,7 +459,7 @@ class DockerInterface(ContainerInterface):
                 warnet.tanks.append(tank)
 
     def tank_from_deployment(self, service, warnet):
-        rex = fr"{warnet.network_name}_{CONTAINER_PREFIX_BITCOIND}_([0-9]{{6}})"
+        rex = fr"{warnet.network_name}-{CONTAINER_PREFIX_BITCOIND}-([0-9]{{6}})"
         # Not a tank, maybe a scaled service
         if not "container_name" in service:
             return None
@@ -401,7 +477,6 @@ class DockerInterface(ContainerInterface):
 
         labels = service.get("labels", {})
         if "lnnode_impl" in labels:
-            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"])
-            tank.lnnode.container_name = labels.get("lnnode_container_name")
+            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"], self)
             tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
         return tank

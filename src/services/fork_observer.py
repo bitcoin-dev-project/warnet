@@ -9,7 +9,7 @@ class ForkObserver(BaseService):
         self.fork_observer_config = fork_observer_config
         self.service = {
             "image": "b10c/fork-observer:latest",
-            "container_name": f"{self.docker_network}_fork-observer",
+            "container_name": f"{self.docker_network}-fork-observer",
             "ports": [f"{PORT}:2323"],
             "volumes": [f"{self.fork_observer_config}:/app/config.toml"],
             "networks": [self.docker_network],

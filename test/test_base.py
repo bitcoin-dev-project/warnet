@@ -1,5 +1,6 @@
 import atexit
 import os
+import sys
 import threading
 from pathlib import Path
 from subprocess import Popen, run, PIPE, STDOUT
@@ -12,7 +13,7 @@ from warnet.utils import exponential_backoff
 class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
-        self.tmpdir = Path(mkdtemp(prefix="warnet_test_"))
+        self.tmpdir = Path(mkdtemp(prefix="warnet-test-"))
 
         os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
 
@@ -29,6 +30,14 @@ class TestBase:
 
         atexit.register(self.cleanup)
 
+        self.backend = "compose"
+        if len(sys.argv) > 1:
+            self.backend = sys.argv[1]
+
+        if self.backend not in ["compose", "k8s"]:
+            print(f"Invalid backend {backend}")
+            sys.exit(1)
+
         print(f"\nWarnet test base started")
 
     def cleanup(self, signum = None, frame = None):
@@ -39,7 +48,7 @@ class TestBase:
             print("\nStopping network")
             if self.network:
                 self.warcli("network down")
-                self.wait_for_all_tanks_status(target="none", timeout=60, interval=1)
+                self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
 
             print("\nStopping server")
             self.warcli("stop", False)
@@ -102,7 +111,7 @@ class TestBase:
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
         self.server = Popen(
-            "warnet",
+            ["warnet", self.backend],
             stdout=PIPE,
             stderr=STDOUT,
             bufsize=1,
@@ -145,13 +154,20 @@ class TestBase:
         def check_status():
             tanks = self.wait_for_rpc("network_status", {"network": self.network_name})
             stats = {
-                "total": len(tanks)
+                "total": 0
             }
             for tank in tanks:
-                status = tank[1] if tank[1] is not None else "none"
-                if status not in stats:
-                    stats[status] = 0
-                stats[status] += 1
+                stats["total"] += 1
+                bitcoin_status = tank["bitcoin_status"]
+                if bitcoin_status not in stats:
+                    stats[bitcoin_status] = 0
+                stats[bitcoin_status] += 1
+                if "lightning_status" in tank:
+                    stats["total"] += 1
+                    lightning_status = tank["lightning_status"]
+                    if lightning_status not in stats:
+                        stats[lightning_status] = 0
+                    stats[lightning_status] += 1
             print(f"Waiting for all tanks to reach '{target}': {stats}")
             # All tanks are running, proceed
             if target in stats and stats[target] == stats["total"]:
