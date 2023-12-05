@@ -207,7 +207,7 @@ class Server():
             return f"Scenario {scenario} not found at {scenario_path}."
 
         try:
-            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
+            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}", f"--backend={self.backend}"]
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(

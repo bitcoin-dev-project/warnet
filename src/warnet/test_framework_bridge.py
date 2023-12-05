@@ -45,7 +45,7 @@ class WarnetTestFramework(BitcoinTestFramework):
         ch.setFormatter(formatter)
         self.log.addHandler(ch)
 
-        self.warnet = Warnet.from_network(self.options.network, backend="compose")
+        self.warnet = Warnet.from_network(self.options.network, self.options.backend)
         for i, tank in enumerate(self.warnet.tanks):
             ip = tank.ipv4
             self.log.info(f"Adding TestNode {i} from tank {tank.index} with IP {ip}")
@@ -244,6 +244,11 @@ class WarnetTestFramework(BitcoinTestFramework):
             dest="network",
             default="warnet",
             help="Designate which warnet this should run on (default: warnet)",
+        )
+        parser.add_argument(
+            "--backend",
+            dest="backend",
+            help="Designate which warnet backend this should run on",
         )
 
         self.add_options(parser)
