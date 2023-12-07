@@ -12,7 +12,7 @@ import re
 import yaml
 import io
 
-from typing import cast
+from typing import cast, List
 
 from warnet.tank import Tank
 from warnet.lnnode import LNNode
@@ -162,6 +162,12 @@ class KubernetesBackend(BackendInterface):
             container=BITCOIN_CONTAINER_NAME,
         )
         return logs
+
+    def ln_cli(self, tank: Tank, command: List[str]):
+        if tank.lnnode is None:
+            raise Exception("No LN node configured for tank")
+        cmd = tank.lnnode.generate_cli_command(command)
+        return self.exec_run(tank.index, ServiceType.LIGHTNING, cmd)
 
     def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:

@@ -86,6 +86,7 @@ class Server:
     def setup_rpc(self):
         # Tanks
         self.jsonrpc.register(self.tank_bcli)
+        self.jsonrpc.register(self.tank_lncli)
         self.jsonrpc.register(self.tank_debug_log)
         self.jsonrpc.register(self.tank_messages)
         # Scenarios
@@ -121,6 +122,14 @@ class Server:
             return str(result)
         except Exception as e:
             raise Exception(f"{e}")
+
+    def tank_lncli(self, node: int, command: List[str], network: str = "warnet") -> str:
+        """
+        Call lightning cli on <node> <command> in [network]
+        """
+        wn = Warnet.from_network(network, self.backend)
+        result = wn.container_interface.ln_cli(wn.tanks[node], command)
+        return str(result)
 
     def tank_debug_log(self, network: str, node: int) -> str:
         """

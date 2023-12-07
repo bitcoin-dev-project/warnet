@@ -3,7 +3,6 @@
 import json
 import os
 from time import sleep
-from warnet.warnet import Warnet
 from test_base import TestBase
 from pathlib import Path
 
@@ -36,18 +35,15 @@ base.wait_for_all_scenarios()
 
 
 print("\nTest LN payment from 0 -> 2")
-wn = Warnet.from_network(base.network_name)
-lnd0 = wn.tanks[0].lnnode
-lnd2 = wn.tanks[2].lnnode
-inv = json.loads(lnd2.lncli("addinvoice --amt=1234"))["payment_request"]
+inv = json.loads(base.warcli("lncli 2 addinvoice --amt=1234"))["payment_request"]
 
 print(f"\nGot invoice from node 2: {inv}")
 print("\nPaying invoice from node 0...")
-print(lnd0.lncli(f"payinvoice -f {inv}"))
+print(base.warcli(f"lncli 0 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
 while True:
-    invs = json.loads(lnd2.lncli("listinvoices"))["invoices"]
+    invs = json.loads(base.warcli("lncli 2 listinvoices"))["invoices"]
     if len(invs) > 0:
         if invs[0]["state"] == "SETTLED":
             print("\nSettled!")

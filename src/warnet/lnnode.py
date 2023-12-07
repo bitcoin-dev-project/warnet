@@ -3,6 +3,7 @@ import os
 from warnet.utils import exponential_backoff, generate_ipv4_addr
 from backends import BackendInterface, ServiceType
 from .status import RunningStatus
+from typing import List
 
 
 class LNNode:
@@ -45,6 +46,18 @@ class LNNode:
         uri = tank.lnnode.getURI()
         res = self.lncli(f"connect {uri}")
         return res
+    
+    def generate_cli_command(self, command: List[str]):
+        network = f"--network={self.tank.warnet.bitcoin_network}"
+        cmd = f"{network} {' '.join(command)}"
+        match self.impl:
+            case "lnd":
+                cmd = f"lncli {cmd}"
+            case "cln":
+                cmd = f"lightning-cli {cmd}"
+            case _:
+                raise Exception(f"Unsupported LN implementation: {self.impl}")
+        return cmd
 
     def export(self, config, subdir):
         container_name = self.backend.get_container_name(self.tank.index, ServiceType.LIGHTNING)
