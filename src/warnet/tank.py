@@ -6,9 +6,9 @@ import logging
 
 from pathlib import Path
 from warnet.lnnode import LNNode
+from warnet.ip_generator import IPV4AddressGenerator
 from warnet.utils import (
     exponential_backoff,
-    generate_ipv4_addr,
     sanitize_tc_netem_command,
     SUPPORTED_TAGS,
 )
@@ -22,7 +22,7 @@ CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 logger = logging.getLogger("tank")
 
 
-class Tank:
+class Tank(IPV4AddressGenerator):
     DEFAULT_BUILD_ARGS = "--disable-tests --with-incompatible-bdb --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --enable-debug "
 
     def __init__(self, index:int, config_dir: Path, warnet):
@@ -97,7 +97,7 @@ class Tank:
     @property
     def ipv4(self):
         if self._ipv4 is None:
-            self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
+            self._ipv4 = self.generate_ipv4_addr(self.warnet.subnet)
         return self._ipv4
 
     @property

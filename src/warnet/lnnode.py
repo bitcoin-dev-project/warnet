@@ -1,21 +1,21 @@
 
 import json
 import os
+from warnet.ip_generator import IPV4AddressGenerator
 from warnet.utils import (
     exponential_backoff,
-    generate_ipv4_addr
 )
 from backends import BackendInterface, ServiceType
 from .status import RunningStatus
 
-class LNNode:
+class LNNode(IPV4AddressGenerator):
     def __init__(self, warnet, tank, impl, backend: BackendInterface):
         self.warnet = warnet
         self.tank = tank
         assert impl == "lnd"
         self.impl = impl
         self.backend = backend
-        self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
+        self.ipv4 = super().generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 
     @property
