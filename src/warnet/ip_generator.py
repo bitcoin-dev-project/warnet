@@ -3,10 +3,6 @@ import ipaddress
 import random
 
 class IPV4AddressGenerator(ABC):
-    @abstractmethod
-    def get_ip(self):
-        pass
-
     def generate_ipv4_addr(self, subnet):
         """
         Generate a valid random IPv4 address within the given subnet.
