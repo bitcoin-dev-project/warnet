@@ -8,6 +8,7 @@ from pathlib import Path
 from warnet.lnnode import LNNode
 from warnet.utils import (
     exponential_backoff,
+    generate_as,
     generate_ipv4_addr,
     sanitize_tc_netem_command,
     SUPPORTED_TAGS,
@@ -41,6 +42,7 @@ class Tank:
         self.rpc_password = "2themoon"
         self._suffix = None
         self._ipv4 = None
+        self._a_system = None
         self._exporter_name = None
         self.extra_build_args = ""
         self.lnnode = None
@@ -111,6 +113,12 @@ class Tank:
     @property
     def status(self) -> RunningStatus:
         return self.warnet.container_interface.get_status(self.index, ServiceType.BITCOIN)
+
+    @property
+    def autonomous_system(self) -> int:
+        if self._a_system is None:
+            self._a_system = generate_as()
+        return self._a_system
 
     @exponential_backoff()
     def exec(self, cmd: str, user: str = "root"):
