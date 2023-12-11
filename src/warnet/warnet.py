@@ -3,21 +3,26 @@
 """
 
 import base64
+import io
 import json
 import logging
 import networkx
 import os
 import shutil
+import sys
 from pathlib import Path
 from templates import TEMPLATES
 from typing import List, Optional
 
+import external.buildmap as buildmap
 from backends import ComposeBackend, KubernetesBackend
 from warnet.tank import Tank
 from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
+ASMAP_TXT_PATH = "asmap.txt"
+ASMAP_DAT_PATH = "asmap.dat"
 
 
 class Warnet:
@@ -37,6 +42,8 @@ class Warnet:
         self.tanks: List[Tank] = []
         self.deployment_file: Optional[Path] = None
         self.backend = backend
+        self.as_map_txt_path = config_dir / ASMAP_TXT_PATH
+        self.as_map_dat_path = config_dir / ASMAP_DAT_PATH
 
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
@@ -238,3 +245,35 @@ class Warnet:
         config_path = os.path.join(subdir, "sim.json")
         with open(config_path, "a") as f:
             json.dump(config, f)
+
+    def generate_as_map(self):
+        # Write AS mappings to file
+        with open(self.as_map_txt_path, "w") as f:
+            for tank in self.tanks:
+                f.write(f"{tank.ipv4}/32 AS{tank.autonomous_system}\n")
+
+        # Yes, read back into a string...
+        with open(self.as_map_txt_path, "r") as f:
+            file_content = f.read()
+
+        buffer = io.StringIO(file_content)
+        sys.stdin = buffer
+
+        entries = []
+        logger.info("AS map: Loading")
+        buildmap.Parse(entries)
+        logger.info(f"AS map: Read {len(entries)} prefixes")
+        logger.info("AS map: Constructing trie")
+        tree = buildmap.BuildTree(entries)
+        logger.info("AS map: Compacting tree")
+        tree, _ = buildmap.CompactTree(tree, True)
+        logger.info("AS map: Computing inner prefixes")
+        tree, _, _ = buildmap.PropTree(tree, True)
+
+        ser = buildmap.TreeSer(tree, None)
+        logger.info(f"AS map: Total bits: {len(ser)}")
+        with open(self.as_map_dat_path, "wb") as f:
+            f.write(bytes(buildmap.EncodeBytes(ser)))
+
+        # Reset sys.stdin to its original state
+        sys.stdin = sys.__stdin__
