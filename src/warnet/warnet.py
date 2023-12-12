@@ -129,6 +129,7 @@ class Warnet:
         self.network_name = network
         self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int)
         self.tanks_from_graph()
+        self.generate_as_map()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
 
@@ -152,6 +153,7 @@ class Warnet:
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
         if self.tanks == []:
             self.tanks_from_graph()
+            # TODO: read the AS Map file to re-learn each tank AS mapping on restarts.
         return self
 
     @property
