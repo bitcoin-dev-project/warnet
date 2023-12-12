@@ -255,12 +255,10 @@ class ComposeBackend(BackendInterface):
                         "job_name": tank.exporter_name,
                         "scrape_interval": "5s",
                         "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
-                    })
+                    }
+                )
 
-        config = {
-            "global": {"scrape_interval": "15s"},
-            "scrape_configs": scrape_configs
-        }
+        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
 
         prometheus_path = self.config_dir / "prometheus.yml"
         try:
@@ -381,6 +379,10 @@ class ComposeBackend(BackendInterface):
                     "start_period": "5s",  # Start checking after 5 seconds
                     "retries": 3,
                 },
+                "volumes": [
+                    # Mount asmap.dat in rw mode (as entrypoint.sh will attempt to take ownership of it)
+                    f"{self.config_dir / 'asmap.dat'}:/home/bitcoin/.bitcoin/regtest/asmap.dat:rw"
+                ],
             }
         )
 
@@ -398,7 +400,7 @@ class ComposeBackend(BackendInterface):
                     "BITCOIN_RPC_USER": tank.rpc_user,
                     "BITCOIN_RPC_PASSWORD": tank.rpc_password,
                 },
-                "networks": [tank.network_name]
+                "networks": [tank.network_name],
             }
 
     def add_lnd_service(self, tank, services):
