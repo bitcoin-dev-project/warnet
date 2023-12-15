@@ -81,7 +81,18 @@ def down(network: str):
     """
     Run 'docker compose down on a warnet named <--network> (default: "warnet").
     """
+
     try:
+        running_scenarios = rpc_call("scenarios_list_running", {})
+        if running_scenarios:
+            for scenario in running_scenarios:
+                pid = scenario.get("pid")
+                if pid:
+                    try:
+                        params = {"pid": pid}
+                        rpc_call("scenarios_stop", params)
+                    except Exception as e:
+                        continue
         result = rpc_call("network_down", {"network": network})
         print(result)
     except Exception as e:
