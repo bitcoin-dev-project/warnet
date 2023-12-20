@@ -9,7 +9,6 @@ class ServiceType(Enum):
 
 
 class BackendInterface(ABC):
-
     def __init__(self, config_dir: Path) -> None:
         self.config_dir = config_dir
         self.client = None
@@ -95,7 +94,7 @@ class BackendInterface(ABC):
         """
         raise NotImplementedError("This method should be overridden by child class")
 
-    @ abstractmethod
+    @abstractmethod
     def warnet_from_deployment(self, warnet):
         """
         Rebuild a warnet object from an active deployment

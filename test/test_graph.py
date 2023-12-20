@@ -14,8 +14,8 @@ with tempfile.TemporaryDirectory() as dir:
     print(f"Writing test graph to {tf}")
     print(base.warcli(f"graph create n=10 --outfile={tf} --version={DEFAULT_TAG}", network=False))
     base.wait_for_predicate(lambda: Path(tf).exists())
- 
-     # Test that the graph actually works
+
+    # Test that the graph actually works
     print(base.warcli(f"network start {Path(tf)}"))
     base.wait_for_all_tanks_status(target="running")
     base.warcli("rpc 0 getblockcount")

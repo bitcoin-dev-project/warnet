@@ -111,11 +111,14 @@ def status(network: str):
         result = rpc_call("network_status", {"network": network})
         for tank in result:
             lightning_status = ""
-            if 'lightning_status' in tank:
+            if "lightning_status" in tank:
                 lightning_status = f"\tLightning: {tank['lightning_status']}"
-            print(f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}")
+            print(
+                f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}"
+            )
     except Exception as e:
         print(f"Error getting status of network {network}: {e}")
+
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)

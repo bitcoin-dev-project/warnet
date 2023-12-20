@@ -10,6 +10,7 @@ from warnet.cli.rpc import rpc_call
 from warnet.warnet import Warnet
 from warnet.utils import exponential_backoff
 
+
 class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
@@ -35,12 +36,12 @@ class TestBase:
             self.backend = sys.argv[1]
 
         if self.backend not in ["compose", "k8s"]:
-            print(f"Invalid backend {backend}")
+            print(f"Invalid backend {self.backend}")
             sys.exit(1)
 
-        print(f"\nWarnet test base started")
+        print("\nWarnet test base started")
 
-    def cleanup(self, signum = None, frame = None):
+    def cleanup(self, signum=None, frame=None):
         if self.server is None:
             return
 
@@ -75,23 +76,17 @@ class TestBase:
         cmd = ["warcli"] + str.split()
         if network:
             cmd += ["--network", self.network_name]
-        proc = run(
-            cmd,
-            stdout=PIPE,
-            stderr=PIPE)
+        proc = run(cmd, stdout=PIPE, stderr=PIPE)
         return proc.stdout.decode().strip()
 
-
     # Execute a warnet RPC API call directly (may return dict or list)
-    def rpc(self, method, params = []):
+    def rpc(self, method, params=[]):
         return rpc_call(method, params)
-
 
     # Repeatedly execute an RPC until it succeeds
     @exponential_backoff()
-    def wait_for_rpc(self, method, params = []):
+    def wait_for_rpc(self, method, params=[]):
         return rpc_call(method, params)
-
 
     # Read output from server using a thread
     def output_reader(self, pipe, func):
@@ -111,17 +106,15 @@ class TestBase:
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
         self.server = Popen(
-            ["warnet", self.backend],
-            stdout=PIPE,
-            stderr=STDOUT,
-            bufsize=1,
-            universal_newlines=True
+            ["warnet", self.backend], stdout=PIPE, stderr=STDOUT, bufsize=1, universal_newlines=True
         )
 
         print("\nWaiting for RPC")
 
         # Create a thread to read the output
-        self.server_thread = threading.Thread(target=self.output_reader, args=(self.server.stdout, print))
+        self.server_thread = threading.Thread(
+            target=self.output_reader, args=(self.server.stdout, print)
+        )
         self.server_thread.daemon = True
         self.server_thread.start()
 
@@ -132,30 +125,25 @@ class TestBase:
     def stop_server(self):
         self.cleanup()
 
-
-    def wait_for_predicate(self, predicate, timeout=5*60, interval=5):
+    def wait_for_predicate(self, predicate, timeout=5 * 60, interval=5):
         while True:
             if predicate():
                 break
             sleep(interval)
             timeout -= interval
             if timeout < 0:
-                raise Exception(f"Timed out waiting for predicate Truth")
-
+                raise Exception("Timed out waiting for predicate Truth")
 
     def get_tank(self, index):
         wn = Warnet.from_network(self.network_name)
         return wn.tanks[index]
 
-
     # Poll the warnet server for container status
     # Block until all tanks are running
-    def wait_for_all_tanks_status(self, target="running", timeout=20*60, interval=5):
+    def wait_for_all_tanks_status(self, target="running", timeout=20 * 60, interval=5):
         def check_status():
             tanks = self.wait_for_rpc("network_status", {"network": self.network_name})
-            stats = {
-                "total": 0
-            }
+            stats = {"total": 0}
             for tank in tanks:
                 stats["total"] += 1
                 bitcoin_status = tank["bitcoin_status"]
@@ -174,6 +162,7 @@ class TestBase:
                 return True
             else:
                 return False
+
         self.wait_for_predicate(check_status, timeout, interval)
 
     def wait_for_all_scenarios(self):
@@ -183,5 +172,5 @@ class TestBase:
                 if scn["active"]:
                     return False
             return True
-        self.wait_for_predicate(check_scenarios)
 
+        self.wait_for_predicate(check_scenarios)

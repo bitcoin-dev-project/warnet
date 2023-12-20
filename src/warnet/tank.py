@@ -25,7 +25,7 @@ logger = logging.getLogger("tank")
 class Tank:
     DEFAULT_BUILD_ARGS = "--disable-tests --with-incompatible-bdb --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --enable-debug "
 
-    def __init__(self, index:int, config_dir: Path, warnet):
+    def __init__(self, index: int, config_dir: Path, warnet):
         self.index = index
         self.config_dir = config_dir
         self.warnet = warnet
@@ -103,9 +103,7 @@ class Tank:
     @property
     def exporter_name(self):
         if self._exporter_name is None:
-            self._exporter_name = (
-                f"{self.network_name}-{CONTAINER_PREFIX_PROMETHEUS}-{self.suffix}"
-            )
+            self._exporter_name = f"{self.network_name}-{CONTAINER_PREFIX_PROMETHEUS}-{self.suffix}"
         return self._exporter_name
 
     @property
@@ -114,7 +112,9 @@ class Tank:
 
     @exponential_backoff()
     def exec(self, cmd: str, user: str = "root"):
-        return self.warnet.container_interface.exec_run(self.index, ServiceType.BITCOIN,  cmd=cmd, user=user)
+        return self.warnet.container_interface.exec_run(
+            self.index, ServiceType.BITCOIN, cmd=cmd, user=user
+        )
 
     def apply_network_conditions(self):
         if self.netem is None:

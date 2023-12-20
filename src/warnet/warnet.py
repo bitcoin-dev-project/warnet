@@ -24,7 +24,11 @@ class Warnet:
     def __init__(self, config_dir, backend, network_name: str):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = ComposeBackend(config_dir, network_name) if backend == "compose" else KubernetesBackend(config_dir, network_name)
+        self.container_interface = (
+            ComposeBackend(config_dir, network_name)
+            if backend == "compose"
+            else KubernetesBackend(config_dir, network_name)
+        )
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
@@ -37,15 +41,16 @@ class Warnet:
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
         #       if we write a helper function that can text-wrap inside a column
-        template =       "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
-        tanks_str = template % ("Index",   "Version",   "IPv4",      "LN",        "LN IPv4")
+        template = "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
+        tanks_str = template % ("Index", "Version", "IPv4", "LN", "LN IPv4")
         for tank in self.tanks:
             tanks_str += template % (
                 tank.index,
                 tank.version,
                 tank.ipv4,
                 tank.lnnode.impl if tank.lnnode is not None else None,
-                tank.lnnode.ipv4 if tank.lnnode is not None else None)
+                tank.lnnode.ipv4 if tank.lnnode is not None else None,
+            )
         return (
             f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
@@ -59,26 +64,36 @@ class Warnet:
     def _warnet_dict_representation(self) -> dict:
         repr = {}
         # Warnet
-        repr["warnet_headers"] = ["Temp dir", "Bitcoin network", "Docker network", "Subnet", "Graph"]
-        repr["warnet"] = [[str(self.config_dir), self.bitcoin_network, self.network_name, self.subnet, str(self.graph)]]
+        repr["warnet_headers"] = [
+            "Temp dir",
+            "Bitcoin network",
+            "Docker network",
+            "Subnet",
+            "Graph",
+        ]
+        repr["warnet"] = [
+            [
+                str(self.config_dir),
+                self.bitcoin_network,
+                self.network_name,
+                self.subnet,
+                str(self.graph),
+            ]
+        ]
 
         # Tanks
         tank_headers = ["Index", "Version", "IPv4", "bitcoin conf", "tc_netem", "LN", "LN IPv4"]
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [
-                tank.index,
-                tank.version,
-                tank.ipv4,
-                tank.conf,
-                tank.netem
-            ]
+            tank_data = [tank.index, tank.version, tank.ipv4, tank.conf, tank.netem]
             if has_ln:
-                tank_data.extend([
-                    tank.lnnode.impl if tank.lnnode else '',
-                    tank.lnnode.ipv4 if tank.lnnode else ''
-                ])
+                tank_data.extend(
+                    [
+                        tank.lnnode.impl if tank.lnnode else "",
+                        tank.lnnode.ipv4 if tank.lnnode else "",
+                    ]
+                )
             tanks.append(tank_data)
         if not has_ln:
             tank_headers.remove("LN")
@@ -92,7 +107,11 @@ class Warnet:
     @classmethod
     @bubble_exception_str
     def from_graph_file(
-            cls, base64_graph: str, config_dir: Path, network: str = "warnet", backend: str = "compose",
+        cls,
+        base64_graph: str,
+        config_dir: Path,
+        network: str = "warnet",
+        backend: str = "compose",
     ):
         self = cls(config_dir, backend, network)
         destination = self.config_dir / self.graph_name
@@ -195,7 +214,8 @@ class Warnet:
         shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
         with open(self.fork_observer_config, "a") as f:
             for tank in self.tanks:
-                f.write(f"""
+                f.write(
+                    f"""
                     [[networks.nodes]]
                     id = {tank.index}
                     name = "Node {tank.index}"
@@ -204,9 +224,9 @@ class Warnet:
                     rpc_port = {tank.rpc_port}
                     rpc_user = "{tank.rpc_user}"
                     rpc_password = "{tank.rpc_password}"
-                """)
+                """
+                )
         logger.info(f"Wrote file: {self.fork_observer_config}")
-
 
     @bubble_exception_str
     def export(self, subdir):
@@ -218,4 +238,3 @@ class Warnet:
         config_path = os.path.join(subdir, "sim.json")
         with open(config_path, "a") as f:
             json.dump(config, f)
-

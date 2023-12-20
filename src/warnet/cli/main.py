@@ -7,6 +7,7 @@ from warnet.cli.network import network
 from warnet.cli.rpc import rpc_call
 from warnet.cli.scenarios import scenarios
 
+
 @click.group()
 def cli():
     pass
@@ -42,7 +43,6 @@ def help_command(ctx, command):
     # help_info = cmd_obj.get_help(ctx).split("\n", 1)[-1].strip()
     help_info = cmd_obj.get_help(ctx).strip()
 
-
     # Extract the arguments of the command
     arguments = [
         param.human_readable_name.upper()
@@ -52,9 +52,7 @@ def help_command(ctx, command):
 
     # Determine the correct usage string based on whether the command has subcommands
     if isinstance(cmd_obj, click.Group) and cmd_obj.list_commands(ctx):
-        usage_str = (
-            f"Usage: warnet {command} [OPTIONS] COMMAND [ARGS...]\n\n{help_info}"
-        )
+        usage_str = f"Usage: warnet {command} [OPTIONS] COMMAND [ARGS...]\n\n{help_info}"
     else:
         args_str = " ".join(arguments)
         usage_str = f"Usage: warnet {command} [OPTIONS] {args_str}\n\n{help_info}"
@@ -67,9 +65,7 @@ cli.add_command(help_command)
 
 @cli.command(context_settings={"ignore_unknown_options": True})
 @click.argument("node", type=int)
-@click.argument(
-    "method", type=str, nargs=-1
-)  # this will capture all remaining arguments
+@click.argument("method", type=str, nargs=-1)  # this will capture all remaining arguments
 @click.option("--params", type=str, multiple=True, default=())
 @click.option("--network", default="warnet", show_default=True)
 def rpc(node, method, params, network):
@@ -77,9 +73,7 @@ def rpc(node, method, params, network):
     Call bitcoin-cli <method> <params> on <node> in <--network>
     """
     if len(method) > 2:
-        raise click.BadArgumentUsage(
-            "You can provide at most two arguments for 'method'."
-        )
+        raise click.BadArgumentUsage("You can provide at most two arguments for 'method'.")
 
     # Convert tuple to space-separated string
     method_str = " ".join(method)
@@ -120,14 +114,10 @@ def messages(node_a, node_b, network):
 
     logging.warning(f"got args: {node_a}, {node_b}, {network}")
     try:
-        result = rpc_call(
-            "tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}
-        )
+        result = rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b})
         richprint(result)
     except Exception as e:
-        richprint(
-            f"Error fetching messages between {node_a} and {node_b}: {e}"
-        )
+        richprint(f"Error fetching messages between {node_a} and {node_b}: {e}")
 
 
 @cli.command()
@@ -139,14 +129,10 @@ def grep_logs(pattern, network):
     """
 
     try:
-        result = rpc_call(
-            "logs_grep", {"network": network, "pattern": pattern}
-        )
+        result = rpc_call("logs_grep", {"network": network, "pattern": pattern})
         print(result)
     except Exception as e:
-        print(
-                f"Error fetching combined log: {e}"
-        )
+        print(f"Error fetching combined log: {e}")
 
 
 @cli.command()

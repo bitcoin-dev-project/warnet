@@ -3,6 +3,7 @@ from rich import print
 
 from warnet.cli.rpc import rpc_call
 
+
 @click.group(name="debug")
 def debug():
     """Debug commands"""
@@ -16,10 +17,7 @@ def generate_compose(graph_file: str, network: str):
     Generate the docker-compose file for a given <graph_file> and <--network> (default: "warnet") name and return it.
     """
     try:
-        result = rpc_call(
-            "generate_compose", {"graph_file": graph_file, "network": network}
-        )
+        result = rpc_call("generate_compose", {"graph_file": graph_file, "network": network})
         print(result)
     except Exception as e:
         print(f"Error generating compose: {e}")
-

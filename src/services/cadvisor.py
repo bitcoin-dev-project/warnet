@@ -12,11 +12,11 @@ class CAdvisor(BaseService):
             "container_name": f"{self.docker_network}_cadvisor",
             "ports": [f"{PORT}:8080"],
             "volumes": [
-                f"/:/rootfs:ro",
-                f"/var/run:/var/run:ro",
-                f"/sys:/sys:ro",
-                f"/var/lib/docker/:/var/lib/docker:ro",
-                f"/dev/disk/:/dev/disk:ro",
+                "/:/rootfs:ro",
+                "/var/run:/var/run:ro",
+                "/sys:/sys:ro",
+                "/var/lib/docker/:/var/lib/docker:ro",
+                "/dev/disk/:/dev/disk:ro",
             ],
             "networks": [self.docker_network],
             "privileged": True,
@@ -25,7 +25,6 @@ class CAdvisor(BaseService):
                 "-housekeeping_interval=30s",
                 "-docker_only=true",
                 "-storage_duration=1m0s",
-                "-disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp"
-            ]
+                "-disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp",
+            ],
         }
-

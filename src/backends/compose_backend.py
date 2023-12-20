@@ -20,7 +20,12 @@ from templates import TEMPLATES
 from warnet.tank import Tank
 from warnet.status import RunningStatus
 from warnet.lnnode import LNNode
-from warnet.utils import bubble_exception_str, parse_raw_messages, default_bitcoin_conf_args, set_execute_permission
+from warnet.utils import (
+    bubble_exception_str,
+    parse_raw_messages,
+    default_bitcoin_conf_args,
+    set_execute_permission,
+)
 
 
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
@@ -43,7 +48,6 @@ class ComposeBackend(BackendInterface):
         self.network_name = network_name
         self.client = docker.DockerClient = docker.from_env()
 
-
     @bubble_exception_str
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
@@ -64,7 +68,6 @@ class ComposeBackend(BackendInterface):
             )
             return False
         return True
-
 
     @bubble_exception_str
     def up(self, *_):
@@ -124,10 +127,10 @@ class ComposeBackend(BackendInterface):
         if container is None:
             return RunningStatus.STOPPED
         match container.status:
-            case 'running':
+            case "running":
                 return RunningStatus.RUNNING
-            case 'exited' | 'dead':
-                if container.attrs['State']['ExitCode'] == 0:
+            case "exited" | "dead":
+                if container.attrs["State"]["ExitCode"] == 0:
                     return RunningStatus.STOPPED
                 else:
                     return RunningStatus.FAILED
@@ -151,10 +154,10 @@ class ComposeBackend(BackendInterface):
             container=container_name,
             stdout=True,
             stderr=True,
-            stream=False, # return a string
+            stream=False,  # return a string
             until=now,
         )
-        return cast(bytes, logs).decode('utf8') # cast for typechecker
+        return cast(bytes, logs).decode("utf8")  # cast for typechecker
 
     def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:
@@ -179,10 +182,10 @@ class ComposeBackend(BackendInterface):
         # start with the IP of the peer
         # find the corresponding message capture folder
         # (which may include the internal port if connection is inbound)
-        subdir = (
-            "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
+        subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
+        dirs = self.exec_run(
+            tank_index, ServiceType.BITCOIN, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture"
         )
-        dirs = self.exec_run(tank_index, ServiceType.BITCOIN, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture")
         dirs = dirs.splitlines()
         messages = []
         for dir_name in dirs:
@@ -191,7 +194,8 @@ class ComposeBackend(BackendInterface):
                     blob = self.get_file(
                         tank_index,
                         ServiceType.BITCOIN,
-                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}")
+                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}",
+                    )
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json
         messages.sort(key=lambda x: x["time"])
@@ -232,7 +236,7 @@ class ComposeBackend(BackendInterface):
         # Format and join the sorted logs
         sorted_logs = [f"{container} {log}" for container, log in all_matching_logs]
 
-        return '\n'.join(sorted_logs)
+        return "\n".join(sorted_logs)
 
     def write_prometheus_config(self, warnet):
         config = {
@@ -292,9 +296,7 @@ class ComposeBackend(BackendInterface):
                 yaml.dump(compose, file)
             logger.info(f"Wrote file: {docker_compose_path}")
         except Exception as e:
-            logger.error(
-                f"An error occurred while writing to {docker_compose_path}: {e}"
-            )
+            logger.error(f"An error occurred while writing to {docker_compose_path}: {e}")
 
     def generate_deployment_file(self, warnet):
         self._write_docker_compose(warnet)
@@ -303,8 +305,11 @@ class ComposeBackend(BackendInterface):
         logger.debug(f"{SERVICES=}")
         logger.debug(f"{SERVICES / GRAFANA_PROVISIONING=}")
         logger.debug(f"{self.config_dir=}")
-        shutil.copytree(SERVICES / GRAFANA_PROVISIONING, self.config_dir / GRAFANA_PROVISIONING, dirs_exist_ok=True)
-
+        shutil.copytree(
+            SERVICES / GRAFANA_PROVISIONING,
+            self.config_dir / GRAFANA_PROVISIONING,
+            dirs_exist_ok=True,
+        )
 
     def default_config_args(self, tank):
         defaults = default_bitcoin_conf_args()
@@ -340,18 +345,16 @@ class ComposeBackend(BackendInterface):
                     "BUILD_ARGS": f"{tank.DEFAULT_BUILD_ARGS + tank.extra_build_args}",
                 },
             }
-            services[container_name]['build'] = build
+            services[container_name]["build"] = build
             self.copy_configs(tank)
         else:
             image = f"{DOCKER_REGISTRY}:{tank.version}"
-            services[container_name]['image'] = image
+            services[container_name]["image"] = image
         # Add common bitcoind service details
         services[container_name].update(
             {
                 "container_name": container_name,
-                "environment": {
-                    "BITCOIN_ARGS": self.default_config_args(tank)
-                },
+                "environment": {"BITCOIN_ARGS": self.default_config_args(tank)},
                 "networks": {
                     tank.network_name: {
                         "ipv4_address": f"{tank.ipv4}",
@@ -362,10 +365,10 @@ class ComposeBackend(BackendInterface):
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
                 "healthcheck": {
                     "test": ["CMD", "pidof", "bitcoind"],
-                    "interval": "10s",           # Check every 10 seconds
-                    "timeout": "1s",             # Give the check 1 second to complete
-                    "start_period": "5s",        # Start checking after 5 seconds
-                    "retries": 3
+                    "interval": "10s",  # Check every 10 seconds
+                    "timeout": "1s",  # Give the check 1 second to complete
+                    "start_period": "5s",  # Start checking after 5 seconds
+                    "retries": 3,
                 },
             }
         )
@@ -421,22 +424,20 @@ class ComposeBackend(BackendInterface):
             "labels": {
                 "tank_index": tank.index,
                 "tank_container_name": bitcoin_container_name,
-                "tank_ipv4_address": tank.ipv4
+                "tank_ipv4_address": tank.ipv4,
             },
-            "depends_on":
-                {
-                    bitcoin_container_name: {"condition": "service_healthy"}
-                },
-            "restart": "on-failure"
+            "depends_on": {bitcoin_container_name: {"condition": "service_healthy"}},
+            "restart": "on-failure",
         }
         services[bitcoin_container_name].update(
             {
                 "labels": {
                     "lnnode_container_name": ln_container_name,
                     "lnnode_ipv4_address": tank.lnnode.ipv4,
-                    "lnnode_impl": tank.lnnode.impl
+                    "lnnode_impl": tank.lnnode.impl,
                 }
-            })
+            }
+        )
 
     # def add_scrapers(self, scrapers):
     #     scrapers.append(
@@ -459,9 +460,9 @@ class ComposeBackend(BackendInterface):
                 warnet.tanks.append(tank)
 
     def tank_from_deployment(self, service, warnet):
-        rex = fr"{warnet.network_name}-{CONTAINER_PREFIX_BITCOIND}-([0-9]{{6}})"
+        rex = rf"{warnet.network_name}-{CONTAINER_PREFIX_BITCOIND}-([0-9]{{6}})"
         # Not a tank, maybe a scaled service
-        if not "container_name" in service:
+        if "container_name" not in service:
             return None
         match = re.match(rex, service["container_name"])
         if match is None:
@@ -473,7 +474,9 @@ class ComposeBackend(BackendInterface):
         if "image" in service:
             tank.version = service["image"].split(":")[1]
         else:
-            tank.version = f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
+            tank.version = (
+                f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
+            )
 
         labels = service.get("labels", {})
         if "lnnode_impl" in labels:

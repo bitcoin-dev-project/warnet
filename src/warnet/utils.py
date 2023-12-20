@@ -29,7 +29,9 @@ SUPPORTED_TAGS = [
     "22.2",
 ]
 DEFAULT_TAG = SUPPORTED_TAGS[0]
-WEIGHTED_TAGS = [tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)]
+WEIGHTED_TAGS = [
+    tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
+]
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -112,9 +114,7 @@ def generate_ipv4_addr(subnet):
 
     # Generate a random IP within the subnet range
     while True:
-        ip_int = random.randint(
-            int(network.network_address), int(network.broadcast_address)
-        )
+        ip_int = random.randint(int(network.network_address), int(network.broadcast_address))
         ip_str = str(ipaddress.ip_address(ip_int))
         if is_public(ip_str):
             return ip_str
@@ -293,9 +293,7 @@ def parse_raw_messages(blob, outbound):
         msg_dict = {}
         msg_dict["outbound"] = outbound
         msg_dict["time"] = time
-        msg_dict[
-            "size"
-        ] = length  # "size" is less readable here, but more readable in the output
+        msg_dict["size"] = length  # "size" is less readable here, but more readable in the output
 
         msg_ser = BytesIO(blob[offset : offset + length])
         offset = offset + length
@@ -330,7 +328,7 @@ def parse_raw_messages(blob, outbound):
             msg_dict["body"] = msg_ser.read().hex()
             msg_dict["error"] = "Unable to deserialize message."
             messages.append(msg_dict)
-            print(f"WARNING - Unable to deserialize message", file=sys.stderr)
+            print("WARNING - Unable to deserialize message", file=sys.stderr)
             continue
 
         # Convert body of message into a jsonable object
@@ -358,9 +356,7 @@ def bubble_exception_str(func):
             func_name = inspect.currentframe().f_code.co_name
             local_vars = inspect.currentframe().f_locals
             # Filter out the 'self' variable from the local_vars
-            context_str = ", ".join(
-                f"{k}={v}" for k, v in local_vars.items() if k != "self"
-            )
+            context_str = ", ".join(f"{k}={v}" for k, v in local_vars.items() if k != "self")
             raise Exception(
                 f"Exception in function '{func_name}' with context ({context_str}): {str(e)}"
             )
@@ -379,8 +375,8 @@ def version_cmp_ge(version_str, target_str):
     parsed_target_str = remove_version_prefix(target_str)
 
     try:
-        version_parts = list(map(int, parsed_version_str.split('.')))
-        target_parts = list(map(int, parsed_target_str.split('.')))
+        version_parts = list(map(int, parsed_version_str.split(".")))
+        target_parts = list(map(int, parsed_target_str.split(".")))
 
         # Pad the shorter version with zeros
         while len(version_parts) < len(target_parts):
@@ -390,7 +386,11 @@ def version_cmp_ge(version_str, target_str):
 
     # handle custom versions
     except ValueError:
-        logger.debug(ValueError(f"Unknown version string: {version_str} or {target_str} could not be compared"))
+        logger.debug(
+            ValueError(
+                f"Unknown version string: {version_str} or {target_str} could not be compared"
+            )
+        )
         logger.debug("Assuming custom version can use `addpeeraddress`")
         # assume that custom versions are recent
         return True
@@ -419,7 +419,9 @@ def default_bitcoin_conf_args() -> str:
     return " ".join(conf_args)
 
 
-def create_graph_with_probability(graph_func, params: List, version: str, bitcoin_conf: Optional[str], random_version: bool):
+def create_graph_with_probability(
+    graph_func, params: List, version: str, bitcoin_conf: Optional[str], random_version: bool
+):
     kwargs = {}
     for param in params:
         try:
@@ -456,20 +458,20 @@ def create_graph_with_probability(graph_func, params: List, version: str, bitcoi
 
     # calculate degree
     degree_dict = dict(graph.degree(graph.nodes()))
-    nx.set_node_attributes(graph, degree_dict, 'degree')
+    nx.set_node_attributes(graph, degree_dict, "degree")
 
     # add a default layout
     pos = nx.spring_layout(graph)
     for node in graph.nodes():
-        graph.nodes[node]['x'] = float(pos[node][0])
-        graph.nodes[node]['y'] = float(pos[node][1])
+        graph.nodes[node]["x"] = float(pos[node][0])
+        graph.nodes[node]["y"] = float(pos[node][1])
 
     # parse and process conf file
     conf_contents = ""
     if bitcoin_conf is not None:
         conf = Path(bitcoin_conf)
         if conf.is_file():
-            with open(conf, 'r') as f:
+            with open(conf, "r") as f:
                 # parse INI style conf then dump using for_graph
                 conf_dict = parse_bitcoin_conf(f.read())
                 conf_contents = dump_bitcoin_conf(conf_dict, for_graph=True)
@@ -477,11 +479,11 @@ def create_graph_with_probability(graph_func, params: List, version: str, bitcoi
     # populate our custom fields
     for node in graph.nodes():
         if random_version:
-            graph.nodes[node]['version'] = random.choice(WEIGHTED_TAGS)
+            graph.nodes[node]["version"] = random.choice(WEIGHTED_TAGS)
         else:
-            graph.nodes[node]['version'] = version
-        graph.nodes[node]['bitcoin_config'] = conf_contents
-        graph.nodes[node]['tc_netem'] = ""
+            graph.nodes[node]["version"] = version
+        graph.nodes[node]["bitcoin_config"] = conf_contents
+        graph.nodes[node]["tc_netem"] = ""
 
     # remove type and customer fields from edges as we don't need 'em!
     for edge in graph.edges():
@@ -512,4 +514,3 @@ def convert_unsupported_attributes(graph):
                 continue
             else:
                 edge_data[key] = str(value)
-

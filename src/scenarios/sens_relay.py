@@ -5,7 +5,7 @@ from scenarios.utils import ensure_miner
 
 
 def cli_help():
-    return ("Send a transaction using sensitive relay")
+    return "Send a transaction using sensitive relay"
 
 
 class MinerStd(WarnetTestFramework):
@@ -39,5 +39,5 @@ class MinerStd(WarnetTestFramework):
         self.log.info(test_wallet.sendtoaddress(recip_addr, 0.5))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     MinerStd().main()

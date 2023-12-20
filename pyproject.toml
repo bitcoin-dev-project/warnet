@@ -34,7 +34,7 @@ warnet = "warnet.server:run_server"
 warcli = "warnet.cli.main:cli"
 
 [tool.black]
-line-length = 88
+line-length = 100
 target-version = ['py37']
 exclude = '''
 (
@@ -53,3 +53,8 @@ exclude = '''
   | src/warnet/test_framework_bridge\.py
 )
 '''
+
+[tool.ruff]
+extend-exclude = ["src/test_framework/*.py"]
+line-length = 100
+indent-width = 4
