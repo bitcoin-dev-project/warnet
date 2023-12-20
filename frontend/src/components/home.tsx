@@ -31,7 +31,7 @@ const HomePage = () => {
                         download now
                     </Link>
                     <Link
-                        className='text-white dark:text-white py-5 px-6 border-2 text-center sm:w-fit whitespace-nowrap'
+                        className='text-white dark:text-white py-5 px-6 border-2 text-center sm:w-fit whitespace-nowrap hidden'
                         href='/start'
                     >
                         generate graph
