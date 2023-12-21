@@ -25,6 +25,7 @@ declare -A VERSION_ARCH_MAP=(
     ["23.2"]="amd64 arm64 armhf"
     ["24.2"]="amd64 arm64 armhf"
     ["25.1"]="amd64 arm64 armhf"
+    ["26.0"]="amd64 arm64 armhf"
 )
 
 if [ -d "src/templates" ]; then
