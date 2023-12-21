@@ -23,6 +23,7 @@ logger = logging.getLogger("utils")
 
 
 SUPPORTED_TAGS = [
+    "26.0",
     "25.1",
     "24.2",
     "23.2",
