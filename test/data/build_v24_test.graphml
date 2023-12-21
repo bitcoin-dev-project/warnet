@@ -5,7 +5,7 @@
   <key attr.name="build_args" attr.type="string" for="node" id="build_args"/>
   <graph edgedefault="directed">
     <node id="0">
-        <data key="version">25.1</data>
+        <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w0</data>
     </node>
     <node id="1">
