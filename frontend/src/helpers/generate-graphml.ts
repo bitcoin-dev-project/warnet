@@ -14,24 +14,64 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
         "@": {
           id: "label",
           for: "node",
-          attr_name: "label",
-          attr_type: "string",
+          ["attr.name"]: "label",
+          ["attr.type"]: "string",
         },
       },
       {
         "@": {
           id: "size",
           for: "node",
-          attr_name: "size",
-          attr_type: "double",
+          ["attr.name"]: "size",
+          ["attr.type"]: "double",
         },
       },
       {
         "@": {
           id: "version",
           for: "node",
-          attr_name: "version",
-          attr_type: "string",
+          ["attr.name"]: "version",
+          ["attr.type"]: "string",
+        },
+      },
+      {
+        "@": {
+          id: "latency",
+          for: "node",
+          ["attr.name"]: "latency",
+          ["attr.type"]: "string",
+        },
+      },
+      {
+        "@": {
+          id: "bitcoin_conf",
+          for: "node",
+          ["attr.name"]: "bitcoin_conf",
+          ["attr.type"]: "string",
+        },
+      },
+      {
+        "@": {
+          id: "x",
+          for: "node",
+          ["attr.name"]: "x",
+          ["attr.type"]: "float",
+        },
+      },
+      {
+        "@": {
+          id: "y",
+          for: "node",
+          ["attr.name"]: "y",
+          ["attr.type"]: "float",
+        },
+      },
+      {
+        "@": {
+          id: "tc_netem",
+          for: "node",
+          ["attr.name"]: "tc_netem",
+          ["attr.type"]: "float",
         },
       },
     ],
@@ -55,7 +95,7 @@ const generateGraphML = ({ nodes, edges }: GraphElement) => {
               { "@": { key: "label" }, "#": node.data.label },
               { "@": { key: "version" }, "#": node.data.version || "" },
               { "@": { key: "latency" }, "#": node.data.latency || "" },
-              { "@": { key: "baseFee" }, "#": node.data.baseFee || "" },
+              // { "@": { key: "baseFee" }, "#": node.data.baseFee || "" },
               { "@": { key: "x" }, "#": node.position.x },
               { "@": { key: "y" }, "#": node.position.y },
               { "@": { key: "bitcoin_conf" }, "#": result },

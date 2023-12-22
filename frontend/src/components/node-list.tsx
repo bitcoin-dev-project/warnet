@@ -1,19 +1,40 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Pencil1Icon, TrashIcon, CopyIcon } from "@radix-ui/react-icons";
 import { useNodeFlowContext } from '@/contexts/node-flow-context';
 import { Node } from 'reactflow';
 import { GraphNode } from '@/flowTypes';
+import { isInViewport } from '@/helpers/client-inferences';
 
 const NodeList = () => {
-  const { nodes, editNode, deleteNode, duplicateNode, nodeInfo } = useNodeFlowContext()
+  const { nodes, editNode, deleteNode, duplicateNode, nodeInfo, selectNode } = useNodeFlowContext()
 
   const handleEditNode = (node: Node<GraphNode>) => {
     editNode(node)
   }
+
   const SingleNode = ({node}: {node: Node<GraphNode> }) => {
     const isSelected = nodeInfo?.id === node.id
+    const handleNodeClick = () => {
+      if (isSelected) return
+      selectNode(node.id)
+    }
+    useEffect(() => {
+      if (nodeRef.current && isSelected) {
+        const nodeInViewport = isInViewport(nodeRef.current)
+        if (nodeInViewport) return
+        nodeRef.current.scrollIntoView({
+          behavior: "auto",
+          block: "center",
+          inline: "nearest",
+        });
+      }
+    }, [isSelected])
+    const nodeRef = useRef<HTMLDivElement>(null)
+    
     return (
-      <div 
+      <div
+        onClick={handleNodeClick}
+        ref={nodeRef}
         data-node-highlight={isSelected || null} 
         className="group data-[node-highlight]:bg-brand-gray-medium data-[node-highlight]:text-white w-full text-xl flex justify-between items-center gap-2 px-4 py-4 border-b-[1px] border-brand-gray-medium"
       >
