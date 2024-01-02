@@ -17,6 +17,8 @@ from .services.fork_observer import ForkObserver
 from .services.grafana import Grafana
 from .services.prometheus import Prometheus
 from .services.node_exporter import NodeExporter
+from .services.loki.loki import Loki
+from .services.promtail.promtail import Promtail
 from templates import TEMPLATES
 from warnet.tank import Tank
 from warnet.status import RunningStatus
@@ -261,12 +263,10 @@ class ComposeBackend(BackendInterface):
                         "job_name": tank.exporter_name,
                         "scrape_interval": "5s",
                         "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
-                    })
+                    }
+                )
 
-        config = {
-            "global": {"scrape_interval": "15s"},
-            "scrape_configs": scrape_configs
-        }
+        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
 
         prometheus_path = self.config_dir / "prometheus.yml"
         try:
@@ -301,6 +301,8 @@ class ComposeBackend(BackendInterface):
             Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
+            Loki(warnet.network_name),
+            Promtail(warnet.network_name),
         ]
 
         for service_obj in services:
@@ -406,7 +408,7 @@ class ComposeBackend(BackendInterface):
                     "BITCOIN_RPC_USER": tank.rpc_user,
                     "BITCOIN_RPC_PASSWORD": tank.rpc_password,
                 },
-                "networks": [tank.network_name]
+                "networks": [tank.network_name],
             }
 
     def add_lnd_service(self, tank, services):
