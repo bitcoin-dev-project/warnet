@@ -11,12 +11,12 @@ import docker
 from docker.models.containers import Container
 
 from backends import BackendInterface, ServiceType
-from services import SERVICES
-from services.cadvisor import CAdvisor
-from services.fork_observer import ForkObserver
-from services.grafana import Grafana
-from services.prometheus import Prometheus
-from services.node_exporter import NodeExporter
+from .services import SERVICES
+from .services.cadvisor import CAdvisor
+from .services.fork_observer import ForkObserver
+from .services.grafana import Grafana
+from .services.prometheus import Prometheus
+from .services.node_exporter import NodeExporter
 from templates import TEMPLATES
 from warnet.tank import Tank
 from warnet.status import RunningStatus
@@ -279,6 +279,7 @@ class ComposeBackend(BackendInterface):
     def _write_docker_compose(self, warnet):
         compose = {
             "version": "3.8",
+            "name": "warnet",
             "networks": {
                 warnet.network_name: {
                     "name": warnet.network_name,
@@ -300,7 +301,6 @@ class ComposeBackend(BackendInterface):
             Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            # Fluentd(warnet.network_name, warnet.config_dir),
         ]
 
         for service_obj in services:
@@ -371,6 +371,8 @@ class ComposeBackend(BackendInterface):
         services[container_name].update(
             {
                 "container_name": container_name,
+                # logging with json-file to support log shipping with promtail into loki
+                "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
                 "environment": {"BITCOIN_ARGS": self.default_config_args(tank)},
                 "networks": {
                     tank.network_name: {
