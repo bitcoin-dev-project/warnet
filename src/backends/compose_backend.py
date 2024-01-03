@@ -160,6 +160,12 @@ class ComposeBackend(BackendInterface):
         )
         return cast(bytes, logs).decode("utf8")  # cast for typechecker
 
+    def ln_cli(self, tank: Tank, command: List[str]):
+        if tank.lnnode is None:
+            raise Exception("No LN node configured for tank")
+        cmd = tank.lnnode.generate_cli_command(command)
+        return self.exec_run(tank.index, ServiceType.LIGHTNING, cmd)
+
     def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"

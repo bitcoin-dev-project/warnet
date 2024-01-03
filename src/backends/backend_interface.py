@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from enum import Enum
+from typing import List
 
 
 class ServiceType(Enum):
@@ -55,6 +56,13 @@ class BackendInterface(ABC):
     def get_bitcoin_debug_log(self, tank_index: int):
         """
         Fetch debug log from tank [tank_index]
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def ln_cli(self, tank, command: List[str]) -> str:
+        """
+        Call `lightning cli` on tank [tank_index] with <command>
         """
         raise NotImplementedError("This method should be overridden by child class")
 

@@ -91,7 +91,7 @@ def down(network: str):
                     try:
                         params = {"pid": pid}
                         rpc_call("scenarios_stop", params)
-                    except Exception as e:
+                    except Exception:
                         continue
         result = rpc_call("network_down", {"network": network})
         print(result)

@@ -87,6 +87,22 @@ def rpc(node, method, params, network):
     except Exception as e:
         richprint(f"bitcoin-cli {method_str} {params} failed on node {node}:\n{e}")
 
+@cli.command(context_settings={"ignore_unknown_options": True})
+@click.argument("node", type=int)
+@click.argument("command", type=str, required=True, nargs=-1)
+@click.option("--network", default="warnet", show_default=True, type=str)
+def lncli(node: int, command: tuple, network: str):
+    """
+    Call lightning cli <command> on <node> in <--network>
+    """
+    try:
+        result = rpc_call(
+            "tank_lncli",
+            {"network": network, "node": node, "command": command},
+        )
+        print(result)
+    except Exception as e:
+        richprint(f"lightning cli {command} failed on node {node}:\n{e}")
 
 @cli.command()
 @click.argument("node", type=int, required=True)
