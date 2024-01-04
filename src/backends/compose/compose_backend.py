@@ -330,6 +330,12 @@ class ComposeBackend(BackendInterface):
             dirs_exist_ok=True,
         )
 
+    def config_args(self, tank):
+        args = self.default_config_args(tank)
+        if tank.conf is not None:
+            args = f"{args} -{tank.conf.replace(',', ' -')}"
+        return args
+
     def default_config_args(self, tank):
         defaults = default_bitcoin_conf_args()
         defaults += f" -rpcuser={tank.rpc_user}"
@@ -375,7 +381,7 @@ class ComposeBackend(BackendInterface):
                 "container_name": container_name,
                 # logging with json-file to support log shipping with promtail into loki
                 "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
-                "environment": {"BITCOIN_ARGS": self.default_config_args(tank)},
+                "environment": {"BITCOIN_ARGS": self.config_args(tank)},
                 "networks": {
                     tank.network_name: {
                         "ipv4_address": f"{tank.ipv4}",
