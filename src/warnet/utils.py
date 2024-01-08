@@ -515,3 +515,9 @@ def convert_unsupported_attributes(graph):
                 continue
             else:
                 edge_data[key] = str(value)
+
+
+def generate_as():
+    while True:
+        as_number = random.randint(1, 64496)  # I think these are not "reserved"
+        return as_number
