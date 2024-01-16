@@ -11,12 +11,14 @@ import docker
 from docker.models.containers import Container
 
 from backends import BackendInterface, ServiceType
-from services import SERVICES
-from services.cadvisor import CAdvisor
-from services.fork_observer import ForkObserver
-from services.grafana import Grafana
-from services.prometheus import Prometheus
-from services.node_exporter import NodeExporter
+from .services import SERVICES
+from .services.cadvisor import CAdvisor
+from .services.fork_observer import ForkObserver
+from .services.grafana import Grafana
+from .services.prometheus import Prometheus
+from .services.node_exporter import NodeExporter
+from .services.loki.loki import Loki
+from .services.promtail.promtail import Promtail
 from templates import TEMPLATES
 from warnet.tank import Tank
 from warnet.status import RunningStatus
@@ -261,12 +263,10 @@ class ComposeBackend(BackendInterface):
                         "job_name": tank.exporter_name,
                         "scrape_interval": "5s",
                         "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
-                    })
+                    }
+                )
 
-        config = {
-            "global": {"scrape_interval": "15s"},
-            "scrape_configs": scrape_configs
-        }
+        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
 
         prometheus_path = self.config_dir / "prometheus.yml"
         try:
@@ -279,6 +279,7 @@ class ComposeBackend(BackendInterface):
     def _write_docker_compose(self, warnet):
         compose = {
             "version": "3.8",
+            "name": "warnet",
             "networks": {
                 warnet.network_name: {
                     "name": warnet.network_name,
@@ -300,7 +301,8 @@ class ComposeBackend(BackendInterface):
             Grafana(warnet.network_name),
             CAdvisor(warnet.network_name, TEMPLATES),
             ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            # Fluentd(warnet.network_name, warnet.config_dir),
+            Loki(warnet.network_name),
+            Promtail(warnet.network_name),
         ]
 
         for service_obj in services:
@@ -371,6 +373,8 @@ class ComposeBackend(BackendInterface):
         services[container_name].update(
             {
                 "container_name": container_name,
+                # logging with json-file to support log shipping with promtail into loki
+                "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
                 "environment": {"BITCOIN_ARGS": self.default_config_args(tank)},
                 "networks": {
                     tank.network_name: {
@@ -390,6 +394,9 @@ class ComposeBackend(BackendInterface):
             }
         )
 
+        if tank.collect_logs:
+            services[container_name]["labels"].update({"collect_logs": True})
+
         if tank.lnnode is not None:
             self.add_lnd_service(tank, services)
 
@@ -404,7 +411,7 @@ class ComposeBackend(BackendInterface):
                     "BITCOIN_RPC_USER": tank.rpc_user,
                     "BITCOIN_RPC_PASSWORD": tank.rpc_password,
                 },
-                "networks": [tank.network_name]
+                "networks": [tank.network_name],
             }
 
     def add_lnd_service(self, tank, services):
@@ -454,6 +461,8 @@ class ComposeBackend(BackendInterface):
                 }
             }
         )
+        if tank.collect_logs:
+            services[ln_container_name]["labels"].update({"collect_logs": True})
 
     def warnet_from_deployment(self, warnet):
         # Get tank names, versions and IP addresses from docker-compose

@@ -36,6 +36,7 @@ class Tank:
         self.conf_file = None
         self.netem = None
         self.exporter = False
+        self.collect_logs = False
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
@@ -81,6 +82,7 @@ class Tank:
         self.conf = node.get("bitcoin_config", self.conf)
         self.netem = node.get("tc_netem", self.netem)
         self.exporter = node.get("exporter", self.exporter)
+        self.collect_logs = node.get("collect_logs", self.collect_logs)
         self.extra_build_args = node.get("build_args", self.extra_build_args)
 
         if "ln" in node:
