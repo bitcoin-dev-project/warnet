@@ -20,7 +20,7 @@ scrape_configs:
         refresh_interval: 15s
         filters:
           - name: label
-            values: ["com.docker.compose.project=warnet"]
+            values: [collect_logs=true]
     # use container name to create a loki label
     relabel_configs:
       - source_labels: ['__meta_docker_container_name']

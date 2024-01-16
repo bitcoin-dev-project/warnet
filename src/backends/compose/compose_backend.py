@@ -394,6 +394,9 @@ class ComposeBackend(BackendInterface):
             }
         )
 
+        if tank.collect_logs:
+            services[container_name]["labels"].update({"collect_logs": True})
+
         if tank.lnnode is not None:
             self.add_lnd_service(tank, services)
 
@@ -458,6 +461,8 @@ class ComposeBackend(BackendInterface):
                 }
             }
         )
+        if tank.collect_logs:
+            services[ln_container_name]["labels"].update({"collect_logs": True})
 
     def warnet_from_deployment(self, warnet):
         # Get tank names, versions and IP addresses from docker-compose
