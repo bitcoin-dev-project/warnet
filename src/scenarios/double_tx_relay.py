@@ -150,7 +150,7 @@ class DoubleTXRelay(WarnetTestFramework):
         print(
             f"Starting process to send transactions at a rate of {self.options.txproductionrate} tx/s"
         )
-        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
             while True:
                 executor.submit(self.send_transaction)
                 # await asyncio.sleep(10)
