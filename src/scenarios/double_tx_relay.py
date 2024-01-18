@@ -84,12 +84,8 @@ class DoubleTXRelay(WarnetTestFramework):
             self.log.info("Generating initial blocks and rewards")
             for node in self.nodes:
                 self.generate_block(self.nodes[0], node)
-                # pause to let mining node catch up
-                time.sleep(2.5)
             for _ in range(BLOCKS_WAIT_TILL_SPENDABLE):
                 self.generate_block(self.nodes[0], self.nodes[0])
-                # pause to let mining node catch up
-                time.sleep(2.5)
 
         self.log.info("Starting block mining and tx sending in real time")
 
@@ -101,6 +97,8 @@ class DoubleTXRelay(WarnetTestFramework):
             wallet = ensure_miner(receiving_node)
             addr = wallet.getnewaddress(address_type="bech32m")
             block = self.generatetoaddress(generating_node, 1, addr)[0]
+            # allow time for block to propagate
+            time.sleep(3)
             self.enqueue_block((block, receiving_node))
             spendable_block_and_node = self.dequeue_spendable_block_if_available()
             if spendable_block_and_node is not None:
