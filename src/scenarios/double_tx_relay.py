@@ -168,6 +168,7 @@ class DoubleTXRelay(WarnetTestFramework):
             utxos = wallet.listunspent(include_unsafe=False, query_options={"maximumAmount": 0.1})
             if len(utxos) == 0:
                 return
+            utxo = random.choice(utxos)
             fee_rate = Decimal("0.00001000")
             try:
                 multiplier = Decimal(math.exp(random.random() * 0.2 - 0.1))
@@ -181,14 +182,14 @@ class DoubleTXRelay(WarnetTestFramework):
             fee = fee_rate * Decimal("0.111")
             if fee < Decimal("0.00000111"):
                 fee = Decimal("0.00000111")
-            amount = Decimal(utxos[0]["amount"])
+            amount = Decimal(utxo["amount"])
             amount = amount - fee
             amount = amount.quantize(Decimal(".00000001"))
 
             raw_transaction_inputs = [
                 {
-                    "txid": utxos[0]["txid"],
-                    "vout": utxos[0]["vout"],
+                    "txid": utxo["txid"],
+                    "vout": utxo["vout"],
                 },
             ]
             raw_transaction_outputs = [
