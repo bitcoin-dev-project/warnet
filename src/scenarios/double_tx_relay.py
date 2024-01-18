@@ -55,7 +55,7 @@ class DoubleTXRelay(WarnetTestFramework):
             if node.getpeerinfo() == []:
                 random_node = random.choice(self.nodes)
                 ipaddress = random_node.getnetworkinfo()["localaddresses"][0]["address"]
-                node.addnode(f"{ipaddress}:18444")
+                node.addnode(f"{ipaddress}:18444", "add")
                 return True
         return False
 
