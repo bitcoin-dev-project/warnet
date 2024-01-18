@@ -2,6 +2,7 @@
 import asyncio
 import random
 import math
+import time
 from datetime import datetime
 from decimal import Decimal
 
@@ -14,7 +15,7 @@ from threading import Lock
 
 BLOCKS_WAIT_TILL_SPENDABLE = 101
 MIN_UTXO_AMOUNT = Decimal(0.001)
-AVERAGE_BLOCK_TIME = 60
+AVERAGE_BLOCK_TIME = 120
 
 
 def cli_help():
@@ -61,8 +62,12 @@ class DoubleTXRelay(WarnetTestFramework):
             self.log.info("Generating initial blocks and rewards")
             for node in self.nodes:
                 self.generate_block(self.nodes[0], node)
+                # pause to let mining node catch up
+                time.sleep(2.5)
             for _ in range(BLOCKS_WAIT_TILL_SPENDABLE):
                 self.generate_block(self.nodes[0], self.nodes[0])
+                # pause to let mining node catch up
+                time.sleep(2.5)
 
         self.log.info("Starting block mining and tx sending in real time")
 
@@ -152,6 +157,8 @@ class DoubleTXRelay(WarnetTestFramework):
                 pass
             # 1 in 1 out taproot transaction should be 111 vbytes
             fee = fee_rate * Decimal("0.111")
+            if fee < Decimal("0.00000111"):
+                fee = Decimal("0.00000111")
             amount = Decimal(utxos[0]["amount"])
             amount = amount - fee
             amount = amount.quantize(Decimal(".00000001"))
