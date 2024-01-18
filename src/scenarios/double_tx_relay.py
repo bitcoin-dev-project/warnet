@@ -51,13 +51,20 @@ class DoubleTXRelay(WarnetTestFramework):
         return self.block_queue.pop(0)
 
     def connect_nodes(self):
-        for node in self.nodes:
-            if node.getpeerinfo() == []:
-                random_node = random.choice(self.nodes)
-                ipaddress = random_node.getnetworkinfo()["localaddresses"][0]["address"]
-                node.addnode(f"{ipaddress}:18444", "add")
-                return True
-        return False
+        nodes_without_peers = []
+        try:
+            for node in self.nodes:
+                if node.getpeerinfo() == []:
+                    nodes_without_peers.append(node.index)
+                    random_node = random.choice(self.nodes)
+                    ipaddress = random_node.getnetworkinfo()["localaddresses"][0]["address"]
+                    node.addnode(f"{ipaddress}:18444", "add")
+        except Exception:
+            pass
+        if len(nodes_without_peers) == 0:
+            return False
+        self.log.info("Nodes without peers: %s", nodes_without_peers)
+        return True
 
     def run_test(self):
         self.log.info("Starting Double TX Relay Scenario")
