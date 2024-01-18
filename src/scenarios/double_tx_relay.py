@@ -50,6 +50,15 @@ class DoubleTXRelay(WarnetTestFramework):
             return None
         return self.block_queue.pop(0)
 
+    def connect_nodes(self):
+        for node in self.nodes:
+            if node.getpeerinfo() == []:
+                random_node = random.choice(self.nodes)
+                ipaddress = random_node.getnetworkinfo()["localaddresses"][0]["address"]
+                node.connect(f"{ipaddress}:18444")
+                return True
+        return False
+
     def run_test(self):
         self.log.info("Starting Double TX Relay Scenario")
         self.block_queue = []
@@ -57,6 +66,12 @@ class DoubleTXRelay(WarnetTestFramework):
         self.sent_txs = 0  # protected by mutex
         self.time_of_last_log = datetime.now()  # protected by mutex
         self.failed_txs = 0  # protected by mutex
+
+        self.log.info("Checking all nodes have a peer")
+        # ensure all nodes have a peer
+        while self.connect_nodes():
+            self.log.info("Waiting for all nodes to have a peer")
+            time.sleep(5)
 
         if self.options.speedyinitialblockrewards:
             self.log.info("Generating initial blocks and rewards")
