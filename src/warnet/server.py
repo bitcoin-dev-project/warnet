@@ -211,7 +211,7 @@ class Server:
                     scenario_list.append((s.name, m.cli_help()))
             return scenario_list
         except Exception as e:
-            return [f"Exception {e}"]
+            return [(f"Exception {e}", )]
 
     def scenarios_run(
         self, scenario: str, additional_args: List[str], network: str = "warnet"
