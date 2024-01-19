@@ -18,10 +18,102 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 3,
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "editorMode": "code",
+          "expr": "avg_over_time({container=~\".+tank.+\"} |= `Successfully reconstructed block` | regexp `.*\\s(?P<txrequested>[0-9]+)\\stxn\\srequested.*` | unwrap txrequested | __error__=\"\"[3m])",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Number of txns requested for compact block",
+      "type": "timeseries"
+    },
     {
       "datasource": {
         "type": "prometheus",
@@ -85,7 +177,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 7
       },
       "id": 3,
       "options": {
@@ -185,7 +277,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 15
       },
       "id": 2,
       "options": {
@@ -284,7 +376,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 23
       },
       "id": 1,
       "options": {
@@ -322,13 +414,13 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 38,
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},

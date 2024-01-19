@@ -74,9 +74,22 @@ class DoubleTXRelay(WarnetTestFramework):
         self.time_of_last_log = datetime.now()  # protected by mutex
         self.failed_txs = 0  # protected by mutex
 
-        self.log.info("Starting block mining and tx sending in real time")
+        self.log.info("Checking all nodes have a peer")
+        # ensure all nodes have a peer
+        while self.connect_nodes():
+            self.log.info("Waiting for all nodes to have a peer")
+            time.sleep(5)
 
-        asyncio.run(self.mainasync())
+        if self.options.speedyinitialblockrewards:
+            self.log.info("Generating initial blocks and rewards")
+            for node in self.nodes:
+                self.generate_block(self.nodes[0], node)
+            for _ in range(BLOCKS_WAIT_TILL_SPENDABLE):
+                self.generate_block(self.nodes[0], self.nodes[0])
+
+        # self.log.info("Starting block mining and tx sending in real time")
+
+        # asyncio.run(self.mainasync())
 
     def generate_block(self, generating_node: TestNode, receiving_node: TestNode):
         try:
