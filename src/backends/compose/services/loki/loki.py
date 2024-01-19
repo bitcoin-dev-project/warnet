@@ -8,7 +8,6 @@ PORT = 3100
 
 
 class Loki(BaseService):
-
     def __init__(self, docker_network):
         super().__init__(docker_network)
         self.service = {

@@ -1,4 +1,5 @@
 import click
+from requests.exceptions import ConnectionError
 from rich import print as richprint
 
 from warnet.cli.debug import debug
@@ -78,14 +79,13 @@ def rpc(node, method, params, network):
     # Convert tuple to space-separated string
     method_str = " ".join(method)
 
-    try:
-        result = rpc_call(
+    print(
+        rpc_call(
             "tank_bcli",
             {"network": network, "node": node, "method": method_str, "params": params},
         )
-        richprint(result)
-    except Exception as e:
-        richprint(f"bitcoin-cli {method_str} {params} failed on node {node}:\n{e}")
+    )
+
 
 @cli.command(context_settings={"ignore_unknown_options": True})
 @click.argument("node", type=int)
@@ -95,14 +95,13 @@ def lncli(node: int, command: tuple, network: str):
     """
     Call lightning cli <command> on <node> in <--network>
     """
-    try:
-        result = rpc_call(
+    print(
+        rpc_call(
             "tank_lncli",
             {"network": network, "node": node, "command": command},
         )
-        print(result)
-    except Exception as e:
-        richprint(f"lightning cli {command} failed on node {node}:\n{e}")
+    )
+
 
 @cli.command()
 @click.argument("node", type=int, required=True)
@@ -111,11 +110,7 @@ def debug_log(node, network):
     """
     Fetch the Bitcoin Core debug log from <node> in [network]
     """
-    try:
-        result = rpc_call("tank_debug_log", {"node": node, "network": network})
-        print(result)
-    except Exception as e:
-        richprint(f"In our pursuit of knowledge from node {node}, we were thwarted: {e}")
+    print(rpc_call("tank_debug_log", {"node": node, "network": network}))
 
 
 @cli.command()
@@ -126,14 +121,7 @@ def messages(node_a, node_b, network):
     """
     Fetch messages sent between <node_a> and <node_b> in <network>
     """
-    import logging
-
-    logging.warning(f"got args: {node_a}, {node_b}, {network}")
-    try:
-        result = rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b})
-        richprint(result)
-    except Exception as e:
-        richprint(f"Error fetching messages between {node_a} and {node_b}: {e}")
+    print(rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}))
 
 
 @cli.command()
@@ -143,12 +131,7 @@ def grep_logs(pattern, network):
     """
     Grep combined logs via fluentd using regex [pattern]
     """
-
-    try:
-        result = rpc_call("logs_grep", {"network": network, "pattern": pattern})
-        print(result)
-    except Exception as e:
-        print(f"Error fetching combined log: {e}")
+    print(rpc_call("logs_grep", {"network": network, "pattern": pattern}))
 
 
 @cli.command()
@@ -157,10 +140,12 @@ def stop():
     Stop warnet.
     """
     try:
-        result = rpc_call("server_stop", None)
-        richprint(result)
+        rpc_call("server_stop", None)
+    except ConnectionError:
+        # This is a successful stop in this context, as they disconnected us
+        richprint("Stopped warnet")
     except Exception as e:
-        richprint(f"Error stopping warnet: {e}")
+        print(e)
 
 
 if __name__ == "__main__":

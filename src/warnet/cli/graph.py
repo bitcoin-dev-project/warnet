@@ -25,8 +25,8 @@ def create(
     """
     Create a graph file of type random AS graph with [params]
     """
-    try:
-        result = rpc_call(
+    print(
+        rpc_call(
             "graph_generate",
             {
                 "params": params,
@@ -36,6 +36,4 @@ def create(
                 "random": random,
             },
         )
-        print(result)
-    except Exception as e:
-        print(f"Error generating graph: {e}")
+    )
