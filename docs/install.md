@@ -1,6 +1,17 @@
 # Install Warnet
 
+Warnet requires _either_ Kubernetes or Docker to be installed in order to run the network.
+Instructions for both can be found below.
+
 ## Dependencies
+
+### Kubernetes
+
+Install [`kubectl`](https://kubernetes.io/docs/setup/) (or equivalent) and
+configure your cluster. This can be done locally with `minikube` or using a
+managed cluster.
+
+### Docker
 
 Install docker engine and its `compose` plugin for your system: https://docs.docker.com/engine/install/
 
@@ -28,22 +39,19 @@ sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-### Using Docker
+#### Using Docker
 
-If you have never used Docker before you may need to take a few more steps to
-run the Docker daemon on your system. The Docker daemon MUST be running
-before stating Warnet.
+If you have never used Docker before you may need to take a few more steps to run the Docker daemon on your system.
+The Docker daemon MUST be running before stating Warnet.
 
-#### Linux
+##### Linux
 
 - [Check Docker user/group permissions](https://stackoverflow.com/a/48957722/1653320)
 - or [`chmod` the Docker UNIX socket](https://stackoverflow.com/a/51362528/1653320)
 
-#### macOS
+##### macOS
 
-On macOS, a bridge to the docker subnet is required, such as
-https://github.com/chipmk/docker-mac-net-connect
-
+On macOS, a bridge to the docker subnet is required, such as https://github.com/chipmk/docker-mac-net-connect
 
 ```bash
 # Install via Homebrew
@@ -73,6 +81,5 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .
 ```
-
 
 # Next: [Running Warnet](running.md)

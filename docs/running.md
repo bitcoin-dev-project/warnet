@@ -1,10 +1,39 @@
 # Running Warnet
 
 Warnet runs a server which can be used to manage multiple networks.
+On docker this runs locally, but on Kubernetes this runs as a statefulset in
+the cluster.
 
 If the `$XDG_STATE_HOME` environment variable is set, the server will log to
 a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet/warnet.log`.
 
+## Kubernetes
+
+Deploy the resources in `src/templates/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
+
+This can be done with from inside the `src/templates/` directory by running:
+
+```bash
+kubectl apply -f '*.yaml'
+```
+
+Once the RPC server comes up we need to forward the RPC port from the cluster.
+This can be done with:
+
+```bash
+kubectl port-forward svc/rpc 9276:9276
+```
+
+This allows you to communicate with the RPC server using `warcli`.
+
+Currently, while `warcli network down` will bring down the pods, the RPC server needs manual deletion.
+This can be done using:
+
+```bash
+kubectl delete statefulset
+```
+
+## Docker
 
 To start the server in the foreground simply run:
 
@@ -12,7 +41,7 @@ To start the server in the foreground simply run:
 warnet
 ```
 
-## Running large networks
+### Running large networks
 
 When running a large number of containers on a single host machine (i.e. with the Docker interface), the system may run out of various resources.
 We recommend setting the following values in /etc/sysctl.conf:
@@ -69,6 +98,6 @@ sudo systemctl daemon-reload
 sudo systemctl restart docker
 ```
 
-On Ubuntu this file is located at /lib/systemd/system/docker.service but you can find it using `sudo systemctl status docker`.
+On Ubuntu this file is located at `/lib/systemd/system/docker.service` but you can find it using `sudo systemctl status docker`.
 
 # Next: [Network Topology](graph.md)
