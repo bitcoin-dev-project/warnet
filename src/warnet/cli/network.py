@@ -63,14 +63,14 @@ def start(graph_file: Path, force: bool, network: str):
         else:
             print(result)
     except Exception as e:
-        print(f"Error creating network: {e}")
+        print(f"Error: {e}")
 
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
 def up(network: str):
     """
-    Run 'docker compose up' on a warnet named <--network> (default: "warnet").
+    Bring up a previously-stopped warnet named <--network> (default: "warnet").
     """
     try:
         result = rpc_call("network_up", {"network": network})
@@ -83,7 +83,7 @@ def up(network: str):
 @click.option("--network", default="warnet", show_default=True)
 def down(network: str):
     """
-    Run 'docker compose down on a warnet named <--network> (default: "warnet").
+    Bring down a running warnet named <--network> (default: "warnet").
     """
 
     try:
@@ -95,12 +95,15 @@ def down(network: str):
                     try:
                         params = {"pid": pid}
                         rpc_call("scenarios_stop", params)
-                    except Exception:
+                    except Exception as e:
+                        print(
+                            f"Exception when stopping scenario: {scenario} with PID {scenario.pid}: {e}"
+                        )
                         continue
         result = rpc_call("network_down", {"network": network})
         print(result)
     except Exception as e:
-        print(f"Error running docker compose down on network {network}: {e}")
+        print(f"Error bringing warnet named {network} down: {e}")
 
 
 @network.command()

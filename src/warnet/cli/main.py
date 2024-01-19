@@ -1,4 +1,5 @@
 import click
+from requests.exceptions import ConnectionError
 from rich import print as richprint
 
 from warnet.cli.debug import debug
@@ -87,6 +88,7 @@ def rpc(node, method, params, network):
     except Exception as e:
         richprint(f"bitcoin-cli {method_str} {params} failed on node {node}:\n{e}")
 
+
 @cli.command(context_settings={"ignore_unknown_options": True})
 @click.argument("node", type=int)
 @click.argument("command", type=str, required=True, nargs=-1)
@@ -103,6 +105,7 @@ def lncli(node: int, command: tuple, network: str):
         print(result)
     except Exception as e:
         richprint(f"lightning cli {command} failed on node {node}:\n{e}")
+
 
 @cli.command()
 @click.argument("node", type=int, required=True)
@@ -157,10 +160,12 @@ def stop():
     Stop warnet.
     """
     try:
-        result = rpc_call("server_stop", None)
-        richprint(result)
+        rpc_call("server_stop", None)
+    except ConnectionError:
+        # This is a successful stop in this context, as they disconnected us
+        richprint("Stopped warnet")
     except Exception as e:
-        richprint(f"Error stopping warnet: {e}")
+        print(e)
 
 
 if __name__ == "__main__":

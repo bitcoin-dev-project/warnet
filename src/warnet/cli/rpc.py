@@ -1,3 +1,4 @@
+import json
 import requests
 from jsonrpcclient.responses import Ok, parse
 from jsonrpcclient.requests import request
@@ -11,7 +12,7 @@ def rpc_call(rpc_method, params: Optional[Union[Dict[str, Any], Tuple[Any, ...]]
     parsed = parse(response.json())
 
     if isinstance(parsed, Ok):
-        return parsed.result
+        return json.loads(parsed.result)
     else:
         error_message = getattr(parsed, "message", "Unknown RPC error")
         raise Exception(error_message)
