@@ -46,7 +46,7 @@ class LNNode:
         uri = tank.lnnode.getURI()
         res = self.lncli(f"connect {uri}")
         return res
-    
+
     def generate_cli_command(self, command: List[str]):
         network = f"--network={self.tank.warnet.bitcoin_network}"
         cmd = f"{network} {' '.join(command)}"

@@ -20,8 +20,10 @@ from warnet.warnet import Warnet
 
 # Ensure that all RPC calls are made with brand new http connections
 def auth_proxy_request(self, method, path, postdata):
-    self._set_conn() # creates new http client connection
+    self._set_conn()  # creates new http client connection
     return self.oldrequest(method, path, postdata)
+
+
 AuthServiceProxy.oldrequest = AuthServiceProxy._request
 AuthServiceProxy._request = auth_proxy_request
 

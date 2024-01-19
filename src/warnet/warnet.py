@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from backends import ComposeBackend, KubernetesBackend
 from warnet.tank import Tank
-from warnet.utils import gen_config_dir, bubble_exception_str, version_cmp_ge
+from warnet.utils import gen_config_dir, version_cmp_ge
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -105,7 +105,6 @@ class Warnet:
         return repr
 
     @classmethod
-    @bubble_exception_str
     def from_graph_file(
         cls,
         base64_graph: str,
@@ -126,7 +125,6 @@ class Warnet:
         return self
 
     @classmethod
-    @bubble_exception_str
     def from_graph(cls, graph, backend="compose", network="warnet"):
         self = cls(Path(), backend, network)
         self.graph = graph
@@ -135,7 +133,6 @@ class Warnet:
         return self
 
     @classmethod
-    @bubble_exception_str
     def from_network(cls, network_name, backend="compose"):
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir, backend, network_name)
@@ -148,11 +145,9 @@ class Warnet:
         return self
 
     @property
-    @bubble_exception_str
     def fork_observer_config(self):
         return self.config_dir / FO_CONF_NAME
 
-    @bubble_exception_str
     def tanks_from_graph(self):
         if not self.graph:
             return
@@ -164,12 +159,10 @@ class Warnet:
             self.tanks.append(Tank.from_graph_node(node_id, self))
         logger.info(f"Imported {len(self.tanks)} tanks from graph")
 
-    @bubble_exception_str
     def apply_network_conditions(self):
         for tank in self.tanks:
             tank.apply_network_conditions()
 
-    @bubble_exception_str
     def connect_edges(self):
         if self.graph is None:
             return
@@ -190,26 +183,21 @@ class Warnet:
                 logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
             src_tank.exec(cmd=cmd, user="bitcoin")
 
-    @bubble_exception_str
     def warnet_build(self):
         self.container_interface.build()
 
-    @bubble_exception_str
     def get_ln_node_from_tank(self, index):
         return self.tanks[index].lnnode
 
-    @bubble_exception_str
     def warnet_up(self):
         self.container_interface.up(self)
 
-    @bubble_exception_str
     def warnet_down(self):
         self.container_interface.down(self)
 
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
 
-    @bubble_exception_str
     def write_fork_observer_config(self):
         shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
         with open(self.fork_observer_config, "a") as f:
@@ -228,7 +216,6 @@ class Warnet:
                 )
         logger.info(f"Wrote file: {self.fork_observer_config}")
 
-    @bubble_exception_str
     def export(self, subdir):
         if self.backend != "compose":
             raise NotImplementedError("Export is only supported for compose backend")

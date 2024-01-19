@@ -1,5 +1,6 @@
 import base64
 from pathlib import Path
+from typing import List
 
 import click
 from rich import print
@@ -14,6 +15,9 @@ DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
 
 
 def print_repr(wn: dict) -> None:
+    if not isinstance(wn, dict):
+        print("Error, cannot print_repr of non-dict")
+        return
     console = Console()
 
     # Warnet table
@@ -53,54 +57,50 @@ def start(graph_file: Path, force: bool, network: str):
         encoded_graph_file = ""
         with open(graph_file, "rb") as graph_file_buffer:
             encoded_graph_file = base64.b64encode(graph_file_buffer.read()).decode("utf-8")
-        result = rpc_call(
-            "network_from_file",
-            {"graph_file": encoded_graph_file, "force": force, "network": network},
-        )
-        # It's a warnet
-        if isinstance(result, dict):
-            print_repr(result)
-        else:
-            print(result)
     except Exception as e:
-        print(f"Error creating network: {e}")
+        print(f"Error encoding graph file: {e}")
+        return
+
+    result = rpc_call(
+        "network_from_file",
+        {"graph_file": encoded_graph_file, "force": force, "network": network},
+    )
+    assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
+    print_repr(result)
 
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
 def up(network: str):
     """
-    Run 'docker compose up' on a warnet named <--network> (default: "warnet").
+    Bring up a previously-stopped warnet named <--network> (default: "warnet").
     """
-    try:
-        result = rpc_call("network_up", {"network": network})
-        print(result)
-    except Exception as e:
-        print(f"Error creating network: {e}")
+    print(rpc_call("network_up", {"network": network}))
 
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
 def down(network: str):
     """
-    Run 'docker compose down on a warnet named <--network> (default: "warnet").
+    Bring down a running warnet named <--network> (default: "warnet").
     """
 
-    try:
-        running_scenarios = rpc_call("scenarios_list_running", {})
-        if running_scenarios:
-            for scenario in running_scenarios:
-                pid = scenario.get("pid")
-                if pid:
-                    try:
-                        params = {"pid": pid}
-                        rpc_call("scenarios_stop", params)
-                    except Exception:
-                        continue
-        result = rpc_call("network_down", {"network": network})
-        print(result)
-    except Exception as e:
-        print(f"Error running docker compose down on network {network}: {e}")
+    running_scenarios = rpc_call("scenarios_list_running", {})
+    assert isinstance(running_scenarios, List)
+    if running_scenarios:
+        for scenario in running_scenarios:
+            pid = scenario.get("pid")
+            if pid:
+                try:
+                    params = {"pid": pid}
+                    rpc_call("scenarios_stop", params)
+                except Exception as e:
+                    print(
+                        f"Exception when stopping scenario: {scenario} with PID {scenario.pid}: {e}"
+                    )
+                    print("Continuing with shutdown...")
+                    continue
+    print(rpc_call("network_down", {"network": network}))
 
 
 @network.command()
@@ -109,11 +109,9 @@ def info(network: str):
     """
     Get info about a warnet named <--network> (default: "warnet").
     """
-    try:
-        result = rpc_call("network_info", {"network": network})
-        print_repr(result)
-    except Exception as e:
-        print(f"Error getting info about network {network}: {e}")
+    result = rpc_call("network_info", {"network": network})
+    assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
+    print_repr(result)
 
 
 @network.command()
@@ -122,17 +120,13 @@ def status(network: str):
     """
     Get status of a warnet named <--network> (default: "warnet").
     """
-    try:
-        result = rpc_call("network_status", {"network": network})
-        for tank in result:
-            lightning_status = ""
-            if "lightning_status" in tank:
-                lightning_status = f"\tLightning: {tank['lightning_status']}"
-            print(
-                f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}"
-            )
-    except Exception as e:
-        print(f"Error getting status of network {network}: {e}")
+    result = rpc_call("network_status", {"network": network})
+    assert isinstance(result, list), "Result is not a list"  # Make mypy happy
+    for tank in result:
+        lightning_status = ""
+        if "lightning_status" in tank:
+            lightning_status = f"\tLightning: {tank['lightning_status']}"
+        print(f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}")
 
 
 @network.command()
@@ -141,8 +135,4 @@ def export(network):
     """
     Export all data for sim-ln to subdirectory
     """
-    try:
-        result = rpc_call("network_export", {"network": network})
-        print(result)
-    except Exception as e:
-        print(f"Error exporting network: {e}")
+    print(rpc_call("network_export", {"network": network}))
