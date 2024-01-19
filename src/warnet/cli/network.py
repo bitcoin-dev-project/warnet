@@ -57,7 +57,11 @@ def start(graph_file: Path, force: bool, network: str):
             "network_from_file",
             {"graph_file": encoded_graph_file, "force": force, "network": network},
         )
-        print_repr(result)
+        # It's a warnet
+        if isinstance(result, dict):
+            print_repr(result)
+        else:
+            print(result)
     except Exception as e:
         print(f"Error creating network: {e}")
 
