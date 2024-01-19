@@ -15,7 +15,7 @@ from threading import Lock
 
 BLOCKS_WAIT_TILL_SPENDABLE = 101
 MIN_UTXO_AMOUNT = Decimal(0.001)
-AVERAGE_BLOCK_TIME = 120
+AVERAGE_BLOCK_TIME = 600
 
 
 def cli_help():
