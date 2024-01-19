@@ -24,7 +24,6 @@ from warnet.tank import Tank
 from warnet.status import RunningStatus
 from warnet.lnnode import LNNode
 from warnet.utils import (
-    bubble_exception_str,
     parse_raw_messages,
     default_bitcoin_conf_args,
     set_execute_permission,
@@ -51,7 +50,6 @@ class ComposeBackend(BackendInterface):
         self.network_name = network_name
         self.client = docker.DockerClient = docker.from_env()
 
-    @bubble_exception_str
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
         try:
@@ -72,7 +70,6 @@ class ComposeBackend(BackendInterface):
             return False
         return True
 
-    @bubble_exception_str
     def up(self, *_):
         command = ["docker", "compose", "up", "--detach"]
         try:
@@ -91,7 +88,6 @@ class ComposeBackend(BackendInterface):
                 f"An error occurred while executing `{' '.join(command)}` in {self.config_dir}: {e}"
             )
 
-    @bubble_exception_str
     def down(self, warnet):
         command = ["docker", "compose", "down"]
         try:

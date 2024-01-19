@@ -1,5 +1,4 @@
 import functools
-import inspect
 import ipaddress
 import logging
 import os
@@ -346,23 +345,6 @@ def gen_config_dir(network: str) -> Path:
     config_dir = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.warnet"))
     config_dir = Path(config_dir) / "warnet" / network
     return config_dir
-
-
-def bubble_exception_str(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            func_name = inspect.currentframe().f_code.co_name
-            local_vars = inspect.currentframe().f_locals
-            # Filter out the 'self' variable from the local_vars
-            context_str = ", ".join(f"{k}={v}" for k, v in local_vars.items() if k != "self")
-            raise Exception(
-                f"Exception in function '{func_name}' with context ({context_str}): {str(e)}"
-            )
-
-    return wrapper
 
 
 def remove_version_prefix(version_str):
