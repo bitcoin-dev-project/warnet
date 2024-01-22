@@ -9,5 +9,6 @@ index 7530334db1..b66cfe5c2f 100644
 -    return IsValid() && !(IsRFC1918() || IsRFC2544() || IsRFC3927() || IsRFC4862() || IsRFC6598() || IsRFC5737() || IsRFC4193() || IsRFC4843() || IsRFC7343() || IsLocal() || IsInternal());
 +    return IsValid() && !(IsLocal() || IsInternal());
  }
- 
+
  /**
+

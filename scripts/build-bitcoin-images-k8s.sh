@@ -15,6 +15,7 @@ declare -A VERSION_ARCH_MAP=(
     ["23.2"]="amd64 arm64 armhf"
     ["24.2"]="amd64 arm64 armhf"
     ["25.1"]="amd64 arm64 armhf"
+    ["26.0"]="amd64 arm64 armhf"
 )
 
 if [[ -d "src/templates" ]]; then
@@ -43,6 +44,7 @@ for VERSION in "${!VERSION_ARCH_MAP[@]}"; do
             --build-arg BRANCH="v${VERSION}" \
             --build-arg BUILD_ARGS="${BUILD_ARGS}" \
             --tag "${IMAGE_FULL_NAME}" \
+            --file Dockerfile_k8 \
             . --push
 
         IMAGES_LIST+=("${IMAGE_FULL_NAME}")
