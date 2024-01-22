@@ -1,9 +1,11 @@
 import json
 import os
-from warnet.utils import exponential_backoff, generate_ipv4_addr
-from backends import BackendInterface, ServiceType
-from .status import RunningStatus
 from typing import List
+
+from backends import BackendInterface, ServiceType
+from warnet.utils import exponential_backoff, generate_ipv4_addr
+
+from .status import RunningStatus
 
 
 class LNNode:

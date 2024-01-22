@@ -1,9 +1,10 @@
-import re
 import os
-from click import Context
-from warnet.cli.main import cli
-from tabulate import tabulate
+import re
 from pathlib import Path
+
+from click import Context
+from tabulate import tabulate
+from warnet.cli.main import cli
 
 doc = ""
 
@@ -38,7 +39,7 @@ with Context(cli) as ctx:
 
 file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / "docs" / "warcli.md"
 
-with open(file_path, "r") as file:
+with open(file_path) as file:
     text = file.read()
 
 pattern = r"(## API Commands\n)(.*\n)*?(# Next)"

@@ -1,6 +1,7 @@
 import jwt
-from ..db import schemas
 from decouple import config
+
+from ..db import schemas
 
 JWT_SECRET = config("JWT_SECRET")
 

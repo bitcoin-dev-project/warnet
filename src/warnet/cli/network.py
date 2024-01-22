@@ -1,4 +1,4 @@
-import base64
+import base64  # noqa: I001
 from pathlib import Path
 from typing import List
 
@@ -6,10 +6,9 @@ import click
 from rich import print
 from rich.console import Console
 from rich.table import Table
+from warnet.cli.rpc import rpc_call  # noqa: I001
 
-from graphs import GRAPHS
-from warnet.cli.rpc import rpc_call
-
+from graphs import GRAPHS  # noqa: I001
 
 DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
 

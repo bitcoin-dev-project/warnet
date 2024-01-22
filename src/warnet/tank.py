@@ -3,18 +3,18 @@ Tanks are containerized bitcoind nodes
 """
 
 import logging
-
 from pathlib import Path
+
+from backends import ServiceType
 from warnet.lnnode import LNNode
 from warnet.utils import (
+    SUPPORTED_TAGS,
     exponential_backoff,
     generate_ipv4_addr,
     sanitize_tc_netem_command,
-    SUPPORTED_TAGS,
 )
-from backends import ServiceType
-from .status import RunningStatus
 
+from .status import RunningStatus
 
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 
@@ -73,11 +73,10 @@ class Tank:
         node = warnet.graph.nodes[index]
         version = node.get("version")
         if version:
-            if not ("/" in version and "#" in version):
-                if version not in SUPPORTED_TAGS:
-                    raise Exception(
-                        f"Unsupported version: can't be generated from Docker images: {version}"
-                    )
+            if not ("/" in version and "#" in version) and version not in SUPPORTED_TAGS:
+                raise Exception(
+                    f"Unsupported version: can't be generated from Docker images: {version}"
+                )
             self.version = version
         self.conf = node.get("bitcoin_config", self.conf)
         self.netem = node.get("tc_netem", self.netem)

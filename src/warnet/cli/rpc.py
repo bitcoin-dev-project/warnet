@@ -1,8 +1,9 @@
-import requests
 import sys
-from jsonrpcclient.responses import Error, Ok, parse
+from typing import Any, Dict, Optional, Tuple, Union
+
+import requests
 from jsonrpcclient.requests import request
-from typing import Any, Dict, Tuple, Union, Optional
+from jsonrpcclient.responses import Error, Ok, parse
 from warnet.server import WARNET_SERVER_PORT
 
 

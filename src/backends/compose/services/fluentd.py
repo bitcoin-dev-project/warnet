@@ -1,5 +1,7 @@
 import shutil
+
 from templates import TEMPLATES
+
 from .base_service import BaseService
 
 FLUENT_CONF = "fluent.conf"

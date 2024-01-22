@@ -2,31 +2,30 @@ import inspect
 import logging
 import os
 import pkgutil
-import shutil
-import time
 import platform
+import shutil
 import signal
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
 from io import BytesIO
-from logging.handlers import RotatingFileHandler
 from logging import StreamHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List, Optional
+
+import networkx as nx
+import scenarios
 from flask import Flask, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
-
-import networkx as nx
-
-import scenarios
-from warnet.warnet import Warnet
 from warnet.utils import (
     create_graph_with_probability,
     gen_config_dir,
 )
+from warnet.warnet import Warnet
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
@@ -116,7 +115,7 @@ class Server:
         self.jsonrpc.register(self.logs_grep)
 
     def tank_bcli(
-        self, node: int, method: str, params: List[str] = [], network: str = "warnet"
+        self, node: int, method: str, params: Optional[List[str]] = None, network: str = "warnet"
     ) -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
@@ -125,8 +124,9 @@ class Server:
         try:
             return wn.container_interface.get_bitcoin_cli(wn.tanks[node], method, params)
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Sever error calling bitcoin-cli {method}: {e}")
+            msg = f"Sever error calling bitcoin-cli {method}: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def tank_lncli(self, node: int, command: List[str], network: str = "warnet") -> str:
         """
@@ -136,8 +136,9 @@ class Server:
         try:
             return wn.container_interface.ln_cli(wn.tanks[node], command)
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error calling lncli: {e}")
+            msg = f"Error calling lncli: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def tank_debug_log(self, network: str, node: int) -> str:
         """
@@ -147,8 +148,9 @@ class Server:
         try:
             return wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].index)
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error fetching debug logs: {e}")
+            msg = f"Error fetching debug logs: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def tank_messages(self, network: str, node_a: int, node_b: int) -> str:
         """
@@ -164,7 +166,9 @@ class Server:
                 if msg is not None
             ]
             if not messages:
-                raise ServerError(f"No messages found between {node_a} and {node_b}")
+                msg = f"No messages found between {node_a} and {node_b}"
+                self.logger.error(msg)
+                raise ServerError(message=msg)
 
             messages_str_list = []
 
@@ -191,10 +195,9 @@ class Server:
             return result_str
 
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(
-                message=f"Error fetching messages between nodes {node_a} and {node_b}: {e}"
-            )
+            msg = f"Error fetching messages between nodes {node_a} and {node_b}: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def network_export(self, network: str) -> str:
         """
@@ -207,8 +210,9 @@ class Server:
             wn.export(subdir)
             return subdir
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error exporting network: {e}")
+            msg = f"Error exporting network: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def scenarios_list(self) -> List[tuple]:
         """
@@ -222,8 +226,9 @@ class Server:
                     scenario_list.append((s.name, m.cli_help()))
             return scenario_list
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error listing scenarios: {e}")
+            msg = f"Error listing scenarios: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def scenarios_run(
         self, scenario: str, additional_args: List[str], network: str = "warnet"
@@ -270,8 +275,9 @@ class Server:
             return f"Running scenario {scenario} with PID {proc.pid} in the background..."
 
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error trying to run scenario: {e}")
+            msg = f"Error running scenario: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def scenarios_stop(self, pid: int) -> str:
         matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
@@ -281,7 +287,9 @@ class Server:
             self.running_scenarios = [sc for sc in self.running_scenarios if sc["pid"] != pid]
             return f"Stopped scenario with PID {pid}."
         else:
-            raise ServerError(message=f"Could not find scenario with PID {pid}.")
+            msg = f"Could not find scenario with PID {pid}"
+            self.logger.error(msg)
+            raise ServerError(message=msg)
 
     def scenarios_list_running(self) -> List[dict]:
         running = [
@@ -307,7 +315,8 @@ class Server:
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
                 )
             except Exception as e:
-                self.logger.error(f"Exception {e}")
+                msg = f"Error starting network: {e}"
+                self.logger.error(msg)
 
         try:
             wn = Warnet.from_network(network, self.backend)
@@ -316,8 +325,9 @@ class Server:
             t.start()
             return "Resuming warnet..."
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error bringing warnet up: {e}")
+            msg = f"Error bring up warnet: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def network_from_file(
         self, graph_file: str, force: bool = False, network: str = "warnet"
@@ -336,26 +346,27 @@ class Server:
                 wn.connect_edges()
                 self.logger.info(f"Created warnet named '{network}'")
             except Exception as e:
-                self.logger.error(f"Exception in {inspect.stack()[0][3]}: {e}")
+                msg = f"Exception in {inspect.stack()[0][3]}: {e}"
+                self.logger.exception(msg)
 
+        config_dir = gen_config_dir(network)
+        if config_dir.exists():
+            if force:
+                shutil.rmtree(config_dir)
+            else:
+                message = f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
+                self.logger.error(message)
+                raise ServerError(message=message, code=CONFIG_DIR_ALREADY_EXISTS)
         try:
-            config_dir = gen_config_dir(network)
-            if config_dir.exists():
-                if force:
-                    shutil.rmtree(config_dir)
-                else:
-                    raise ServerError(
-                        message=f"Config dir {config_dir} already exists, not overwriting existing warnet without --force",
-                        code=CONFIG_DIR_ALREADY_EXISTS,
-                    )
             wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
             t = threading.Thread(target=lambda: thread_start(wn))
             t.daemon = True
             t.start()
             return wn._warnet_dict_representation()
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error trying to resume warnet: {e}")
+            msg = f"Error tring to resume warnet: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def graph_generate(
         self,
@@ -379,8 +390,9 @@ class Server:
             xml_data = bio.getvalue()
             return f"Generated graph:\n\n{xml_data.decode('utf-8')}"
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error generating graph: {e}")
+            msg = f"Error generating graph: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def network_down(self, network: str = "warnet") -> str:
         """
@@ -391,8 +403,9 @@ class Server:
             wn.warnet_down()
             return "Stopping warnet"
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error bringing warnet down: {e}")
+            msg = f"Error bringing warnet down: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def network_info(self, network: str = "warnet") -> dict:
         """
@@ -415,8 +428,9 @@ class Server:
                 stats.append(status)
             return stats
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error getting network status: {e}")
+            msg = f"Error getting network status: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:
         """
@@ -425,19 +439,19 @@ class Server:
         try:
             config_dir = gen_config_dir(network)
             if config_dir.exists():
-                raise ServerError(
-                    message=f"Config dir {config_dir} already exists, not overwriting existing warnet",
-                    code=CONFIG_DIR_ALREADY_EXISTS,
-                )
+                message = f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
+                self.logger.error(message)
+                raise ServerError(message=message, code=CONFIG_DIR_ALREADY_EXISTS)
             wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
             wn.generate_deployment()
             if not wn.deployment_file or not wn.deployment_file.is_file():
                 raise ServerError(f"No deployment file found at {wn.deployment_file}")
-            with open(wn.deployment_file, "r") as f:
+            with open(wn.deployment_file) as f:
                 return f.read()
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error generating deployment file: {e}")
+            msg = f"Error generating deployment file: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
     def server_stop(self) -> None:
         """
@@ -456,8 +470,9 @@ class Server:
             wn = Warnet.from_network(network, self.backend)
             return wn.container_interface.logs_grep(pattern, network)
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise ServerError(message=f"Error grepping logs using pattern {pattern}: {e}")
+            msg = f"Error grepping logs using pattern {pattern}: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
 
 
 def run_server():

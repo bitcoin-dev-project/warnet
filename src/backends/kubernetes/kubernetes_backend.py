@@ -1,23 +1,19 @@
-from backends import BackendInterface, ServiceType
+import io
+import re
+import time
 from pathlib import Path
+from typing import List, cast
 
+import yaml
+from backends import BackendInterface, ServiceType
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
-from kubernetes.stream import stream
 from kubernetes.client.rest import ApiException
-
-
-import time
-import re
-import yaml
-import io
-
-from typing import cast, List
-
-from warnet.tank import Tank
+from kubernetes.stream import stream
 from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
-from warnet.utils import parse_raw_messages, default_bitcoin_conf_args
+from warnet.tank import Tank
+from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
 
 DOCKER_REGISTRY_CORE = "bitcoindevproject/k8s-bitcoin-core"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
@@ -56,6 +52,7 @@ class KubernetesBackend(BackendInterface):
         for tank in warnet.tanks:
             pod_name = self.get_pod_name(tank.index)
             self.client.delete_namespaced_pod(pod_name, self.namespace)
+        return True
 
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         """

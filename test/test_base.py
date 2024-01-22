@@ -3,12 +3,13 @@ import os
 import sys
 import threading
 from pathlib import Path
-from subprocess import Popen, run, PIPE, STDOUT
+from subprocess import PIPE, STDOUT, Popen, run
 from tempfile import mkdtemp
 from time import sleep
+
 from warnet.cli.rpc import rpc_call
-from warnet.warnet import Warnet
 from warnet.utils import exponential_backoff
+from warnet.warnet import Warnet
 
 
 class TestBase:
@@ -76,16 +77,16 @@ class TestBase:
         cmd = ["warcli"] + str.split()
         if network:
             cmd += ["--network", self.network_name]
-        proc = run(cmd, stdout=PIPE, stderr=PIPE)
+        proc = run(cmd, capture_output=True)
         return proc.stdout.decode().strip()
 
     # Execute a warnet RPC API call directly (may return dict or list)
-    def rpc(self, method, params=[]):
+    def rpc(self, method, params=None):
         return rpc_call(method, params)
 
     # Repeatedly execute an RPC until it succeeds
     @exponential_backoff()
-    def wait_for_rpc(self, method, params=[]):
+    def wait_for_rpc(self, method, params=None):
         return rpc_call(method, params)
 
     # Read output from server using a thread
@@ -158,19 +159,13 @@ class TestBase:
                     stats[lightning_status] += 1
             print(f"Waiting for all tanks to reach '{target}': {stats}")
             # All tanks are running, proceed
-            if target in stats and stats[target] == stats["total"]:
-                return True
-            else:
-                return False
+            return target in stats and stats[target] == stats["total"]
 
         self.wait_for_predicate(check_status, timeout, interval)
 
     def wait_for_all_scenarios(self):
         def check_scenarios():
             scns = self.rpc("scenarios_list_running")
-            for scn in scns:
-                if scn["active"]:
-                    return False
-            return True
+            return all(not scn["active"] for scn in scns)
 
         self.wait_for_predicate(check_scenarios)

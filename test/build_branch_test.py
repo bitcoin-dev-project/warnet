@@ -2,8 +2,9 @@
 
 import json
 import os
-from test_base import TestBase
 from pathlib import Path
+
+from test_base import TestBase
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "build_v24_test.graphml"
 

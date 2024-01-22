@@ -1,6 +1,8 @@
+import uuid
+
 import bcrypt
 from sqlalchemy.orm import Session
-import uuid
+
 from ..auth import api_token
 from . import models, schemas
 
