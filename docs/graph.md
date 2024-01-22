@@ -6,7 +6,7 @@ Before any scenarios or RPC commands can be executed, a Warnet network must be s
 See [warcli.md](warcli.md) for more details on these commands.
 
 To start a network called `"warnet"` from the [default graph file](../src/graphs/default.graphml)
-which consists of 12 Bitcoin Core v25.0 nodes connected in a ring:
+which consists of 12 Bitcoin Core v26.0 nodes connected in a ring:
 ```
 warcli network start
 ```
@@ -53,7 +53,7 @@ Nodes can be added to the graph as follows:
 <node id="0">
 <data key="x">5.5</data>
 <data key="y">2.5</data>
-<data key="version">24.0</data>
+<data key="version">26.0</data>
 <data key="bitcoin_config">uacomment=warnet0_v24,debugexclude=libevent</data>
 <data key="tc_netem"></data>
 </node>
@@ -90,9 +90,11 @@ Graphs can be created via the graph menu:
 # show graph commands
 warcli graph --help
 
-# Create a random internet AS graph of random (supported) version nodes
-warcli graph create n=100 --outfile=random_internet_as_graph_n100.graphml --random
+# Create an erdos renyi graph of 12 nodes using edge connection probability of 0.3 and default bitcoin version (v26.0)
+warcli graph create n=12 p=0.3 --outfile=erdos-renyi_n12_v26.0.graphml
 
+# Create an erdos renyi graph of 15 nodes using default edge connection probability of p=0.2 and using random bitcoin versions
+warcli graph create n=15 --outfile=erdos-renyi_n15_random.graphml --random
 ```
 
 ## Examples
