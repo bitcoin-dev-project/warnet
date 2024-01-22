@@ -1,7 +1,6 @@
 import email_validator
 from decouple import config
 
-
 email_validator.SPECIAL_USE_DOMAIN_NAMES.remove("test")
 email_validator.CHECK_DELIVERABILITY = True
 

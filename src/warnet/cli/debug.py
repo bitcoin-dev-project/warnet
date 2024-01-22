@@ -1,6 +1,5 @@
 import click
 from rich import print
-
 from warnet.cli.rpc import rpc_call
 
 

@@ -13,10 +13,8 @@ from pathlib import Path
 from typing import List, Optional
 
 import networkx as nx
-
-from test_framework.p2p import MESSAGEMAP
 from test_framework.messages import ser_uint256
-
+from test_framework.p2p import MESSAGEMAP
 
 logger = logging.getLogger("utils")
 
@@ -394,7 +392,7 @@ def default_bitcoin_conf_args() -> str:
 
     conf_args = []
 
-    for section, kvs in defaults.items():
+    for kvs in defaults.values():
         # Skip section names, just focus on key-value pairs
         for key, value in kvs:
             conf_args.append(f"-{key}={value}")
@@ -454,7 +452,7 @@ def create_graph_with_probability(
     if bitcoin_conf is not None:
         conf = Path(bitcoin_conf)
         if conf.is_file():
-            with open(conf, "r") as f:
+            with open(conf) as f:
                 # parse INI style conf then dump using for_graph
                 conf_dict = parse_bitcoin_conf(f.read())
                 conf_contents = dump_bitcoin_conf(conf_dict, for_graph=True)

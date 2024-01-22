@@ -1,7 +1,6 @@
 import click
 from requests.exceptions import ConnectionError
 from rich import print as richprint
-
 from warnet.cli.debug import debug
 from warnet.cli.graph import graph
 from warnet.cli.network import network

@@ -2,9 +2,10 @@
 
 import json
 import os
-from time import sleep
-from test_base import TestBase
 from pathlib import Path
+from time import sleep
+
+from test_base import TestBase
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ln.graphml"
 
@@ -19,7 +20,7 @@ if base.backend != "compose":
 else:
     print("\nTesting warcli network export")
     path = Path(base.warcli("network export")) / "sim.json"
-    with open(path, "r") as file:
+    with open(path) as file:
         data = json.load(file)
         print(json.dumps(data, indent=4))
         assert len(data["nodes"]) == 3
@@ -44,10 +45,9 @@ print(base.warcli(f"lncli 0 payinvoice -f {inv}"))
 print("Waiting for payment success")
 while True:
     invs = json.loads(base.warcli("lncli 2 listinvoices"))["invoices"]
-    if len(invs) > 0:
-        if invs[0]["state"] == "SETTLED":
-            print("\nSettled!")
-            break
+    if len(invs) > 0 and invs[0]["state"] == "SETTLED":
+        print("\nSettled!")
+        break
     sleep(2)
 
 base.stop_server()

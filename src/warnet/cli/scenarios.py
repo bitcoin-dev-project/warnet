@@ -1,10 +1,9 @@
-import click
 from typing import List
+
+import click
 from rich import print
 from rich.console import Console
 from rich.table import Table
-
-
 from warnet.cli.rpc import rpc_call
 
 
@@ -58,7 +57,7 @@ def active():
     assert isinstance(result, List), "Result is not a list"  # Make mypy happy again
 
     table = Table(show_header=True, header_style="bold")
-    for key in result[0].keys():
+    for key in result[0].keys():  # noqa: SIM118
         table.add_column(key.capitalize())
 
     for scenario in result:

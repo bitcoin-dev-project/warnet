@@ -2,8 +2,9 @@
 
 import json
 import os
-from test_base import TestBase
 from pathlib import Path
+
+from test_base import TestBase
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "v25_x_12.graphml"
 
@@ -20,13 +21,11 @@ def wait_for_reachability():
         global onion_addr
         info = json.loads(base.warcli("rpc 0 getnetworkinfo"))
         for net in info["networks"]:
-            if net["name"] == "ipv4":
-                if not net["reachable"]:
-                    return False
-            if net["name"] == "onion":
-                if not net["reachable"]:
-                    return False
-        if not len(info["localaddresses"]) == 2:
+            if net["name"] == "ipv4" and not net["reachable"]:
+                return False
+            if net["name"] == "onion" and not net["reachable"]:
+                return False
+        if len(info["localaddresses"]) != 2:
             return False
         for addr in info["localaddresses"]:
             assert "100." in addr["address"] or ".onion" in addr["address"]

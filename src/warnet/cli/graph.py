@@ -3,7 +3,6 @@ from typing import List
 
 import click
 from rich import print
-
 from warnet.cli.rpc import rpc_call
 from warnet.utils import DEFAULT_TAG
 

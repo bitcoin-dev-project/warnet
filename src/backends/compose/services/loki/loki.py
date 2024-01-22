@@ -1,6 +1,6 @@
-from ..base_service import BaseService
 from pathlib import Path
 
+from ..base_service import BaseService
 
 LOKI_CONF_DIR = Path(__file__).parent
 IMAGE = "grafana/loki:2.9.3"

@@ -6,15 +6,16 @@ import random
 import signal
 import sys
 import tempfile
+
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
-    BitcoinTestFramework,
     TMPDIR_PREFIX,
+    BitcoinTestFramework,
     TestStatus,
 )
 from test_framework.test_node import TestNode
-from test_framework.util import get_rpc_proxy, PortSeed
+from test_framework.util import PortSeed, get_rpc_proxy
 from warnet.warnet import Warnet
 
 
@@ -121,10 +122,10 @@ class WarnetTestFramework(BitcoinTestFramework):
         if seed is None:
             seed = random.randrange(sys.maxsize)
         else:
-            self.log.info("User supplied random seed {}".format(seed))
+            self.log.info(f"User supplied random seed {seed}")
 
         random.seed(seed)
-        self.log.info("PRNG seed is: {}".format(seed))
+        self.log.info(f"PRNG seed is: {seed}")
 
         self.log.debug("Setting up network thread")
         self.network_thread = NetworkThread()
@@ -277,7 +278,8 @@ class WarnetTestFramework(BitcoinTestFramework):
         self.options.previous_releases_path = previous_releases_path
         config = configparser.ConfigParser()
         if self.options.configfile is not None:
-            config.read_file(open(self.options.configfile))
+            with open(self.options.configfile) as f:
+                config.read_file(f)
 
         config["environment"] = {"PACKAGE_BUGREPORT": ""}
 
