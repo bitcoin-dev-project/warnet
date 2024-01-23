@@ -1,7 +1,6 @@
 FROM debian:bookworm-slim as builder
 ENV DEBIAN_FRONTEND=noninteractive
 
-ARG ARCH
 ARG REPO
 ARG BRANCH
 ARG BUILD_ARGS
@@ -21,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libminiupnpc-dev \
         libnatpmp-dev \
         libzmq3-dev \
-        libqrencode-dev \
         libsqlite3-dev \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
@@ -46,7 +44,6 @@ FROM debian:bookworm-slim
 
 ARG UID=3338
 ARG GID=3338
-ARG REPO
 ARG TOR=0
 ARG WARNET=0
 ARG BITCOIN_ARGS
@@ -67,7 +64,13 @@ RUN set -ex \
         gosu \
         iproute2 \
         tor \
-        $(if [ -n "${REPO}" ]; then echo "libboost-dev libevent-dev libdb5.3++-dev libminiupnpc-dev libnatpmp-dev libzmq3-dev libqrencode-dev libsqlite3-dev"; fi) \
+        libboost-dev \
+        libevent-dev \
+        libdb5.3++-dev \
+        libminiupnpc-dev \
+        libnatpmp-dev \
+        libzmq3-dev \
+        libsqlite3-dev \
     && apt-get clean \
     && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
@@ -80,5 +83,5 @@ VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
 
 ENTRYPOINT ["/entrypoint.sh"]
-RUN bitcoind -version | grep -E "Bitcoin Core( Daemon)? version ${BRANCH}"
+CMD echo bitcoind -version
 CMD ["bitcoind"]
