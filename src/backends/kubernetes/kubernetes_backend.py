@@ -292,7 +292,7 @@ class KubernetesBackend(BackendInterface):
         # Create and return a Pod object
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
         container_name = BITCOIN_CONTAINER_NAME
-        container_image = tank.version if tank.is_custom_build else f"{DOCKER_REGISTRY_CORE}:{tank.version}"
+        container_image = tank.image if tank.is_custom_build else f"{DOCKER_REGISTRY_CORE}:{tank.version}"
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_config_args(tank))]
 
         # TODO: support custom builds

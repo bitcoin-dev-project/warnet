@@ -352,7 +352,7 @@ class ComposeBackend(BackendInterface):
         services[container_name] = {}
         logger.debug(f"{tank.version=}")
 
-        # Setup bitcoind, either release binary or build from source
+        # Setup bitcoind, either release binary, pre-built image or built from source on demand
         if "/" and "#" in tank.version:
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
@@ -367,7 +367,12 @@ class ComposeBackend(BackendInterface):
             }
             services[container_name]["build"] = build
             self.copy_configs(tank)
+        elif tank.is_custom_build and tank.image:
+            # Pre-built custom image
+            image = tank.image
+            services[container_name]["image"] = image
         else:
+            # Pre-built regular release
             image = f"{DOCKER_REGISTRY}:{tank.version}"
             services[container_name]["image"] = image
         # Add common bitcoind service details

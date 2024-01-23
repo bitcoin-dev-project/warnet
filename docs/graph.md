@@ -49,6 +49,9 @@ warcli network start <path/to/file.graphml> --network="network_name"
 
 Nodes can be added to the graph as follows:
 
+
+#### Release binaries
+
 ```graphml
 <node id="0">
 <data key="x">5.5</data>
@@ -58,8 +61,24 @@ Nodes can be added to the graph as follows:
 <data key="tc_netem"></data>
 </node>
 ```
+#### Pre-built custom image
 
-Or for a custom built branch with traffic shaping rules applied:
+For a pre-built custom image, remove the `version` tag, and add the image repository to an `image` tag.
+These should be built using the `warcli image build` command to ensure they have the needed patches.
+
+```graphml
+<node id="0">
+<data key="x">5.5</data>
+<data key="y">2.5</data>
+<data key="image">bitcoindevproject/bitcoin-core:26.0</data>
+<data key="bitcoin_config">uacomment=warnet0_v24,debugexclude=libevent</data>
+<data key="tc_netem"></data>
+</node>
+```
+
+#### On-demand built branch
+
+For an on-demand built branch with traffic shaping rules applied using `tc_netem`:
 
 ```graphml
 <node id="0">
@@ -71,7 +90,7 @@ Or for a custom built branch with traffic shaping rules applied:
 </node>
 ```
 
-`x`, `y`, `version`, `bitcoin_config` and `tc_netem` datafields are optional for all nodes.
+`x`, `y`, `version`, `bitcoin_config` and `tc_netem` data fields are optional for all nodes.
 
 ### Edges
 

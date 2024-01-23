@@ -32,6 +32,7 @@ class Tank:
         self.network_name = warnet.network_name
         self.bitcoin_network = warnet.bitcoin_network
         self.version = "25.1"
+        self.image: str = ""
         self.is_custom_build = False
         self.conf = ""
         self.conf_file = None

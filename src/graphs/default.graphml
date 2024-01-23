@@ -5,6 +5,7 @@
   <key attr.name="build_args" attr.type="string" for="node" id="build_args"/>
   <key attr.name="exporter" attr.type="boolean" for="node" id="exporter"/>
   <key attr.name="collect_logs" attr.type="boolean" for="node" id="collect_logs"/>
+  <key attr.name="image" attr.type="string" for="node" id="image"/>
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">26.0</data>
@@ -19,7 +20,7 @@
         <data key="collect_logs">true</data>
     </node>
     <node id="2">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/bitcoin-core:26.0</data>
         <data key="bitcoin_config">-uacomment=w2</data>
         <data key="exporter">true</data>
         <data key="collect_logs">true</data>
