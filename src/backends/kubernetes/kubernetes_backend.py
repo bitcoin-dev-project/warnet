@@ -2,7 +2,7 @@ import io
 import re
 import time
 from pathlib import Path
-from typing import List, cast
+from typing import cast
 
 import yaml
 from backends import BackendInterface, ServiceType
@@ -91,7 +91,7 @@ class KubernetesBackend(BackendInterface):
     def get_pod_name(self, tank_index: int) -> str:
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
 
-    def get_pod(self, pod_name: str) -> V1Pod:
+    def get_pod(self, pod_name: str) -> V1Pod | None:
         try:
             return cast(
                 V1Pod, self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace)
@@ -111,6 +111,8 @@ class KubernetesBackend(BackendInterface):
         container_name = (
             BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME
         )
+
+        assert pod.status, "Could not get pod status"
         for container in pod.status.container_statuses:
             if container.name == container_name:
                 if container.state.running is not None:
@@ -160,7 +162,7 @@ class KubernetesBackend(BackendInterface):
         )
         return logs
 
-    def ln_cli(self, tank: Tank, command: List[str]):
+    def ln_cli(self, tank: Tank, command: list[str]):
         if tank.lnnode is None:
             raise Exception("No LN node configured for tank")
         cmd = tank.lnnode.generate_cli_command(command)
@@ -280,7 +282,7 @@ class KubernetesBackend(BackendInterface):
         defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
 
-    def create_pod_object(self, tank):
+    def create_pod_object(self, tank: Tank):
         # Create and return a Pod object
         # Right now, we can only use images from a registry. Its likely even when we figure out a way
         # to support custom builds, they will also be pushed to a registry first, either a local in cluster one

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "warnet"
 description = "Monitor and analyze the emergent behaviours of bitcoin networks"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 keywords = ["bitcoin", "warnet"]
 license = {text = "MIT"}
 classifiers = [
@@ -32,27 +32,6 @@ dynamic = ["version"]
 [project.scripts]
 warnet = "warnet.server:run_server"
 warcli = "warnet.cli.main:cli"
-
-[tool.black]
-line-length = 100
-target-version = ['py37']
-exclude = '''
-(
-  /(
-      \.git
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-    | api
-    | src/test_framework
-  )/
-  | src/warnet/test_framework_bridge\.py
-)
-'''
 
 [tool.ruff]
 extend-exclude = ["src/test_framework/*.py"]

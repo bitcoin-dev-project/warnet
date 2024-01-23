@@ -44,7 +44,7 @@ class Tank:
         self._ipv4 = None
         self._exporter_name = None
         self.extra_build_args = ""
-        self.lnnode = None
+        self.lnnode: LNNode | None = None
         self.zmqblockport = 28332
         self.zmqtxport = 28333
 
