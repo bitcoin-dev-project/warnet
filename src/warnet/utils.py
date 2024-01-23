@@ -10,7 +10,6 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional
 
 import networkx as nx
 from test_framework.messages import ser_uint256
@@ -401,7 +400,7 @@ def default_bitcoin_conf_args() -> str:
 
 
 def create_graph_with_probability(
-    graph_func, params: List, version: str, bitcoin_conf: Optional[str], random_version: bool
+    graph_func, params: list, version: str, bitcoin_conf: str | None, random_version: bool
 ):
     kwargs = {}
     for param in params:
@@ -489,7 +488,7 @@ def convert_unsupported_attributes(graph):
         for key, value in node_data.items():
             if isinstance(value, set):
                 node_data[key] = list(value)
-            elif isinstance(value, (int, float, str)):
+            elif isinstance(value, int | float | str):
                 continue
             else:
                 node_data[key] = str(value)
@@ -498,7 +497,7 @@ def convert_unsupported_attributes(graph):
         for key, value in edge_data.items():
             if isinstance(value, set):
                 edge_data[key] = list(value)
-            elif isinstance(value, (int, float, str)):
+            elif isinstance(value, int | float | str):
                 continue
             else:
                 edge_data[key] = str(value)

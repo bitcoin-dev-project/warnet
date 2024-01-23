@@ -1,6 +1,6 @@
 import base64  # noqa: I001
+import sys
 from pathlib import Path
-from typing import List
 
 import click
 from rich import print
@@ -65,6 +65,9 @@ def start(graph_file: Path, force: bool, network: str):
         {"graph_file": encoded_graph_file, "force": force, "network": network},
     )
     assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
+    if not isinstance(result, dict):
+        print(f"Error. Expected dict, got {type(result)}. May indicate mismatch between RPC and CLI")
+        sys.exit(1)
     print_repr(result)
 
 
@@ -85,7 +88,7 @@ def down(network: str):
     """
 
     running_scenarios = rpc_call("scenarios_list_running", {})
-    assert isinstance(running_scenarios, List)
+    assert isinstance(running_scenarios, list)
     if running_scenarios:
         for scenario in running_scenarios:
             pid = scenario.get("pid")

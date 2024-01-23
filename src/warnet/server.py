@@ -14,7 +14,6 @@ from io import BytesIO
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import List, Optional
 
 import networkx as nx
 import scenarios
@@ -115,7 +114,7 @@ class Server:
         self.jsonrpc.register(self.logs_grep)
 
     def tank_bcli(
-        self, node: int, method: str, params: Optional[List[str]] = None, network: str = "warnet"
+        self, node: int, method: str, params: list[str] | None = None, network: str = "warnet"
     ) -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
@@ -128,7 +127,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def tank_lncli(self, node: int, command: List[str], network: str = "warnet") -> str:
+    def tank_lncli(self, node: int, command: list[str], network: str = "warnet") -> str:
         """
         Call lightning cli on <node> <command> in [network]
         """
@@ -174,7 +173,7 @@ class Server:
 
             for message in messages:
                 # Check if 'time' key exists and its value is a number
-                if not (message.get("time") and isinstance(message["time"], (int, float))):
+                if not (message.get("time") and isinstance(message["time"], int | float)):
                     continue
 
                 timestamp = datetime.utcfromtimestamp(message["time"] / 1e6).strftime(
@@ -214,7 +213,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_list(self) -> List[tuple]:
+    def scenarios_list(self) -> list[tuple]:
         """
         List available scenarios in the Warnet Test Framework
         """
@@ -231,7 +230,7 @@ class Server:
             raise ServerError(message=msg) from e
 
     def scenarios_run(
-        self, scenario: str, additional_args: List[str], network: str = "warnet"
+        self, scenario: str, additional_args: list[str], network: str = "warnet"
     ) -> str:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
@@ -291,7 +290,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg)
 
-    def scenarios_list_running(self) -> List[dict]:
+    def scenarios_list_running(self) -> list[dict]:
         running = [
             {
                 "pid": sc["pid"],
@@ -370,10 +369,10 @@ class Server:
 
     def graph_generate(
         self,
-        params: List[str],
+        params: list[str],
         outfile: str,
         version: str,
-        bitcoin_conf: Optional[str] = None,
+        bitcoin_conf: str | None = None,
         random: bool = False,
     ) -> str:
         try:

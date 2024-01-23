@@ -8,7 +8,6 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
 
 import networkx
 from backends import ComposeBackend, KubernetesBackend
@@ -32,10 +31,10 @@ class Warnet:
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
-        self.graph: Optional[networkx.Graph] = None
+        self.graph: networkx.Graph | None = None
         self.graph_name = "graph.graphml"
-        self.tanks: List[Tank] = []
-        self.deployment_file: Optional[Path] = None
+        self.tanks: list[Tank] = []
+        self.deployment_file: Path | None = None
         self.backend = backend
 
     def __str__(self) -> str:

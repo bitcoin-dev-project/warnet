@@ -2,8 +2,8 @@ import click
 from requests.exceptions import ConnectionError
 from rich import print as richprint
 from warnet.cli.debug import debug
-from warnet.cli.image import image
 from warnet.cli.graph import graph
+from warnet.cli.image import image
 from warnet.cli.network import network
 from warnet.cli.rpc import rpc_call
 from warnet.cli.scenarios import scenarios

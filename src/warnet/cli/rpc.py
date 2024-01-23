@@ -1,5 +1,6 @@
+import logging
 import sys
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import requests
 from jsonrpcclient.requests import request
@@ -16,7 +17,7 @@ class JSONRPCException(Exception):
         super().__init__(errmsg)
 
 
-def rpc_call(rpc_method, params: Optional[Union[Dict[str, Any], Tuple[Any, ...]]]):
+def rpc_call(rpc_method, params: dict[str, Any] | tuple[Any, ...] | None):
     payload = request(rpc_method, params)
     response = requests.post(f"http://localhost:{WARNET_SERVER_PORT}/api", json=payload)
     match parse(response.json()):

@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple, cast
+from typing import cast
 
 import docker
 import yaml
@@ -157,7 +157,7 @@ class ComposeBackend(BackendInterface):
         )
         return cast(bytes, logs).decode("utf8")  # cast for typechecker
 
-    def ln_cli(self, tank: Tank, command: List[str]):
+    def ln_cli(self, tank: Tank, command: list[str]):
         if tank.lnnode is None:
             raise Exception("No LN node configured for tank")
         cmd = tank.lnnode.generate_cli_command(command)
@@ -205,7 +205,7 @@ class ComposeBackend(BackendInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    def get_containers_in_network(self, network: str) -> List[str]:
+    def get_containers_in_network(self, network: str) -> list[str]:
         # Return list of container names in the specified network
         containers = []
         for container in self.client.containers.list(filters={"network": network}):
@@ -217,7 +217,7 @@ class ComposeBackend(BackendInterface):
         compiled_pattern = re.compile(pattern)
         containers = self.get_containers_in_network(network)
 
-        all_matching_logs: List[Tuple[str, str]] = []
+        all_matching_logs: list[tuple[str, str]] = []
 
         for container_name in containers:
             logger.debug(f"Fetching logs from {container_name}")

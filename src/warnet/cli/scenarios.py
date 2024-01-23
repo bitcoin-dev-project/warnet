@@ -1,4 +1,4 @@
-from typing import List
+import sys
 
 import click
 from rich import print
@@ -19,7 +19,7 @@ def list():
     """
     console = Console()
     result = rpc_call("scenarios_list", None)
-    assert isinstance(result, List)
+    assert isinstance(result, list)
 
     # Create the table
     table = Table(show_header=True, header_style="bold")
@@ -54,7 +54,9 @@ def active():
     """
     console = Console()
     result = rpc_call("scenarios_list_running", {})
-    assert isinstance(result, List), "Result is not a list"  # Make mypy happy again
+    if not isinstance(result, dict): # Make mypy happy
+        print(f"Error. Expected dict but got {type(result)}: {result}")
+        sys.exit(1)
 
     table = Table(show_header=True, header_style="bold")
     for key in result[0].keys():  # noqa: SIM118
