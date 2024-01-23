@@ -2,6 +2,7 @@ import click
 from requests.exceptions import ConnectionError
 from rich import print as richprint
 from warnet.cli.debug import debug
+from warnet.cli.image import image
 from warnet.cli.graph import graph
 from warnet.cli.network import network
 from warnet.cli.rpc import rpc_call
@@ -15,8 +16,9 @@ def cli():
 
 cli.add_command(debug)
 cli.add_command(graph)
-cli.add_command(scenarios)
+cli.add_command(image)
 cli.add_command(network)
+cli.add_command(scenarios)
 
 
 @cli.command(name="help")
