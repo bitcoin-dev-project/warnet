@@ -44,6 +44,17 @@ options:
 | command | String | False      |           |
 | help    | Bool   | False      | False     |
 
+### `warcli lncli`
+Call lightning cli \<command> on \<node> in \<--network>
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| node    | Int    | True       |           |
+| command | String | True       |           |
+| network | String | False      | warnet    |
+| help    | Bool   | False      | False     |
+
 ### `warcli messages`
 Fetch messages sent between \<node_a> and \<node_b> in \<network>
 
@@ -97,15 +108,31 @@ options:
 |--------------|--------|------------|-----------|
 | params       | String | False      |           |
 | outfile      | Func   | False      |           |
-| version      | String | False      |      25.1 |
+| version      | String | False      |        26 |
 | bitcoin_conf | Func   | False      |           |
-| random       | Bool   | False      |       0   |
-| help         | Bool   | False      |       0   |
+| random       | Bool   | False      |         0 |
+| help         | Bool   | False      |         0 |
+
+## Image
+
+### `warcli image build`
+Build bitcoind and bitcoin-cli from \<repo>/\<branch> and deploy to \<registry>
+    This requires docker and buildkit to be enabled.
+
+options:
+| name       | type   | required   | default   |
+|------------|--------|------------|-----------|
+| registry   | String | True       |           |
+| repo       | String | True       |           |
+| branch     | String | True       |           |
+| build_args | String | False      |           |
+| arches     | String | False      |           |
+| help       | Bool   | False      | False     |
 
 ## Network
 
 ### `warcli network down`
-Run 'docker compose down on a warnet named \<--network> (default: "warnet").
+Bring down a running warnet named \<--network> (default: "warnet").
 
 options:
 | name    | type   | required   | default   |
@@ -152,7 +179,7 @@ options:
 | help    | Bool   | False      | False     |
 
 ### `warcli network up`
-Run 'docker compose up' on a warnet named \<--network> (default: "warnet").
+Bring up a previously-stopped warnet named \<--network> (default: "warnet").
 
 options:
 | name    | type   | required   | default   |
