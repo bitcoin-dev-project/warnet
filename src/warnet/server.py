@@ -96,7 +96,7 @@ class Server:
         self.jsonrpc.register(self.tank_debug_log)
         self.jsonrpc.register(self.tank_messages)
         # Scenarios
-        self.jsonrpc.register(self.scenarios_list)
+        self.jsonrpc.register(self.scenarios_available)
         self.jsonrpc.register(self.scenarios_run)
         self.jsonrpc.register(self.scenarios_stop)
         self.jsonrpc.register(self.scenarios_list_running)
@@ -216,7 +216,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_list(self) -> list[tuple]:
+    def scenarios_available(self) -> list[tuple]:
         """
         List available scenarios in the Warnet Test Framework
         """

@@ -39,10 +39,10 @@ Display help information for the given command.
     If no command is given, display help for the main CLI.
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| command | String | False      |           |
-| help    | Bool   | False      | False     |
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| commands | String | False      |           |
+| help     | Bool   | False      | False     |
 
 ### `warcli lncli`
 Call lightning cli \<command> on \<node> in \<--network>
@@ -197,7 +197,7 @@ options:
 |--------|--------|------------|-----------|
 | help   | Bool   | False      | False     |
 
-### `warcli scenarios list`
+### `warcli scenarios available`
 List available scenarios in the Warnet Test Framework
 
 options:

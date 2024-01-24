@@ -120,7 +120,7 @@ class TestBase:
         self.server_thread.start()
 
         # doesn't require anything docker-related
-        self.wait_for_rpc("scenarios_list")
+        self.wait_for_rpc("scenarios_available")
 
     # Quit
     def stop_server(self):

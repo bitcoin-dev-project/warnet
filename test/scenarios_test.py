@@ -13,7 +13,7 @@ print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
 
 # Use rpc instead of warcli so we get raw JSON object
-scenarios = base.rpc("scenarios_list")
+scenarios = base.rpc("scenarios_available")
 assert len(scenarios) == 4
 
 # Exponential backoff will repeat this command until it succeeds.
