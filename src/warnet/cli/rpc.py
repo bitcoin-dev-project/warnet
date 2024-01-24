@@ -5,7 +5,7 @@ from typing import Any
 import requests
 from jsonrpcclient.requests import request
 from jsonrpcclient.responses import Error, Ok, parse
-from warnet.server import WARNET_SERVER_PORT
+from warnet.server import SERVER_VERSION, WARNET_SERVER_PORT
 
 
 class JSONRPCException(Exception):
@@ -19,7 +19,13 @@ class JSONRPCException(Exception):
 
 def rpc_call(rpc_method, params: dict[str, Any] | tuple[Any, ...] | None):
     payload = request(rpc_method, params)
-    response = requests.post(f"http://localhost:{WARNET_SERVER_PORT}/api", json=payload)
+    url = f"http://localhost:{WARNET_SERVER_PORT}/api/{SERVER_VERSION}"
+    try:
+        response = requests.post(url, json=payload)
+    except ConnectionRefusedError as e:
+        print(f"Error connecting to {url}. Is the server running and using matching API URL?")
+        logging.debug(e)
+        return
     match parse(response.json()):
         case Ok(result, _):
             return result
