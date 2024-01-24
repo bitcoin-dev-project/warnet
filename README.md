@@ -1,3 +1,4 @@
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/pyproject.toml)
 # Warnet
 
 Monitor and analyze the emergent behaviors of Bitcoin networks.
