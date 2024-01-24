@@ -1,8 +1,8 @@
 # Running Warnet
 
-Warnet runs a server which can be used to manage multiple networks.
-On docker this runs locally, but on Kubernetes this runs as a statefulset in
-the cluster.
+Warnet runs a server which can be used to manage multiple networks. On docker
+this runs locally, but on Kubernetes this runs as a `statefulSet` in the
+cluster.
 
 If the `$XDG_STATE_HOME` environment variable is set, the server will log to
 a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet/warnet.log`.
@@ -24,7 +24,9 @@ This can be done with:
 kubectl port-forward svc/rpc 9276:9276
 ```
 
-This allows you to communicate with the RPC server using `warcli`.
+This allows you to communicate with the RPC server using `warcli`. Developers
+should check the [developer notes](developer-notes.md) to see how to
+update the RPC server when developing on Kubernetes.
 
 Currently, while `warcli network down` will bring down the pods, the RPC server needs manual deletion.
 This can be done using:

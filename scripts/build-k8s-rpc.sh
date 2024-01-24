@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Run with e.g.:
+# $ DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
+
 # Fail on any step
 set -ex
 
@@ -8,9 +11,11 @@ docker buildx create --use
 
 # Read DOCKER_REGISTRY from the environment
 : "${DOCKER_REGISTRY?Need to set DOCKER_REGISTRY}"
+: "${TAG?Need to set TAG}"
 
 # Architectures for building
-ARCHS=("amd64" "arm64" "armhf")
+ARCHS=("amd64")
+# ARCHS=("amd64" "arm64" "armhf")
 
 # Read Dockerfile from the first argument
 DOCKERFILE_PATH=$1
@@ -22,14 +27,14 @@ fi
 # Loop through each architecture to build and push
 IMAGES_LIST=()  # Array to store images for manifest
 for DOCKER_ARCH in "${ARCHS[@]}"; do
-    IMAGE_TAG="$DOCKER_ARCH"
-    IMAGE_FULL_NAME="$DOCKER_REGISTRY:$IMAGE_TAG"
+    IMAGE_FULL_NAME="$DOCKER_REGISTRY:$TAG"
   
     # Use Buildx to build the image for the specified architecture
     docker buildx build --platform linux/"$DOCKER_ARCH" \
         --file "$DOCKERFILE_PATH" \
+        --progress=plain \
         --tag "$IMAGE_FULL_NAME" \
-        src/templates --push  # set build context to src/templates
+        . --push  # set build context to src/templates
 
     IMAGES_LIST+=("$IMAGE_FULL_NAME")
 done
