@@ -1,3 +1,4 @@
+import argparse
 import inspect
 import logging
 import os
@@ -481,19 +482,26 @@ class Server:
 
 
 def run_server():
-    # https://flask.palletsprojects.com/en/2.3.x/api/#flask.Flask.run
-    # "If the debug flag is set the server will automatically reload
-    # for code changes and show a debugger in case an exception happened."
+    parser = argparse.ArgumentParser(description="Run the server")
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default="compose",
+        choices=["compose", "k8s"],
+        help="Specify the backend to use",
+    )
+    parser.add_argument(
+        "--dev", action="store_true", help="Run in development mode with debug enabled"
+    )
 
-    backend = "compose"
-    if len(sys.argv) > 1:
-        backend = sys.argv[1]
+    args = parser.parse_args()
 
-    if backend not in ["compose", "k8s"]:
-        print(f"Invalid backend {backend}")
+    if args.backend not in ["compose", "k8s"]:
+        print(f"Invalid backend {args.backend}")
         sys.exit(1)
 
-    Server(backend).app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=False)
+    debug_mode = args.dev
+    Server(args.backend).app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=debug_mode)
 
 
 if __name__ == "__main__":
