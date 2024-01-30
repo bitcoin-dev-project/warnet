@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rpc
+spec:
+  serviceName: "rpc"
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: rpc
+  template:
+    metadata:
+      labels:
+        io.kompose.service: rpc
+    spec:
+      containers:
+      - name: warnet-rpc
+        imagePullPolicy: Always
+        image: bitcoindevproject/warnet-rpc:dev
+        ports:
+        - containerPort: 9276
+        volumeMounts:
+          - name: source-code
+            mountPath: /root/warnet
+      volumes:
+      - name: source-code
+        hostPath:
+          path: /mnt/src
+          type: Directory
+
