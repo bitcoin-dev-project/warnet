@@ -388,14 +388,15 @@ class KubernetesBackend(BackendInterface):
         for tank in warnet.tanks:
             pod_ip = None
             while not pod_ip:
-                response = self.get_pod(tank.container_name)
-                pod_ip = response.status.pod_ip
+                pod_name = self.get_pod_name(tank.index)
+                pod = self.get_pod(pod_name)
+                pod_ip = pod.status.pod_ip
                 if not pod_ip:
                     print("Waiting for pod IP...")
                     time.sleep(3)  # sleep for 5 seconds
 
             tank._ipv4 = pod_ip
-            print(f"Tank {tank.container_name} created")
+            print(f"Tank {tank.index} created")
 
         with open(warnet.config_dir / "warnet-tanks.yaml", "w") as f:
             for pod in tank_resource_files:
