@@ -33,3 +33,5 @@ docker buildx build --platform "$ARCHS" \
     --progress=plain \
     --tag "$IMAGE_FULL_NAME" \
     . --push
+
+docker buildx rm "$BUILDER_NAME"
