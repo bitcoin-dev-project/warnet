@@ -152,6 +152,19 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
+    def tank_cp_file(self, network: str, node: int, src) -> str:
+        """
+        Copy file from <node>
+        """
+        wn = Warnet.from_network(network, self.backend)
+        try:
+            result = wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].container_name)
+            return str(result)
+        except Exception as e:
+            msg = f"Error copying file: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
+
     def tank_messages(self, network: str, node_a: int, node_b: int) -> str:
         """
         Fetch messages sent between <node_a> and <node_b>.

@@ -198,6 +198,9 @@ class Warnet:
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
 
+    def cp_file(self, container_name: str, file_path: str):
+        return self.container_interface.get_file(container_name, file_path)
+
     def write_fork_observer_config(self):
         shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
         with open(self.fork_observer_config, "a") as f:
