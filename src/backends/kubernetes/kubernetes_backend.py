@@ -323,8 +323,9 @@ class KubernetesBackend(BackendInterface):
             ),
         )
 
-    def create_lnd_container(self, tank) -> client.V1Container:
+    def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
+        bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}.svc.cluster.local"
         args = [
             "--noseedbackup",
             "--norest",
@@ -335,9 +336,9 @@ class KubernetesBackend(BackendInterface):
             "--bitcoin.node=bitcoind",
             f"--bitcoind.rpcuser={tank.rpc_user}",
             f"--bitcoind.rpcpass={tank.rpc_password}",
-            f"--bitcoind.rpchost=127.0.0.1:{tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://127.0.0.1:{tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx=tcp://127.0.0.1:{tank.zmqtxport}",
+            f"--bitcoind.rpchost={bitcoind_rpc_host}:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock={bitcoind_rpc_host}:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx={bitcoind_rpc_host}:{tank.zmqtxport}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
             f"--alias={tank.index}",
         ]
@@ -351,14 +352,18 @@ class KubernetesBackend(BackendInterface):
             ),
         )
 
-    def create_pod_object(self, tank: Tank, container: client.V1Container) -> client.V1Pod:
+    def create_pod_object(
+        self, tank: Tank, container: client.V1Container, label: str
+    ) -> client.V1Pod:
         # Create and return a Pod object
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
 
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
-            metadata=client.V1ObjectMeta(name=self.get_pod_name(tank.index), namespace="default"),
+            metadata=client.V1ObjectMeta(
+                name=self.get_pod_name(tank.index), namespace="default", labels={"app": label}
+            ),
             spec=client.V1PodSpec(
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
@@ -367,23 +372,46 @@ class KubernetesBackend(BackendInterface):
             ),
         )
 
+    def create_bitcoind_service(self, tank) -> client.V1Service:
+        service_name = f"bitcoind-service-{tank.index}"
+        service = client.V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=client.V1ObjectMeta(name=service_name),
+            spec=client.V1ServiceSpec(
+                selector={
+                    "app": f"bitcoind-{tank.index}"
+                },
+                ports=[
+                    # TODO: do we need to add 18444 here too?
+                    client.V1ServicePort(port=tank.rpc_port, target_port=tank.rpc_port),
+                    client.V1ServicePort(port=tank.zmqblockport, target_port=tank.zmqblockport),
+                    client.V1ServicePort(port=tank.zmqtxport, target_port=tank.zmqtxport),
+                ],
+            ),
+        )
+        return service
+
     def deploy_pods(self, warnet):
         # TODO: this is pretty hack right now, ideally it should mirror
         # a similar workflow to the docker backend:
         # 1. read graph file, turn graph file into k8s resources, deploy the resources
         tank_resource_files = []
         for tank in warnet.tanks:
+            # Create and deploy bitcoind pod and service
             bitcoind_container = self.create_bitcoind_container(tank)
-            bitcoind_pod = self.create_pod_object(tank, bitcoind_container)
-            tank_resource_files.append(bitcoind_pod)
+            bitcoind_pod = self.create_pod_object(
+                tank, bitcoind_container, f"bitcoind-{tank.index}"
+            )
+            bitcoind_service = self.create_bitcoind_service(tank)
             self.client.create_namespaced_pod(namespace=self.namespace, body=bitcoind_pod)
+            self.client.create_namespaced_service(namespace=self.namespace, body=bitcoind_service)
 
-            if tank.lnnode is None:
-                continue
-            lnd_container = self.create_lnd_container(tank)
-            lnd_pod = self.create_pod_object(tank, lnd_container)
-            tank_resource_files.append(lnd_pod)
-            self.client.create_namespaced_pod(namespace=self.namespace, body=lnd_pod)
+            # Create and deploy LND pod
+            if tank.lnnode:
+                lnd_container = self.create_lnd_container(tank, bitcoind_service.metadata.name)
+                lnd_pod = self.create_pod_object(tank, lnd_container, f"lnd-{tank.index}")
+                self.client.create_namespaced_pod(namespace=self.namespace, body=lnd_pod)
 
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
