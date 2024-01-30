@@ -32,6 +32,8 @@ class Tank:
         self.network_name = warnet.network_name
         self.bitcoin_network = warnet.bitcoin_network
         self.version = "25.1"
+        self.image: str = ""
+        self.is_custom_build = False
         self.conf = ""
         self.conf_file = None
         self.netem = None
@@ -44,7 +46,7 @@ class Tank:
         self._ipv4 = None
         self._exporter_name = None
         self.extra_build_args = ""
-        self.lnnode = None
+        self.lnnode: LNNode | None = None
         self.zmqblockport = 28332
         self.zmqtxport = 28333
 
@@ -60,6 +62,26 @@ class Tank:
             f"\t)"
         )
 
+    def parse_version(self, node):
+        version = node.get("version", "")
+        image = node.get("image", "")
+        logger.debug(f"{version=:}")
+        logger.debug(f"{image=:}")
+        if version and image:
+            raise Exception(
+                f"Tank has {version=:} and {image=:} supplied and can't be built. Provide one or the other."
+            )
+        if image:
+            self.image = image
+            self.is_custom_build = True
+        else:
+            if (version in SUPPORTED_TAGS) or ("/" in version and "#" in version):
+                self.version = version
+            else:
+                raise Exception(
+                    f"Unsupported version: can't be generated from Docker images: {version}"
+                )
+
     @classmethod
     def from_graph_node(cls, index, warnet, tank=None):
         assert index is not None
@@ -71,13 +93,7 @@ class Tank:
         if self is None:
             self = cls(index, config_dir, warnet)
         node = warnet.graph.nodes[index]
-        version = node.get("version")
-        if version:
-            if not ("/" in version and "#" in version) and version not in SUPPORTED_TAGS:
-                raise Exception(
-                    f"Unsupported version: can't be generated from Docker images: {version}"
-                )
-            self.version = version
+        self.parse_version(node)
         self.conf = node.get("bitcoin_config", self.conf)
         self.netem = node.get("tc_netem", self.netem)
         self.exporter = node.get("exporter", self.exporter)

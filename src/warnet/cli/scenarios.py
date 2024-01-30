@@ -1,4 +1,4 @@
-from typing import List
+import sys
 
 import click
 from rich import print
@@ -13,13 +13,15 @@ def scenarios():
 
 
 @scenarios.command()
-def list():
+def available():
     """
     List available scenarios in the Warnet Test Framework
     """
     console = Console()
-    result = rpc_call("scenarios_list", None)
-    assert isinstance(result, List)
+    result = rpc_call("scenarios_available", None)
+    if not isinstance(result, list): # Make mypy happy
+        print(f"Error. Expected list but got {type(result)}: {result}")
+        sys.exit(1)
 
     # Create the table
     table = Table(show_header=True, header_style="bold")
@@ -54,7 +56,9 @@ def active():
     """
     console = Console()
     result = rpc_call("scenarios_list_running", {})
-    assert isinstance(result, List), "Result is not a list"  # Make mypy happy again
+    if not isinstance(result, dict): # Make mypy happy
+        print(f"Error. Expected dict but got {type(result)}: {result}")
+        sys.exit(1)
 
     table = Table(show_header=True, header_style="bold")
     for key in result[0].keys():  # noqa: SIM118

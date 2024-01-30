@@ -10,7 +10,7 @@ See [`src/scenarios`](../src/scenarios) for examples of how these can be written
 To see available scenarios (loaded from the default directory):
 
 ```bash
-warcli scenarios list
+warcli scenarios available
 ```
 
 Once a scenarios is selected it can be run with `warcli scenarios run [--network=warnet] <scenario_name> [scenario_params]`, e.g.:
@@ -25,7 +25,7 @@ This will run the run the scenario in the background until it exits or is stoppe
 Active scenarios can be listed and terminated by PID:
 
 ```bash
-$ warcli scenarios list
+$ warcli scenarios active
 miner_std           Generate blocks over time. Options: [--allnodes | --interval=<number>]
 sens_relay          Send a transaction using sensitive relay
 tx_flood            Generate 100 blocks with 100 TXs each

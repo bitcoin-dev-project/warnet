@@ -2,7 +2,7 @@ import io
 import re
 import time
 from pathlib import Path
-from typing import List, cast
+from typing import cast
 
 import yaml
 from backends import BackendInterface, ServiceType
@@ -91,7 +91,7 @@ class KubernetesBackend(BackendInterface):
     def get_pod_name(self, tank_index: int) -> str:
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
 
-    def get_pod(self, pod_name: str) -> V1Pod:
+    def get_pod(self, pod_name: str) -> V1Pod | None:
         try:
             return cast(
                 V1Pod, self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace)
@@ -111,6 +111,8 @@ class KubernetesBackend(BackendInterface):
         container_name = (
             BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME
         )
+
+        assert pod.status, "Could not get pod status"
         for container in pod.status.container_statuses:
             if container.name == container_name:
                 if container.state.running is not None:
@@ -160,7 +162,7 @@ class KubernetesBackend(BackendInterface):
         )
         return logs
 
-    def ln_cli(self, tank: Tank, command: List[str]):
+    def ln_cli(self, tank: Tank, command: list[str]):
         if tank.lnnode is None:
             raise Exception("No LN node configured for tank")
         cmd = tank.lnnode.generate_cli_command(command)
@@ -254,20 +256,26 @@ class KubernetesBackend(BackendInterface):
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
-            if container.name == BITCOIN_CONTAINER_NAME:
-                if container.env is None:
-                    continue
-                for env in container.env:
-                    if env.name == "BITCOIN_VERSION":
-                        t.version = env.value
-                    elif env.name == "REPO":
-                        repo = env.value
-                    elif env.name == "BRANCH":
-                        branch = env.value
-                    if not hasattr(t, "version"):
-                        t.version = f"{repo}#{branch}"
-            elif container.name == LN_CONTAINER_NAME:
+            if container.name == LN_CONTAINER_NAME:
                 t.lnnode = LNNode(warnet, t, "lnd", self)
+                continue
+
+            if container.name == BITCOIN_CONTAINER_NAME and container.env is None:
+                continue
+
+            c_repo = None
+            c_branch = None
+            for env in container.env:
+                match env.name:
+                    case "BITCOIN_VERSION":
+                        t.version = env.value
+                    case "REPO":
+                        c_repo = env.value
+                    case "BRANCH":
+                        c_branch = env.value
+                if c_repo and c_branch:
+                    t.version = f"{c_repo}#{c_branch}"
+                    t.is_custom_build = True
 
         return t
 
@@ -280,18 +288,26 @@ class KubernetesBackend(BackendInterface):
         defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
 
-    def create_pod_object(self, tank):
+    def create_pod_object(self, tank: Tank):
         # Create and return a Pod object
-        # Right now, we can only use images from a registry. Its likely even when we figure out a way
-        # to support custom builds, they will also be pushed to a registry first, either a local in cluster one
-        # or one under the users control
-        # TODO: support custom builds
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
+        container_name = BITCOIN_CONTAINER_NAME
+        container_image = (
+            tank.image if tank.is_custom_build else f"{DOCKER_REGISTRY_CORE}:{tank.version}"
+        )
+        container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_config_args(tank))]
+
+        # TODO: support custom builds
+        if tank.is_custom_build:
+            # TODO: check if the build already exists in the registry
+            # Annoyingly the api differs between providers, so this is annoying
+            pass
+
         containers = [
             client.V1Container(
-                name=BITCOIN_CONTAINER_NAME,
-                image=f"{DOCKER_REGISTRY_CORE}:{tank.version}",
-                env=[client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_config_args(tank))],
+                name=container_name,
+                image=container_image,
+                env=container_env,
                 # TODO: this doesnt seem to work as expected?
                 # missing the exec field.
                 # liveness_probe=client.V1Probe(
@@ -372,14 +388,15 @@ class KubernetesBackend(BackendInterface):
         for tank in warnet.tanks:
             pod_ip = None
             while not pod_ip:
-                response = self.get_pod(tank.container_name)
-                pod_ip = response.status.pod_ip
+                pod_name = self.get_pod_name(tank.index)
+                pod = self.get_pod(pod_name)
+                pod_ip = pod.status.pod_ip
                 if not pod_ip:
                     print("Waiting for pod IP...")
                     time.sleep(3)  # sleep for 5 seconds
 
             tank._ipv4 = pod_ip
-            print(f"Tank {tank.container_name} created")
+            print(f"Tank {tank.index} created")
 
         with open(warnet.config_dir / "warnet-tanks.yaml", "w") as f:
             for pod in tank_resource_files:

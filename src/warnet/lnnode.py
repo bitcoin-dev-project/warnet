@@ -1,6 +1,5 @@
 import json
 import os
-from typing import List
 
 from backends import BackendInterface, ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr
@@ -49,7 +48,7 @@ class LNNode:
         res = self.lncli(f"connect {uri}")
         return res
 
-    def generate_cli_command(self, command: List[str]):
+    def generate_cli_command(self, command: list[str]):
         network = f"--network={self.tank.warnet.bitcoin_network}"
         cmd = f"{network} {' '.join(command)}"
         match self.impl:

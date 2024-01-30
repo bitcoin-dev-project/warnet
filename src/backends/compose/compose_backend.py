@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple, cast
+from typing import cast
 
 import docker
 import yaml
@@ -157,7 +157,7 @@ class ComposeBackend(BackendInterface):
         )
         return cast(bytes, logs).decode("utf8")  # cast for typechecker
 
-    def ln_cli(self, tank: Tank, command: List[str]):
+    def ln_cli(self, tank: Tank, command: list[str]):
         if tank.lnnode is None:
             raise Exception("No LN node configured for tank")
         cmd = tank.lnnode.generate_cli_command(command)
@@ -205,7 +205,7 @@ class ComposeBackend(BackendInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    def get_containers_in_network(self, network: str) -> List[str]:
+    def get_containers_in_network(self, network: str) -> list[str]:
         # Return list of container names in the specified network
         containers = []
         for container in self.client.containers.list(filters={"network": network}):
@@ -217,7 +217,7 @@ class ComposeBackend(BackendInterface):
         compiled_pattern = re.compile(pattern)
         containers = self.get_containers_in_network(network)
 
-        all_matching_logs: List[Tuple[str, str]] = []
+        all_matching_logs: list[tuple[str, str]] = []
 
         for container_name in containers:
             logger.debug(f"Fetching logs from {container_name}")
@@ -352,7 +352,7 @@ class ComposeBackend(BackendInterface):
         services[container_name] = {}
         logger.debug(f"{tank.version=}")
 
-        # Setup bitcoind, either release binary or build from source
+        # Setup bitcoind, either release binary, pre-built image or built from source on demand
         if "/" and "#" in tank.version:
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
@@ -367,7 +367,12 @@ class ComposeBackend(BackendInterface):
             }
             services[container_name]["build"] = build
             self.copy_configs(tank)
+        elif tank.is_custom_build and tank.image:
+            # Pre-built custom image
+            image = tank.image
+            services[container_name]["image"] = image
         else:
+            # Pre-built regular release
             image = f"{DOCKER_REGISTRY}:{tank.version}"
             services[container_name]["image"] = image
         # Add common bitcoind service details

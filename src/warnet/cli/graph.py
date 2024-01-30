@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import click
 from rich import print
@@ -19,7 +18,7 @@ def graph():
 @click.option("--bitcoin_conf", type=Path)
 @click.option("--random", is_flag=True)
 def create(
-    params: List[str], outfile: Path, version: str, bitcoin_conf: Path, random: bool = False
+    params: list[str], outfile: Path, version: str, bitcoin_conf: Path, random: bool = False
 ):
     """
     Create a graph file of type random AS graph with [params]

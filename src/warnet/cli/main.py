@@ -3,6 +3,7 @@ from requests.exceptions import ConnectionError
 from rich import print as richprint
 from warnet.cli.debug import debug
 from warnet.cli.graph import graph
+from warnet.cli.image import image
 from warnet.cli.network import network
 from warnet.cli.rpc import rpc_call
 from warnet.cli.scenarios import scenarios
@@ -15,49 +16,42 @@ def cli():
 
 cli.add_command(debug)
 cli.add_command(graph)
-cli.add_command(scenarios)
+cli.add_command(image)
 cli.add_command(network)
+cli.add_command(scenarios)
 
 
 @cli.command(name="help")
-@click.argument("command", required=False, default=None)
+@click.argument("commands", required=False, nargs=-1)
 @click.pass_context
-def help_command(ctx, command):
+def help_command(ctx, commands):
     """
     Display help information for the given command.
     If no command is given, display help for the main CLI.
     """
-    if command is None:
+    if not commands:
         # Display help for the main CLI
         richprint(ctx.parent.get_help())
         return
 
-    # Fetch the command object
-    cmd_obj = cli.get_command(ctx, command)
+    # Recurse down the subcommands, fetching the command object for each
+    cmd_obj = cli
+    for command in commands:
+        cmd_obj = cmd_obj.get_command(ctx, command)
+        if cmd_obj is None:
+            richprint(f'Unknown command "{command}" in {commands}')
+            return
+        ctx = click.Context(cmd_obj, info_name=command, parent=ctx)
 
     if cmd_obj is None:
-        richprint(f"Unknown command: {command}")
+        richprint(f"Unknown command: {commands}")
         return
 
-    # Extract only the relevant help information (excluding the initial usage line)
-    # help_info = cmd_obj.get_help(ctx).split("\n", 1)[-1].strip()
+    # Get the help info
     help_info = cmd_obj.get_help(ctx).strip()
-
-    # Extract the arguments of the command
-    arguments = [
-        param.human_readable_name.upper()
-        for param in cmd_obj.params
-        if isinstance(param, click.Argument)
-    ]
-
-    # Determine the correct usage string based on whether the command has subcommands
-    if isinstance(cmd_obj, click.Group) and cmd_obj.list_commands(ctx):
-        usage_str = f"Usage: warnet {command} [OPTIONS] COMMAND [ARGS...]\n\n{help_info}"
-    else:
-        args_str = " ".join(arguments)
-        usage_str = f"Usage: warnet {command} [OPTIONS] {args_str}\n\n{help_info}"
-
-    richprint(usage_str)
+    # Get rid of the duplication
+    help_info = help_info.replace("Usage: warcli help [COMMANDS]...", "Usage: warcli", 1)
+    richprint(help_info)
 
 
 cli.add_command(help_command)
