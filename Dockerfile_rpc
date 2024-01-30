@@ -13,4 +13,4 @@ RUN pip install .
 EXPOSE 9276
 
 # Run server.py when the container launches
-CMD ["warnet", "k8s"]
+CMD ["warnet", "--backend=k8s"]
