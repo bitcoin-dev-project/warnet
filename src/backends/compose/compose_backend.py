@@ -342,7 +342,7 @@ class ComposeBackend(BackendInterface):
 
     def copy_configs(self, tank):
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
-        shutil.copyfile(TEMPLATES / TORRC_NAME, tank.config_dir / TORRC_NAME)
+        shutil.copyfile(TEMPLATES / "tor" / TORRC_NAME, tank.config_dir / TORRC_NAME)
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
         set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
 

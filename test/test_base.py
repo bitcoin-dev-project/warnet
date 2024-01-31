@@ -107,7 +107,11 @@ class TestBase:
         print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
         self.server = Popen(
-            ["warnet", self.backend], stdout=PIPE, stderr=STDOUT, bufsize=1, universal_newlines=True
+            ["warnet", "--backend", self.backend],
+            stdout=PIPE,
+            stderr=STDOUT,
+            bufsize=1,
+            universal_newlines=True,
         )
 
         print("\nWaiting for RPC")
