@@ -10,7 +10,7 @@ kd:
 
   # Check we're in home dir
   if [ ! -f "$PWD/pyproject.toml" ]; then \
-    { error("Error: must run from project root.") }; \
+    echo "Error: must run from project root." >&2; exit 1; \
   fi
 
   # Mount local source dir
@@ -34,7 +34,7 @@ kdd:
 
   # Check we're in home dir
   if [ ! -f "$PWD/pyproject.toml" ]; then \
-    { error("Error: must run from project root.") }; \
+    echo "Error: must run from project root." >&2; exit 1; \
   fi
 
   # Stop statefulset
