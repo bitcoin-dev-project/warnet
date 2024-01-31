@@ -38,7 +38,7 @@ kdd:
   fi
 
   # Stop statefulset
-  kubectl delete statefulset rpc
+  kubectl apply -f src/templates/rpc/warnet-rpc-statefulset.yaml
 
   # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
   if [ -f /tmp/minikube_mount.pid ]; then
