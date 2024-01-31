@@ -51,3 +51,35 @@ kdd:
       echo "PID file not found. Minikube mount process may not have been started."
   fi
 
+# (d)ocker (d)esktop (k)ubernetes (d)ev
+ddkd:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  echo Running k8s in dev mode
+
+  # Check we're in home dir
+  if [ ! -f "$PWD/pyproject.toml" ]; then \
+    echo "Error: must run from project root." >&2; exit 1; \
+  fi
+
+  # Replace mount path with local directory
+  sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml -f -
+
+  # Create the statefulset
+  echo Done...
+
+# (d)ocker (d)esktop (k)ubernetes (d)ev (d)own
+ddkdd:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  echo Tearing down kubernetes dev mode
+
+  # Check we're in home dir
+  if [ ! -f "$PWD/pyproject.toml" ]; then \
+    echo "Error: must run from project root." >&2; exit 1; \
+  fi
+
+  # Replace mount path with local directory
+  kubectl apply -f src/templates/rpc/warnet-rpc-statefulset.yaml
+  # Create the statefulset
+  echo Done...
