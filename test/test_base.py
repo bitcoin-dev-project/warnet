@@ -102,14 +102,23 @@ class TestBase:
 
     # Start the Warnet server and wait for RPC interface to respond
     def start_server(self):
-        # For kubernetes we assume the server is handled outside test base
-        if self.backend != "k8s":
-            if self.server is not None:
-                raise Exception("Server is already running")
+        if self.server is not None:
+            raise Exception("Server is already running")
 
-            # TODO: check for conflicting warnet process
-            #       maybe also ensure that no conflicting docker networks exist
+        # TODO: check for conflicting warnet process
+        #       maybe also ensure that no conflicting docker networks exist
 
+
+        if self.backend == "k8s":
+            # For kubernetes we assume the server is started outside test base
+            # but we can still read its log output
+            self.server = Popen(
+                ["kubectl", "logs", "-f", "rpc-0"],
+                stdout=PIPE,
+                stderr=STDOUT,
+                bufsize=1,
+                universal_newlines=True)
+        else:
             print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
             self.server = Popen(
@@ -117,10 +126,7 @@ class TestBase:
                 stdout=PIPE,
                 stderr=STDOUT,
                 bufsize=1,
-                universal_newlines=True,
-            )
-
-        print("\nWaiting for RPC")
+                universal_newlines=True)
 
         # Create a thread to read the output
         self.server_thread = threading.Thread(
@@ -129,7 +135,8 @@ class TestBase:
         self.server_thread.daemon = True
         self.server_thread.start()
 
-        # doesn't require anything docker-related
+        # doesn't require anything container-related
+        print("\nWaiting for RPC")
         self.wait_for_rpc("scenarios_available")
 
     # Quit
