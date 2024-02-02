@@ -86,7 +86,7 @@ RUN set -ex \
 COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/local/bin/
 COPY entrypoint.sh /entrypoint.sh
 # Warnet torrc using test network
-COPY torrc /etc/tor/warnet-torr
+COPY tor/torrc /etc/tor/warnet-torr
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332

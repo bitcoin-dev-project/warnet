@@ -341,8 +341,10 @@ class ComposeBackend(BackendInterface):
         return defaults
 
     def copy_configs(self, tank):
+        warnet_tor_dir = tank.config_dir / "tor"
+        warnet_tor_dir.mkdir()
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
-        shutil.copyfile(TEMPLATES / "tor" / TORRC_NAME, tank.config_dir / TORRC_NAME)
+        shutil.copyfile(TEMPLATES / "tor" / TORRC_NAME, warnet_tor_dir / TORRC_NAME)
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
         set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
 
