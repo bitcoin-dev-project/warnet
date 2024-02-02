@@ -35,8 +35,9 @@ jobs:
       - run: pip install -e .
       - run: just kd
       - run: kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
-      - run: kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/rpc_test.py k8s
+      - run: |
+          kubectl port-forward svc/rpc 9276:9276 &
+          ./test/rpc_test.py k8s
       - run: just kdd
   graph:
     runs-on: ubuntu-latest
