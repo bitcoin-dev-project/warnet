@@ -34,6 +34,7 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install -e .
       - run: just kd
+      - run: kubectl wait --for=condition=Ready --timeout=10m statefulset rpc
       - run: kubectl port-forward svc/rpc 9276:9276 &
       - run: ./test/rpc_test.py k8s
       - run: just kdd
