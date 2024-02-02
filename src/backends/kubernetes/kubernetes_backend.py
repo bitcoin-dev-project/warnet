@@ -50,15 +50,20 @@ class KubernetesBackend(BackendInterface):
             e.g. `k delete -f warnet-tanks.yaml`
         """
         for tank in warnet.tanks:
-            pod_name = self.get_pod_name(tank.index)
+            pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
             self.client.delete_namespaced_pod(pod_name, self.namespace)
+            service_name = f"bitcoind-service-{tank.index}"
+            self.client.delete_namespaced_service(service_name, self.namespace)
+            if tank.lnnode:
+                pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
+                self.client.delete_namespaced_pod(pod_name, self.namespace)
         return True
 
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         """
         Read a file from inside a container
         """
-        pod_name = self.get_pod_name(tank_index)
+        pod_name = self.get_pod_name(tank_index, service)
         exec_command = ["cat", file_path]
 
         resp = stream(
@@ -88,7 +93,9 @@ class KubernetesBackend(BackendInterface):
 
         return file.getvalue()
 
-    def get_pod_name(self, tank_index: int) -> str:
+    def get_pod_name(self, tank_index: int, type: ServiceType) -> str:
+        if type == ServiceType.LIGHTNING:
+            return f"{self.network_name}-{POD_PREFIX}-ln-{tank_index:06d}"
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
 
     def get_pod(self, pod_name: str) -> V1Pod | None:
@@ -104,7 +111,7 @@ class KubernetesBackend(BackendInterface):
     # The following pod phases are available: Pending, Running, Succeeded, Failed, Unknown
     # For example not able to pull image will be a phase of Pending, but the container status will be ErrImagePull
     def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
-        pod_name = self.get_pod_name(tank_index)
+        pod_name = self.get_pod_name(tank_index, service)
         pod = self.get_pod(pod_name)
         if pod is None:
             return RunningStatus.STOPPED
@@ -128,7 +135,7 @@ class KubernetesBackend(BackendInterface):
         # because its installed in the bitcoin containers. we will need to rework
         # this command if we decided to remove gosu from the containers
         # TODO: change this if we remove gosu
-        pod_name = self.get_pod_name(tank_index)
+        pod_name = self.get_pod_name(tank_index, service)
         exec_cmd = ["/bin/sh", "-c", f"su - {user} -c '{cmd}'"]
         result = stream(
             self.client.connect_get_namespaced_pod_exec,
@@ -154,7 +161,7 @@ class KubernetesBackend(BackendInterface):
         return result
 
     def get_bitcoin_debug_log(self, tank_index: int):
-        pod_name = self.get_pod_name(tank_index)
+        pod_name = self.get_pod_name(tank_index, ServiceType.BITCOIN)
         logs = self.client.read_namespaced_pod_log(
             name=pod_name,
             namespace=self.namespace,
@@ -279,7 +286,7 @@ class KubernetesBackend(BackendInterface):
 
         return t
 
-    def default_config_args(self, tank):
+    def default_bitcoind_config_args(self, tank):
         defaults = default_bitcoin_conf_args()
         defaults += f" -rpcuser={tank.rpc_user}"
         defaults += f" -rpcpassword={tank.rpc_password}"
@@ -288,60 +295,44 @@ class KubernetesBackend(BackendInterface):
         defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
 
-    def create_pod_object(self, tank: Tank):
-        # Create and return a Pod object
-        # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
+    def create_bitcoind_container(self, tank) -> client.V1Container:
         container_name = BITCOIN_CONTAINER_NAME
         container_image = (
             tank.image if tank.is_custom_build else f"{DOCKER_REGISTRY_CORE}:{tank.version}"
         )
-        container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_config_args(tank))]
-
+        container_env = [
+            client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_bitcoind_config_args(tank))
+        ]
         # TODO: support custom builds
         if tank.is_custom_build:
             # TODO: check if the build already exists in the registry
             # Annoyingly the api differs between providers, so this is annoying
             pass
 
-        containers = [
-            client.V1Container(
-                name=container_name,
-                image=container_image,
-                env=container_env,
-                # TODO: this doesnt seem to work as expected?
-                # missing the exec field.
-                # liveness_probe=client.V1Probe(
-                #     failure_threshold=3,
-                #     initial_delay_seconds=5,
-                #     period_seconds=5,
-                #     timeout_seconds=1,
-                #     exec=client.V1ExecAction(
-                #         command=["pidof", "bitcoind"]
-                #     )
-                # ),
-                security_context=client.V1SecurityContext(
-                    privileged=True,
-                    capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
-                ),
-            )
-        ]
-        if tank.lnnode is not None:
-            self.add_lnd_container(tank, containers)
-
-        return client.V1Pod(
-            api_version="v1",
-            kind="Pod",
-            metadata=client.V1ObjectMeta(name=self.get_pod_name(tank.index), namespace="default"),
-            spec=client.V1PodSpec(
-                # Might need some more thinking on the pod restart policy, setting to Never for now
-                # This means if a node has a problem it dies
-                restart_policy="Never",
-                containers=containers,
+        return client.V1Container(
+            name=container_name,
+            image=container_image,
+            env=container_env,
+            # TODO: this doesnt seem to work as expected?
+            # missing the exec field.
+            # liveness_probe=client.V1Probe(
+            #     failure_threshold=3,
+            #     initial_delay_seconds=5,
+            #     period_seconds=5,
+            #     timeout_seconds=1,
+            #     exec=client.V1ExecAction(
+            #         command=["pidof", "bitcoind"]
+            #     )
+            # ),
+            security_context=client.V1SecurityContext(
+                privileged=True,
+                capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
         )
 
-    def add_lnd_container(self, tank, containers):
+    def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
+        bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}.svc.cluster.local"
         args = [
             "--noseedbackup",
             "--norest",
@@ -352,23 +343,61 @@ class KubernetesBackend(BackendInterface):
             "--bitcoin.node=bitcoind",
             f"--bitcoind.rpcuser={tank.rpc_user}",
             f"--bitcoind.rpcpass={tank.rpc_password}",
-            f"--bitcoind.rpchost=127.0.0.1:{tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://127.0.0.1:{tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx=tcp://127.0.0.1:{tank.zmqtxport}",
+            f"--bitcoind.rpchost={bitcoind_rpc_host}:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock={bitcoind_rpc_host}:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx={bitcoind_rpc_host}:{tank.zmqtxport}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
             f"--alias={tank.index}",
         ]
-        containers.append(
-            client.V1Container(
-                name=LN_CONTAINER_NAME,
-                image=f"{DOCKER_REGISTRY_LND}",
-                args=args,
-                security_context=client.V1SecurityContext(
-                    privileged=True,
-                    capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
-                ),
-            )
+        return client.V1Container(
+            name=LN_CONTAINER_NAME,
+            image=f"{DOCKER_REGISTRY_LND}",
+            args=args,
+            security_context=client.V1SecurityContext(
+                privileged=True,
+                capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
+            ),
         )
+
+    def create_pod_object(
+        self, tank: Tank, container: client.V1Container, name: str
+    ) -> client.V1Pod:
+        # Create and return a Pod object
+        # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
+
+        return client.V1Pod(
+            api_version="v1",
+            kind="Pod",
+            metadata=client.V1ObjectMeta(name=name, namespace="default", labels={"app": name}),
+            spec=client.V1PodSpec(
+                # Might need some more thinking on the pod restart policy, setting to Never for now
+                # This means if a node has a problem it dies
+                restart_policy="OnFailure",
+                containers=[container],
+            ),
+        )
+
+    def create_bitcoind_service(self, tank) -> client.V1Service:
+        service_name = f"bitcoind-service-{tank.index}"
+        service = client.V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=client.V1ObjectMeta(name=service_name),
+            spec=client.V1ServiceSpec(
+                selector={"app": self.get_pod_name(tank.index, ServiceType.BITCOIN)},
+                ports=[
+                    # TODO: do we need to add 18444 here too?
+                    client.V1ServicePort(port=tank.rpc_port, target_port=tank.rpc_port, name="rpc"),
+                    client.V1ServicePort(
+                        port=tank.zmqblockport, target_port=tank.zmqblockport, name="zmqblock"
+                    ),
+                    client.V1ServicePort(
+                        port=tank.zmqtxport, target_port=tank.zmqtxport, name="zmqtx"
+                    ),
+                ],
+            ),
+        )
+        return service
 
     def deploy_pods(self, warnet):
         # TODO: this is pretty hack right now, ideally it should mirror
@@ -376,24 +405,38 @@ class KubernetesBackend(BackendInterface):
         # 1. read graph file, turn graph file into k8s resources, deploy the resources
         tank_resource_files = []
         for tank in warnet.tanks:
-            pod = self.create_pod_object(tank)
-            tank_resource_files.append(pod)
-            self.client.create_namespaced_pod(namespace=self.namespace, body=pod)
+            # Create and deploy bitcoind pod and service
+            bitcoind_container = self.create_bitcoind_container(tank)
+            bitcoind_pod = self.create_pod_object(
+                tank, bitcoind_container, self.get_pod_name(tank.index, ServiceType.BITCOIN)
+            )
+            bitcoind_service = self.create_bitcoind_service(tank)
+            self.client.create_namespaced_pod(namespace=self.namespace, body=bitcoind_pod)
+            self.client.create_namespaced_service(namespace=self.namespace, body=bitcoind_service)
+
+            # Create and deploy LND pod
+            if tank.lnnode:
+                lnd_container = self.create_lnd_container(tank, bitcoind_service.metadata.name)
+                lnd_pod = self.create_pod_object(
+                    tank, lnd_container, self.get_pod_name(tank.index, ServiceType.LIGHTNING)
+                )
+                self.client.create_namespaced_pod(namespace=self.namespace, body=lnd_pod)
 
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
 
-        # TODO: this is really hacky, should probably just update the generage_ipv4 function at some point
+        # TODO: this is really hacky, should probably just update the generate_ipv4 function at some point
         # by moving it into the base class
         for tank in warnet.tanks:
             pod_ip = None
             while not pod_ip:
-                pod_name = self.get_pod_name(tank.index)
+                pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
                 pod = self.get_pod(pod_name)
+                if pod is None or pod.status is None or getattr(pod.status, "pod_ip", None) is None:
+                    print("Waiting for pod response or pod IP...")
+                    time.sleep(3)
+                    continue
                 pod_ip = pod.status.pod_ip
-                if not pod_ip:
-                    print("Waiting for pod IP...")
-                    time.sleep(3)  # sleep for 5 seconds
 
             tank._ipv4 = pod_ip
             print(f"Tank {tank.index} created")

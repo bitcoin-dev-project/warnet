@@ -8,6 +8,9 @@ rules:
   resources: ["pods"]
   verbs: ["get", "list", "create", "update", "patch", "delete"]
 - apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: [""]
   resources: ["pods/exec"]
   verbs: ["create", "get"]
 - apiGroups: [""]
@@ -27,4 +30,3 @@ roleRef:
   kind: Role
   name: pod-reader-exec
   apiGroup: rbac.authorization.k8s.io
-
