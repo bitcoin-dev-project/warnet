@@ -89,7 +89,7 @@ class TestBase:
         return rpc_call(method, params)
 
     # Repeatedly execute an RPC until it succeeds
-    @exponential_backoff()
+    @exponential_backoff(max_retries=20)
     def wait_for_rpc(self, method, params=None):
         return rpc_call(method, params)
 
