@@ -34,7 +34,9 @@ class TestBase:
 
         atexit.register(self.cleanup)
 
+        # Default backend
         self.backend = "compose"
+        # CLI arg overrides env
         if len(sys.argv) > 1:
             self.backend = sys.argv[1]
 
@@ -45,6 +47,9 @@ class TestBase:
         print("\nWarnet test base started")
 
     def cleanup(self, signum=None, frame=None):
+        # For kubernetes we assume the server is handled outside test base
+        if self.backend == "k8s":
+            return
         if self.server is None:
             return
 
@@ -100,6 +105,10 @@ class TestBase:
 
     # Start the Warnet server and wait for RPC interface to respond
     def start_server(self):
+        # For kubernetes we assume the server is handled outside test base
+        if self.backend == "k8s":
+            return
+
         if self.server is not None:
             raise Exception("Server is already running")
 
