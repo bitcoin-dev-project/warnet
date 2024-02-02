@@ -34,7 +34,7 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install -e .
       - run: just kd
-      - run: ./test/rpc_test.py --backend=k8s
+      - run: ./test/rpc_test.py k8s
       - run: just kdd
   graph:
     runs-on: ubuntu-latest
