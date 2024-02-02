@@ -22,6 +22,14 @@ spec:
         volumeMounts:
           - name: source-code
             mountPath: /root/warnet
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - /root/warnet/src/templates/rpc/readiness.sh
+          initialDelaySeconds: 5
+          periodSeconds: 10
       volumes:
       - name: source-code
         hostPath:
