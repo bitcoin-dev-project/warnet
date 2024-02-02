@@ -24,6 +24,8 @@ class TestBase:
         # Use the same dir name for the warnet network name
         # but sanitize hyphens which make docker frown :-(
         self.network_name = self.tmpdir.name.replace("-", "")
+        # also replace underscores which throws off k8s
+        self.network_name = self.tmpdir.name.replace("_", "")
 
         self.server = None
         self.server_thread = None
