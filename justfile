@@ -38,7 +38,7 @@ kdd:
     fi
 
     # Stop statefulset
-    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset.yaml
+    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml
 
     # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
     if [ -f /tmp/minikube_mount.pid ]; then
@@ -65,7 +65,6 @@ ddkd:
     # Replace mount path with local directory
     sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml -f -
 
-    # Create the statefulset
     echo Done...
 
 # (d)ocker (d)esktop (k)ubernetes (d)ev (d)own
@@ -79,7 +78,7 @@ ddkdd:
       echo "Error: must run from project root." >&2; exit 1; \
     fi
 
-    # Replace mount path with local directory
-    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset.yaml
-    # Create the statefulset
+    # Deleting all resources
+    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml
+
     echo Done...
