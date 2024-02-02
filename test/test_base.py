@@ -47,9 +47,6 @@ class TestBase:
         print("\nWarnet test base started")
 
     def cleanup(self, signum=None, frame=None):
-        # For kubernetes we assume the server is handled outside test base
-        if self.backend == "k8s":
-            return
         if self.server is None:
             return
 
@@ -106,24 +103,22 @@ class TestBase:
     # Start the Warnet server and wait for RPC interface to respond
     def start_server(self):
         # For kubernetes we assume the server is handled outside test base
-        if self.backend == "k8s":
-            return
+        if self.backend != "k8s":
+            if self.server is not None:
+                raise Exception("Server is already running")
 
-        if self.server is not None:
-            raise Exception("Server is already running")
+            # TODO: check for conflicting warnet process
+            #       maybe also ensure that no conflicting docker networks exist
 
-        # TODO: check for conflicting warnet process
-        #       maybe also ensure that no conflicting docker networks exist
+            print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
-        print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
-
-        self.server = Popen(
-            ["warnet", "--backend", self.backend],
-            stdout=PIPE,
-            stderr=STDOUT,
-            bufsize=1,
-            universal_newlines=True,
-        )
+            self.server = Popen(
+                ["warnet", "--backend", self.backend],
+                stdout=PIPE,
+                stderr=STDOUT,
+                bufsize=1,
+                universal_newlines=True,
+            )
 
         print("\nWaiting for RPC")
 
