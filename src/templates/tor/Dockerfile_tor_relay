@@ -8,10 +8,10 @@ RUN chown -R debian-tor:debian-tor /home/debian-tor
 RUN mkdir -p /var/log/tor
 RUN chown -R debian-tor:debian-tor /var/log/tor
 
-COPY torrc.relay /etc/tor/torrc
+COPY tor/torrc.relay /etc/tor/torrc
 
 EXPOSE 9050
 
-COPY tor-entrypoint.sh /entrypoint.sh
+COPY tor/tor-entrypoint.sh /entrypoint.sh
 ENTRYPOINT /entrypoint.sh
 CMD ["tor", "-f", "/etc/tor/torrc"]

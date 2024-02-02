@@ -55,13 +55,20 @@ def build_and_upload_images(
 
     # Setup buildkit
     builder_name = "warnet-builder"
-    if not run_command(f"docker buildx create --name {builder_name} --use"):
-        return False
+    create_builder_cmd = f"docker buildx create --name {builder_name} --use"
+    use_builder_cmd = f"docker buildx use --builder {builder_name}"
+    cleanup_builder_cmd = f"docker buildx rm {builder_name}"
+
+    if not run_command(create_builder_cmd):  # noqa: SIM102
+        # try to use existing
+        if not run_command(use_builder_cmd):
+            print(f"Could create or use builder {builder_name} and create new builder")
+            return False
 
     image_full_name = f"{docker_registry}:{tag}"
     print(f"Image full name: {image_full_name}")
 
-    platforms = ','.join([f"linux/{arch}" for arch in build_arches])
+    platforms = ",".join([f"linux/{arch}" for arch in build_arches])
 
     build_command = (
         f"docker buildx build"
@@ -76,14 +83,13 @@ def build_and_upload_images(
     )
     print(f"{build_command=:}")
 
-    if not run_command(build_command):
-        return False
+    try:
+        res = run_command(build_command)
+    finally:
+        # Tidy up the buildx builder
+        if not run_command(cleanup_builder_cmd):
+            print("Warning: Failed to remove the buildx builder.")
+        else:
+            print("Buildx builder removed successfully.")
 
-    # Tidy up the buildx builder
-    cleanup_command = f"docker buildx rm {builder_name}"
-    if not run_command(cleanup_command):
-        print("Warning: Failed to remove the buildx builder.")
-    else:
-        print("Buildx builder removed successfully.")
-
-    return True
+    return bool(res)

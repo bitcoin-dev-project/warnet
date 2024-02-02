@@ -8,9 +8,9 @@ RUN chown -R debian-tor:debian-tor /home/debian-tor
 RUN mkdir -p /var/log/tor
 RUN chown -R debian-tor:debian-tor /var/log/tor
 
-COPY tor-keys /home/debian-tor/.tor/keys
+COPY tor/tor-keys /home/debian-tor/.tor/keys
 RUN chown -R debian-tor:debian-tor /home/debian-tor/.tor/keys
-COPY torrc.da /etc/tor/torrc
+COPY tor/torrc.da /etc/tor/torrc
 
 EXPOSE 9050
 
