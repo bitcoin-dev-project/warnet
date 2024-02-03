@@ -113,22 +113,50 @@ class KubernetesBackend(BackendInterface):
     def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
         pod_name = self.get_pod_name(tank_index, service)
         pod = self.get_pod(pod_name)
+        # Possible states:
+        # 1. pod not found?
+        #    -> STOPPED
+        # 2. pod phase Succeeded?
+        #    -> STOPPED
+        # 3. pod phase Failed?
+        #    -> FAILED
+        # 4. pod phase Unknown?
+        #    -> UNKNOWN
+        # Pod phase is now "Running" or "Pending"
+        #    -> otherwise we need a bug fix, return UNKNOWN
+        #
+        # The pod is ready if all containers are ready.
+        # 5. Pod not ready?
+        #    -> PENDING
+        # 6. Pod ready?
+        #    -> RUNNING
+        #
+        # Note: we don't know anything about deleted pods so we can't return a status for them.
+        # TODO: we could use a kubernetes job to keep the result 🤔
+
         if pod is None:
             return RunningStatus.STOPPED
-        container_name = (
-            BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME
-        )
 
         assert pod.status, "Could not get pod status"
+        assert pod.status.phase, "Could not get pod status.phase"
+        if pod.status.phase == "Succeeded":
+            return RunningStatus.STOPPED
+        if pod.status.phase == "Failed":
+            return RunningStatus.FAILED
+        if pod.status.phase == "Unknown":
+            return RunningStatus.UNKNOWN
+        if pod.status.phase == "Pending":
+            return RunningStatus.PENDING
+
+        assert pod.status.phase in ("Running", "Pending"), f"Unknown pod phase {pod.status.phase}"
+
+        # a pod is ready if all containers are ready
+        ready = True
         for container in pod.status.container_statuses:
-            if container.name == container_name:
-                if container.state.running is not None:
-                    return RunningStatus.RUNNING
-                if container.state.terminated is not None:
-                    return RunningStatus.STOPPED
-                if container.state.waiting is not None:
-                    return RunningStatus.PENDING
-        return RunningStatus.UNKNOWN
+            if container.ready is not True:
+                ready = False
+                break
+        return RunningStatus.RUNNING if ready else RunningStatus.PENDING
 
     def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root"):
         # k8s doesn't let us run exec commands as a user, but we can use su
