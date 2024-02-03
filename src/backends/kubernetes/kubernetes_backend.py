@@ -247,16 +247,14 @@ class KubernetesBackend(BackendInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    # TODO: stop using fluentd and instead interate through all pods?
     def logs_grep(self, pattern: str, network: str):
         compiled_pattern = re.compile(pattern)
         matching_logs = []
 
-        # List all pods in the specified namespace
         pods = self.client.list_namespaced_pod(self.namespace)
 
-        # Filter pods whose names start with "warnet-{POD_PREFIX}"
-        relevant_pods = [pod for pod in pods.items if pod.metadata.name.startswith(f"warnet-{POD_PREFIX}")]
+        # TODO: Can adapt to only search lnd or bitcoind containers?
+        relevant_pods = [pod for pod in pods.items if "warnet" in pod.metadata.name]
 
         # Iterate through the filtered pods to fetch and search logs
         for pod in relevant_pods:
