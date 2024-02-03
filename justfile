@@ -22,8 +22,13 @@ kd:
     # Save the PID to a file for later use
     echo $MINIKUBE_MOUNT_PID > /tmp/minikube_mount.pid
 
-    # Create the statefulset
-    kubectl apply -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    # Setup k8s
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    kubectl config set-context --current --namespace=warnet
+
     echo Done...
 
 # (k)ubernetes (d)ev (d)own
@@ -38,7 +43,11 @@ kdd:
     fi
 
     # Stop statefulset
-    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    kubectl delete -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl delete -f src/templates/rpc/rbac-config.yaml
+    kubectl delete -f src/templates/rpc/namespace.yaml
+    kubectl config set-context --current --namespace=default
 
     # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
     if [ -f /tmp/minikube_mount.pid ]; then
@@ -63,7 +72,13 @@ ddkd:
     fi
 
     # Replace mount path with local directory
-    sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml -f -
+
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+    kubectl config set-context --current --namespace=warnet
 
     echo Done...
 
@@ -79,6 +94,10 @@ ddkdd:
     fi
 
     # Deleting all resources
-    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml -f src/templates/rpc/rbac-config.yaml -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    kubectl delete -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl delete -f src/templates/rpc/rbac-config.yaml
+    kubectl delete -f src/templates/rpc/namespace.yaml
+    kubectl config set-context --current --namespace=default
 
     echo Done...
