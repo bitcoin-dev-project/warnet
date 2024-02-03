@@ -2,8 +2,8 @@
 default:
     just --list
 
-# (k)ubernetes (d)ev
-kd:
+# Setup and start the RPC in dev mode
+start:
     #!/usr/bin/env bash
     set -euxo pipefail
     echo Running k8s in dev mode
@@ -29,10 +29,14 @@ kd:
     kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
     kubectl config set-context --current --namespace=warnet
 
+    echo waiting for rpc to come online
+    sleep 2
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
     echo Done...
 
-# (k)ubernetes (d)ev (d)own
-kdd:
+# Stop the RPC in dev mode
+stop:
     #!/usr/bin/env bash
     set -euxo pipefail
     echo Tearing down kubernetes dev mode
@@ -80,6 +84,9 @@ ddkd:
     sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
     kubectl config set-context --current --namespace=warnet
 
+    echo waiting for rpc to come online
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
     echo Done...
 
 # (d)ocker (d)esktop (k)ubernetes (d)ev (d)own
@@ -101,3 +108,7 @@ ddkdd:
     kubectl config set-context --current --namespace=default
 
     echo Done...
+
+# port forward
+p:
+    kubectl port-forward svc/rpc 9276:9276

@@ -33,12 +33,12 @@ jobs:
       - uses: medyagh/setup-minikube@master
       - run: pip install --upgrade pip
       - run: pip install -e .
-      - run: just kd
+      - run: just start
       - run: kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
       - run: |
           kubectl port-forward svc/rpc 9276:9276 &
           ./test/rpc_test.py k8s
-      - run: just kdd
+      - run: just stop
   graph:
     runs-on: ubuntu-latest
     steps:
