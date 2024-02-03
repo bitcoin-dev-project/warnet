@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /root/warnet
 
 # Copy the source directory contents into the container
-COPY ../../.. /root/warnet
+COPY . /root/warnet
 RUN pip install .
 
 # Make port 9276 available to the world outside this container
