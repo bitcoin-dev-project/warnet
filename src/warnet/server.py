@@ -60,6 +60,15 @@ class Server:
         self.setup_logging()
         self.setup_rpc()
         self.logger.info(f"Started server version {SERVER_VERSION}")
+        self.app.add_url_rule('/-/healthy', view_func=self.healthy)
+
+        # register a well known /-/healthy endpoint for liveness tests
+        # we regard warnet as healthy if the http server is up
+        # /-/healthy and /-/ready are often used (e.g. by the prometheus server)
+        self.app.add_url_rule('/-/healthy', view_func=self.healthy)
+
+    def healthy(self):
+        return "warnet is healthy"
 
     def setup_logging(self):
         # Ensure the directory exists
@@ -86,7 +95,10 @@ class Server:
             logging.getLogger("kubernetes.client.rest").setLevel(logging.WARNING)
 
         def log_request():
-            self.logger.debug(request.json)
+            if not request.path.startswith("/api/"):
+                self.logger.debug(request.path)
+            else:
+                self.logger.debug(request.json)
 
         self.app.before_request(log_request)
 
