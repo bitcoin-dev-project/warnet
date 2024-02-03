@@ -49,10 +49,11 @@ class KubernetesBackend(BackendInterface):
         Bring an exsiting network down.
             e.g. `k delete -f warnet-tanks.yaml`
         """
+
         for tank in warnet.tanks:
             pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
             self.client.delete_namespaced_pod(pod_name, self.namespace)
-            service_name = f"bitcoind-service-{tank.index}"
+            service_name = f"warnet-{POD_PREFIX}-{tank.index:06d}"
             self.client.delete_namespaced_service(service_name, self.namespace)
             if tank.lnnode:
                 pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
