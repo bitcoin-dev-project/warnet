@@ -345,17 +345,24 @@ class KubernetesBackend(BackendInterface):
             name=container_name,
             image=container_image,
             env=container_env,
-            # TODO: this doesnt seem to work as expected?
-            # missing the exec field.
-            # liveness_probe=client.V1Probe(
-            #     failure_threshold=3,
-            #     initial_delay_seconds=5,
-            #     period_seconds=5,
-            #     timeout_seconds=1,
-            #     exec=client.V1ExecAction(
-            #         command=["pidof", "bitcoind"]
-            #     )
-            # ),
+            liveness_probe=client.V1Probe(
+                 failure_threshold=3,
+                 initial_delay_seconds=5,
+                 period_seconds=5,
+                 timeout_seconds=1,
+                 _exec=client.V1ExecAction(
+                     command=["pidof", "bitcoind"]
+                 )
+            ),
+            readiness_probe=client.V1Probe(
+                 failure_threshold=1,
+                 initial_delay_seconds=0,
+                 period_seconds=1,
+                 timeout_seconds=1,
+                 tcp_socket=client.V1TCPSocketAction(
+                    port=tank.rpc_port
+                )
+            ),
             security_context=client.V1SecurityContext(
                 privileged=True,
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
