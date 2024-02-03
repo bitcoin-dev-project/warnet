@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  namespace: default
+  namespace: warnet
   name: pod-reader-exec
 rules:
 - apiGroups: [""]
@@ -21,11 +21,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: read-exec-pods
-  namespace: default
+  namespace: warnet
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: default
+  namespace: warnet
 roleRef:
   kind: Role
   name: pod-reader-exec
