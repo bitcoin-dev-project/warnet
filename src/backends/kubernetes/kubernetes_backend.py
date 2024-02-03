@@ -249,20 +249,30 @@ class KubernetesBackend(BackendInterface):
     # TODO: stop using fluentd and instead interate through all pods?
     def logs_grep(self, pattern: str, network: str):
         compiled_pattern = re.compile(pattern)
-
-        # Fetch the logs from the pod
-        log_stream = self.client.read_namespaced_pod_log(
-            name=self.logs_pod,
-            namespace=self.namespace,
-            timestamps=True,
-            _preload_content=False,
-        )
-
         matching_logs = []
-        for log_entry in log_stream:
-            log_entry_str = log_entry.decode("utf-8").strip()
-            if compiled_pattern.search(log_entry_str):
-                matching_logs.append(log_entry_str)
+
+        # List all pods in the specified namespace
+        pods = self.client.list_namespaced_pod(self.namespace)
+
+        # Filter pods whose names start with "warnet-{POD_PREFIX}"
+        relevant_pods = [pod for pod in pods.items if pod.metadata.name.startswith(f"warnet-{POD_PREFIX}")]
+
+        # Iterate through the filtered pods to fetch and search logs
+        for pod in relevant_pods:
+            try:
+                log_stream = self.client.read_namespaced_pod_log(
+                    name=pod.metadata.name,
+                    namespace=self.namespace,
+                    timestamps=True,
+                    _preload_content=False,
+                )
+
+                for log_entry in log_stream:
+                    log_entry_str = log_entry.decode("utf-8").strip()
+                    if compiled_pattern.search(log_entry_str):
+                        matching_logs.append(log_entry_str)
+            except ApiException as e:
+                print(f"Error fetching logs for pod {pod.metadata.name}: {e}")
 
         return "\n".join(matching_logs)
 
@@ -439,8 +449,7 @@ class KubernetesBackend(BackendInterface):
         )
 
     def create_bitcoind_service(self, tank) -> client.V1Service:
-        service_name = f"bitcoind-service-{tank.index}"
-        print(f"creating service using {service_name=:}")
+        service_name = f"warnet-{POD_PREFIX}-{tank.index:06d}"
         service = client.V1Service(
             api_version="v1",
             kind="Service",
