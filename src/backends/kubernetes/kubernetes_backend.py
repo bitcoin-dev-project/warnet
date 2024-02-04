@@ -407,7 +407,10 @@ class KubernetesBackend(BackendInterface):
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
-            metadata=client.V1ObjectMeta(name=name, namespace="default", labels={"app": name}),
+            metadata=client.V1ObjectMeta(name=name, namespace="default", labels={
+                "app": name,
+                "network": tank.warnet.network_name,
+            }),
             spec=client.V1PodSpec(
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
