@@ -391,12 +391,26 @@ class KubernetesBackend(BackendInterface):
             f"--bitcoind.zmqpubrawblock={bitcoind_rpc_host}:{tank.zmqblockport}",
             f"--bitcoind.zmqpubrawtx={bitcoind_rpc_host}:{tank.zmqtxport}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
+            f"--externalhosts={lightning_dns}",
             f"--alias={tank.index}",
         ]
         return client.V1Container(
             name=LN_CONTAINER_NAME,
             image=f"{DOCKER_REGISTRY_LND}",
             args=args,
+            env=[
+                client.V1EnvVar(name="LND_NETWORK", value="regtest"),
+            ],
+            readiness_probe=client.V1Probe(
+                failure_threshold=1,
+                success_threshold=3,
+                initial_delay_seconds=1,
+                period_seconds=2,
+                timeout_seconds=2,
+                _exec=client.V1ExecAction(
+                    command=["/bin/sh", "-c", "lncli --network=regtest getinfo"]
+                )
+            ),
             security_context=client.V1SecurityContext(
                 privileged=True,
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
