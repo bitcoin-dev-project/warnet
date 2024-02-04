@@ -444,9 +444,16 @@ class KubernetesBackend(BackendInterface):
         service = client.V1Service(
             api_version="v1",
             kind="Service",
-            metadata=client.V1ObjectMeta(name=service_name),
+            metadata=client.V1ObjectMeta(
+                name=service_name,
+                labels={
+                    "app": self.get_pod_name(tank.index, ServiceType.BITCOIN),
+                    "network": tank.warnet.network_name,
+                },
+            ),
             spec=client.V1ServiceSpec(
                 selector={"app": self.get_pod_name(tank.index, ServiceType.BITCOIN)},
+                publish_not_ready_addresses=True,
                 ports=[
                     # TODO: do we need to add 18444 here too?
                     client.V1ServicePort(port=tank.rpc_port, target_port=tank.rpc_port, name="rpc"),
