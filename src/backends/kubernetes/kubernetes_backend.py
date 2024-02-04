@@ -377,6 +377,7 @@ class KubernetesBackend(BackendInterface):
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}.svc.cluster.local"
+        lightning_dns = f"lightning-service-{tank.index}.{self.namespace}.svc.cluster.local"
         args = [
             "--noseedbackup",
             "--norest",
@@ -460,6 +461,31 @@ class KubernetesBackend(BackendInterface):
         )
         return service
 
+    def create_lightning_service(self, tank) -> client.V1Service:
+        service_name = f"lightning-service-{tank.index}"
+        service = client.V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=client.V1ObjectMeta(
+                name=service_name,
+                labels={
+                    "app": self.get_pod_name(tank.index, ServiceType.LIGHTNING),
+                    "network": tank.warnet.network_name,
+                },
+            ),
+            spec=client.V1ServiceSpec(
+                selector={"app": self.get_pod_name(tank.index, ServiceType.LIGHTNING)},
+                cluster_ip="None",
+                ports=[
+                    client.V1ServicePort(
+                        port=tank.lnnode.rpc_port, target_port=tank.lnnode.rpc_port, name="rpc"
+                    ),
+                ],
+                publish_not_ready_addresses=True,
+            ),
+        )
+        return service
+
     def deploy_pods(self, warnet):
         # TODO: this is pretty hack right now, ideally it should mirror
         # a similar workflow to the docker backend:
@@ -490,6 +516,16 @@ class KubernetesBackend(BackendInterface):
                     tank, lnd_container, self.get_pod_name(tank.index, ServiceType.LIGHTNING)
                 )
                 self.client.create_namespaced_pod(namespace=self.namespace, body=lnd_pod)
+                lightning_service = self.create_lightning_service(tank)
+                try:
+                    self.client.delete_namespaced_service(
+                        name=lightning_service.metadata.name, namespace=self.namespace
+                    )
+                except ApiException as e:
+                    if e.status != 404:
+                        raise e
+                self.client.create_namespaced_service(namespace=self.namespace, body=lightning_service)
+
 
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
