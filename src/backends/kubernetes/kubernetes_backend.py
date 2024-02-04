@@ -473,6 +473,14 @@ class KubernetesBackend(BackendInterface):
             )
             bitcoind_service = self.create_bitcoind_service(tank)
             self.client.create_namespaced_pod(namespace=self.namespace, body=bitcoind_pod)
+            # delete the service if it already exists, ignore 404
+            try:
+                self.client.delete_namespaced_service(
+                    name=bitcoind_service.metadata.name, namespace=self.namespace
+                )
+            except ApiException as e:
+                if e.status != 404:
+                    raise e
             self.client.create_namespaced_service(namespace=self.namespace, body=bitcoind_service)
 
             # Create and deploy LND pod
