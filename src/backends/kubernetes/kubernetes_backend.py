@@ -276,12 +276,15 @@ class KubernetesBackend(BackendInterface):
     def warnet_from_deployment(self, warnet):
         # Get pod details from Kubernetes deployment
         pods = self.client.list_namespaced_pod(namespace="default")
+        pods_by_name = {}
         for pod in pods.items:
-            tank = self.tank_from_deployment(pod, warnet)
+            pods_by_name[pod.metadata.name] = pod
+        for pod in pods.items:
+            tank = self.tank_from_deployment(pod, pods_by_name, warnet)
             if tank is not None:
                 warnet.tanks.append(tank)
 
-    def tank_from_deployment(self, pod, warnet):
+    def tank_from_deployment(self, pod, pods_by_name, warnet):
         rex = rf"{warnet.network_name}-{POD_PREFIX}-([0-9]{{6}})"
         match = re.match(rex, pod.metadata.name)
         if match is None:
@@ -295,10 +298,6 @@ class KubernetesBackend(BackendInterface):
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
-            if container.name == LN_CONTAINER_NAME:
-                t.lnnode = LNNode(warnet, t, "lnd", self)
-                continue
-
             if container.name == BITCOIN_CONTAINER_NAME and container.env is None:
                 continue
 
@@ -315,6 +314,12 @@ class KubernetesBackend(BackendInterface):
                 if c_repo and c_branch:
                     t.version = f"{c_repo}#{c_branch}"
                     t.is_custom_build = True
+
+        # check if we can find a corresponding lnd pod
+        lnd_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
+        if lnd_pod:
+            t.lnnode = LNNode(warnet, t, "lnd", self)
+            t.lnnode.ipv4 = lnd_pod.status.pod_ip
 
         return t
 
