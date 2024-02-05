@@ -17,17 +17,17 @@ spec:
       containers:
       - name: warnet-rpc
         imagePullPolicy: Always
-        image: bitcoindevproject/warnet-rpc:dev
+        image: bitcoindevproject/warnet-rpc:dev-3
         ports:
         - containerPort: 9276
         volumeMounts:
           - name: source-code
             mountPath: /root/warnet
         livenessProbe:
-          # fail (restart) the pod if we can't find a python process
+          # fail (restart) the pod if we can't find pid of warnet
           exec:
-            command: [ "/bin/bash", "-c", "/root/warnet/src/templates/rpc/readiness.sh" ]
-          initialDelaySeconds: 5
+            command: [ "/bin/bash", "-c", "/root/warnet/src/templates/rpc/livenessProbe.sh" ]
+          initialDelaySeconds: 20
           periodSeconds: 5
           failureThreshold: 3
         readinessProbe:
