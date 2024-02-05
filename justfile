@@ -55,7 +55,6 @@ startd:
     kubectl apply -f src/templates/rpc/namespace.yaml
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
-    kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
     sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
     kubectl config set-context --current --namespace=warnet
 
