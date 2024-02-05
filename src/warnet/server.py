@@ -1,5 +1,4 @@
 import argparse
-import atexit
 import inspect
 import logging
 import os
@@ -32,7 +31,6 @@ from warnet.warnet import Warnet
 SERVER_VERSION = "0.1"
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
-PID_FILE_PATH = "/tmp/warnet.pid"
 
 
 class Server:
@@ -71,14 +69,6 @@ class Server:
 
     def healthy(self):
         return "warnet is healthy"
-
-    def write_pid_file(self):
-        with open(PID_FILE_PATH, "w") as pid_file:
-            pid_file.write(str(os.getpid()))
-
-    @staticmethod
-    def remove_pid_file():
-        os.remove(PID_FILE_PATH)
 
     def setup_logging(self):
         # Ensure the directory exists
@@ -525,8 +515,6 @@ def run_server():
     debug_mode = args.dev
     server = Server(args.backend)
 
-    server.write_pid_file()
-    atexit.register(server.remove_pid_file)
     server.app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=debug_mode)
 
 
