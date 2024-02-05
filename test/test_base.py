@@ -50,6 +50,9 @@ class TestBase:
         if self.server is None:
             return
 
+        if self.backend == "k8s":
+            return
+
         try:
             print("\nStopping network")
             if self.network:
