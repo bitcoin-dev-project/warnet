@@ -66,7 +66,9 @@ def start(graph_file: Path, force: bool, network: str):
     )
     assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
     if not isinstance(result, dict):
-        print(f"Error. Expected dict, got {type(result)}. May indicate mismatch between RPC and CLI")
+        print(
+            f"Error. Expected dict, got {type(result)}. May indicate mismatch between RPC and CLI"
+        )
         sys.exit(1)
     print_repr(result)
 

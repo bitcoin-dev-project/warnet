@@ -23,9 +23,7 @@ LN_CONTAINER_NAME = "ln"
 
 
 class KubernetesBackend(BackendInterface):
-    def __init__(
-        self, config_dir: Path, network_name: str, logs_pod="fluentd"
-    ) -> None:
+    def __init__(self, config_dir: Path, network_name: str, logs_pod="fluentd") -> None:
         super().__init__(config_dir)
         # assumes the warnet rpc server is always
         # running inside a k8s cluster as a statefulset
@@ -359,22 +357,18 @@ class KubernetesBackend(BackendInterface):
             image=container_image,
             env=container_env,
             liveness_probe=client.V1Probe(
-                 failure_threshold=3,
-                 initial_delay_seconds=5,
-                 period_seconds=5,
-                 timeout_seconds=1,
-                 _exec=client.V1ExecAction(
-                     command=["pidof", "bitcoind"]
-                 )
+                failure_threshold=3,
+                initial_delay_seconds=5,
+                period_seconds=5,
+                timeout_seconds=1,
+                _exec=client.V1ExecAction(command=["pidof", "bitcoind"]),
             ),
             readiness_probe=client.V1Probe(
-                 failure_threshold=1,
-                 initial_delay_seconds=0,
-                 period_seconds=1,
-                 timeout_seconds=1,
-                 tcp_socket=client.V1TCPSocketAction(
-                    port=tank.rpc_port
-                )
+                failure_threshold=1,
+                initial_delay_seconds=0,
+                period_seconds=1,
+                timeout_seconds=1,
+                tcp_socket=client.V1TCPSocketAction(port=tank.rpc_port),
             ),
             security_context=client.V1SecurityContext(
                 privileged=True,
@@ -418,7 +412,7 @@ class KubernetesBackend(BackendInterface):
                 timeout_seconds=2,
                 _exec=client.V1ExecAction(
                     command=["/bin/sh", "-c", "lncli --network=regtest getinfo"]
-                )
+                ),
             ),
             security_context=client.V1SecurityContext(
                 privileged=True,
@@ -435,10 +429,14 @@ class KubernetesBackend(BackendInterface):
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
-            metadata=client.V1ObjectMeta(name=name, namespace=self.namespace, labels={
-                "app": name,
-                "network": tank.warnet.network_name,
-            }),
+            metadata=client.V1ObjectMeta(
+                name=name,
+                namespace=self.namespace,
+                labels={
+                    "app": name,
+                    "network": tank.warnet.network_name,
+                },
+            ),
             spec=client.V1PodSpec(
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
@@ -539,8 +537,9 @@ class KubernetesBackend(BackendInterface):
                 except ApiException as e:
                     if e.status != 404:
                         raise e
-                self.client.create_namespaced_service(namespace=self.namespace, body=lightning_service)
-
+                self.client.create_namespaced_service(
+                    namespace=self.namespace, body=lightning_service
+                )
 
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks

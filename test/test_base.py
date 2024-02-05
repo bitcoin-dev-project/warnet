@@ -108,7 +108,6 @@ class TestBase:
         # TODO: check for conflicting warnet process
         #       maybe also ensure that no conflicting docker networks exist
 
-
         if self.backend == "k8s":
             # For kubernetes we assume the server is started outside test base
             # but we can still read its log output
@@ -117,7 +116,8 @@ class TestBase:
                 stdout=PIPE,
                 stderr=STDOUT,
                 bufsize=1,
-                universal_newlines=True)
+                universal_newlines=True,
+            )
         else:
             print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
@@ -126,7 +126,8 @@ class TestBase:
                 stdout=PIPE,
                 stderr=STDOUT,
                 bufsize=1,
-                universal_newlines=True)
+                universal_newlines=True,
+            )
 
         # Create a thread to read the output
         self.server_thread = threading.Thread(
