@@ -149,6 +149,8 @@ class KubernetesBackend(BackendInterface):
             stdin=False,
             stdout=True,
             tty=False,
+            # Avoid preloading the content to keep JSON intact
+            _preload_content=False,
         )
         # TODO: stream result is just a string, so there is no error code to check
         # ideally, we use a method where we can check for an error code, otherwise we will
@@ -158,6 +160,8 @@ class KubernetesBackend(BackendInterface):
         #     raise Exception(
         #         f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')}"
         #     )
+        result.run_forever()
+        result = result.read_all()
         return result
 
     def get_bitcoin_debug_log(self, tank_index: int):
