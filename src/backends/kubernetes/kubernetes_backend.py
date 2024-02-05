@@ -51,7 +51,7 @@ class KubernetesBackend(BackendInterface):
         for tank in warnet.tanks:
             pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
             self.client.delete_namespaced_pod(pod_name, self.namespace)
-            service_name = f"warnet-{POD_PREFIX}-{tank.index:06d}"
+            service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
             self.client.delete_namespaced_service(service_name, self.namespace)
             if tank.lnnode:
                 pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
@@ -379,7 +379,7 @@ class KubernetesBackend(BackendInterface):
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}.svc.cluster.local"
-        lightning_dns = f"lightning-service-{tank.index}.{self.namespace}.svc.cluster.local"
+        lightning_dns = f"lightning-{tank.index}.{self.namespace}.svc.cluster.local"
         args = [
             "--noseedbackup",
             "--norest",
@@ -446,7 +446,7 @@ class KubernetesBackend(BackendInterface):
         )
 
     def create_bitcoind_service(self, tank) -> client.V1Service:
-        service_name = f"warnet-{POD_PREFIX}-{tank.index:06d}"
+        service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
         service = client.V1Service(
             api_version="v1",
             kind="Service",
@@ -475,7 +475,7 @@ class KubernetesBackend(BackendInterface):
         return service
 
     def create_lightning_service(self, tank) -> client.V1Service:
-        service_name = f"lightning-service-{tank.index}"
+        service_name = f"lightning-{tank.index}"
         service = client.V1Service(
             api_version="v1",
             kind="Service",
