@@ -1,17 +1,13 @@
+set shell := ["bash", "-uc"]
+
 [private]
 default:
     just --list
 
-# Setup and start the RPC in dev mode
+# Setup and start the RPC in dev mode with minikube
 start:
     #!/usr/bin/env bash
     set -euxo pipefail
-    echo Running k8s in dev mode
-
-    # Check we're in home dir
-    if [ ! -f "$PWD/pyproject.toml" ]; then \
-      echo "Error: must run from project root." >&2; exit 1; \
-    fi
 
     # Mount local source dir
     minikube mount $PWD:/mnt/src > /tmp/minikube_mount.log 2>&1 &
@@ -35,22 +31,12 @@ start:
 
     echo Done...
 
-# Stop the RPC in dev mode
+# Stop the RPC in dev mode with minikube
 stop:
     #!/usr/bin/env bash
     set -euxo pipefail
-    echo Tearing down kubernetes dev mode
 
-    # Check we're in home dir
-    if [ ! -f "$PWD/pyproject.toml" ]; then \
-      echo "Error: must run from project root." >&2; exit 1; \
-    fi
-
-    # Stop statefulset
-    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-    kubectl delete -f src/templates/rpc/warnet-rpc-service.yaml
-    kubectl delete -f src/templates/rpc/rbac-config.yaml
-    kubectl delete -f src/templates/rpc/namespace.yaml
+    kubectl delete namespace warnet
     kubectl config set-context --current --namespace=default
 
     # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
@@ -64,19 +50,8 @@ stop:
         echo "PID file not found. Minikube mount process may not have been started."
     fi
 
-# (d)ocker (d)esktop (k)ubernetes (d)ev
-ddkd:
-    #!/usr/bin/env bash
-    set -euxo pipefail
-    echo Running k8s in dev mode
-
-    # Check we're in home dir
-    if [ ! -f "$PWD/pyproject.toml" ]; then \
-      echo "Error: must run from project root." >&2; exit 1; \
-    fi
-
-    # Replace mount path with local directory
-
+# Setup and start the RPC in dev mode with Docker Desktop
+startd:
     kubectl apply -f src/templates/rpc/namespace.yaml
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
@@ -89,22 +64,10 @@ ddkd:
 
     echo Done...
 
-# (d)ocker (d)esktop (k)ubernetes (d)ev (d)own
-ddkdd:
-    #!/usr/bin/env bash
-    set -euxo pipefail
-    echo Tearing down kubernetes dev mode
-
-    # Check we're in home dir
-    if [ ! -f "$PWD/pyproject.toml" ]; then \
-      echo "Error: must run from project root." >&2; exit 1; \
-    fi
-
-    # Deleting all resources
-    kubectl delete -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-    kubectl delete -f src/templates/rpc/warnet-rpc-service.yaml
-    kubectl delete -f src/templates/rpc/rbac-config.yaml
-    kubectl delete -f src/templates/rpc/namespace.yaml
+# Stop the RPC in dev mode with Docker Desktop
+stopd:
+    # Delete all resources
+    kubectl delete namespace warnet
     kubectl config set-context --current --namespace=default
 
     echo Done...
