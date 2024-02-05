@@ -8,18 +8,24 @@ from warnet.cli.main import cli
 
 doc = ""
 
-def print_cmd(cmd, super=''):
+
+def print_cmd(cmd, super=""):
     global doc
     doc += f"### `warcli{super} {cmd['name']}`" + "\n"
     doc += cmd["help"].strip().replace("<", "\\<") + "\n"
     doc += "\noptions:\n"
     headers = ["name", "type", "required", "default"]
-    data = [[
-        p['name'],
-        p['type']['param_type'],
-        p['required'],
-        p['default'] if p['type']['param_type'] != "Path" else Path(p['default']).relative_to(Path.cwd())
-    ] for p in cmd["params"]]
+    data = [
+        [
+            p["name"],
+            p["type"]["param_type"],
+            p["required"],
+            p["default"]
+            if p["type"]["param_type"] != "Path"
+            else Path(p["default"]).relative_to(Path.cwd()),
+        ]
+        for p in cmd["params"]
+    ]
     doc += tabulate(data, headers=headers, tablefmt="github")
     doc += "\n\n"
 

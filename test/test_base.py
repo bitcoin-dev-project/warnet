@@ -34,7 +34,9 @@ class TestBase:
 
         atexit.register(self.cleanup)
 
+        # Default backend
         self.backend = "compose"
+        # CLI arg overrides env
         if len(sys.argv) > 1:
             self.backend = sys.argv[1]
 
@@ -87,7 +89,7 @@ class TestBase:
         return rpc_call(method, params)
 
     # Repeatedly execute an RPC until it succeeds
-    @exponential_backoff()
+    @exponential_backoff(max_retries=20)
     def wait_for_rpc(self, method, params=None):
         return rpc_call(method, params)
 
@@ -106,17 +108,26 @@ class TestBase:
         # TODO: check for conflicting warnet process
         #       maybe also ensure that no conflicting docker networks exist
 
-        print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
+        if self.backend == "k8s":
+            # For kubernetes we assume the server is started outside test base
+            # but we can still read its log output
+            self.server = Popen(
+                ["kubectl", "logs", "-f", "rpc-0"],
+                stdout=PIPE,
+                stderr=STDOUT,
+                bufsize=1,
+                universal_newlines=True,
+            )
+        else:
+            print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
-        self.server = Popen(
-            ["warnet", "--backend", self.backend],
-            stdout=PIPE,
-            stderr=STDOUT,
-            bufsize=1,
-            universal_newlines=True,
-        )
-
-        print("\nWaiting for RPC")
+            self.server = Popen(
+                ["warnet", "--backend", self.backend],
+                stdout=PIPE,
+                stderr=STDOUT,
+                bufsize=1,
+                universal_newlines=True,
+            )
 
         # Create a thread to read the output
         self.server_thread = threading.Thread(
@@ -125,7 +136,8 @@ class TestBase:
         self.server_thread.daemon = True
         self.server_thread.start()
 
-        # doesn't require anything docker-related
+        # doesn't require anything container-related
+        print("\nWaiting for RPC")
         self.wait_for_rpc("scenarios_available")
 
     # Quit

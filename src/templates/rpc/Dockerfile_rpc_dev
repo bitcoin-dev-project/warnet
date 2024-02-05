@@ -1,6 +1,11 @@
 # Use an official Python runtime as the base image
 FROM python:3.11-slim
 
+# Install procps, which includes pgrep
+RUN apt-get update && \
+    apt-get install -y procps && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set the working directory in the container
 WORKDIR /root/warnet
 
@@ -12,7 +17,7 @@ EXPOSE 9276
 # we defer this to the entrypoint script for dev mode to enable hot-reloading.
 
 # Copy the entrypoint script into the container
-COPY entrypoint.sh /usr/local/bin/
+COPY src/templates/rpc/entrypoint.sh /usr/local/bin/
 
 # Make the entrypoint script executable
 RUN chmod +x /usr/local/bin/entrypoint.sh

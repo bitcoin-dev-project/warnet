@@ -23,15 +23,13 @@ LN_CONTAINER_NAME = "ln"
 
 
 class KubernetesBackend(BackendInterface):
-    def __init__(
-        self, config_dir: Path, network_name: str, namespace="default", logs_pod="fluentd"
-    ) -> None:
+    def __init__(self, config_dir: Path, network_name: str, logs_pod="fluentd") -> None:
         super().__init__(config_dir)
         # assumes the warnet rpc server is always
         # running inside a k8s cluster as a statefulset
         config.load_incluster_config()
         self.client = client.CoreV1Api()
-        self.namespace = namespace
+        self.namespace = "warnet"
         self.logs_pod = logs_pod
         self.network_name = network_name
 
@@ -49,10 +47,11 @@ class KubernetesBackend(BackendInterface):
         Bring an exsiting network down.
             e.g. `k delete -f warnet-tanks.yaml`
         """
+
         for tank in warnet.tanks:
             pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
             self.client.delete_namespaced_pod(pod_name, self.namespace)
-            service_name = f"bitcoind-service-{tank.index}"
+            service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
             self.client.delete_namespaced_service(service_name, self.namespace)
             if tank.lnnode:
                 pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
@@ -113,22 +112,50 @@ class KubernetesBackend(BackendInterface):
     def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
         pod_name = self.get_pod_name(tank_index, service)
         pod = self.get_pod(pod_name)
+        # Possible states:
+        # 1. pod not found?
+        #    -> STOPPED
+        # 2. pod phase Succeeded?
+        #    -> STOPPED
+        # 3. pod phase Failed?
+        #    -> FAILED
+        # 4. pod phase Unknown?
+        #    -> UNKNOWN
+        # Pod phase is now "Running" or "Pending"
+        #    -> otherwise we need a bug fix, return UNKNOWN
+        #
+        # The pod is ready if all containers are ready.
+        # 5. Pod not ready?
+        #    -> PENDING
+        # 6. Pod ready?
+        #    -> RUNNING
+        #
+        # Note: we don't know anything about deleted pods so we can't return a status for them.
+        # TODO: we could use a kubernetes job to keep the result 🤔
+
         if pod is None:
             return RunningStatus.STOPPED
-        container_name = (
-            BITCOIN_CONTAINER_NAME if service == ServiceType.BITCOIN else LN_CONTAINER_NAME
-        )
 
         assert pod.status, "Could not get pod status"
+        assert pod.status.phase, "Could not get pod status.phase"
+        if pod.status.phase == "Succeeded":
+            return RunningStatus.STOPPED
+        if pod.status.phase == "Failed":
+            return RunningStatus.FAILED
+        if pod.status.phase == "Unknown":
+            return RunningStatus.UNKNOWN
+        if pod.status.phase == "Pending":
+            return RunningStatus.PENDING
+
+        assert pod.status.phase in ("Running", "Pending"), f"Unknown pod phase {pod.status.phase}"
+
+        # a pod is ready if all containers are ready
+        ready = True
         for container in pod.status.container_statuses:
-            if container.name == container_name:
-                if container.state.running is not None:
-                    return RunningStatus.RUNNING
-                if container.state.terminated is not None:
-                    return RunningStatus.STOPPED
-                if container.state.waiting is not None:
-                    return RunningStatus.PENDING
-        return RunningStatus.UNKNOWN
+            if container.ready is not True:
+                ready = False
+                break
+        return RunningStatus.RUNNING if ready else RunningStatus.PENDING
 
     def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root"):
         # k8s doesn't let us run exec commands as a user, but we can use su
@@ -191,14 +218,13 @@ class KubernetesBackend(BackendInterface):
         tank_index: int,
         b_ipv4: str,
         bitcoin_network: str = "regtest",
-        namespace: str = "default",
     ):
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         dirs = self.exec_run(
             tank_index,
             ServiceType.BITCOIN,
             f"ls /home/bitcoin/.bitcoin/{subdir}message_capture",
-            namespace,
+            self.namespace,
         )
         dirs = dirs.splitlines()
         messages = []
@@ -209,7 +235,7 @@ class KubernetesBackend(BackendInterface):
                     # Fetch the file contents from the container
                     file_path = f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
                     blob = self.exec_run(
-                        tank_index, ServiceType.BITCOIN, f"cat {file_path}", namespace
+                        tank_index, ServiceType.BITCOIN, f"cat {file_path}", self.namespace
                     )
 
                     # Parse the blob
@@ -219,23 +245,31 @@ class KubernetesBackend(BackendInterface):
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    # TODO: stop using fluentd and instead interate through all pods?
     def logs_grep(self, pattern: str, network: str):
         compiled_pattern = re.compile(pattern)
-
-        # Fetch the logs from the pod
-        log_stream = self.client.read_namespaced_pod_log(
-            name=self.logs_pod,
-            namespace=self.namespace,
-            timestamps=True,
-            _preload_content=False,
-        )
-
         matching_logs = []
-        for log_entry in log_stream:
-            log_entry_str = log_entry.decode("utf-8").strip()
-            if compiled_pattern.search(log_entry_str):
-                matching_logs.append(log_entry_str)
+
+        pods = self.client.list_namespaced_pod(self.namespace)
+
+        # TODO: Can adapt to only search lnd or bitcoind containers?
+        relevant_pods = [pod for pod in pods.items if "warnet" in pod.metadata.name]
+
+        # Iterate through the filtered pods to fetch and search logs
+        for pod in relevant_pods:
+            try:
+                log_stream = self.client.read_namespaced_pod_log(
+                    name=pod.metadata.name,
+                    namespace=self.namespace,
+                    timestamps=True,
+                    _preload_content=False,
+                )
+
+                for log_entry in log_stream:
+                    log_entry_str = log_entry.decode("utf-8").strip()
+                    if compiled_pattern.search(log_entry_str):
+                        matching_logs.append(log_entry_str)
+            except ApiException as e:
+                print(f"Error fetching logs for pod {pod.metadata.name}: {e}")
 
         return "\n".join(matching_logs)
 
@@ -247,13 +281,16 @@ class KubernetesBackend(BackendInterface):
 
     def warnet_from_deployment(self, warnet):
         # Get pod details from Kubernetes deployment
-        pods = self.client.list_namespaced_pod(namespace="default")
+        pods_by_name = {}
+        pods = self.client.list_namespaced_pod(namespace=self.namespace)
         for pod in pods.items:
-            tank = self.tank_from_deployment(pod, warnet)
+            pods_by_name[pod.metadata.name] = pod
+        for pod in pods.items:
+            tank = self.tank_from_deployment(pod, pods_by_name, warnet)
             if tank is not None:
                 warnet.tanks.append(tank)
 
-    def tank_from_deployment(self, pod, warnet):
+    def tank_from_deployment(self, pod, pods_by_name, warnet):
         rex = rf"{warnet.network_name}-{POD_PREFIX}-([0-9]{{6}})"
         match = re.match(rex, pod.metadata.name)
         if match is None:
@@ -267,10 +304,6 @@ class KubernetesBackend(BackendInterface):
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
-            if container.name == LN_CONTAINER_NAME:
-                t.lnnode = LNNode(warnet, t, "lnd", self)
-                continue
-
             if container.name == BITCOIN_CONTAINER_NAME and container.env is None:
                 continue
 
@@ -287,6 +320,12 @@ class KubernetesBackend(BackendInterface):
                 if c_repo and c_branch:
                     t.version = f"{c_repo}#{c_branch}"
                     t.is_custom_build = True
+
+        # check if we can find a corresponding lnd pod
+        lnd_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
+        if lnd_pod:
+            t.lnnode = LNNode(warnet, t, "lnd", self)
+            t.lnnode.ipv4 = lnd_pod.status.pod_ip
 
         return t
 
@@ -317,17 +356,20 @@ class KubernetesBackend(BackendInterface):
             name=container_name,
             image=container_image,
             env=container_env,
-            # TODO: this doesnt seem to work as expected?
-            # missing the exec field.
-            # liveness_probe=client.V1Probe(
-            #     failure_threshold=3,
-            #     initial_delay_seconds=5,
-            #     period_seconds=5,
-            #     timeout_seconds=1,
-            #     exec=client.V1ExecAction(
-            #         command=["pidof", "bitcoind"]
-            #     )
-            # ),
+            liveness_probe=client.V1Probe(
+                failure_threshold=3,
+                initial_delay_seconds=5,
+                period_seconds=5,
+                timeout_seconds=1,
+                _exec=client.V1ExecAction(command=["pidof", "bitcoind"]),
+            ),
+            readiness_probe=client.V1Probe(
+                failure_threshold=1,
+                initial_delay_seconds=0,
+                period_seconds=1,
+                timeout_seconds=1,
+                tcp_socket=client.V1TCPSocketAction(port=tank.rpc_port),
+            ),
             security_context=client.V1SecurityContext(
                 privileged=True,
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
@@ -337,6 +379,7 @@ class KubernetesBackend(BackendInterface):
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}.svc.cluster.local"
+        lightning_dns = f"lightning-{tank.index}.{self.namespace}.svc.cluster.local"
         args = [
             "--noseedbackup",
             "--norest",
@@ -351,12 +394,26 @@ class KubernetesBackend(BackendInterface):
             f"--bitcoind.zmqpubrawblock={bitcoind_rpc_host}:{tank.zmqblockport}",
             f"--bitcoind.zmqpubrawtx={bitcoind_rpc_host}:{tank.zmqtxport}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
+            f"--externalhosts={lightning_dns}",
             f"--alias={tank.index}",
         ]
         return client.V1Container(
             name=LN_CONTAINER_NAME,
             image=f"{DOCKER_REGISTRY_LND}",
             args=args,
+            env=[
+                client.V1EnvVar(name="LND_NETWORK", value="regtest"),
+            ],
+            readiness_probe=client.V1Probe(
+                failure_threshold=1,
+                success_threshold=3,
+                initial_delay_seconds=1,
+                period_seconds=2,
+                timeout_seconds=2,
+                _exec=client.V1ExecAction(
+                    command=["/bin/sh", "-c", "lncli --network=regtest getinfo"]
+                ),
+            ),
             security_context=client.V1SecurityContext(
                 privileged=True,
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
@@ -372,7 +429,14 @@ class KubernetesBackend(BackendInterface):
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
-            metadata=client.V1ObjectMeta(name=name, namespace="default", labels={"app": name}),
+            metadata=client.V1ObjectMeta(
+                name=name,
+                namespace=self.namespace,
+                labels={
+                    "app": name,
+                    "network": tank.warnet.network_name,
+                },
+            ),
             spec=client.V1PodSpec(
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
@@ -382,13 +446,20 @@ class KubernetesBackend(BackendInterface):
         )
 
     def create_bitcoind_service(self, tank) -> client.V1Service:
-        service_name = f"bitcoind-service-{tank.index}"
+        service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
         service = client.V1Service(
             api_version="v1",
             kind="Service",
-            metadata=client.V1ObjectMeta(name=service_name),
+            metadata=client.V1ObjectMeta(
+                name=service_name,
+                labels={
+                    "app": self.get_pod_name(tank.index, ServiceType.BITCOIN),
+                    "network": tank.warnet.network_name,
+                },
+            ),
             spec=client.V1ServiceSpec(
                 selector={"app": self.get_pod_name(tank.index, ServiceType.BITCOIN)},
+                publish_not_ready_addresses=True,
                 ports=[
                     # TODO: do we need to add 18444 here too?
                     client.V1ServicePort(port=tank.rpc_port, target_port=tank.rpc_port, name="rpc"),
@@ -399,6 +470,31 @@ class KubernetesBackend(BackendInterface):
                         port=tank.zmqtxport, target_port=tank.zmqtxport, name="zmqtx"
                     ),
                 ],
+            ),
+        )
+        return service
+
+    def create_lightning_service(self, tank) -> client.V1Service:
+        service_name = f"lightning-{tank.index}"
+        service = client.V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=client.V1ObjectMeta(
+                name=service_name,
+                labels={
+                    "app": self.get_pod_name(tank.index, ServiceType.LIGHTNING),
+                    "network": tank.warnet.network_name,
+                },
+            ),
+            spec=client.V1ServiceSpec(
+                selector={"app": self.get_pod_name(tank.index, ServiceType.LIGHTNING)},
+                cluster_ip="None",
+                ports=[
+                    client.V1ServicePort(
+                        port=tank.lnnode.rpc_port, target_port=tank.lnnode.rpc_port, name="rpc"
+                    ),
+                ],
+                publish_not_ready_addresses=True,
             ),
         )
         return service
@@ -416,6 +512,14 @@ class KubernetesBackend(BackendInterface):
             )
             bitcoind_service = self.create_bitcoind_service(tank)
             self.client.create_namespaced_pod(namespace=self.namespace, body=bitcoind_pod)
+            # delete the service if it already exists, ignore 404
+            try:
+                self.client.delete_namespaced_service(
+                    name=bitcoind_service.metadata.name, namespace=self.namespace
+                )
+            except ApiException as e:
+                if e.status != 404:
+                    raise e
             self.client.create_namespaced_service(namespace=self.namespace, body=bitcoind_service)
 
             # Create and deploy LND pod
@@ -425,6 +529,17 @@ class KubernetesBackend(BackendInterface):
                     tank, lnd_container, self.get_pod_name(tank.index, ServiceType.LIGHTNING)
                 )
                 self.client.create_namespaced_pod(namespace=self.namespace, body=lnd_pod)
+                lightning_service = self.create_lightning_service(tank)
+                try:
+                    self.client.delete_namespaced_service(
+                        name=lightning_service.metadata.name, namespace=self.namespace
+                    )
+                except ApiException as e:
+                    if e.status != 404:
+                        raise e
+                self.client.create_namespaced_service(
+                    namespace=self.namespace, body=lightning_service
+                )
 
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks

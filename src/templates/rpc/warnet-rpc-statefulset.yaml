@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: rpc
+  namespace: warnet
 spec:
   serviceName: "rpc"
   replicas: 1
@@ -16,7 +17,7 @@ spec:
       containers:
       - name: warnet-rpc
         imagePullPolicy: Always
-        image: bitcoindevproject/warnet-rpc:0.1
+        image: bitcoindevproject/warnet-rpc:0.2
         ports:
         - containerPort: 9276
 

@@ -19,7 +19,7 @@ def available():
     """
     console = Console()
     result = rpc_call("scenarios_available", None)
-    if not isinstance(result, list): # Make mypy happy
+    if not isinstance(result, list):  # Make mypy happy
         print(f"Error. Expected list but got {type(result)}: {result}")
         sys.exit(1)
 
@@ -56,7 +56,7 @@ def active():
     """
     console = Console()
     result = rpc_call("scenarios_list_running", {})
-    if not isinstance(result, dict): # Make mypy happy
+    if not isinstance(result, dict):  # Make mypy happy
         print(f"Error. Expected dict but got {type(result)}: {result}")
         sys.exit(1)
 

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: rpc
+  namespace: warnet
 spec:
   serviceName: "rpc"
   replicas: 1
@@ -16,20 +17,30 @@ spec:
       containers:
       - name: warnet-rpc
         imagePullPolicy: Always
-        image: bitcoindevproject/warnet-rpc:dev
+        image: bitcoindevproject/warnet-rpc:dev-3
         ports:
         - containerPort: 9276
         volumeMounts:
           - name: source-code
             mountPath: /root/warnet
-        readinessProbe:
+        livenessProbe:
+          # fail (restart) the pod if we can't find pid of warnet
           exec:
-            command:
-            - /bin/bash
-            - -c
-            - /root/warnet/src/templates/rpc/readiness.sh
-          initialDelaySeconds: 5
-          periodSeconds: 10
+            command: [ "/bin/bash", "-c", "/root/warnet/src/templates/rpc/livenessProbe.sh" ]
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          # mark the pod as ready if we can get a 200 response from
+          # the /-/healthy endpoint on port 9276.
+          # If we can't, don't send traffic to the pod
+          httpGet:
+            path: /-/healthy
+            port: 9276
+          initialDelaySeconds: 1
+          periodSeconds: 2
+          failureThreshold: 2
+          timeoutSeconds: 2
       volumes:
       - name: source-code
         hostPath:
