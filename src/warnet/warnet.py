@@ -40,13 +40,12 @@ class Warnet:
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
         #       if we write a helper function that can text-wrap inside a column
-        template = "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
-        tanks_str = template % ("Index", "Version", "IPv4", "LN", "LN IPv4")
+        template = "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "\n"
+        tanks_str = template % ("Index", "Version", "LN", "LN IPv4")
         for tank in self.tanks:
             tanks_str += template % (
                 tank.index,
                 tank.version,
-                tank.ipv4,
                 tank.lnnode.impl if tank.lnnode is not None else None,
                 tank.lnnode.ipv4 if tank.lnnode is not None else None,
             )
@@ -54,8 +53,7 @@ class Warnet:
             f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
             f"\tBitcoin Network: {self.bitcoin_network}\n"
-            f"\tDocker Network: {self.network_name}\n"
-            f"\tSubnet: {self.subnet}\n"
+            f"\tNetwork name: {self.network_name}\n"
             f"\tGraph: {self.graph}\n"
             f"Tanks:\n{tanks_str}"
         )
@@ -66,8 +64,7 @@ class Warnet:
         repr["warnet_headers"] = [
             "Temp dir",
             "Bitcoin network",
-            "Docker network",
-            "Subnet",
+            "Network name",
             "Graph",
         ]
         repr["warnet"] = [
@@ -75,17 +72,16 @@ class Warnet:
                 str(self.config_dir),
                 self.bitcoin_network,
                 self.network_name,
-                self.subnet,
                 str(self.graph),
             ]
         ]
 
         # Tanks
-        tank_headers = ["Index", "Version", "IPv4", "bitcoin conf", "tc_netem", "LN", "LN IPv4"]
+        tank_headers = ["Index", "Version", "bitcoin conf", "tc_netem", "LN", "LN IPv4"]
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [tank.index, tank.version, tank.ipv4, tank.conf, tank.netem]
+            tank_data = [tank.index, tank.version, tank.conf, tank.netem]
             if has_ln:
                 tank_data.extend(
                     [
