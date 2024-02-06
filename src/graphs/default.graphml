@@ -26,7 +26,7 @@
         <data key="collect_logs">true</data>
     </node>
     <node id="3">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w3</data>
         <data key="exporter">true</data>
     </node>

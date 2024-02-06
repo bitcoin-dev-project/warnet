@@ -8,7 +8,7 @@
   <key attr.name="image"          attr.type="string" for="node" id="image"/>
   <graph edgedefault="directed">
     <node id="0">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">uacomment=w0</data>
         <data key="ln">lnd</data>
         <data key="collect_logs">true</data>
