@@ -34,6 +34,10 @@ class LNNode:
         res = json.loads(self.lncli("getinfo"))
         return res["uris"][0]
 
+    def get_wallet_balance(self):
+        res = json.loads(self.lncli("walletbalance"))
+        return res
+
     def open_channel_to_tank(self, index, amt):
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
