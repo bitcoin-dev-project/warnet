@@ -74,3 +74,15 @@ stopd:
 # port forward
 p:
     kubectl port-forward svc/rpc 9276:9276
+
+registry := 'bitcoindevproject/demo'
+repo := 'bitcoin/bitcoin'
+build-args := "--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --enable-debug"
+
+# Build docker images and push to registry
+build branch tag registry=registry repo=repo build-args=build-args:
+    DOCKER_REGISTRY={{ registry }} \
+    REPO={{ repo }} \
+    BRANCH=v26.0 TAG={{ tag }} \
+    BUILD_ARGS="{{ build-args }}" \
+    scripts/build-bitcoind.sh src/templates/Dockerfile_k8_alpine
