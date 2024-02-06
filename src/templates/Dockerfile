@@ -1,96 +1,86 @@
-FROM debian:bookworm-slim as builder
-ENV DEBIAN_FRONTEND=noninteractive
-
-ARG ARCH
-ARG BITCOIN_VERSION
+# Setup deps stage
+FROM alpine as deps
 ARG REPO
 ARG BRANCH
 ARG BUILD_ARGS
-ARG BITCOIN_URL
 
-# install or build
+RUN --mount=type=cache,target=/var/cache/apk \
+    sed -i 's/http\:\/\/dl-cdn.alpinelinux.org/https\:\/\/alpine.global.ssl.fastly.net/g' /etc/apk/repositories \
+    && apk --no-cache add \
+    autoconf \
+    automake \
+    boost-dev \
+    build-base \
+    chrpath \
+    file \
+    gnupg \
+    git \
+    libevent-dev \
+    libressl \
+    libtool \
+    linux-headers \
+    sqlite-dev \
+    zeromq-dev
+
+COPY src/templates/isroutable.patch /tmp/
+COPY src/templates/addrman.patch /tmp/
+
+
+# Clone and patch and build stage
+FROM deps as build
+ENV BITCOIN_PREFIX=/opt/bitcoin
+WORKDIR /build
+
 RUN set -ex \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        wget \
-    && if [ -n "${BITCOIN_URL}" ]; then \
-        wget "${BITCOIN_URL}/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-${ARCH}.tar.gz"; \
-        tar -xzf "bitcoin-${BITCOIN_VERSION}-${ARCH}.tar.gz" -C /usr/local --strip-components=1; \
-    fi \
-    && if [ -n "${REPO}" ]; then \
-        apt-get install -y \
-            automake \
-            autotools-dev \
-            build-essential \
-            git \
-            libtool \
-            libboost-dev \
-            libevent-dev \
-            libdb5.3++-dev \
-            libminiupnpc-dev \
-            libnatpmp-dev \
-            libzmq3-dev \
-            libqrencode-dev \
-            libsqlite3-dev \
-            pkg-config; \
-        mkdir build; \
-        cd /build; \
-        git clone --depth 1 --branch "${BRANCH}" "https://github.com/${REPO}"; \
-        cd /build/bitcoin; \
-        ./autogen.sh; \
-        ./configure ${BUILD_ARGS}; \
-        make -j$(nproc); \
-        make install; \
-    fi
+    && cd /build \
+    && git clone --depth 1 --branch "${BRANCH}" "https://github.com/${REPO}" \
+    && cd bitcoin \
+    && git apply /tmp/isroutable.patch \
+    && git apply /tmp/addrman.patch \
+    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
+    && ./autogen.sh \
+    && ./configure \
+    LDFLAGS=-L`ls -d /opt/db*`/lib/ \
+    CPPFLAGS=-I`ls -d /opt/db*`/include/ \
+    --prefix=${BITCOIN_PREFIX} \
+    ${BUILD_ARGS} \
+    && make -j$(nproc) \
+    && make install \
+    && strip ${BITCOIN_PREFIX}/bin/bitcoin-cli \
+    && strip ${BITCOIN_PREFIX}/bin/bitcoind \
+    && strip ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.a \
+    && strip ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.so.0.0.0 \
+    && rm ${BITCOIN_PREFIX}/bin/bitcoin-tx \
+    && rm ${BITCOIN_PREFIX}/bin/bitcoin-wallet \
+    && rm ${BITCOIN_PREFIX}/bin/bitcoin-util
 
-# shrink image size with a second stage
-FROM debian:bookworm-slim
-
-ARG UID=3338
-ARG GID=3338
-ARG REPO
-ARG TOR=0
-ARG WARNET=0
-ARG BITCOIN_ARGS
-# env var overrides
-ENV UID=$UID
-ENV GID=$GID
+# Final clean stage
+FROM alpine
+ARG UID=100
+ARG GID=101
 ENV BITCOIN_DATA=/home/bitcoin/.bitcoin
-ENV BITCOIN_ARGS=$BITCOIN_ARGS
-ENV TOR=$TOR
-ENV WARNET=$WARNET
+ENV BITCOIN_PREFIX=/opt/bitcoin
+ENV PATH=${BITCOIN_PREFIX}/bin:$PATH
+LABEL maintainer.0="bitcoindevproject"
 
-RUN set -ex \
-    && groupadd --gid ${GID} bitcoin \
-    && useradd --create-home --no-log-init -u ${UID} -g ${GID} bitcoin \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        dnsutils \
-        gosu \
-        iproute2 \
-        tor \
-    && if [ -n "${REPO}" ]; then \
-        apt-get install -y --no-install-recommends \
-            libboost-dev \
-            libevent-dev \
-            libdb5.3++-dev \
-            libminiupnpc-dev \
-            libnatpmp-dev \
-            libzmq3-dev \
-            libqrencode-dev \
-            libsqlite3-dev; \
-    fi \
-    && apt-get clean \
-    && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+RUN addgroup bitcoin --gid ${GID} --system \
+    && adduser --uid ${UID} --system bitcoin --ingroup bitcoin
+RUN --mount=type=cache,target=/var/cache/apk sed -i 's/http\:\/\/dl-cdn.alpinelinux.org/https\:\/\/alpine.global.ssl.fastly.net/g' /etc/apk/repositories \
+    && apk --no-cache add \
+    bash \
+    libevent \
+    libzmq \
+    shadow \
+    sqlite-dev \
+    su-exec
 
-COPY --from=builder /usr/local/bin/bitcoind /usr/local/bin/bitcoin-cli /usr/local/bin/
-COPY entrypoint.sh /entrypoint.sh
-# Warnet torrc using test network
-COPY tor/torrc /etc/tor/warnet-torr
+COPY --from=build /opt/bitcoin /usr/local
+COPY src/templates/entrypoint.sh /entrypoint.sh
+COPY src/templates/tor/torrc /etc/tor/warnet-torr
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
 
 ENTRYPOINT ["/entrypoint.sh"]
-RUN bitcoind -version | grep -E "Bitcoin Core( Daemon)? version v${BITCOIN_VERSION}"
 CMD ["bitcoind"]
+

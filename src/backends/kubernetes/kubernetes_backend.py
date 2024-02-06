@@ -158,12 +158,11 @@ class KubernetesBackend(BackendInterface):
         return RunningStatus.RUNNING if ready else RunningStatus.PENDING
 
     def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root"):
-        # k8s doesn't let us run exec commands as a user, but we can use su
-        # because its installed in the bitcoin containers. we will need to rework
-        # this command if we decided to remove gosu from the containers
-        # TODO: change this if we remove gosu
         pod_name = self.get_pod_name(tank_index, service)
-        exec_cmd = ["/bin/sh", "-c", f"su - {user} -c '{cmd}'"]
+        if service == ServiceType.BITCOIN:
+            exec_cmd = ["/bin/bash", "-c", f"su-exec bitcoin:bitcoin {cmd}"]
+        elif service == ServiceType.LIGHTNING:
+            exec_cmd = ["/bin/sh", "-c", f"su - {user} -c '{cmd}'"]
         result = stream(
             self.client.connect_get_namespaced_pod_exec,
             pod_name,
@@ -211,7 +210,7 @@ class KubernetesBackend(BackendInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
-        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd, user="bitcoin")
+        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd)
 
     def get_messages(
         self,

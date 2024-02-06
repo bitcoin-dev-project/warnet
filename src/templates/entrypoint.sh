@@ -16,7 +16,7 @@ if [ "${TOR:-0}" -eq 1 ]; then
     mkdir -p /home/debian-tor/.tor/keys
     chown -R debian-tor:debian-tor /home/debian-tor
     # Start tor in the background
-    gosu debian-tor tor &
+    su-exec debian-tor:debian-tor tor &
     # ===============================
 fi
 
@@ -57,7 +57,7 @@ fi
 
 if [ "$1" = "bitcoind" ] || [ "$1" = "bitcoin-cli" ] || [ "$1" = "bitcoin-tx" ]; then
   echo
-  exec gosu bitcoin "$@"
+  exec su-exec bitcoin:bitcoin "$@"
 fi
 
 echo

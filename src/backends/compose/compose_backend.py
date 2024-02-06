@@ -135,8 +135,12 @@ class ComposeBackend(BackendInterface):
             case _:
                 return RunningStatus.PENDING
 
-    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root") -> str:
+    def exec_run(
+        self, tank_index: int, service: ServiceType, cmd: str, user: str = "bitcoin"
+    ) -> str:
         c = self.get_container(tank_index, service)
+        if service == ServiceType.LIGHTNING:
+            user = "root"
         result = c.exec_run(cmd=cmd, user=user)
         if result.exit_code != 0:
             raise Exception(
@@ -168,7 +172,7 @@ class ComposeBackend(BackendInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
-        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd, user="bitcoin")
+        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd)
 
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         container = self.get_container(tank_index, service)
