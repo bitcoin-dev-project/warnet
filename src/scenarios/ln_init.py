@@ -29,6 +29,20 @@ class LNInit(WarnetTestFramework):
             miner.sendtoaddress(addr, 50)
         self.generatetoaddress(self.nodes[3], 1, addr)
 
+        self.log.info("Waiting for funds to be spendable")
+        ready = False
+        while not ready:
+            sleep(1)
+            ready = True
+            for tank in self.warnet.tanks:
+                if tank.lnnode is None:
+                    continue
+                bal = tank.lnnode.get_wallet_balance()
+                if int(bal["confirmed_balance"]) >= 50:
+                    continue
+                ready = False
+                break
+
         self.log.info("Open channels")
         # TODO: This might belong in Warnet class as connect_ln_edges()
         #       but that would need to ensure spendable funds first.
