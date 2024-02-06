@@ -16,6 +16,7 @@
     <key attr.name="Degree" attr.type="int" for="node" id="degree"/>
     <key attr.name="customer" attr.type="string" for="edge" id="d6"/>
     <key attr.name="type" attr.type="string" for="edge" id="d5"/>
+    <key attr.name="image" attr.type="string" for="node" id="image"/>
     <graph edgedefault="undirected">
         <node id="0">
             <data key="label">0</data>
