@@ -5,51 +5,51 @@
   <key attr.name="image"          attr.type="string" for="node" id="image"/>
   <graph edgedefault="directed">
     <node id="0">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w0</data>
     </node>
     <node id="1">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w1</data>
     </node>
     <node id="2">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w2</data>
     </node>
     <node id="3">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w3</data>
     </node>
     <node id="4">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w4</data>
     </node>
     <node id="5">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w5</data>
     </node>
     <node id="6">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w6</data>
     </node>
     <node id="7">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w7</data>
     </node>
     <node id="8">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w8</data>
     </node>
     <node id="9">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w9</data>
     </node>
     <node id="10">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <data key="bitcoin_config">-uacomment=w10</data>
     </node>
     <node id="11">
-        <data key="version">26.0</data>
+        <data key="image">bitcoindevproject/demo:26.0</data>
         <!-- no bitcoin_config to test unused options -->
     </node>
     <!-- connect the nodes in a ring to start -->
