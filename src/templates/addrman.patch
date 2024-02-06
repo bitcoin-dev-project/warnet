@@ -1,0 +1,17 @@
+diff --git a/src/netgroup.cpp b/src/netgroup.cpp
+index 0ae229b3f3..a861a38852 100644
+--- a/src/netgroup.cpp
++++ b/src/netgroup.cpp
+@@ -43,11 +43,7 @@ std::vector<unsigned char> NetGroupManager::GetGroup(const CNetAddr& address) co
+     } else if (!address.IsRoutable()) {
+         // all other unroutable addresses belong to the same group
+     } else if (address.HasLinkedIPv4()) {
+-        // IPv4 addresses (and mapped IPv4 addresses) use /16 groups
+-        uint32_t ipv4 = address.GetLinkedIPv4();
+-        vchRet.push_back((ipv4 >> 24) & 0xFF);
+-        vchRet.push_back((ipv4 >> 16) & 0xFF);
+-        return vchRet;
++        nBits = 32;
+     } else if (address.IsTor() || address.IsI2P()) {
+         nBits = 4;
+     } else if (address.IsCJDNS()) {
