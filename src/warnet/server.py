@@ -406,7 +406,7 @@ class Server:
             bio = BytesIO()
             nx.write_graphml(graph, bio)
             xml_data = bio.getvalue()
-            return f"Generated graph:\n\n{xml_data.decode('utf-8')}"
+            return xml_data.decode('utf-8')
         except Exception as e:
             msg = f"Error generating graph: {e}"
             self.logger.error(msg)

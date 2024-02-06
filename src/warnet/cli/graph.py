@@ -22,6 +22,7 @@ def create(
 ):
     """
     Create a graph file of type random AS graph with [params]
+    Returns XML file as string with or without --outfile option
     """
     print(
         rpc_call(

@@ -90,7 +90,7 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/test_graph.py ${{matrix.backend}}
+      - run: ./test/graph_test.py ${{matrix.backend}}
   ln:
     runs-on: ubuntu-latest
     strategy:
