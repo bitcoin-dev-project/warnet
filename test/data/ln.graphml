@@ -4,7 +4,8 @@
   <key attr.name="tc_netem"       attr.type="string" for="node" id="tc_netem"/>
   <key attr.name="ln"             attr.type="string" for="node" id="ln"/>
   <key attr.name="channel"        attr.type="string" for="edge" id="channel"/>
-  <key attr.name="collect_logs" attr.type="boolean" for="node" id="collect_logs"/>
+  <key attr.name="collect_logs"   attr.type="boolean" for="node" id="collect_logs"/>
+  <key attr.name="image"          attr.type="string" for="node" id="image"/>
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">26.0</data>
