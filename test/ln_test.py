@@ -3,7 +3,6 @@
 import json
 import os
 from pathlib import Path
-from time import sleep
 
 from test_base import TestBase
 
@@ -43,11 +42,13 @@ print("\nPaying invoice from node 0...")
 print(base.warcli(f"lncli 0 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
-while True:
+def check_invoices():
     invs = json.loads(base.warcli("lncli 2 listinvoices"))["invoices"]
     if len(invs) > 0 and invs[0]["state"] == "SETTLED":
         print("\nSettled!")
-        break
-    sleep(2)
+        return True
+    else:
+        return False
+base.wait_for_predicate(check_invoices)
 
 base.stop_server()
