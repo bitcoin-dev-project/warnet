@@ -11,7 +11,7 @@ graph_file_path = Path(os.path.dirname(__file__)) / "data" / "build_v24_test.gra
 base = TestBase()
 base.start_server()
 print(base.warcli(f"network start {graph_file_path}"))
-base.wait_for_all_tanks_status(target="running")
+base.wait_for_all_tanks_status(target="running", timeout=10*60)
 
 print("\nWait for p2p connections")
 

@@ -9,45 +9,106 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [compose, k8s]
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions
-      - run: ./test/build_branch_test.py
+      - if: matrix.backend == 'compose'
+        uses: ./.github/actions
+      - if: matrix.backend == 'k8s'
+        uses: extractions/setup-just@v1
+      - if: matrix.backend == 'k8s'
+        uses: medyagh/setup-minikube@master
+      - if: matrix.backend == 'k8s'
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          just start
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+          kubectl port-forward svc/rpc 9276:9276 &
+      - run: ./test/build_branch_test.py ${{matrix.backend}}
   scenarios:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [compose, k8s]
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions
-      - run: ./test/scenarios_test.py
+      - if: matrix.backend == 'compose'
+        uses: ./.github/actions
+      - if: matrix.backend == 'k8s'
+        uses: extractions/setup-just@v1
+      - if: matrix.backend == 'k8s'
+        uses: medyagh/setup-minikube@master
+      - if: matrix.backend == 'k8s'
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          just start
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+          kubectl port-forward svc/rpc 9276:9276 &
+      - run: ./test/scenarios_test.py ${{matrix.backend}}
   rpc:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [compose, k8s]
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions
-      - run: ./test/rpc_test.py
-  rpc-k8s:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: extractions/setup-just@v1
-      - uses: medyagh/setup-minikube@master
-      - run: pip install --upgrade pip
-      - run: pip install -e .
-      - run: just start
-      - run: kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
-      - run: |
+      - if: matrix.backend == 'compose'
+        uses: ./.github/actions
+      - if: matrix.backend == 'k8s'
+        uses: extractions/setup-just@v1
+      - if: matrix.backend == 'k8s'
+        uses: medyagh/setup-minikube@master
+      - if: matrix.backend == 'k8s'
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          just start
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-          ./test/rpc_test.py k8s
-      - run: just stop
+      - run: ./test/rpc_test.py ${{matrix.backend}}
   graph:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [compose, k8s]
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions
-      - run: ./test/test_graph.py
+      - if: matrix.backend == 'compose'
+        uses: ./.github/actions
+      - if: matrix.backend == 'k8s'
+        uses: extractions/setup-just@v1
+      - if: matrix.backend == 'k8s'
+        uses: medyagh/setup-minikube@master
+      - if: matrix.backend == 'k8s'
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          just start
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+          kubectl port-forward svc/rpc 9276:9276 &
+      - run: ./test/graph_test.py ${{matrix.backend}}
   ln:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [compose, k8s]
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions
-      - run: ./test/ln_test.py
+      - if: matrix.backend == 'compose'
+        uses: ./.github/actions
+      - if: matrix.backend == 'k8s'
+        uses: extractions/setup-just@v1
+      - if: matrix.backend == 'k8s'
+        uses: medyagh/setup-minikube@master
+      - if: matrix.backend == 'k8s'
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          just start
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+          kubectl port-forward svc/rpc 9276:9276 &
+      - run: ./test/ln_test.py ${{matrix.backend}}
