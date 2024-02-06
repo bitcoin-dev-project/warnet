@@ -1,2 +1,5 @@
 .git
 __pycache__
+.github
+.idea
+.ruff_cache
