@@ -13,8 +13,7 @@ jobs:
         backend: [compose, k8s]
     steps:
       - uses: actions/checkout@v3
-      - if: matrix.backend == 'compose'
-        uses: ./.github/actions
+      - uses: ./.github/actions
       - if: matrix.backend == 'k8s'
         uses: extractions/setup-just@v1
       - if: matrix.backend == 'k8s'
@@ -24,7 +23,7 @@ jobs:
           pip install --upgrade pip
           pip install -e .
           just start
-          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+          kubectl wait --for=condition=Ready --timeout=10m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
       - run: ./test/build_branch_test.py ${{matrix.backend}}
   scenarios:
