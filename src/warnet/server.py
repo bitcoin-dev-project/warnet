@@ -1,5 +1,4 @@
 import argparse
-import inspect
 import logging
 import os
 import pkgutil
@@ -67,6 +66,12 @@ class Server:
         # /-/healthy and /-/ready are often used (e.g. by the prometheus server)
         self.app.add_url_rule("/-/healthy", view_func=self.healthy)
 
+        # This is set while we bring a warnet up, which may include building a new image
+        # After warnet is up this will be released.
+        # This is used to delay api calls which rely on and image being built dynamically
+        # before the config dir is populated with the deployment info
+        self.image_build_lock = threading.Lock()
+
     def healthy(self):
         return "warnet is healthy"
 
@@ -100,7 +105,28 @@ class Server:
             else:
                 self.logger.debug(request.json)
 
+        def build_check():
+            timeout = 600
+            check_interval = 10
+            time_elapsed = 0
+
+            while time_elapsed < timeout:
+                # Attempt to acquire the lock without blocking
+                lock_acquired = self.image_build_lock.acquire(blocking=False)
+                # If we get the lock, release it and continue
+                if lock_acquired:
+                    self.image_build_lock.release()
+                    return
+                # Otherwise wait before trying again
+                else:
+                    time.sleep(check_interval)
+                    time_elapsed += check_interval
+
+            # If we've reached here, the lock wasn't acquired in time
+            raise Exception(f"Failed to acquire the build lock within {timeout} seconds, aborting RPC.")
+
         self.app.before_request(log_request)
+        self.app.before_request(build_check)
 
     def setup_rpc(self):
         # Tanks
@@ -351,18 +377,18 @@ class Server:
         Run a warnet with topology loaded from a <graph_file>
         """
 
-        def thread_start(wn):
-            try:
-                wn.generate_deployment()
-                # wn.write_fork_observer_config()
-                wn.warnet_build()
-                wn.warnet_up()
-                wn.apply_network_conditions()
-                wn.connect_edges()
-                self.logger.info(f"Created warnet named '{network}'")
-            except Exception as e:
-                msg = f"Exception in {inspect.stack()[0][3]}: {e}"
-                self.logger.exception(msg)
+        def thread_start(wn, lock: threading.Lock):
+            with lock:
+                try:
+                    wn.generate_deployment()
+                    # wn.write_fork_observer_config()
+                    wn.warnet_build()
+                    wn.warnet_up()
+                    wn.apply_network_conditions()
+                    wn.connect_edges()
+                except Exception as e:
+                    msg = f"Error starting warnet: {e}"
+                    self.logger.error(msg)
 
         config_dir = gen_config_dir(network)
         if config_dir.exists():
@@ -372,14 +398,15 @@ class Server:
                 message = f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
                 self.logger.error(message)
                 raise ServerError(message=message, code=CONFIG_DIR_ALREADY_EXISTS)
+
         try:
             wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
-            t = threading.Thread(target=lambda: thread_start(wn))
+            t = threading.Thread(target=lambda: thread_start(wn, self.image_build_lock))
             t.daemon = True
             t.start()
             return wn._warnet_dict_representation()
         except Exception as e:
-            msg = f"Error tring to resume warnet: {e}"
+            msg = f"Error bring up warnet: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
