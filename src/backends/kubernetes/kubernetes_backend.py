@@ -378,8 +378,8 @@ class KubernetesBackend(BackendInterface):
 
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
-        bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}.svc.cluster.local"
-        lightning_dns = f"lightning-{tank.index}.{self.namespace}.svc.cluster.local"
+        bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}"
+        lightning_dns = f"lightning-{tank.index}.{self.namespace}"
         args = [
             "--noseedbackup",
             "--norest",
