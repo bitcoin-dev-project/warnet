@@ -56,9 +56,10 @@ def active():
     """
     console = Console()
     result = rpc_call("scenarios_list_running", {})
-    if not isinstance(result, dict):  # Make mypy happy
-        print(f"Error. Expected dict but got {type(result)}: {result}")
-        sys.exit(1)
+    if not result:
+        print("No scenarios running")
+        return
+    assert isinstance(result, list)  # Make mypy happy
 
     table = Table(show_header=True, header_style="bold")
     for key in result[0].keys():  # noqa: SIM118
