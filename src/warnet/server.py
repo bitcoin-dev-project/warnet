@@ -350,20 +350,6 @@ class Server:
         """
         Run a warnet with topology loaded from a <graph_file>
         """
-
-        def thread_start(wn):
-            try:
-                wn.generate_deployment()
-                # wn.write_fork_observer_config()
-                wn.warnet_build()
-                wn.warnet_up()
-                wn.apply_network_conditions()
-                wn.connect_edges()
-                self.logger.info(f"Created warnet named '{network}'")
-            except Exception as e:
-                msg = f"Exception in {inspect.stack()[0][3]}: {e}"
-                self.logger.exception(msg)
-
         config_dir = gen_config_dir(network)
         if config_dir.exists():
             if force:
@@ -374,9 +360,13 @@ class Server:
                 raise ServerError(message=message, code=CONFIG_DIR_ALREADY_EXISTS)
         try:
             wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
-            t = threading.Thread(target=lambda: thread_start(wn))
-            t.daemon = True
-            t.start()
+            wn.generate_deployment()
+            # wn.write_fork_observer_config()
+            wn.warnet_build()
+            wn.warnet_up()
+            wn.apply_network_conditions()
+            wn.connect_edges()
+            self.logger.info(f"Created warnet named '{network}'")
             return wn._warnet_dict_representation()
         except Exception as e:
             msg = f"Error tring to resume warnet: {e}"

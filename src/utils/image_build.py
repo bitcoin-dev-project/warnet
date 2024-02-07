@@ -12,13 +12,14 @@ def run_command(command):
         return False
 
 
-def build_and_upload_images(
+def build_image(
     repo: str,
     branch: str,
     docker_registry: str,
     tag: str,
     build_args: str,
     arches: str,
+    action: str = "load",
 ):
     if not build_args:
         build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings "'
@@ -73,7 +74,7 @@ def build_and_upload_images(
         f" --build-arg BUILD_ARGS={build_args}"
         f" --tag {image_full_name}"
         f" --file src/templates/Dockerfile ."
-        f" --push"
+        f" --{action}"
     )
     print(f"Using {build_command=:}")
 

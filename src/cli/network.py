@@ -1,5 +1,4 @@
 import base64  # noqa: I001
-import sys
 from pathlib import Path
 
 import click

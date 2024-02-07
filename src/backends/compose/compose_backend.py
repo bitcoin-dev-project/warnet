@@ -11,6 +11,7 @@ import yaml
 from backends import BackendInterface, ServiceType
 from docker.models.containers import Container
 from templates import TEMPLATES
+from warnet.cli.image import build_image
 from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.tank import Tank
@@ -34,6 +35,7 @@ DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
+LOCAL_REGISTRY = "warnet/bitcoin-core"
 GRAFANA_PROVISIONING = "grafana-provisioning"
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
@@ -362,18 +364,10 @@ class ComposeBackend(BackendInterface):
         if "/" and "#" in tank.version:
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
-            build = {
-                "context": str(tank.config_dir),
-                "dockerfile": str(tank.config_dir / DOCKERFILE_NAME),
-                "args": {
-                    "REPO": repo,
-                    "BRANCH": branch,
-                    "BUILD_ARGS": f"{tank.DEFAULT_BUILD_ARGS + tank.extra_build_args}",
-                },
-            }
-            services[container_name]["build"] = build
+            services[container_name]["image"] = f"{LOCAL_REGISTRY}:{branch}"
+            build_image(repo, branch, LOCAL_REGISTRY, branch, tank.DEFAULT_BUILD_ARGS + tank.extra_build_args, arches="amd64")
             self.copy_configs(tank)
-        elif tank.is_custom_build and tank.image:
+        elif tank.image:
             # Pre-built custom image
             image = tank.image
             services[container_name]["image"] = image
