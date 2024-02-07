@@ -6,11 +6,11 @@ from typing import cast
 
 import yaml
 from backends import BackendInterface, ServiceType
+from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
-from warnet.cli.image import build_image
 from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.tank import Tank

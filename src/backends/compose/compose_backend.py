@@ -9,9 +9,9 @@ from typing import cast
 import docker
 import yaml
 from backends import BackendInterface, ServiceType
+from cli.image import build_image
 from docker.models.containers import Container
 from templates import TEMPLATES
-from warnet.cli.image import build_image
 from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.tank import Tank
