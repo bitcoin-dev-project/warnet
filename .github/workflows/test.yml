@@ -20,6 +20,7 @@ jobs:
         uses: medyagh/setup-minikube@master
       - if: matrix.backend == 'k8s'
         run: |
+          eval $(minikube docker-env)
           pip install --upgrade pip
           pip install -e .
           just start
