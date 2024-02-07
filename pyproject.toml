@@ -32,7 +32,7 @@ dynamic = ["version"]
 
 [project.scripts]
 warnet = "warnet.server:run_server"
-warcli = "warnet.cli.main:cli"
+warcli = "cli.main:cli"
 
 [tool.ruff]
 extend-exclude = ["src/test_framework/*.py"]

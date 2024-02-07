@@ -1,12 +1,12 @@
 import click
+from cli.debug import debug
+from cli.graph import graph
+from cli.image import image
+from cli.network import network
+from cli.rpc import rpc_call
+from cli.scenarios import scenarios
 from requests.exceptions import ConnectionError
 from rich import print as richprint
-from warnet.cli.debug import debug
-from warnet.cli.graph import graph
-from warnet.cli.image import image
-from warnet.cli.network import network
-from warnet.cli.rpc import rpc_call
-from warnet.cli.scenarios import scenarios
 
 
 @click.group()
