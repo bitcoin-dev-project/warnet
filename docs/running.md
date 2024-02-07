@@ -35,7 +35,21 @@ This can be done using:
 kubectl delete statefulset
 ```
 
-## Docker
+### Install logging infrastructure
+
+First make sure you have `helm` installed, then simply run the following script:
+
+```bash
+./src/templates/k8s/install_logging.sh
+```
+
+To forward port to view Grafana dashbaord:
+
+```bash
+./src/templates/k8s/connect_logging.sh
+```
+
+## Compose
 
 To start the server in the foreground simply run:
 
