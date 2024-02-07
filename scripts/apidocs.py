@@ -2,9 +2,9 @@ import os
 import re
 from pathlib import Path
 
+from cli.main import cli
 from click import Context
 from tabulate import tabulate
-from warnet.cli.main import cli
 
 doc = ""
 

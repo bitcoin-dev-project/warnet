@@ -1,7 +1,8 @@
 import sys
 
 import click
-from utils.image_build import build_and_upload_images
+
+from .image_build import build_image
 
 
 @click.group(name="image")

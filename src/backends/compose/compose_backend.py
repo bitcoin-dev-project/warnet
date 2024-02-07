@@ -9,6 +9,7 @@ from typing import cast
 import docker
 import yaml
 from backends import BackendInterface, ServiceType
+from cli.image import build_image
 from docker.models.containers import Container
 from templates import TEMPLATES
 from warnet.lnnode import LNNode

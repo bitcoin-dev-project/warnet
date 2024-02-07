@@ -6,6 +6,7 @@ from typing import cast
 
 import yaml
 from backends import BackendInterface, ServiceType
+from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
