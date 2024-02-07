@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import click
+from cli.rpc import rpc_call
 from rich import print
-from warnet.cli.rpc import rpc_call
 from warnet.utils import DEFAULT_TAG
 
 

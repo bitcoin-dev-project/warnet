@@ -1,6 +1,6 @@
 import click
+from cli.rpc import rpc_call
 from rich import print
-from warnet.cli.rpc import rpc_call
 
 
 @click.group(name="debug")

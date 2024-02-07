@@ -7,7 +7,7 @@ from subprocess import PIPE, STDOUT, Popen, run
 from tempfile import mkdtemp
 from time import sleep
 
-from warnet.cli.rpc import rpc_call
+from cli.rpc import rpc_call
 from warnet.utils import exponential_backoff
 from warnet.warnet import Warnet
 
