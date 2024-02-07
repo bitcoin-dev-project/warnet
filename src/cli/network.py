@@ -63,12 +63,7 @@ def start(graph_file: Path, force: bool, network: str):
         "network_from_file",
         {"graph_file": encoded_graph_file, "force": force, "network": network},
     )
-    assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
-    if not isinstance(result, dict):
-        print(
-            f"Error. Expected dict, got {type(result)}. May indicate mismatch between RPC and CLI"
-        )
-        sys.exit(1)
+    assert isinstance(result, dict)
     print_repr(result)
 
 
