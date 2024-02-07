@@ -180,7 +180,7 @@ class Warnet:
             else:
                 cmd = f'bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode "{dst_ip}:18444" onetry'
                 logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
-            src_tank.exec(cmd=cmd, user="bitcoin")
+            src_tank.exec(cmd=cmd)
 
     def warnet_build(self):
         self.container_interface.build()

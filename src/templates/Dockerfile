@@ -58,7 +58,7 @@ RUN set -ex \
 FROM alpine
 ARG UID=100
 ARG GID=101
-ENV BITCOIN_DATA=/home/bitcoin/.bitcoin
+ENV BITCOIN_DATA=/root/.bitcoin
 ENV BITCOIN_PREFIX=/opt/bitcoin
 ENV PATH=${BITCOIN_PREFIX}/bin:$PATH
 LABEL maintainer.0="bitcoindevproject"
