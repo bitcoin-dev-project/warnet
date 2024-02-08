@@ -8,3 +8,8 @@ read:
   affinity: {}
 backend:
   affinity: {}
+monitoring:
+  selfMonitoring:
+    enabled: false
+test:
+  enabled: false
