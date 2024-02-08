@@ -50,6 +50,7 @@ class ComposeBackend(BackendInterface):
         super().__init__(config_dir)
         self.network_name = network_name
         self.client = docker.DockerClient = docker.from_env()
+        self.running_ips: dict | None = None
 
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
@@ -139,6 +140,8 @@ class ComposeBackend(BackendInterface):
 
     def exec_run( self, tank_index: int, service: ServiceType, cmd: str) -> str:
         c = self.get_container(tank_index, service)
+        if not c:
+            return f"Could not get_container {tank_index=:} {service=:}"
         result = c.exec_run(cmd=cmd)
         if result.exit_code != 0:
             raise Exception(
@@ -174,6 +177,8 @@ class ComposeBackend(BackendInterface):
 
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         container = self.get_container(tank_index, service)
+        if not container:
+            return f"Could not get_container {tank_index=:} {service=:}"
         data, stat = container.get_archive(file_path)
         out = b""
         for chunk in data:
@@ -280,7 +285,6 @@ class ComposeBackend(BackendInterface):
             "networks": {
                 warnet.network_name: {
                     "name": warnet.network_name,
-                    "ipam": {"config": [{"subnet": warnet.subnet}]},
                 }
             },
             "volumes": {"grafana-storage": None},
@@ -378,11 +382,7 @@ class ComposeBackend(BackendInterface):
                 # logging with json-file to support log shipping with promtail into loki
                 "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
                 "environment": {"BITCOIN_ARGS": self.config_args(tank)},
-                "networks": {
-                    tank.network_name: {
-                        "ipv4_address": f"{tank.ipv4}",
-                    }
-                },
+                "networks": [tank.network_name],
                 "labels": {"warnet": "tank"},
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
@@ -400,7 +400,7 @@ class ComposeBackend(BackendInterface):
             services[container_name]["labels"].update({"collect_logs": True})
 
         if tank.lnnode is not None:
-            self.add_lnd_service(tank, services)
+            self.add_lnd_service(tank, services, container_name)
 
         # Add the prometheus data exporter in a neighboring container
         if tank.exporter:
@@ -408,7 +408,7 @@ class ComposeBackend(BackendInterface):
                 "image": "jvstein/bitcoin-prometheus-exporter:latest",
                 "container_name": tank.exporter_name,
                 "environment": {
-                    "BITCOIN_RPC_HOST": tank.ipv4,
+                    "BITCOIN_RPC_HOST": container_name,
                     "BITCOIN_RPC_PORT": tank.rpc_port,
                     "BITCOIN_RPC_USER": tank.rpc_user,
                     "BITCOIN_RPC_PASSWORD": tank.rpc_password,
@@ -416,7 +416,7 @@ class ComposeBackend(BackendInterface):
                 "networks": [tank.network_name],
             }
 
-    def add_lnd_service(self, tank, services):
+    def add_lnd_service(self, tank, services, bitcoind_container_name):
         ln_container_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
         bitcoin_container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
@@ -430,10 +430,10 @@ class ComposeBackend(BackendInterface):
             "--bitcoin.node=bitcoind",
             f"--bitcoind.rpcuser={tank.rpc_user}",
             f"--bitcoind.rpcpass={tank.rpc_password}",
-            f"--bitcoind.rpchost={tank.ipv4}:{tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://{tank.ipv4}:{tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx=tcp://{tank.ipv4}:{tank.zmqtxport}",
-            f"--externalip={tank.lnnode.ipv4}",
+            f"--bitcoind.rpchost={bitcoind_container_name}:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock=tcp://{bitcoind_container_name}:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx=tcp://{bitcoind_container_name}:{tank.zmqtxport}",
+            # f"--externalip={tank.lnnode.ipv4}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
             f"--alias={tank.index}",
         ]
@@ -441,15 +441,10 @@ class ComposeBackend(BackendInterface):
             "container_name": ln_container_name,
             "image": "lightninglabs/lnd:v0.17.0-beta",
             "command": " ".join(args),
-            "networks": {
-                tank.network_name: {
-                    "ipv4_address": f"{tank.lnnode.ipv4}",
-                }
-            },
+            "networks": [tank.network_name],
             "labels": {
                 "tank_index": tank.index,
                 "tank_container_name": bitcoin_container_name,
-                "tank_ipv4_address": tank.ipv4,
             },
             "depends_on": {bitcoin_container_name: {"condition": "service_healthy"}},
             "restart": "on-failure",
@@ -458,7 +453,6 @@ class ComposeBackend(BackendInterface):
             {
                 "labels": {
                     "lnnode_container_name": ln_container_name,
-                    "lnnode_ipv4_address": tank.lnnode.ipv4,
                     "lnnode_impl": tank.lnnode.impl,
                 }
             }
@@ -488,7 +482,6 @@ class ComposeBackend(BackendInterface):
 
         index = int(match.group(1))
         tank = Tank(index, warnet.config_dir, warnet)
-        tank._ipv4 = service["networks"][tank.network_name]["ipv4_address"]
         if "image" in service:
             tank.version = service["image"].split(":")[1]
         else:
@@ -500,4 +493,37 @@ class ComposeBackend(BackendInterface):
         if "lnnode_impl" in labels:
             tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"], self)
             tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
+        self.fetch_ip_address(tank)
         return tank
+
+    def _get_running_containers_ips(self):
+        self.running_ips = {
+            container.name: [
+                network_details['IPAddress']
+                for network_name, network_details in container.attrs['NetworkSettings']['Networks'].items()
+            ]
+            for container in self.client.containers.list()
+        }
+
+    def fetch_ip_address(self, tank: Tank) -> bool:
+        logger.debug(f"Fetching ip addresse for {tank=:}")
+        bitcoind_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
+        logger.debug(f"{bitcoind_name=:}")
+        lnnode_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
+        logger.debug(f"{lnnode_name=:}")
+
+        if not self.running_ips:
+            self._get_running_containers_ips()
+
+        assert isinstance(self.running_ips, dict)
+        if bitcoind_name in self.running_ips:
+            # TODO: This is a bit brittle. It assumes that tanks are only on one network with a 
+            # single ip address, and just uses the one at index [0]. It should probably be changed
+            # to use the network == self.network here and below
+            tank.ipv4 = self.running_ips.get(bitcoind_name)[0]
+            logger.debug(f"Set ipv4 address of {bitcoind_name=:} to {tank.ipv4}")
+        if lnnode_name in self.running_ips:
+            tank.lnnode.ipv4 = self.running_ips.get(lnnode_name)[0]
+            logger.debug(f"Set ipv4 address of {lnnode_name=:} to {tank.lnnode.ipv4}")
+
+        return True

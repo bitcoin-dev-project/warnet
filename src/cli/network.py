@@ -124,7 +124,9 @@ def status(network: str):
         lightning_status = ""
         if "lightning_status" in tank:
             lightning_status = f"\tLightning: {tank['lightning_status']}"
-        print(f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}")
+        print(
+            f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status} \tIPV4 {tank['ipv4']}"
+        )
 
 
 @network.command()

@@ -347,10 +347,9 @@ class Server:
     def network_up(self, network: str = "warnet") -> str:
         def thread_start(wn):
             try:
-                # wn.container_interface.up()
-                # Update warnet from docker here to get ip addresses
-                wn = Warnet.from_network(network, self.backend)
+                wn.container_interface.up()
                 wn.apply_network_conditions()
+                wn.fetch_ip_addresses()
                 wn.connect_edges()
                 self.logger.info(
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
@@ -467,7 +466,11 @@ class Server:
             wn = Warnet.from_network(network, self.backend)
             stats = []
             for tank in wn.tanks:
-                status = {"tank_index": tank.index, "bitcoin_status": tank.status.name.lower()}
+                status = {
+                    "tank_index": tank.index,
+                    "bitcoin_status": tank.status.name.lower(),
+                    "ipv4": tank.ipv4,
+                }
                 if tank.lnnode is not None:
                     status["lightning_status"] = tank.lnnode.status.name.lower()
                 stats.append(status)

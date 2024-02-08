@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import shutil
+import time
 from pathlib import Path
 
 import networkx
@@ -30,7 +31,6 @@ class Warnet:
         )
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
-        self.subnet: str = "100.0.0.0/8"
         self.graph: networkx.Graph | None = None
         self.graph_name = "graph.graphml"
         self.tanks: list[Tank] = []
@@ -167,15 +167,15 @@ class Warnet:
             if "channel" in data:
                 continue
             src_tank = self.tanks[src]
-            dst_ip = self.tanks[dst].ipv4
+            dst_tank = self.tanks[dst]
             # <= 20.2 doesn't have addpeeraddress
             res = version_cmp_ge(src_tank.version, "0.21.0")
             if res:
-                cmd = f"bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addpeeraddress {dst_ip} 18444"
-                logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
+                cmd = f"bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addpeeraddress {dst_tank.ipv4} 18444"
+                logger.info(f"Using `{cmd}` to connect tanks {src_tank.ipv4} to {dst_tank.ipv4}")
             else:
-                cmd = f'bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode "{dst_ip}:18444" onetry'
-                logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
+                cmd = f'bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode "{dst_tank.ipv4}:18444" onetry'
+                logger.info(f"Using `{cmd}` to connect tanks {src_tank.index} to {dst_tank.index}")
             src_tank.exec(cmd=cmd)
 
     def warnet_build(self):
@@ -220,3 +220,10 @@ class Warnet:
         config_path = os.path.join(subdir, "sim.json")
         with open(config_path, "a") as f:
             json.dump(config, f)
+
+    def fetch_ip_addresses(self):
+        while not all(tank.ipv4 is not None for tank in self.tanks):
+            logger.debug("Fetching tank ip addresses...")
+            for tank in self.tanks:
+                self.container_interface.fetch_ip_address(tank)
+            time.sleep(1)

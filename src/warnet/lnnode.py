@@ -1,7 +1,7 @@
 import os
 
 from backends import BackendInterface, ServiceType
-from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
+from warnet.utils import exponential_backoff, handle_json
 
 from .status import RunningStatus
 
@@ -13,8 +13,8 @@ class LNNode:
         assert impl == "lnd"
         self.impl = impl
         self.backend = backend
-        self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
+        self.ipv4: str | None = None
 
     def __str__(self):
         return f"LNNode: index={self.tank.index}, ipv4={self.ipv4}, rpc_port={self.rpc_port}"
@@ -35,7 +35,8 @@ class LNNode:
 
     def getURI(self):
         res = self.lncli("getinfo")
-        return res["uris"][0]
+        pubkey = res["identity_pubkey"]
+        return f"{pubkey}@{self.tank.lnnode.ipv4}"
 
     def get_wallet_balance(self):
         res = self.lncli("walletbalance")

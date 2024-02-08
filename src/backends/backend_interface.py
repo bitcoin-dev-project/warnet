@@ -107,3 +107,10 @@ class BackendInterface(ABC):
         Rebuild a warnet object from an active deployment
         """
         raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def fetch_ip_address(self, tank) -> bool:
+        """
+        Populate the tank ipv4 address
+        """
+        raise NotImplementedError("This method should be overridden by child class")

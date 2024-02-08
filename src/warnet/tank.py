@@ -10,7 +10,6 @@ from warnet.lnnode import LNNode
 from warnet.utils import (
     SUPPORTED_TAGS,
     exponential_backoff,
-    generate_ipv4_addr,
     sanitize_tc_netem_command,
 )
 
@@ -42,15 +41,16 @@ class Tank:
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
         self._suffix = None
-        self._ipv4 = None
+        self.ipv4: str | None = None
         self._exporter_name = None
         self.extra_build_args = ""
         self.lnnode: LNNode | None = None
         self.zmqblockport = 28332
         self.zmqtxport = 28333
+        self.container_name: str | None = None
 
     def __str__(self) -> str:
-        return f"Tank(index: {self.index}, version: {self.version}, conf: {self.conf}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
+        return f"Tank(index: {self.index}, version: {self.version}, conf: {self.conf}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self.ipv4})"
 
     def parse_version(self, node):
         version = node.get("version", "")
@@ -101,12 +101,6 @@ class Tank:
         if self._suffix is None:
             self._suffix = f"{self.index:06}"
         return self._suffix
-
-    @property
-    def ipv4(self):
-        if self._ipv4 is None:
-            self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
-        return self._ipv4
 
     @property
     def exporter_name(self):
