@@ -70,7 +70,7 @@ These should be built using the `warcli image build` command to ensure they have
 <node id="0">
 <data key="x">5.5</data>
 <data key="y">2.5</data>
-<data key="image">bitcoindevproject/bitcoin-core:26.0</data>
+<data key="image">bitcoindevproject/bitcoin:26.0</data>
 <data key="bitcoin_config">uacomment=warnet0_v24,debugexclude=libevent</data>
 <data key="tc_netem"></data>
 </node>

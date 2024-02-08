@@ -16,7 +16,7 @@ from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
 
-DOCKER_REGISTRY_CORE = "bitcoindevproject/k8s-bitcoin-core"
+DOCKER_REGISTRY_CORE = "bitcoindevproject/bitcoin"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
 POD_PREFIX = "tank"

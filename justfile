@@ -75,7 +75,7 @@ stopd:
 p:
     kubectl port-forward svc/rpc 9276:9276
 
-registry := 'bitcoindevproject/bitcoin-core'
+registry := 'bitcoindevproject/bitcoin'
 repo := 'bitcoin/bitcoin'
 arches := 'amd64'
 build-args := "--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings"
