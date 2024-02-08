@@ -6,6 +6,7 @@ from typing import cast
 
 import yaml
 from backends import BackendInterface, ServiceType
+from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
@@ -15,8 +16,9 @@ from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
 
-DOCKER_REGISTRY_CORE = "bitcoindevproject/k8s-bitcoin-core"
+DOCKER_REGISTRY_CORE = "bitcoindevproject/bitcoin"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
+LOCAL_REGISTRY = "warnet/bitcoin-core"
 POD_PREFIX = "tank"
 BITCOIN_CONTAINER_NAME = "bitcoin"
 LN_CONTAINER_NAME = "ln"
@@ -157,13 +159,12 @@ class KubernetesBackend(BackendInterface):
                 break
         return RunningStatus.RUNNING if ready else RunningStatus.PENDING
 
-    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root"):
-        # k8s doesn't let us run exec commands as a user, but we can use su
-        # because its installed in the bitcoin containers. we will need to rework
-        # this command if we decided to remove gosu from the containers
-        # TODO: change this if we remove gosu
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str):
         pod_name = self.get_pod_name(tank_index, service)
-        exec_cmd = ["/bin/sh", "-c", f"su - {user} -c '{cmd}'"]
+        if service == ServiceType.BITCOIN:
+            exec_cmd = ["/bin/bash", "-c", f"{cmd}"]
+        elif service == ServiceType.LIGHTNING:
+            exec_cmd = ["/bin/sh", "-c", f"{cmd}"]
         result = stream(
             self.client.connect_get_namespaced_pod_exec,
             pod_name,
@@ -211,7 +212,7 @@ class KubernetesBackend(BackendInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
-        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd, user="bitcoin")
+        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd)
 
     def get_messages(
         self,
@@ -319,7 +320,6 @@ class KubernetesBackend(BackendInterface):
                         c_branch = env.value
                 if c_repo and c_branch:
                     t.version = f"{c_repo}#{c_branch}"
-                    t.is_custom_build = True
 
         # check if we can find a corresponding lnd pod
         lnd_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
@@ -340,17 +340,37 @@ class KubernetesBackend(BackendInterface):
 
     def create_bitcoind_container(self, tank) -> client.V1Container:
         container_name = BITCOIN_CONTAINER_NAME
-        container_image = (
-            tank.image if tank.is_custom_build else f"{DOCKER_REGISTRY_CORE}:{tank.version}"
-        )
+        container_image = None
+
+        # Prebuilt image
+        if tank.image:
+            container_image = tank.image
+        # On-demand built image
+        elif "/" and "#" in tank.version:
+        # We don't have docker installed on the RPC server, where this code will be run from,
+        # and it's currently unclear to me if having the RPC pod build images is a good idea.
+        # Don't support this for now in CI by disabling in the workflow.
+
+        # This can be re-enabled by enabling in the workflow file and installing docker and
+        # docker-buildx on the rpc server image.
+
+            # it's a git branch, building step is necessary
+            repo, branch = tank.version.split("#")
+            build_image(
+                repo,
+                branch,
+                LOCAL_REGISTRY,
+                branch,
+                tank.DEFAULT_BUILD_ARGS + tank.extra_build_args,
+                arches="amd64",
+            )
+        # Prebuilt major version
+        else:
+            container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
+
         container_env = [
             client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_bitcoind_config_args(tank))
         ]
-        # TODO: support custom builds
-        if tank.is_custom_build:
-            # TODO: check if the build already exists in the registry
-            # Annoyingly the api differs between providers, so this is annoying
-            pass
 
         return client.V1Container(
             name=container_name,

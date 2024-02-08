@@ -33,7 +33,6 @@ class Tank:
         self.bitcoin_network = warnet.bitcoin_network
         self.version = "25.1"
         self.image: str = ""
-        self.is_custom_build = False
         self.conf = ""
         self.conf_file = None
         self.netem = None
@@ -73,7 +72,6 @@ class Tank:
             )
         if image:
             self.image = image
-            self.is_custom_build = True
         else:
             if (version in SUPPORTED_TAGS) or ("/" in version and "#" in version):
                 self.version = version
@@ -130,10 +128,8 @@ class Tank:
         return self.warnet.container_interface.get_status(self.index, ServiceType.BITCOIN)
 
     @exponential_backoff()
-    def exec(self, cmd: str, user: str = "root"):
-        return self.warnet.container_interface.exec_run(
-            self.index, ServiceType.BITCOIN, cmd=cmd, user=user
-        )
+    def exec(self, cmd: str):
+        return self.warnet.container_interface.exec_run(self.index, ServiceType.BITCOIN, cmd=cmd)
 
     def apply_network_conditions(self):
         if self.netem is None:

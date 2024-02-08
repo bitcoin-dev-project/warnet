@@ -74,3 +74,13 @@ stopd:
 # port forward
 p:
     kubectl port-forward svc/rpc 9276:9276
+
+registry := 'bitcoindevproject/bitcoin'
+repo := 'bitcoin/bitcoin'
+arches := 'amd64'
+build-args := "--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings"
+load := "load"
+
+# Build docker image and optionally push to registry
+build branch tag registry=registry repo=repo build-args=build-args action=load:
+    warcli image build --registry={{registry}} --repo={{repo}} --branch={{branch}} --arches={{arches}} --tag={{tag}} --build-args="{{build-args}}" --action={{action}}

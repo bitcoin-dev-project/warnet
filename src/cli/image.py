@@ -1,7 +1,8 @@
 import sys
 
 import click
-from utils.image_build import build_and_upload_images
+
+from .image_build import build_image
 
 
 @click.group(name="image")
@@ -16,11 +17,12 @@ def image():
 @click.option("--tag", required=True, type=str)
 @click.option("--build-args", required=False, type=str)
 @click.option("--arches", required=False, type=str)
-def build(repo, branch, registry, tag, build_args, arches):
+@click.option("--action", required=False, type=str)
+def build(repo, branch, registry, tag, build_args, arches, action="load"):
     """
-    Build bitcoind and bitcoin-cli from <repo>/<branch> and deploy to <registry> as <tag>
-    This requires docker and buildkit to be enabled.
+    Build bitcoind and bitcoin-cli from <repo>/<branch> as <registry>:<tag>.
+    Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
     """
-    res = build_and_upload_images(repo, branch, registry, tag, build_args, arches)
+    res = build_image(repo, branch, registry, tag, build_args, arches, action)
     if not res:
         sys.exit(1)

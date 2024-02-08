@@ -45,7 +45,7 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str):
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str):
         """
         Exectute a command on tank [tank_index] in service [service]
         """

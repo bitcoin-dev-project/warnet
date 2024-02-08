@@ -12,20 +12,17 @@ def run_command(command):
         return False
 
 
-def build_and_upload_images(
+def build_image(
     repo: str,
     branch: str,
     docker_registry: str,
     tag: str,
     build_args: str,
     arches: str,
+    action: str = "load",
 ):
     if not build_args:
-        build_args = (
-            '"--disable-tests --with-incompatible-bdb --without-gui --disable-bench '
-            "--disable-fuzz-binary --enable-suppress-external-warnings "
-            '--without-miniupnpc --without-natpmp"'
-        )
+        build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings "'
     else:
         build_args = f'"{build_args}"'
 
@@ -37,7 +34,7 @@ def build_and_upload_images(
 
     for arch in build_arches:
         if arch not in ARCHES:
-            print(f"Error: {arch} is not a valid architecture")
+            print(f"Error: {arch} is not a supported architecture")
             return False
 
     print(f"{repo=:}")
@@ -51,10 +48,9 @@ def build_and_upload_images(
         print("Directory src/templates does not exist.")
         print("Please run this script from the project root.")
         return False
-    os.chdir("src/templates")
 
     # Setup buildkit
-    builder_name = "warnet-builder"
+    builder_name = "bitcoind-builder"
     create_builder_cmd = f"docker buildx create --name {builder_name} --use"
     use_builder_cmd = f"docker buildx use --builder {builder_name}"
     cleanup_builder_cmd = f"docker buildx rm {builder_name}"
@@ -66,25 +62,27 @@ def build_and_upload_images(
             return False
 
     image_full_name = f"{docker_registry}:{tag}"
-    print(f"Image full name: {image_full_name}")
+    print(f"{image_full_name=:}")
 
     platforms = ",".join([f"linux/{arch}" for arch in build_arches])
 
     build_command = (
         f"docker buildx build"
         f" --platform {platforms}"
-        f" --provenance=false"
         f" --build-arg REPO={repo}"
         f" --build-arg BRANCH={branch}"
         f" --build-arg BUILD_ARGS={build_args}"
         f" --tag {image_full_name}"
-        f" --file Dockerfile_k8 ."
-        f" --push"
+        f" --file src/templates/Dockerfile ."
+        f" --{action}"
     )
-    print(f"{build_command=:}")
+    print(f"Using {build_command=:}")
 
+    res = False
     try:
         res = run_command(build_command)
+    except Exception as e:
+        print(f"Error:\n{e}")
     finally:
         # Tidy up the buildx builder
         if not run_command(cleanup_builder_cmd):

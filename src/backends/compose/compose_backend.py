@@ -9,6 +9,7 @@ from typing import cast
 import docker
 import yaml
 from backends import BackendInterface, ServiceType
+from cli.image import build_image
 from docker.models.containers import Container
 from templates import TEMPLATES
 from warnet.lnnode import LNNode
@@ -33,7 +34,8 @@ DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
-DOCKER_REGISTRY = "bitcoindevproject/bitcoin-core"
+DOCKER_REGISTRY = "bitcoindevproject/bitcoin"
+LOCAL_REGISTRY = "warnet/bitcoin-core"
 GRAFANA_PROVISIONING = "grafana-provisioning"
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
@@ -135,9 +137,9 @@ class ComposeBackend(BackendInterface):
             case _:
                 return RunningStatus.PENDING
 
-    def exec_run(self, tank_index: int, service: ServiceType, cmd: str, user: str = "root") -> str:
+    def exec_run( self, tank_index: int, service: ServiceType, cmd: str) -> str:
         c = self.get_container(tank_index, service)
-        result = c.exec_run(cmd=cmd, user=user)
+        result = c.exec_run(cmd=cmd)
         if result.exit_code != 0:
             raise Exception(
                 f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')} {cmd}"
@@ -168,7 +170,7 @@ class ComposeBackend(BackendInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
-        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd, user="bitcoin")
+        return self.exec_run(tank.index, ServiceType.BITCOIN, cmd)
 
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
         container = self.get_container(tank_index, service)
@@ -358,18 +360,10 @@ class ComposeBackend(BackendInterface):
         if "/" and "#" in tank.version:
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
-            build = {
-                "context": str(tank.config_dir),
-                "dockerfile": str(tank.config_dir / DOCKERFILE_NAME),
-                "args": {
-                    "REPO": repo,
-                    "BRANCH": branch,
-                    "BUILD_ARGS": f"{tank.DEFAULT_BUILD_ARGS + tank.extra_build_args}",
-                },
-            }
-            services[container_name]["build"] = build
+            services[container_name]["image"] = f"{LOCAL_REGISTRY}:{branch}"
+            build_image(repo, branch, LOCAL_REGISTRY, branch, tank.DEFAULT_BUILD_ARGS + tank.extra_build_args, arches="amd64")
             self.copy_configs(tank)
-        elif tank.is_custom_build and tank.image:
+        elif tank.image:
             # Pre-built custom image
             image = tank.image
             services[container_name]["image"] = image

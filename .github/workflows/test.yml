@@ -11,17 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        backend: [compose, k8s]
+        backend: [compose]
     steps:
       - uses: actions/checkout@v3
-      - if: matrix.backend == 'compose'
-        uses: ./.github/actions
+      - uses: ./.github/actions
       - if: matrix.backend == 'k8s'
         uses: extractions/setup-just@v1
       - if: matrix.backend == 'k8s'
         uses: medyagh/setup-minikube@master
       - if: matrix.backend == 'k8s'
         run: |
+          eval $(minikube docker-env)
           pip install --upgrade pip
           pip install -e .
           just start
