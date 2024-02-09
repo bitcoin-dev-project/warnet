@@ -104,6 +104,9 @@ class KubernetesBackend(BackendInterface):
             return f"{self.network_name}-{POD_PREFIX}-ln-{tank_index:06d}"
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
 
+    def get_container_name(self, tank_index, type: ServiceType) -> str:
+        return self.get_pod_name(tank_index, type)
+
     def get_pod(self, pod_name: str) -> V1Pod | None:
         try:
             return cast(
