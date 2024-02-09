@@ -1,5 +1,6 @@
 import functools
 import ipaddress
+import json
 import logging
 import os
 import random
@@ -61,6 +62,27 @@ def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
         return wrapper
 
     return decorator
+
+
+def handle_json(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        result = ""
+        try:
+            result = func(*args, **kwargs)
+            logger.debug(f"{result=:}")
+            if isinstance(result, dict):
+                return result
+            parsed_result = json.loads(result)
+            return parsed_result
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON parsing error in {func.__name__}: {e}. Undecodable result: {result}")
+            raise
+        except Exception as e:
+            logger.error(f"Error in {func.__name__}: {e}")
+            raise
+
+    return wrapper
 
 
 def get_architecture():
