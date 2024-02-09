@@ -1,0 +1,15 @@
+loki:
+    auth_enabled: false
+minio:
+  enabled: true
+write:
+  affinity: []
+read:
+  affinity: []
+backend:
+  affinity: []
+monitoring:
+  selfMonitoring:
+    enabled: false
+test:
+  enabled: false

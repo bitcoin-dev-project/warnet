@@ -23,6 +23,7 @@ start:
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    just installlogging
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online
@@ -37,6 +38,7 @@ stop:
     set -euxo pipefail
 
     kubectl delete namespace warnet
+    kubectl delete namespace warnet-logging
     kubectl config set-context --current --namespace=default
 
     # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
@@ -56,6 +58,7 @@ startd:
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
     sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+    just installlogging
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online
@@ -67,6 +70,7 @@ startd:
 stopd:
     # Delete all resources
     kubectl delete namespace warnet
+    kubectl delete namespace warnet-logging
     kubectl config set-context --current --namespace=default
 
     echo Done...
@@ -84,3 +88,9 @@ load := "load"
 # Build docker image and optionally push to registry
 build branch tag registry=registry repo=repo build-args=build-args action=load:
     warcli image build --registry={{registry}} --repo={{repo}} --branch={{branch}} --arches={{arches}} --tag={{tag}} --build-args="{{build-args}}" --action={{action}}
+
+installlogging:
+    ./src/templates/k8s/install_logging.sh
+
+connectlogging:
+    ./src/templates/k8s/connect_logging.sh
