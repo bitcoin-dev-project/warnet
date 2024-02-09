@@ -3,11 +3,11 @@ loki:
 minio:
   enabled: true
 write:
-  affinity: {}
+  affinity: []
 read:
-  affinity: {}
+  affinity: []
 backend:
-  affinity: {}
+  affinity: []
 monitoring:
   selfMonitoring:
     enabled: false
