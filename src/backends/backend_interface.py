@@ -114,3 +114,11 @@ class BackendInterface(ABC):
         Populate the tank ipv4 address
         """
         raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def get_container_name(self, tank_index: int, service: ServiceType) -> str:
+        """
+        Fetch a container name
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
