@@ -1,4 +1,5 @@
 import io
+import logging
 import re
 import time
 from pathlib import Path
@@ -24,6 +25,9 @@ BITCOIN_CONTAINER_NAME = "bitcoin"
 LN_CONTAINER_NAME = "ln"
 
 
+logger = logging.getLogger("KubernetesBackend")
+
+
 class KubernetesBackend(BackendInterface):
     def __init__(self, config_dir: Path, network_name: str, logs_pod="fluentd") -> None:
         super().__init__(config_dir)
@@ -34,6 +38,7 @@ class KubernetesBackend(BackendInterface):
         self.namespace = "warnet"
         self.logs_pod = logs_pod
         self.network_name = network_name
+        self.log = logger
 
     def build(self) -> bool:
         # TODO: just return true for now, this is so we can be running either docker or k8s as a backend
@@ -165,6 +170,7 @@ class KubernetesBackend(BackendInterface):
             exec_cmd = ["/bin/bash", "-c", f"{cmd}"]
         elif service == ServiceType.LIGHTNING:
             exec_cmd = ["/bin/sh", "-c", f"{cmd}"]
+        self.log.debug(f"Running {exec_cmd=:} on {tank_index=:}")
         result = stream(
             self.client.connect_get_namespaced_pod_exec,
             pod_name,
@@ -205,6 +211,7 @@ class KubernetesBackend(BackendInterface):
         if tank.lnnode is None:
             raise Exception("No LN node configured for tank")
         cmd = tank.lnnode.generate_cli_command(command)
+        self.log.debug(f"Running lncli {cmd=:} on {tank.index=:}")
         return self.exec_run(tank.index, ServiceType.LIGHTNING, cmd)
 
     def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
@@ -212,6 +219,7 @@ class KubernetesBackend(BackendInterface):
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
         else:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method}"
+        self.log.debug(f"Running bitcoin-cli {cmd=:} on {tank.index=:}")
         return self.exec_run(tank.index, ServiceType.BITCOIN, cmd)
 
     def get_messages(
@@ -221,11 +229,12 @@ class KubernetesBackend(BackendInterface):
         bitcoin_network: str = "regtest",
     ):
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
+        cmd = f"ls /home/bitcoin/.bitcoin/{subdir}message_capture"
+        self.log.debug(f"Running {cmd=:} on {tank_index=:}")
         dirs = self.exec_run(
             tank_index,
             ServiceType.BITCOIN,
-            f"ls /home/bitcoin/.bitcoin/{subdir}message_capture",
-            self.namespace,
+            cmd,
         )
         dirs = dirs.splitlines()
         messages = []
@@ -290,6 +299,7 @@ class KubernetesBackend(BackendInterface):
             tank = self.tank_from_deployment(pod, pods_by_name, warnet)
             if tank is not None:
                 warnet.tanks.append(tank)
+        self.log.debug("reated warnet from deployment")
 
     def tank_from_deployment(self, pod, pods_by_name, warnet):
         rex = rf"{warnet.network_name}-{POD_PREFIX}-([0-9]{{6}})"
@@ -298,10 +308,10 @@ class KubernetesBackend(BackendInterface):
             return None
 
         index = int(match.group(1))
-        t = Tank(index, warnet.config_dir, warnet)
+        tank = Tank(index, warnet.config_dir, warnet)
 
         # Get IP address from pod status
-        t._ipv4 = pod.status.pod_ip
+        tank._ipv4 = pod.status.pod_ip
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
@@ -313,21 +323,25 @@ class KubernetesBackend(BackendInterface):
             for env in container.env:
                 match env.name:
                     case "BITCOIN_VERSION":
-                        t.version = env.value
+                        tank.version = env.value
                     case "REPO":
                         c_repo = env.value
                     case "BRANCH":
                         c_branch = env.value
                 if c_repo and c_branch:
-                    t.version = f"{c_repo}#{c_branch}"
+                    tank.version = f"{c_repo}#{c_branch}"
+        self.log.debug(f"Created tank {tank.index} from deployment: {tank=:}")
 
         # check if we can find a corresponding lnd pod
         lnd_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
         if lnd_pod:
-            t.lnnode = LNNode(warnet, t, "lnd", self)
-            t.lnnode.ipv4 = lnd_pod.status.pod_ip
+            tank.lnnode = LNNode(warnet, tank, "lnd", self)
+            tank.lnnode.ipv4 = lnd_pod.status.pod_ip
+            self.log.debug(
+                f"Created lightning for tank {tank.index} from deployment {tank.lnnode=:}"
+            )
 
-        return t
+        return tank
 
     def default_bitcoind_config_args(self, tank):
         defaults = default_bitcoin_conf_args()
@@ -339,6 +353,7 @@ class KubernetesBackend(BackendInterface):
         return defaults
 
     def create_bitcoind_container(self, tank) -> client.V1Container:
+        self.log.debug(f"Creating bitcoind container for tank {tank.index}")
         container_name = BITCOIN_CONTAINER_NAME
         container_image = None
 
@@ -369,10 +384,10 @@ class KubernetesBackend(BackendInterface):
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
         bitcoind_options = self.default_bitcoind_config_args(tank)
-        bitcoind_options += tank.conf
+        bitcoind_options += f" {tank.conf}"
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
-        return client.V1Container(
+        bitcoind_container = client.V1Container(
             name=container_name,
             image=container_image,
             env=container_env,
@@ -395,6 +410,10 @@ class KubernetesBackend(BackendInterface):
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
         )
+        self.log.debug(
+            f"Created bitcoind container for tank {tank.index} using {bitcoind_options=:}"
+        )
+        return bitcoind_container
 
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
@@ -417,7 +436,8 @@ class KubernetesBackend(BackendInterface):
             f"--externalhosts={lightning_dns}",
             f"--alias={tank.index}",
         ]
-        return client.V1Container(
+        self.log.debug(f"Creating lightning container for tank {tank.index} using {args=:}")
+        lightning_container = client.V1Container(
             name=LN_CONTAINER_NAME,
             image=f"{DOCKER_REGISTRY_LND}",
             args=args,
@@ -439,6 +459,8 @@ class KubernetesBackend(BackendInterface):
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
         )
+        self.log.debug(f"Created lightning container for tank {tank.index}")
+        return lightning_container
 
     def create_pod_object(
         self, tank: Tank, container: client.V1Container, name: str
@@ -467,6 +489,7 @@ class KubernetesBackend(BackendInterface):
 
     def create_bitcoind_service(self, tank) -> client.V1Service:
         service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
+        self.log.debug(f"Creating bitcoind service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
             kind="Service",
@@ -492,10 +515,12 @@ class KubernetesBackend(BackendInterface):
                 ],
             ),
         )
+        self.log.debug(f"Created bitcoind service {service_name} for tank {tank.index}")
         return service
 
     def create_lightning_service(self, tank) -> client.V1Service:
         service_name = f"lightning-{tank.index}"
+        self.log.debug(f"Creating lightning service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
             kind="Service",
@@ -517,6 +542,7 @@ class KubernetesBackend(BackendInterface):
                 publish_not_ready_addresses=True,
             ),
         )
+        self.log.debug(f"Created lightning service {service_name} for tank {tank.index}")
         return service
 
     def deploy_pods(self, warnet):
@@ -524,6 +550,7 @@ class KubernetesBackend(BackendInterface):
         # a similar workflow to the docker backend:
         # 1. read graph file, turn graph file into k8s resources, deploy the resources
         tank_resource_files = []
+        self.log.debug("Deploying pods")
         for tank in warnet.tanks:
             # Create and deploy bitcoind pod and service
             bitcoind_container = self.create_bitcoind_container(tank)
@@ -561,6 +588,7 @@ class KubernetesBackend(BackendInterface):
                     namespace=self.namespace, body=lightning_service
                 )
 
+        self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
 
@@ -578,10 +606,10 @@ class KubernetesBackend(BackendInterface):
                 pod_ip = pod.status.pod_ip
 
             tank._ipv4 = pod_ip
-            print(f"Tank {tank.index} created")
+            self.log.debug(f"Tank {tank.index} created")
 
         with open(warnet.config_dir / "warnet-tanks.yaml", "w") as f:
             for pod in tank_resource_files:
                 yaml.dump(pod.to_dict(), f)
                 f.write("---\n")  # separator for multiple resources
-            print("Pod definitions saved to warnet-tanks.yaml")
+            self.log.info("Pod definitions saved to warnet-tanks.yaml")
