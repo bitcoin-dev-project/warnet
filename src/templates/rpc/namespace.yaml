@@ -4,3 +4,10 @@ metadata:
   name: warnet
   labels:
     name: warnet
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: warnet-logging
+  labels:
+    name: warnet-logging

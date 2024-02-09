@@ -9,6 +9,7 @@ import yaml
 from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from kubernetes import client, config
+from kubernetes.dynamic import DynamicClient
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
@@ -17,12 +18,15 @@ from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
 
+
 DOCKER_REGISTRY_CORE = "bitcoindevproject/bitcoin"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
+
 POD_PREFIX = "tank"
 BITCOIN_CONTAINER_NAME = "bitcoin"
 LN_CONTAINER_NAME = "ln"
+MAIN_NAMESPACE = "warnet"
 
 
 logger = logging.getLogger("KubernetesBackend")
@@ -35,6 +39,7 @@ class KubernetesBackend(BackendInterface):
         # running inside a k8s cluster as a statefulset
         config.load_incluster_config()
         self.client = client.CoreV1Api()
+        self.dynamic_client = DynamicClient(client.ApiClient())
         self.namespace = "warnet"
         self.logs_pod = logs_pod
         self.network_name = network_name
@@ -415,6 +420,45 @@ class KubernetesBackend(BackendInterface):
         )
         return bitcoind_container
 
+    def create_prometheus_container(self, tank) -> client.V1Container:
+        return client.V1Container(
+            name="prometheus",
+            image="jvstein/bitcoin-prometheus-exporter:latest",
+            env=[
+                client.V1EnvVar(name="BITCOIN_RPC_HOST", value="localhost"),
+                client.V1EnvVar(name="BITCOIN_RPC_PORT", value=str(tank.rpc_port)),
+                client.V1EnvVar(name="BITCOIN_RPC_USER", value=tank.rpc_user),
+                client.V1EnvVar(name="BITCOIN_RPC_PASSWORD", value=tank.rpc_password),
+            ],
+        )
+
+    def apply_prometheus_service_monitor(self, tanks):
+        for tank in tanks:
+            if not tank.exporter:
+                continue
+
+            service_monitor = {
+                "apiVersion": "monitoring.coreos.com/v1",
+                "kind": "ServiceMonitor",
+                "metadata": {
+                    "name": f"warnet-tank-{tank.index:06d}",
+                    "namespace": MAIN_NAMESPACE,
+                    "labels": {
+                        "app.kubernetes.io/name": "bitcoind-metrics",
+                        "release": "prometheus",
+                    },
+                },
+                "spec": {
+                    "endpoints": [{"port": "prometheus-metrics"}],
+                    "selector": {"matchLabels": {"app": f"warnet-tank-{tank.index:06d}"}},
+                },
+            }
+            # Create the custom resource using the dynamic client
+            sc_crd = self.dynamic_client.resources.get(
+                api_version="monitoring.coreos.com/v1", kind="ServiceMonitor"
+            )
+            sc_crd.create(body=service_monitor, namespace=MAIN_NAMESPACE)
+
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}"
@@ -487,8 +531,11 @@ class KubernetesBackend(BackendInterface):
             ),
         )
 
+    def get_service_name(self, tank_index: int) -> str:
+        return f"bitcoind-{POD_PREFIX}-{tank_index:06d}"
+
     def create_bitcoind_service(self, tank) -> client.V1Service:
-        service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
+        service_name = self.get_service_name(tank.index)
         self.log.debug(f"Creating bitcoind service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
@@ -512,6 +559,7 @@ class KubernetesBackend(BackendInterface):
                     client.V1ServicePort(
                         port=tank.zmqtxport, target_port=tank.zmqtxport, name="zmqtx"
                     ),
+                    client.V1ServicePort(port=9332, target_port=9332, name="prometheus-metrics"),
                 ],
             ),
         )
@@ -557,6 +605,8 @@ class KubernetesBackend(BackendInterface):
             bitcoind_pod = self.create_pod_object(
                 tank, bitcoind_container, self.get_pod_name(tank.index, ServiceType.BITCOIN)
             )
+            prometheus_container = self.create_prometheus_container(tank)
+            bitcoind_pod.spec.containers.append(prometheus_container)
             bitcoind_service = self.create_bitcoind_service(tank)
             self.client.create_namespaced_pod(namespace=self.namespace, body=bitcoind_pod)
             # delete the service if it already exists, ignore 404
@@ -587,6 +637,9 @@ class KubernetesBackend(BackendInterface):
                 self.client.create_namespaced_service(
                     namespace=self.namespace, body=lightning_service
                 )
+
+        # add metrics scraping for tanks configured to export metrics
+        self.apply_prometheus_service_monitor(warnet.tanks)
 
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
