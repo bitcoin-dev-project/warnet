@@ -72,6 +72,8 @@ class Server:
         # before the config dir is populated with the deployment info
         self.image_build_lock = threading.Lock()
 
+        self.warnets: dict = dict()
+
     def healthy(self):
         return "warnet is healthy"
 
@@ -155,13 +157,21 @@ class Server:
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
+    def get_warnet(self, network:str) -> Warnet:
+        if network in self.warnets:
+            return self.warnets[network]
+        wn = Warnet.from_network(network, self.backend)
+        if isinstance(wn, Warnet):
+            return wn
+        raise ServerError(f"Could not find warnet {network}")
+
     def tank_bcli(
         self, node: int, method: str, params: list[str] | None = None, network: str = "warnet"
     ) -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
-        wn = Warnet.from_network(network, self.backend)
+        wn = self.get_warnet(network)
         try:
             return wn.container_interface.get_bitcoin_cli(wn.tanks[node], method, params)
         except Exception as e:
@@ -173,7 +183,7 @@ class Server:
         """
         Call lightning cli on <node> <command> in [network]
         """
-        wn = Warnet.from_network(network, self.backend)
+        wn = self.get_warnet(network)
         try:
             return wn.container_interface.ln_cli(wn.tanks[node], command)
         except Exception as e:
@@ -197,7 +207,7 @@ class Server:
         """
         Fetch messages sent between <node_a> and <node_b>.
         """
-        wn = Warnet.from_network(network, self.backend)
+        wn = self.get_warnet(network)
         try:
             messages = [
                 msg
@@ -245,7 +255,8 @@ class Server:
         Export all data for sim-ln to subdirectory
         """
         try:
-            wn = Warnet.from_network(network)
+            wn = self.get_warnet(network)
+            self.warnets[network] = wn
             subdir = os.path.join(wn.config_dir, "simln")
             os.makedirs(subdir, exist_ok=True)
             wn.export(subdir)
@@ -345,13 +356,14 @@ class Server:
         return running
 
     def network_up(self, network: str = "warnet") -> str:
-        def thread_start(wn):
+        def thread_start(server: Server, network):
             try:
-                wn.container_interface.up()
+                wn = server.get_warnet(network)
+                wn.warnet_up()
                 wn.apply_network_conditions()
                 wn.fetch_ip_addresses()
                 wn.connect_edges()
-                self.logger.info(
+                server.logger.info(
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
                 )
             except Exception as e:
@@ -360,7 +372,8 @@ class Server:
 
         try:
             wn = Warnet.from_network(network, self.backend)
-            t = threading.Thread(target=lambda: thread_start(wn))
+            self.warnets[network] = wn
+            t = threading.Thread(target=lambda: thread_start(self, network))
             t.daemon = True
             t.start()
             return "Resuming warnet..."
@@ -376,13 +389,15 @@ class Server:
         Run a warnet with topology loaded from a <graph_file>
         """
 
-        def thread_start(wn, lock: threading.Lock):
-            with lock:
+        def thread_start(server: Server, network):
+            with server.image_build_lock:
                 try:
+                    wn = server.get_warnet(network)
                     wn.generate_deployment()
-                    # wn.write_fork_observer_config()
+                    wn.write_fork_observer_config()
                     wn.warnet_build()
                     wn.warnet_up()
+                    wn.fetch_ip_addresses()
                     wn.apply_network_conditions()
                     wn.connect_edges()
                 except Exception as e:
@@ -399,11 +414,11 @@ class Server:
                 raise ServerError(message=message, code=CONFIG_DIR_ALREADY_EXISTS)
 
         try:
-            wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
-            t = threading.Thread(target=lambda: thread_start(wn, self.image_build_lock))
+            self.warnets[network] = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
+            t = threading.Thread(target=lambda: thread_start(self, network))
             t.daemon = True
             t.start()
-            return wn._warnet_dict_representation()
+            return self.warnets[network]._warnet_dict_representation()
         except Exception as e:
             msg = f"Error bring up warnet: {e}"
             self.logger.error(msg)
@@ -442,7 +457,7 @@ class Server:
         """
         Stop all containers in <network>.
         """
-        wn = Warnet.from_network(network, self.backend)
+        wn = self.get_warnet(network)
         try:
             wn.warnet_down()
             return "Stopping warnet"
@@ -463,7 +478,7 @@ class Server:
         Get running status of a warnet network named <network>
         """
         try:
-            wn = Warnet.from_network(network, self.backend)
+            wn = self.get_warnet(network)
             stats = []
             for tank in wn.tanks:
                 status = {
@@ -490,7 +505,7 @@ class Server:
                 message = f"Config dir {config_dir} already exists, not overwriting existing warnet without --force"
                 self.logger.error(message)
                 raise ServerError(message=message, code=CONFIG_DIR_ALREADY_EXISTS)
-            wn = Warnet.from_graph_file(graph_file, config_dir, network, self.backend)
+            wn = self.get_warnet(network)
             wn.generate_deployment()
             if not wn.deployment_file or not wn.deployment_file.is_file():
                 raise ServerError(f"No deployment file found at {wn.deployment_file}")
@@ -515,7 +530,7 @@ class Server:
         Grep the logs from the fluentd container for a regex pattern
         """
         try:
-            wn = Warnet.from_network(network, self.backend)
+            wn = self.get_warnet(network)
             return wn.container_interface.logs_grep(pattern, network)
         except Exception as e:
             msg = f"Error grepping logs using pattern {pattern}: {e}"
