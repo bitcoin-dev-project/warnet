@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 from time import sleep
 
 from scenarios.utils import ensure_miner
@@ -78,7 +77,7 @@ class LNInit(WarnetTestFramework):
             all_set = True
             for tank in self.warnet.tanks:
                 if tank.lnnode is not None:
-                    edges = json.loads(tank.lnnode.lncli("describegraph"))["edges"]
+                    edges = tank.lnnode.lncli("describegraph")["edges"]
                     if len(edges) != len(ln_edges):
                         all_set = False
             if all_set:
