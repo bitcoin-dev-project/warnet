@@ -311,7 +311,7 @@ class KubernetesBackend(BackendInterface):
         tank = Tank(index, warnet.config_dir, warnet)
 
         # Get IP address from pod status
-        tank._ipv4 = pod.status.pod_ip
+        tank.ipv4 = pod.status.pod_ip
 
         # Extract version details from pod spec (assuming it's passed as environment variables)
         for container in pod.spec.containers:
@@ -545,6 +545,20 @@ class KubernetesBackend(BackendInterface):
         self.log.debug(f"Created lightning service {service_name} for tank {tank.index}")
         return service
 
+    def fetch_ip_address(self, tank) -> bool:
+        pod_ip = None
+        while not pod_ip:
+            pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
+            pod = self.get_pod(pod_name)
+            if pod is None or pod.status is None or getattr(pod.status, "pod_ip", None) is None:
+                print(f"Waiting for tank {tank.index} response or tank IP...")
+                time.sleep(3)
+                continue
+            pod_ip = pod.status.pod_ip
+
+        tank.ipv4 = pod_ip
+        return True
+
     def deploy_pods(self, warnet):
         # TODO: this is pretty hack right now, ideally it should mirror
         # a similar workflow to the docker backend:
@@ -595,18 +609,8 @@ class KubernetesBackend(BackendInterface):
         # TODO: this is really hacky, should probably just update the generate_ipv4 function at some point
         # by moving it into the base class
         for tank in warnet.tanks:
-            pod_ip = None
-            while not pod_ip:
-                pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
-                pod = self.get_pod(pod_name)
-                if pod is None or pod.status is None or getattr(pod.status, "pod_ip", None) is None:
-                    print("Waiting for pod response or pod IP...")
-                    time.sleep(3)
-                    continue
-                pod_ip = pod.status.pod_ip
-
-            tank._ipv4 = pod_ip
-            self.log.debug(f"Tank {tank.index} created")
+            self.fetch_ip_address(tank)
+            print(f"Tank {tank.index} created")
 
         with open(warnet.config_dir / "warnet-tanks.yaml", "w") as f:
             for pod in tank_resource_files:
