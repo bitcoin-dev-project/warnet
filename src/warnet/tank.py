@@ -50,16 +50,7 @@ class Tank:
         self.zmqtxport = 28333
 
     def __str__(self) -> str:
-        return (
-            f"Tank(\n"
-            f"\tIndex: {self.index}\n"
-            f"\tVersion: {self.version}\n"
-            f"\tConf: {self.conf}\n"
-            f"\tConf File: {self.conf_file}\n"
-            f"\tNetem: {self.netem}\n"
-            f"\tIPv4: {self._ipv4}\n"
-            f"\t)"
-        )
+        return f"Tank(index: {self.index}, version: {self.version}, conf: {self.conf}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
 
     def parse_version(self, node):
         version = node.get("version", "")

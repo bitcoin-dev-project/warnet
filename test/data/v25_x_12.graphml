@@ -6,15 +6,15 @@
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">26.0</data>
-        <data key="bitcoin_config">-uacomment=w0</data>
+        <data key="bitcoin_config">-uacomment=w0 -debug=validation</data>
     </node>
     <node id="1">
         <data key="version">26.0</data>
-        <data key="bitcoin_config">-uacomment=w1</data>
+        <data key="bitcoin_config">-uacomment=w1 -debug=validation</data>
     </node>
     <node id="2">
         <data key="version">26.0</data>
-        <data key="bitcoin_config">-uacomment=w2</data>
+        <data key="bitcoin_config">-uacomment=w2 -debug=validation</data>
     </node>
     <node id="3">
         <data key="version">26.0</data>

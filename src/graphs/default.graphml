@@ -21,7 +21,7 @@
     </node>
     <node id="2">
         <data key="image">bitcoindevproject/bitcoin:26.0</data>
-        <data key="bitcoin_config">-uacomment=w2</data>
+        <data key="bitcoin_config">-uacomment=w2 -debug=mempool</data>
         <data key="exporter">true</data>
         <data key="collect_logs">true</data>
     </node>
