@@ -279,7 +279,7 @@ class KubernetesBackend(BackendInterface):
                     if compiled_pattern.search(log_entry_str):
                         matching_logs.append(log_entry_str)
             except ApiException as e:
-                print(f"Error fetching logs for pod {pod.metadata.name}: {e}")
+                self.log.error(f"Error fetching logs for pod {pod.metadata.name}: {e}")
 
         return "\n".join(matching_logs)
 
@@ -410,7 +410,7 @@ class KubernetesBackend(BackendInterface):
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
         )
-        self.log.debug(
+        self.log.info(
             f"Created bitcoind container for tank {tank.index} using {bitcoind_options=:}"
         )
         return bitcoind_container
@@ -459,7 +459,7 @@ class KubernetesBackend(BackendInterface):
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
         )
-        self.log.debug(f"Created lightning container for tank {tank.index}")
+        self.log.info(f"Created lightning container for tank {tank.index}")
         return lightning_container
 
     def create_pod_object(
@@ -515,7 +515,7 @@ class KubernetesBackend(BackendInterface):
                 ],
             ),
         )
-        self.log.debug(f"Created bitcoind service {service_name} for tank {tank.index}")
+        self.log.info(f"Created bitcoind service {service_name} for tank {tank.index}")
         return service
 
     def create_lightning_service(self, tank) -> client.V1Service:
@@ -542,16 +542,17 @@ class KubernetesBackend(BackendInterface):
                 publish_not_ready_addresses=True,
             ),
         )
-        self.log.debug(f"Created lightning service {service_name} for tank {tank.index}")
+        self.log.info(f"Created lightning service {service_name} for tank {tank.index}")
         return service
 
     def fetch_ip_address(self, tank) -> bool:
         pod_ip = None
+        self.log.debug(f"Fetching ip address for {tank.index} from orchestrator")
         while not pod_ip:
             pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
             pod = self.get_pod(pod_name)
             if pod is None or pod.status is None or getattr(pod.status, "pod_ip", None) is None:
-                print(f"Waiting for tank {tank.index} response or tank IP...")
+                self.log.info(f"Waiting for tank {tank.index} response or tank IP...")
                 time.sleep(3)
                 continue
             pod_ip = pod.status.pod_ip
@@ -610,7 +611,7 @@ class KubernetesBackend(BackendInterface):
         # by moving it into the base class
         for tank in warnet.tanks:
             self.fetch_ip_address(tank)
-            print(f"Tank {tank.index} created")
+            self.log.info(f"Tank {tank.index} created")
 
         with open(warnet.config_dir / "warnet-tanks.yaml", "w") as f:
             for pod in tank_resource_files:
