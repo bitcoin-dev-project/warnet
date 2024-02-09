@@ -347,12 +347,12 @@ class KubernetesBackend(BackendInterface):
             container_image = tank.image
         # On-demand built image
         elif "/" and "#" in tank.version:
-        # We don't have docker installed on the RPC server, where this code will be run from,
-        # and it's currently unclear to me if having the RPC pod build images is a good idea.
-        # Don't support this for now in CI by disabling in the workflow.
+            # We don't have docker installed on the RPC server, where this code will be run from,
+            # and it's currently unclear to me if having the RPC pod build images is a good idea.
+            # Don't support this for now in CI by disabling in the workflow.
 
-        # This can be re-enabled by enabling in the workflow file and installing docker and
-        # docker-buildx on the rpc server image.
+            # This can be re-enabled by enabling in the workflow file and installing docker and
+            # docker-buildx on the rpc server image.
 
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
@@ -368,9 +368,9 @@ class KubernetesBackend(BackendInterface):
         else:
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
-        container_env = [
-            client.V1EnvVar(name="BITCOIN_ARGS", value=self.default_bitcoind_config_args(tank))
-        ]
+        bitcoind_options = self.default_bitcoind_config_args(tank)
+        bitcoind_options += tank.conf
+        container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
         return client.V1Container(
             name=container_name,
