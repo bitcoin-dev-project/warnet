@@ -1,8 +1,7 @@
-import json
 import os
 
 from backends import BackendInterface, ServiceType
-from warnet.utils import exponential_backoff, generate_ipv4_addr
+from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
 from .status import RunningStatus
 
@@ -25,28 +24,27 @@ class LNNode:
         return self.warnet.container_interface.get_status(self.tank.index, ServiceType.LIGHTNING)
 
     @exponential_backoff(max_retries=20, max_delay=300)
-    def lncli(self, cmd) -> str:
+    @handle_json
+    def lncli(self, cmd) -> dict:
         cmd = f"lncli --network=regtest {cmd}"
         return self.backend.exec_run(self.tank.index, ServiceType.LIGHTNING, cmd)
 
     def getnewaddress(self):
-        res = json.loads(self.lncli("newaddress p2wkh"))
+        res = self.lncli("newaddress p2wkh")
         return res["address"]
 
     def getURI(self):
-        res = json.loads(self.lncli("getinfo"))
+        res = self.lncli("getinfo")
         return res["uris"][0]
 
     def get_wallet_balance(self):
-        res = json.loads(self.lncli("walletbalance"))
+        res = self.lncli("walletbalance")
         return res
 
     def open_channel_to_tank(self, index, amt):
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
-        res = json.loads(
-            self.lncli(f"openchannel --node_key={pubkey} --connect={host} --local_amt={amt}")
-        )
+        res = self.lncli(f"openchannel --node_key={pubkey} --connect={host} --local_amt={amt}")
         return res
 
     def connect_to_tank(self, index):
