@@ -59,23 +59,16 @@ cli.add_command(help_command)
 
 @cli.command(context_settings={"ignore_unknown_options": True})
 @click.argument("node", type=int)
-@click.argument("method", type=str, nargs=-1)  # this will capture all remaining arguments
-@click.option("--params", type=str, multiple=True, default=())
+@click.argument("method", type=str)
+@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
 @click.option("--network", default="warnet", show_default=True)
 def rpc(node, method, params, network):
     """
     Call bitcoin-cli <method> <params> on <node> in <--network>
     """
-    if len(method) > 2:
-        raise click.BadArgumentUsage("You can provide at most two arguments for 'method'.")
-
-    # Convert tuple to space-separated string
-    method_str = " ".join(method)
-
     print(
         rpc_call(
-            "tank_bcli",
-            {"network": network, "node": node, "method": method_str, "params": params},
+            "tank_bcli", {"network": network, "node": node, "method": method, "params": params}
         )
     )
 

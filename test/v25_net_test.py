@@ -41,7 +41,7 @@ base.wait_for_predicate(wait_for_reachability, timeout=10 * 60)
 
 
 print("\nAttempting addnode to onion peer")
-base.warcli(f"rpc 1 addnode --params={onion_addr} --params=add")
+base.warcli(f"rpc 1 addnode {onion_addr} add")
 
 
 def wait_for_onion_peer():
