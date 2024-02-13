@@ -1,3 +1,6 @@
+adminUser: admin
+adminPassword: password
+admin: {}
 datasources:
   datasources.yaml:
     apiVersion: 1
