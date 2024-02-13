@@ -9,15 +9,14 @@ import yaml
 from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from kubernetes import client, config
-from kubernetes.dynamic import DynamicClient
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
+from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
 from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
-
 
 DOCKER_REGISTRY_CORE = "bitcoindevproject/bitcoin"
 DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
