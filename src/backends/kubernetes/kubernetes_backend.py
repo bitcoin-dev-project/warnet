@@ -68,6 +68,9 @@ class KubernetesBackend(BackendInterface):
             if tank.lnnode:
                 pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
                 self.client.delete_namespaced_pod(pod_name, self.namespace)
+
+        self.remove_prometheus_service_monitors(warnet.tanks)
+
         return True
 
     def get_file(self, tank_index: int, service: ServiceType, file_path: str):
@@ -432,7 +435,7 @@ class KubernetesBackend(BackendInterface):
             ],
         )
 
-    def apply_prometheus_service_monitor(self, tanks):
+    def apply_prometheus_service_monitors(self, tanks):
         for tank in tanks:
             if not tank.exporter:
                 continue
@@ -458,6 +461,20 @@ class KubernetesBackend(BackendInterface):
                 api_version="monitoring.coreos.com/v1", kind="ServiceMonitor"
             )
             sc_crd.create(body=service_monitor, namespace=MAIN_NAMESPACE)
+
+    # attempts to delete the service monitors whether they exist or not
+    def remove_prometheus_service_monitors(self, tanks):
+        for tank in tanks:
+            try:
+                self.dynamic_client.resources.get(
+                    api_version="monitoring.coreos.com/v1", kind="ServiceMonitor"
+                ).delete(
+                    name=f"warnet-tank-{tank.index:06d}",
+                    namespace=MAIN_NAMESPACE,
+                )
+            except ApiException as e:
+                if e.status != 404:
+                    raise e
 
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
@@ -639,7 +656,7 @@ class KubernetesBackend(BackendInterface):
                 )
 
         # add metrics scraping for tanks configured to export metrics
-        self.apply_prometheus_service_monitor(warnet.tanks)
+        self.apply_prometheus_service_monitors(warnet.tanks)
 
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
