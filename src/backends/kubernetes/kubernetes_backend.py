@@ -276,6 +276,7 @@ class KubernetesBackend(BackendInterface):
             try:
                 log_stream = self.client.read_namespaced_pod_log(
                     name=pod.metadata.name,
+                    container=BITCOIN_CONTAINER_NAME,
                     namespace=self.namespace,
                     timestamps=True,
                     _preload_content=False,
