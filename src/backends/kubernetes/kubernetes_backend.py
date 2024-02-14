@@ -436,6 +436,14 @@ class KubernetesBackend(BackendInterface):
             ],
         )
 
+    def check_logging_crds_installed(self):
+        logging_crd_name = "servicemonitors.monitoring.coreos.com"
+        api = client.ApiextensionsV1Api()
+        crds = api.list_custom_resource_definition()
+        if any(crd.metadata.name == logging_crd_name for crd in crds.items):
+            return True
+        return False
+
     def apply_prometheus_service_monitors(self, tanks):
         for tank in tanks:
             if not tank.exporter:
@@ -628,7 +636,7 @@ class KubernetesBackend(BackendInterface):
                 tank, bitcoind_container, self.get_pod_name(tank.index, ServiceType.BITCOIN)
             )
 
-            if tank.exporter:
+            if tank.exporter and self.check_logging_crds_installed():
                 prometheus_container = self.create_prometheus_container(tank)
                 bitcoind_pod.spec.containers.append(prometheus_container)
 
@@ -664,7 +672,8 @@ class KubernetesBackend(BackendInterface):
                 )
 
         # add metrics scraping for tanks configured to export metrics
-        self.apply_prometheus_service_monitors(warnet.tanks)
+        if self.check_logging_crds_installed():
+            self.apply_prometheus_service_monitors(warnet.tanks)
 
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
