@@ -39,10 +39,5 @@ if [ -n "$BITCOIN_ARGS" ]; then
   set -- "$@" "${ARG_ARRAY[@]}"
 fi
 
-if [ "$1" = "bitcoind" ] || [ "$1" = "bitcoin-cli" ]; then
-  echo
-  "$@"
-fi
-
 echo
 exec "$@"
