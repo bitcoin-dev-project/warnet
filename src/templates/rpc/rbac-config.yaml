@@ -5,17 +5,20 @@ metadata:
   name: pod-reader-exec
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "create", "update", "patch", "delete"]
+  resources: [pods]
+  verbs: [get, list, create, update, patch, delete]
 - apiGroups: [""]
-  resources: ["services"]
-  verbs: ["get", "list", "create", "update", "patch", "delete"]
+  resources: [services]
+  verbs: [get, list, create, update, patch, delete]
 - apiGroups: [""]
-  resources: ["pods/exec"]
-  verbs: ["create", "get"]
+  resources: [pods/exec]
+  verbs: [create, get]
 - apiGroups: [""]
-  resources: ["pods/log"]  # Granting permission to access pod logs
-  verbs: ["get"]
+  resources: [pods/log]  # Granting permission to access pod logs
+  verbs: [get]
+- apiGroups: [monitoring.coreos.com]
+  resources: [servicemonitors]
+  verbs: [get, list, create, update, patch, delete]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

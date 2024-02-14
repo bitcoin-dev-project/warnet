@@ -1,0 +1,13 @@
+adminUser: admin
+adminPassword: password
+admin: {}
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus-kube-prometheus-prometheus.warnet-logging:9090
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.warnet-logging:80
