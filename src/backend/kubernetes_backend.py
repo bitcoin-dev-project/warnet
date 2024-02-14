@@ -543,16 +543,20 @@ class KubernetesBackend:
         # Create and return a Pod object
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
 
+        labels = {
+            "app": name,
+            "network": tank.warnet.network_name,
+        }
+        if tank.collect_logs:
+            labels.update({"collect_logs": "true"})
+
         return client.V1Pod(
             api_version="v1",
             kind="Pod",
             metadata=client.V1ObjectMeta(
                 name=name,
                 namespace=self.namespace,
-                labels={
-                    "app": name,
-                    "network": tank.warnet.network_name,
-                },
+                labels=labels,
             ),
             spec=client.V1PodSpec(
                 # Might need some more thinking on the pod restart policy, setting to Never for now
