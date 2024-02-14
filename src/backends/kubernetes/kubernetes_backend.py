@@ -26,6 +26,7 @@ POD_PREFIX = "tank"
 BITCOIN_CONTAINER_NAME = "bitcoin"
 LN_CONTAINER_NAME = "ln"
 MAIN_NAMESPACE = "warnet"
+PROMETHEUS_METRICS_PORT = 9332
 
 
 logger = logging.getLogger("KubernetesBackend")
@@ -576,7 +577,11 @@ class KubernetesBackend(BackendInterface):
                     client.V1ServicePort(
                         port=tank.zmqtxport, target_port=tank.zmqtxport, name="zmqtx"
                     ),
-                    client.V1ServicePort(port=9332, target_port=9332, name="prometheus-metrics"),
+                    client.V1ServicePort(
+                        port=PROMETHEUS_METRICS_PORT,
+                        target_port=PROMETHEUS_METRICS_PORT,
+                        name="prometheus-metrics",
+                    ),
                 ],
             ),
         )
@@ -622,8 +627,11 @@ class KubernetesBackend(BackendInterface):
             bitcoind_pod = self.create_pod_object(
                 tank, bitcoind_container, self.get_pod_name(tank.index, ServiceType.BITCOIN)
             )
-            prometheus_container = self.create_prometheus_container(tank)
-            bitcoind_pod.spec.containers.append(prometheus_container)
+
+            if tank.exporter:
+                prometheus_container = self.create_prometheus_container(tank)
+                bitcoind_pod.spec.containers.append(prometheus_container)
+
             bitcoind_service = self.create_bitcoind_service(tank)
             self.client.create_namespaced_pod(namespace=self.namespace, body=bitcoind_pod)
             # delete the service if it already exists, ignore 404
