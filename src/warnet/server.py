@@ -202,7 +202,7 @@ class Server:
             messages = [
                 msg
                 for msg in wn.container_interface.get_messages(
-                    wn.tanks[node_a].index, wn.tanks[node_b].ipv4, wn.bitcoin_network
+                    wn.tanks[node_a].index, wn.tanks[node_b].index, wn.bitcoin_network
                 )
                 if msg is not None
             ]
