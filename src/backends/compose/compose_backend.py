@@ -501,3 +501,10 @@ class ComposeBackend(BackendInterface):
             tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"], self)
             tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
         return tank
+
+    def get_ipv4_address(self, container: Container) -> str:
+        """
+        Fetches the IPv4 address of a given container.
+        """
+        container_inspect = self.client.containers.get(container.id).attrs
+        return container_inspect['NetworkSettings']['Networks'][self.network_name]['IPAddress']
