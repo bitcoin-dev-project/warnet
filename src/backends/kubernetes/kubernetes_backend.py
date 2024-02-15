@@ -1,4 +1,4 @@
-import io
+import base64
 import logging
 import re
 import time
@@ -78,7 +78,7 @@ class KubernetesBackend(BackendInterface):
         Read a file from inside a container
         """
         pod_name = self.get_pod_name(tank_index, service)
-        exec_command = ["cat", file_path]
+        exec_command = ['sh', '-c', f'cat "{file_path}" | base64']
 
         resp = stream(
             self.client.connect_get_namespaced_pod_exec,
@@ -95,17 +95,18 @@ class KubernetesBackend(BackendInterface):
             else LN_CONTAINER_NAME,
         )
 
-        file = io.BytesIO()
+        base64_encoded_data = ""
         while resp.is_open():
             resp.update(timeout=1)
             if resp.peek_stdout():
-                file.write(resp.read_stdout())
+                base64_encoded_data += resp.read_stdout()
             if resp.peek_stderr():
-                raise Exception(
-                    "Problem copying file from pod" + resp.read_stderr().decode("utf-8")
-                )
+                stderr_output = resp.read_stderr()
+                logger.error(f"STDERR: {stderr_output}")
+                raise Exception(f"Problem copying file from pod: {stderr_output}")
 
-        return file.getvalue()
+        decoded_bytes = base64.b64decode(base64_encoded_data)
+        return decoded_bytes
 
     def get_pod_name(self, tank_index: int, type: ServiceType) -> str:
         if type == ServiceType.LIGHTNING:
@@ -232,30 +233,32 @@ class KubernetesBackend(BackendInterface):
 
     def get_messages(
         self,
-        tank_index: int,
-        b_ipv4: str,
+        a_index: int,
+        b_index: int,
         bitcoin_network: str = "regtest",
     ):
+        b_pod = self.get_pod(self.get_pod_name(b_index, ServiceType.BITCOIN))
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
-        cmd = f"ls /home/bitcoin/.bitcoin/{subdir}message_capture"
-        self.log.debug(f"Running {cmd=:} on {tank_index=:}")
+        base_dir = f"/root/.bitcoin/{subdir}message_capture"
+        cmd = f"ls {base_dir}"
+        self.log.debug(f"Running {cmd=:} on {a_index=:}")
         dirs = self.exec_run(
-            tank_index,
+            a_index,
             ServiceType.BITCOIN,
             cmd,
         )
         dirs = dirs.splitlines()
+        self.log.debug(f"Got dirs: {dirs}")
         messages = []
 
         for dir_name in dirs:
-            if b_ipv4 in dir_name:
+            if b_pod.status.pod_ip in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     # Fetch the file contents from the container
-                    file_path = f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}"
-                    blob = self.exec_run(
-                        tank_index, ServiceType.BITCOIN, f"cat {file_path}", self.namespace
+                    file_path = f"{base_dir}/{dir_name}/{file}"
+                    blob = self.get_file(
+                        a_index, ServiceType.BITCOIN, f"{file_path}"
                     )
-
                     # Parse the blob
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json
