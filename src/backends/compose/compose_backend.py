@@ -184,13 +184,16 @@ class ComposeBackend(BackendInterface):
         out = out[: stat["size"]]
         return out
 
-    def get_messages(self, tank_index: int, b_ipv4: str, bitcoin_network: str = "regtest"):
-        # start with the IP of the peer
+    def get_messages(self, a_index: int, b_index: int, bitcoin_network: str = "regtest"):
+        # Find the ip of peer B
+        b_ipv4 = self.get_ipv4_address(self.get_container(b_index, ServiceType.BITCOIN))
+
         # find the corresponding message capture folder
         # (which may include the internal port if connection is inbound)
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
+        base_dir = f"/root/.bitcoin/{subdir}message_capture"
         dirs = self.exec_run(
-            tank_index, ServiceType.BITCOIN, f"ls /home/bitcoin/.bitcoin/{subdir}message_capture"
+            a_index, ServiceType.BITCOIN, f"ls {base_dir}"
         )
         dirs = dirs.splitlines()
         messages = []
@@ -198,9 +201,9 @@ class ComposeBackend(BackendInterface):
             if b_ipv4 in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     blob = self.get_file(
-                        tank_index,
+                        a_index,
                         ServiceType.BITCOIN,
-                        f"/home/bitcoin/.bitcoin/{subdir}message_capture/{dir_name}/{file}",
+                        f"{base_dir}/{dir_name}/{file}",
                     )
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json
