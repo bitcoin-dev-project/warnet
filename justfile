@@ -23,7 +23,6 @@ start:
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-    just installlogging
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online
@@ -58,7 +57,6 @@ startd:
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
     sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
-    just installlogging
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online
