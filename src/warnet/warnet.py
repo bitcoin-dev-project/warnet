@@ -13,7 +13,7 @@ import networkx
 from backends import ComposeBackend, KubernetesBackend
 from templates import TEMPLATES
 from warnet.tank import Tank
-from warnet.utils import gen_config_dir, version_cmp_ge
+from warnet.utils import gen_config_dir
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -172,14 +172,8 @@ class Warnet:
                 continue
             src_tank = self.tanks[src]
             dst_ip = self.tanks[dst].ipv4
-            # <= 20.2 doesn't have addpeeraddress
-            res = version_cmp_ge(src_tank.version, "0.21.0")
-            if res:
-                cmd = f"bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addpeeraddress {dst_ip} 18444"
-                logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
-            else:
-                cmd = f'bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode "{dst_ip}:18444" onetry'
-                logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
+            cmd = f"bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode {dst_ip}:18444 onetry"
+            logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
             src_tank.exec(cmd=cmd)
 
     def warnet_build(self):
