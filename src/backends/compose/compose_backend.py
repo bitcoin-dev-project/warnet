@@ -140,9 +140,11 @@ class ComposeBackend(BackendInterface):
     def exec_run( self, tank_index: int, service: ServiceType, cmd: str) -> str:
         c = self.get_container(tank_index, service)
         result = c.exec_run(cmd=cmd)
+        res_output = result.output.decode('utf-8')
+        logger.debug(f"exec_run {cmd} output: {res_output}")
         if result.exit_code != 0:
             raise Exception(
-                f"Command failed with exit code {result.exit_code}: {result.output.decode('utf-8')} {cmd}"
+                f"Command failed with exit code {result.exit_code}: {res_output} {cmd}"
             )
         return result.output.decode("utf-8")
 

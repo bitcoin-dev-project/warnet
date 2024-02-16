@@ -204,6 +204,7 @@ class KubernetesBackend(BackendInterface):
         #     )
         result.run_forever()
         result = result.read_all()
+        logger.debug(f"exec_run {cmd} output: {result}")
         return result
 
     def get_bitcoin_debug_log(self, tank_index: int):
