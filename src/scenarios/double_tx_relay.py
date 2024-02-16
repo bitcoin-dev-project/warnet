@@ -52,15 +52,15 @@ class DoubleTXRelay(WarnetTestFramework):
 
     def connect_nodes(self):
         nodes_without_peers = []
-        try:
-            for node in self.nodes:
+        for node in self.nodes:
+            try:
                 if node.getpeerinfo() == []:
                     nodes_without_peers.append(node.index)
                     random_node = random.choice(self.nodes)
                     ipaddress = random_node.getnetworkinfo()["localaddresses"][0]["address"]
                     node.addnode(f"{ipaddress}:18444", "add")
-        except Exception:
-            pass
+            except Exception:
+                pass
         if len(nodes_without_peers) == 0:
             return False
         self.log.info("Nodes without peers: %s", nodes_without_peers)
