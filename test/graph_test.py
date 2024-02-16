@@ -14,11 +14,11 @@ with tempfile.TemporaryDirectory() as dir:
     tf = f"{dir}/{str(uuid.uuid4())}.graphml"
     if base.backend == "compose":
         print(f"Server writing test graph directly to {tf}")
-        print(base.warcli(f"graph create n=10 --outfile={tf} --version={DEFAULT_TAG}", network=False))
+        print(base.warcli(f"graph create 10 --outfile={tf} --version={DEFAULT_TAG}", network=False))
         base.wait_for_predicate(lambda: Path(tf).exists())
     else:
         print(f"Client retrieving test graph from RPC and writing to {tf}")
-        xml = base.warcli(f"graph create n=10 --version={DEFAULT_TAG}", network=False)
+        xml = base.warcli(f"graph create 10 --version={DEFAULT_TAG}", network=False)
         print(xml)
         with open(tf, "w") as file:
             file.write(xml)
