@@ -49,7 +49,8 @@ class ComposeBackend(BackendInterface):
     def __init__(self, config_dir: Path, network_name: str) -> None:
         super().__init__(config_dir)
         self.network_name = network_name
-        self.client = docker.DockerClient = docker.from_env()
+        self.client: docker.DockerClient = docker.from_env()
+        self._apiclient: docker.APIClient = docker.APIClient(base_url='unix://var/run/docker.sock')
 
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
