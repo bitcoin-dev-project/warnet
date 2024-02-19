@@ -2,6 +2,7 @@ import logging
 import re
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -512,3 +513,22 @@ class ComposeBackend(BackendInterface):
         """
         container_inspect = self.client.containers.get(container.id).attrs
         return container_inspect['NetworkSettings']['Networks'][self.network_name]['IPAddress']
+
+    def get_container_health(self, container: Container):
+        c_inspect = self._apiclient.inspect_container(container.name)
+        return c_inspect["State"]["Health"]["Status"]
+
+    def check_health_all_bitcoind(self, warnet) -> bool:
+        """
+        Checks the health of all bitcoind containers
+        """
+        status = ["unhealthy"] * len(warnet.tanks)
+
+        for tank in warnet.tanks:
+            status[tank.index] = self.get_container_health(
+                self.get_container(tank.index, ServiceType.BITCOIN)
+            )
+        logger.debug(f"Tank healthcheck: {status}")
+
+        return status[0] == "healthy" and all(i == status[0] for i in status)
+
