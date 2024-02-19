@@ -532,3 +532,16 @@ class ComposeBackend(BackendInterface):
 
         return status[0] == "healthy" and all(i == status[0] for i in status)
 
+    def wait_for_healthy_tanks(self, warnet, timeout=60) -> bool:
+        start = time.time()
+        healthy = False
+        logger.debug("Waiting for all tanks to reach healthy")
+
+        while not healthy and (time.time() < start + timeout):
+            healthy = self.check_health_all_bitcoind(warnet)
+            time.sleep(2)
+
+        if not healthy:
+            raise Exception(f"Tanks did not reach healthy status in {timeout} seconds")
+
+        return healthy

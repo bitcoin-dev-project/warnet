@@ -703,3 +703,9 @@ class KubernetesBackend(BackendInterface):
                 yaml.dump(pod.to_dict(), f)
                 f.write("---\n")  # separator for multiple resources
             self.log.info("Pod definitions saved to warnet-tanks.yaml")
+
+    def wait_for_healthy_tanks(self, warnet, timeout=30):
+        """
+        Wait for healthy status on all bitcoind nodes
+        """
+        pass

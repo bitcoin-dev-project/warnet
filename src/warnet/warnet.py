@@ -224,3 +224,6 @@ class Warnet:
         config_path = os.path.join(subdir, "sim.json")
         with open(config_path, "a") as f:
             json.dump(config, f)
+
+    def wait_for_health(self):
+        self.container_interface.wait_for_healthy_tanks(self)
