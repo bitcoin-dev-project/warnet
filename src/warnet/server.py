@@ -9,6 +9,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 from datetime import datetime
 from io import BytesIO
 from logging import StreamHandler
@@ -17,7 +18,7 @@ from pathlib import Path
 
 import networkx as nx
 import scenarios
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
 from warnet.utils import (
@@ -56,6 +57,7 @@ class Server:
 
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
         self.logger: logging.Logger
+        self.setup_global_exception_handler()
         self.setup_logging()
         self.setup_rpc()
         self.logger.info(f"Started server version {SERVER_VERSION}")
@@ -71,6 +73,25 @@ class Server:
         # This is used to delay api calls which rely on and image being built dynamically
         # before the config dir is populated with the deployment info
         self.image_build_lock = threading.Lock()
+
+    def setup_global_exception_handler(self):
+        """
+        Use flask to log traceback of unhandled excpetions
+        """
+        @self.app.errorhandler(Exception)
+        def handle_exception(e):
+            trace = traceback.format_exc()
+            self.logger.error(f"Unhandled exception: {e}\n{trace}")
+            response = {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32603,
+                    "message": "Internal server error",
+                    "data": str(e),
+                },
+                "id": request.json.get("id", None) if request.json else None,
+            }
+            return jsonify(response), 500
 
     def healthy(self):
         return "warnet is healthy"
@@ -357,8 +378,8 @@ class Server:
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
                 )
             except Exception as e:
-                msg = f"Error starting network: {e}"
-                self.logger.error(msg)
+                trace = traceback.format_exc()
+                self.logger.error(f"Unhandled exception bringing network up: {e}\n{trace}")
 
         try:
             wn = Warnet.from_network(network, self.backend)
@@ -389,8 +410,8 @@ class Server:
                     wn.apply_network_conditions()
                     wn.connect_edges()
                 except Exception as e:
-                    msg = f"Error starting warnet: {e}"
-                    self.logger.error(msg)
+                    trace = traceback.format_exc()
+                    self.logger.error(f"Unhandled exception starting warnet: {e}\n{trace}")
 
         config_dir = gen_config_dir(network)
         if config_dir.exists():
