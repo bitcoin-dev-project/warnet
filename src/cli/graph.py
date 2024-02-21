@@ -12,23 +12,23 @@ def graph():
 
 
 @graph.command()
-@click.argument("params", nargs=-1, type=str)
+@click.argument("number", type=int)
 @click.option("--outfile", type=Path)
 @click.option("--version", type=str, default=DEFAULT_TAG)
 @click.option("--bitcoin_conf", type=Path)
 @click.option("--random", is_flag=True)
 def create(
-    params: list[str], outfile: Path, version: str, bitcoin_conf: Path, random: bool = False
+        number: int, outfile: Path, version: str, bitcoin_conf: Path, random: bool = False
 ):
     """
-    Create a graph file of type random AS graph with [params]
+    Create a cycle graph with [n] nodes, and additionally include 7 extra random outbounds per node.
     Returns XML file as string with or without --outfile option
     """
     print(
         rpc_call(
             "graph_generate",
             {
-                "params": params,
+                "n": number,
                 "outfile": str(outfile) if outfile else "",
                 "version": version,
                 "bitcoin_conf": str(bitcoin_conf),

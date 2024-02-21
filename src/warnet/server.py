@@ -21,7 +21,7 @@ from flask import Flask, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
 from warnet.utils import (
-    create_graph_with_probability,
+    create_cycle_graph,
     gen_config_dir,
 )
 from warnet.warnet import Warnet
@@ -412,26 +412,21 @@ class Server:
 
     def graph_generate(
         self,
-        params: list[str],
+        n: int,
         outfile: str,
         version: str,
         bitcoin_conf: str | None = None,
         random: bool = False,
     ) -> str:
         try:
-            graph_func = nx.generators.erdos_renyi_graph
-            # Default connectivity probability of 0.2
-            if not any(param.startswith("p=") for param in params):
-                params.append("p=0.2")
-
-            graph = create_graph_with_probability(graph_func, params, version, bitcoin_conf, random)
+            graph = create_cycle_graph(n, version, bitcoin_conf, random)
 
             if outfile:
                 file_path = Path(outfile)
-                nx.write_graphml(graph, file_path)
+                nx.write_graphml(graph, file_path, named_key_ids=True)
                 return f"Generated graph written to file: {outfile}"
             bio = BytesIO()
-            nx.write_graphml(graph, bio)
+            nx.write_graphml(graph, bio, named_key_ids=True)
             xml_data = bio.getvalue()
             return xml_data.decode('utf-8')
         except Exception as e:

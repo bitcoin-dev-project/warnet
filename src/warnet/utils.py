@@ -421,54 +421,31 @@ def default_bitcoin_conf_args() -> str:
     return " ".join(conf_args)
 
 
-def create_graph_with_probability(
-    graph_func, params: list, version: str, bitcoin_conf: str | None, random_version: bool
+def create_cycle_graph(
+        n: int, version: str, bitcoin_conf: str | None, random_version: bool
 ):
-    kwargs = {}
-    for param in params:
-        try:
-            key, value = param.split("=")
-            kwargs[key] = value
-        except ValueError:
-            msg = f"Invalid parameter format: {param}"
-            logger.error(msg)
-            return msg
-
-    # Attempt to convert numerical values from string to their respective numerical types
-    msg = "Error convering numerical value strings to types "
-    for key in kwargs:
-        try:
-            kwargs[key] = int(kwargs[key])
-        except ValueError:
-            try:
-                kwargs[key] = float(kwargs[key])
-            except ValueError as e:
-                msg += str(e)
-                return msg
-        except Exception as e:
-            msg += str(e)
-            return msg
-
-    logger.debug(f"Parsed params: {kwargs}")
 
     try:
-        graph = graph_func(**kwargs)
+        # Use nx.DiGraph() as base otherwise edges not always made in specific directions
+        graph = nx.generators.cycle_graph(n, nx.DiGraph())
     except TypeError as e:
         msg = f"Failed to create graph: {e}"
         logger.error(msg)
         return msg
 
-    # Ensure each node has at least 8 edges
+    # Graph is a simply cycle graph with all nodes connected in a loop, including both ends.
+    # Ensure each node has at least 8 outbound connections by making 7 more outbound connections
     for node in graph.nodes():
-        while graph.degree(node) < 8:
+        logger.debug(f"Creating additional connections for node {node}")
+        for _ in range(8):
             # Choose a random node to connect to
             # Make sure it's not the same node and they aren't already connected
-            potential_nodes = [
-                n for n in range(kwargs["n"]) if n != node and not graph.has_edge(node, n)
-            ]
+            potential_nodes = [ node for node in range(n) if n != node and not graph.has_edge(node, n) ]
             if potential_nodes:
                 chosen_node = random.choice(potential_nodes)
                 graph.add_edge(node, chosen_node)
+                logger.debug(f"Added edge: {node}:{chosen_node}")
+        logger.debug(f"Node {node} edges: {graph.edges(node)}")
 
     # calculate degree
     degree_dict = dict(graph.degree(graph.nodes()))
@@ -491,13 +468,20 @@ def create_graph_with_probability(
                 conf_contents = dump_bitcoin_conf(conf_dict, for_graph=True)
 
     # populate our custom fields
-    for node in graph.nodes():
+    for i, node in enumerate(graph.nodes()):
         if random_version:
             graph.nodes[node]["version"] = random.choice(WEIGHTED_TAGS)
         else:
-            graph.nodes[node]["version"] = version
+            # One node demoing the image tag
+            if i == 1:
+                graph.nodes[node]["image"] = f"bitcoindevproject/bitcoin:{version}"
+            else:
+                graph.nodes[node]["version"] = version
         graph.nodes[node]["bitcoin_config"] = conf_contents
         graph.nodes[node]["tc_netem"] = ""
+        graph.nodes[node]["build_args"] = ""
+        graph.nodes[node]["exporter"] = ""
+        graph.nodes[node]["collect_logs"] = ""
 
     convert_unsupported_attributes(graph)
     return graph
