@@ -423,10 +423,10 @@ class Server:
 
             if outfile:
                 file_path = Path(outfile)
-                nx.write_graphml(graph, file_path)
+                nx.write_graphml(graph, file_path, named_key_ids=True)
                 return f"Generated graph written to file: {outfile}"
             bio = BytesIO()
-            nx.write_graphml(graph, bio)
+            nx.write_graphml(graph, bio, named_key_ids=True)
             xml_data = bio.getvalue()
             return xml_data.decode('utf-8')
         except Exception as e:
