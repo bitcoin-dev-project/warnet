@@ -359,10 +359,9 @@ class ComposeBackend(BackendInterface):
         assert tank.index is not None
         container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         services[container_name] = {}
-        logger.debug(f"{tank.version=}")
 
         # Setup bitcoind, either release binary, pre-built image or built from source on demand
-        if "/" and "#" in tank.version:
+        if tank.version and ("/" and "#" in tank.version):
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
             services[container_name]["image"] = f"{LOCAL_REGISTRY}:{branch}"
