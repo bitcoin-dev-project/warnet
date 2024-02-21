@@ -50,6 +50,14 @@ class DoubleTXRelay(WarnetTestFramework):
             return None
         return self.block_queue.pop(0)
 
+    def get_node_ip(self, node):
+        # loop 3 times to get the ip address
+        for n in range(3):
+            ipaddress = node.getnetworkinfo()["localaddresses"][n]["address"]
+            if ipaddress != "0.0.0.0" and ipaddress != "::":
+                return ipaddress
+        return None
+
     def connect_nodes(self):
         nodes_without_peers = []
         for node in self.nodes:
@@ -57,7 +65,7 @@ class DoubleTXRelay(WarnetTestFramework):
                 if node.getpeerinfo() == []:
                     nodes_without_peers.append(node.index)
                     random_node = random.choice(self.nodes)
-                    ipaddress = random_node.getnetworkinfo()["localaddresses"][0]["address"]
+                    ipaddress = self.get_node_ip(random_node)
                     node.addnode(f"{ipaddress}:18444", "add")
             except Exception:
                 pass
