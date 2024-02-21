@@ -468,13 +468,20 @@ def create_cycle_graph(
                 conf_contents = dump_bitcoin_conf(conf_dict, for_graph=True)
 
     # populate our custom fields
-    for node in graph.nodes():
+    for i, node in enumerate(graph.nodes()):
         if random_version:
             graph.nodes[node]["version"] = random.choice(WEIGHTED_TAGS)
         else:
-            graph.nodes[node]["version"] = version
+            # One node demoing the image tag
+            if i == 1:
+                graph.nodes[node]["image"] = f"bitcoindevproject/bitcoin:{version}"
+            else:
+                graph.nodes[node]["version"] = version
         graph.nodes[node]["bitcoin_config"] = conf_contents
         graph.nodes[node]["tc_netem"] = ""
+        graph.nodes[node]["build_args"] = ""
+        graph.nodes[node]["exporter"] = ""
+        graph.nodes[node]["collect_logs"] = ""
 
     convert_unsupported_attributes(graph)
     return graph
