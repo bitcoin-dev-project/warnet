@@ -437,7 +437,6 @@ class Server:
                 wn = Warnet.from_network(network, self.backend)
                 wn.apply_network_conditions()
                 wn.wait_for_health()
-                wn.connect_edges()
                 self.logger.info(
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
                 )
@@ -472,7 +471,6 @@ class Server:
                     wn.warnet_up()
                     wn.wait_for_health()
                     wn.apply_network_conditions()
-                    wn.connect_edges()
                 except Exception as e:
                     trace = traceback.format_exc()
                     self.logger.error(f"Unhandled exception starting warnet: {e}\n{trace}")

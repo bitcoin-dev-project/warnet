@@ -306,6 +306,9 @@ class KubernetesBackend(BackendInterface):
         defaults += f" -rpcport={tank.rpc_port}"
         defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
         defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
+        # connect to initial peers as defined in graph file
+        for dst_index in tank.init_peers:
+            defaults += f" -addnode={self.get_service_name(dst_index)}"
         return defaults
 
     def create_bitcoind_container(self, tank: Tank) -> client.V1Container:

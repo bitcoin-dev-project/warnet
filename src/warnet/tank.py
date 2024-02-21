@@ -47,6 +47,9 @@ class Tank:
         self._suffix = None
         self._ipv4 = None
         self._exporter_name = None
+        # index of integers imported from graph file
+        # indicating which tanks to initially connect to
+        self.init_peers = []
 
     def __str__(self) -> str:
         return f"Tank(index: {self.index}, version: {self.version}, conf: {self.bitcoin_config}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"

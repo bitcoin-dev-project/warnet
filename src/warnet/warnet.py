@@ -161,26 +161,20 @@ class Warnet:
                 raise Exception(
                     f"Node ID in graph must be incrementing integers (got '{node_id}', expected '{len(self.tanks)}')"
                 )
-            self.tanks.append(Tank.from_graph_node(node_id, self))
+            tank = Tank.from_graph_node(node_id, self)
+            # import edges as list of destinations to connect to
+            for edge in self.graph.edges(data=True):
+                (src, dst, data) = edge
+                if "channel" in data:
+                    continue
+                if src == node_id:
+                    tank.init_peers.append(int(dst))
+            self.tanks.append(tank)
         logger.info(f"Imported {len(self.tanks)} tanks from graph")
 
     def apply_network_conditions(self):
         for tank in self.tanks:
             tank.apply_network_conditions()
-
-    def connect_edges(self):
-        if self.graph is None:
-            return
-
-        for edge in self.graph.edges(data=True):
-            (src, dst, data) = edge
-            if "channel" in data:
-                continue
-            src_tank = self.tanks[src]
-            dst_ip = self.tanks[dst].ipv4
-            cmd = f"bitcoin-cli -regtest -rpcuser={src_tank.rpc_user} -rpcpassword={src_tank.rpc_password} addnode {dst_ip}:18444 onetry"
-            logger.info(f"Using `{cmd}` to connect tanks {src} to {dst}")
-            src_tank.exec(cmd=cmd)
 
     def warnet_build(self):
         self.container_interface.build()
