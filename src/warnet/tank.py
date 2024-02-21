@@ -32,12 +32,12 @@ class Tank:
         self.bitcoin_network = warnet.bitcoin_network
         self.version = "25.1"
         self.image: str = ""
-        self.conf = ""
+        self.bitcoin_config = ""
         self.conf_file = None
         self.netem = None
         self.exporter = False
         self.collect_logs = False
-        self.extra_build_args = ""
+        self.build_args = ""
         self.lnnode: LNNode | None = None
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
@@ -49,7 +49,7 @@ class Tank:
         self._exporter_name = None
 
     def __str__(self) -> str:
-        return f"Tank(index: {self.index}, version: {self.version}, conf: {self.conf}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
+        return f"Tank(index: {self.index}, version: {self.version}, conf: {self.bitcoin_config}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
 
     def _parse_version(self):
         if self.version not in SUPPORTED_TAGS or ("/" in self.version and "#" in self.version):

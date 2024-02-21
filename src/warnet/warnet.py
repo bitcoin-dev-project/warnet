@@ -86,7 +86,7 @@ class Warnet:
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [tank.index, tank.version, tank.ipv4, tank.conf, tank.netem]
+            tank_data = [tank.index, tank.version, tank.ipv4, tank.bitcoin_config, tank.netem]
             if has_ln:
                 tank_data.extend(
                     [

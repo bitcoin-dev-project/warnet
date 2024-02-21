@@ -364,7 +364,7 @@ class KubernetesBackend(BackendInterface):
         defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
         return defaults
 
-    def create_bitcoind_container(self, tank) -> client.V1Container:
+    def create_bitcoind_container(self, tank: Tank) -> client.V1Container:
         self.log.debug(f"Creating bitcoind container for tank {tank.index}")
         container_name = BITCOIN_CONTAINER_NAME
         container_image = None
@@ -388,7 +388,7 @@ class KubernetesBackend(BackendInterface):
                 branch,
                 LOCAL_REGISTRY,
                 branch,
-                tank.DEFAULT_BUILD_ARGS + tank.extra_build_args,
+                tank.DEFAULT_BUILD_ARGS + tank.build_args,
                 arches="amd64",
             )
         # Prebuilt major version
@@ -396,7 +396,7 @@ class KubernetesBackend(BackendInterface):
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
         bitcoind_options = self.default_bitcoind_config_args(tank)
-        bitcoind_options += f" {tank.conf}"
+        bitcoind_options += f" {tank.bitcoin_config}"
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
         bitcoind_container = client.V1Container(
