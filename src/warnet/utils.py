@@ -381,7 +381,7 @@ def set_execute_permission(file_path):
 
 
 def default_bitcoin_conf_args() -> str:
-    default_conf: Path = Path.cwd() / "src" / "templates" / "bitcoin.conf"
+    default_conf: Path = TEMPLATES / "bitcoin.conf"
 
     with default_conf.open("r") as f:
         defaults = parse_bitcoin_conf(f.read())
@@ -462,7 +462,7 @@ def create_cycle_graph(
     return graph
 
 
-def convert_unsupported_attributes(graph):
+def convert_unsupported_attributes(graph: nx.Graph):
     # Sometimes networkx complains about invalid types when writing the graph
     # (it just generated itself!). Try to convert them here just in case.
     for _, node_data in graph.nodes(data=True):
