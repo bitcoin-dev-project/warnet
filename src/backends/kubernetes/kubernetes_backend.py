@@ -532,7 +532,7 @@ class KubernetesBackend(BackendInterface):
                 selector={"app": self.get_pod_name(tank.index, ServiceType.BITCOIN)},
                 publish_not_ready_addresses=True,
                 ports=[
-                    # TODO: do we need to add 18444 here too?
+                    client.V1ServicePort(port=18444, target_port=18444, name="p2p"),
                     client.V1ServicePort(port=tank.rpc_port, target_port=tank.rpc_port, name="rpc"),
                     client.V1ServicePort(
                         port=tank.zmqblockport, target_port=tank.zmqblockport, name="zmqblock"
