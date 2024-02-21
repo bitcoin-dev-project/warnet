@@ -18,7 +18,6 @@ from .status import RunningStatus
 
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 
-
 logger = logging.getLogger("tank")
 
 
@@ -38,38 +37,47 @@ class Tank:
         self.netem = None
         self.exporter = False
         self.collect_logs = False
+        self.extra_build_args = ""
+        self.lnnode: LNNode | None = None
         self.rpc_port = 18443
         self.rpc_user = "warnet_user"
         self.rpc_password = "2themoon"
+        self.zmqblockport = 28332
+        self.zmqtxport = 28333
         self._suffix = None
         self._ipv4 = None
         self._exporter_name = None
-        self.extra_build_args = ""
-        self.lnnode: LNNode | None = None
-        self.zmqblockport = 28332
-        self.zmqtxport = 28333
 
     def __str__(self) -> str:
         return f"Tank(index: {self.index}, version: {self.version}, conf: {self.conf}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
 
-    def parse_version(self, node):
-        version = node.get("version", "")
-        image = node.get("image", "")
-        logger.debug(f"{version=:}")
-        logger.debug(f"{image=:}")
-        if version and image:
+    def _parse_version(self):
+        if self.version not in SUPPORTED_TAGS or ("/" in self.version and "#" in self.version):
             raise Exception(
-                f"Tank has {version=:} and {image=:} supplied and can't be built. Provide one or the other."
+                f"Unsupported version: can't be generated from Docker images: {self.version}"
             )
-        if image:
-            self.image = image
-        else:
-            if (version in SUPPORTED_TAGS) or ("/" in version and "#" in version):
-                self.version = version
-            else:
-                raise Exception(
-                    f"Unsupported version: can't be generated from Docker images: {version}"
-                )
+
+    def parse_graph_node(self, node):
+        # Dynamically parse properties based on the schema
+        for property, specs in self.warnet.node_schema["properties"].items():
+            value = node.get(property, specs.get("default"))
+            if property == "version":
+                self._parse_version()
+            setattr(self, property, value)
+            logger.debug(f"{property}={value}")
+
+        if self.version and self.image:
+            raise Exception(
+                f"Tank has {self.version=:} and {self.image=:} supplied and can't be built. Provide one or the other."
+            )
+
+        # Special handling for complex properties
+        if "ln" in node:
+            self.lnnode = LNNode(self.warnet, self, node["ln"], self.warnet.container_interface)
+
+        self.config_dir = self.warnet.config_dir / str(self.suffix)
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"{self=:}")
 
     @classmethod
     def from_graph_node(cls, index, warnet, tank=None):
@@ -77,23 +85,11 @@ class Tank:
         index = int(index)
         config_dir = warnet.config_dir / str(f"{index:06}")
         config_dir.mkdir(parents=True, exist_ok=True)
-
         self = tank
         if self is None:
             self = cls(index, config_dir, warnet)
         node = warnet.graph.nodes[index]
-        self.parse_version(node)
-        self.conf = node.get("bitcoin_config", self.conf)
-        self.netem = node.get("tc_netem", self.netem)
-        self.exporter = node.get("exporter", self.exporter)
-        self.collect_logs = node.get("collect_logs", self.collect_logs)
-        self.extra_build_args = node.get("build_args", self.extra_build_args)
-
-        if "ln" in node:
-            self.lnnode = LNNode(self.warnet, self, node["ln"], self.warnet.container_interface)
-
-        self.config_dir = self.warnet.config_dir / str(self.suffix)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.parse_graph_node(node)
         return self
 
     @property
