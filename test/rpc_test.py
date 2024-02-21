@@ -36,4 +36,7 @@ count = all_logs.count("Enqueuing TransactionAddedToMempool")
 # should be at least more than one node
 assert count > 1
 
+msgs = base.warcli("messages 0 1")
+assert "verack" in msgs
+
 base.stop_server()

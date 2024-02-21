@@ -80,9 +80,9 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_messages(self, tank_index: int, b_ipv4: str, bitcoin_network: str = "regtest"):
+    def get_messages(self, a_index: int, b_index: int, bitcoin_network: str = "regtest"):
         """
-        Get bitcoin messages between containers [tank_index] and [b_ipv4] on [bitcoin_network]
+        Get bitcoin messages between containers [a_index] and [b_index] on [bitcoin_network]
         """
         raise NotImplementedError("This method should be overridden by child class")
 
