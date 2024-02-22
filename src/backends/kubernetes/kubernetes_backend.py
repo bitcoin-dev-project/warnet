@@ -10,6 +10,7 @@ from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
+from kubernetes.client.models.v1_service import V1Service
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.dynamic.exceptions import ResourceNotFoundError
@@ -116,6 +117,15 @@ class KubernetesBackend(BackendInterface):
         try:
             return cast(
                 V1Pod, self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return None
+
+    def get_service(self, service_name: str) -> V1Service | None:
+        try:
+            return cast(
+                V1Service, self.client.read_namespaced_service(name=service_name, namespace=self.namespace)
             )
         except ApiException as e:
             if e.status == 404:
@@ -237,6 +247,7 @@ class KubernetesBackend(BackendInterface):
         bitcoin_network: str = "regtest",
     ):
         b_pod = self.get_pod(self.get_pod_name(b_index, ServiceType.BITCOIN))
+        b_service = self.get_service(self.get_service_name(b_index))
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         base_dir = f"/root/.bitcoin/{subdir}message_capture"
         cmd = f"ls {base_dir}"
@@ -251,7 +262,7 @@ class KubernetesBackend(BackendInterface):
         messages = []
 
         for dir_name in dirs:
-            if b_pod.status.pod_ip in dir_name:
+            if b_pod.status.pod_ip in dir_name or b_service.spec.cluster_ip in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     # Fetch the file contents from the container
                     file_path = f"{base_dir}/{dir_name}/{file}"
