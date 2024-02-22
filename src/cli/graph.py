@@ -36,3 +36,11 @@ def create(
             },
         )
     )
+
+@graph.command()
+@click.argument("graph", type=Path)
+def validate(graph: Path):
+    """
+    Validate a graph file against the schema.
+    """
+    print(rpc_call("graph_validate", {"graph_path": graph.as_posix()}))

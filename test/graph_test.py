@@ -23,6 +23,10 @@ with tempfile.TemporaryDirectory() as dir:
         with open(tf, "w") as file:
             file.write(xml)
 
+    # Validate the graph schema
+    assert "invalid" not in base.warcli(f"graph validate {Path(tf)}")
+    print(f"Graph at {tf} validated successfully")
+
     # Test that the graph actually works
     print(base.warcli(f"network start {Path(tf)}"))
     base.wait_for_all_tanks_status(target="running")

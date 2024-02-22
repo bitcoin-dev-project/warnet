@@ -13,7 +13,7 @@ import networkx
 from backends import ComposeBackend, KubernetesBackend
 from templates import TEMPLATES
 from warnet.tank import Tank
-from warnet.utils import gen_config_dir
+from warnet.utils import gen_config_dir, load_schema, validate_graph_schema
 
 logger = logging.getLogger("warnet")
 FO_CONF_NAME = "fork_observer_config.toml"
@@ -36,6 +36,7 @@ class Warnet:
         self.tanks: list[Tank] = []
         self.deployment_file: Path | None = None
         self.backend = backend
+        self.node_schema = load_schema()
 
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
@@ -85,7 +86,7 @@ class Warnet:
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [tank.index, tank.version, tank.ipv4, tank.conf, tank.netem]
+            tank_data = [tank.index, tank.version, tank.ipv4, tank.bitcoin_config, tank.netem]
             if has_ln:
                 tank_data.extend(
                     [
@@ -119,6 +120,7 @@ class Warnet:
             f.write(graph_file)
         self.network_name = network
         self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int)
+        validate_graph_schema(self.node_schema, self.graph)
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
@@ -127,6 +129,7 @@ class Warnet:
     def from_graph(cls, graph, backend="compose", network="warnet"):
         self = cls(Path(), backend, network)
         self.graph = graph
+        validate_graph_schema(self.node_schema, self.graph)
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
@@ -139,6 +142,7 @@ class Warnet:
         self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
+        validate_graph_schema(self.node_schema, self.graph)
         if self.tanks == []:
             self.tanks_from_graph()
         return self

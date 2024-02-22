@@ -332,10 +332,10 @@ class ComposeBackend(BackendInterface):
             dirs_exist_ok=True,
         )
 
-    def config_args(self, tank):
+    def config_args(self, tank: Tank):
         args = self.default_config_args(tank)
-        if tank.conf is not None:
-            args = f"{args} -{tank.conf.replace(',', ' -')}"
+        if tank.bitcoin_config is not None:
+            args = f"{args} -{tank.bitcoin_config.replace(',', ' -')}"
         return args
 
     def default_config_args(self, tank):
@@ -359,14 +359,13 @@ class ComposeBackend(BackendInterface):
         assert tank.index is not None
         container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         services[container_name] = {}
-        logger.debug(f"{tank.version=}")
 
         # Setup bitcoind, either release binary, pre-built image or built from source on demand
-        if "/" and "#" in tank.version:
+        if tank.version and ("/" and "#" in tank.version):
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
             services[container_name]["image"] = f"{LOCAL_REGISTRY}:{branch}"
-            build_image(repo, branch, LOCAL_REGISTRY, branch, tank.DEFAULT_BUILD_ARGS + tank.extra_build_args, arches="amd64")
+            build_image(repo, branch, LOCAL_REGISTRY, branch, tank.DEFAULT_BUILD_ARGS + tank.build_args, arches="amd64")
             self.copy_configs(tank)
         elif tank.image:
             # Pre-built custom image

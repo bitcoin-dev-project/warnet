@@ -13,6 +13,8 @@ from io import BytesIO
 from pathlib import Path
 
 import networkx as nx
+from jsonschema import validate
+from templates import TEMPLATES
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
@@ -30,6 +32,7 @@ DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
 ]
+NODE_SCHEMA_PATH = TEMPLATES / "node_schema.json"
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
@@ -378,7 +381,7 @@ def set_execute_permission(file_path):
 
 
 def default_bitcoin_conf_args() -> str:
-    default_conf: Path = Path.cwd() / "src" / "templates" / "bitcoin.conf"
+    default_conf: Path = TEMPLATES / "bitcoin.conf"
 
     with default_conf.open("r") as f:
         defaults = parse_bitcoin_conf(f.read())
@@ -459,7 +462,7 @@ def create_cycle_graph(
     return graph
 
 
-def convert_unsupported_attributes(graph):
+def convert_unsupported_attributes(graph: nx.Graph):
     # Sometimes networkx complains about invalid types when writing the graph
     # (it just generated itself!). Try to convert them here just in case.
     for _, node_data in graph.nodes(data=True):
@@ -479,3 +482,17 @@ def convert_unsupported_attributes(graph):
                 continue
             else:
                 edge_data[key] = str(value)
+
+
+def load_schema():
+    with open(NODE_SCHEMA_PATH) as schema_file:
+        return json.load(schema_file)
+
+
+def validate_graph_schema(node_schema: dict, graph: nx.Graph):
+    """
+    Validate a networkx.Graph against the node schema
+    """
+    for i in list(graph.nodes):
+        validate(instance=graph.nodes[i], schema=node_schema)
+
