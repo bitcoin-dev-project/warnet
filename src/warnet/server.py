@@ -16,6 +16,7 @@ from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+import jsonschema
 import networkx as nx
 import scenarios
 from flask import Flask, jsonify, request
@@ -24,6 +25,8 @@ from flask_jsonrpc.exceptions import ServerError
 from warnet.utils import (
     create_cycle_graph,
     gen_config_dir,
+    load_schema,
+    validate_graph_schema,
 )
 from warnet.warnet import Warnet
 
@@ -169,6 +172,7 @@ class Server:
         self.jsonrpc.register(self.network_export)
         # Graph
         self.jsonrpc.register(self.graph_generate)
+        self.jsonrpc.register(self.graph_validate)
         # Debug
         self.jsonrpc.register(self.generate_deployment)
         # Server
@@ -456,6 +460,17 @@ class Server:
             msg = f"Error generating graph: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
+
+    def graph_validate(self, graph_path: str) -> str:
+
+        schema = load_schema()
+        with open(graph_path) as f:
+            graph = nx.parse_graphml(f.read(), node_type=int)
+        try:
+            validate_graph_schema(schema, graph)
+        except (jsonschema.ValidationError, jsonschema.SchemaError) as e:
+            raise ServerError(message=f"Schema of {graph_path} is invalid: {e}") from e
+        return f"Schema of {graph_path} is valid"
 
     def network_down(self, network: str = "warnet") -> str:
         """
