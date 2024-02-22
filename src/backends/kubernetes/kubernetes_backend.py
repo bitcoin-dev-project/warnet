@@ -12,6 +12,7 @@ from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
+from kubernetes.dynamic.exceptions import ResourceNotFoundError
 from kubernetes.stream import stream
 from warnet.status import RunningStatus
 from warnet.tank import Tank
@@ -431,9 +432,8 @@ class KubernetesBackend(BackendInterface):
                     name=f"warnet-tank-{tank.index:06d}",
                     namespace=MAIN_NAMESPACE,
                 )
-            except ApiException as e:
-                if e.status != 404:
-                    raise e
+            except ResourceNotFoundError:
+                continue
 
     def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
