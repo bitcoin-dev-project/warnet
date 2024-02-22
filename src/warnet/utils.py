@@ -372,34 +372,6 @@ def remove_version_prefix(version_str):
     return version_str
 
 
-def version_cmp_ge(version_str, target_str):
-    parsed_version_str = remove_version_prefix(version_str)
-    parsed_target_str = remove_version_prefix(target_str)
-
-    try:
-        version_parts = list(map(int, parsed_version_str.split(".")))
-        target_parts = list(map(int, parsed_target_str.split(".")))
-
-        # Pad the shorter version with zeros
-        while len(version_parts) < len(target_parts):
-            version_parts.append(0)
-        while len(target_parts) < len(version_parts):
-            target_parts.append(0)
-
-    # handle custom versions
-    except ValueError:
-        logger.debug(
-            ValueError(
-                f"Unknown version string: {version_str} or {target_str} could not be compared"
-            )
-        )
-        logger.debug("Assuming custom version can use `addpeeraddress`")
-        # assume that custom versions are recent
-        return True
-
-    return version_parts >= target_parts
-
-
 def set_execute_permission(file_path):
     current_permissions = os.stat(file_path).st_mode
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
