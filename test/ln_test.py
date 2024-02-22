@@ -12,7 +12,7 @@ base = TestBase()
 base.start_server()
 print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
-
+base.wait_for_all_edges()
 
 if base.backend != "compose":
     print("\nSkipping network export test, only supported with compose backend")

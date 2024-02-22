@@ -12,6 +12,7 @@ base = TestBase()
 base.start_server()
 print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running", timeout=10*60)
+base.wait_for_all_edges()
 
 print("\nWait for p2p connections")
 

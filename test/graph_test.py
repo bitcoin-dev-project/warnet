@@ -30,6 +30,7 @@ with tempfile.TemporaryDirectory() as dir:
     # Test that the graph actually works
     print(base.warcli(f"network start {Path(tf)}"))
     base.wait_for_all_tanks_status(target="running")
+    base.wait_for_all_edges()
     base.warcli("rpc 0 getblockcount")
 
 base.stop_server()

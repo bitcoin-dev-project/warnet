@@ -11,6 +11,7 @@ base = TestBase()
 base.start_server()
 print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
+base.wait_for_all_edges()
 
 # Use rpc instead of warcli so we get raw JSON object
 scenarios = base.rpc("scenarios_available")
