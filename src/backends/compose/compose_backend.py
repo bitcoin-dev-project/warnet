@@ -2,6 +2,7 @@ import logging
 import re
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -49,7 +50,8 @@ class ComposeBackend(BackendInterface):
     def __init__(self, config_dir: Path, network_name: str) -> None:
         super().__init__(config_dir)
         self.network_name = network_name
-        self.client = docker.DockerClient = docker.from_env()
+        self.client: docker.DockerClient = docker.from_env()
+        self._apiclient: docker.APIClient = docker.APIClient(base_url='unix://var/run/docker.sock')
 
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
@@ -390,7 +392,7 @@ class ComposeBackend(BackendInterface):
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
                 "healthcheck": {
-                    "test": ["CMD", "pidof", "bitcoind"],
+                    "test": ["CMD-SHELL", f"nc -z localhost {tank.rpc_port} || exit 1"],
                     "interval": "10s",  # Check every 10 seconds
                     "timeout": "1s",  # Give the check 1 second to complete
                     "start_period": "5s",  # Start checking after 5 seconds
@@ -511,3 +513,35 @@ class ComposeBackend(BackendInterface):
         """
         container_inspect = self.client.containers.get(container.id).attrs
         return container_inspect['NetworkSettings']['Networks'][self.network_name]['IPAddress']
+
+    def get_container_health(self, container: Container):
+        c_inspect = self._apiclient.inspect_container(container.name)
+        return c_inspect["State"]["Health"]["Status"]
+
+    def check_health_all_bitcoind(self, warnet) -> bool:
+        """
+        Checks the health of all bitcoind containers
+        """
+        status = ["unhealthy"] * len(warnet.tanks)
+
+        for tank in warnet.tanks:
+            status[tank.index] = self.get_container_health(
+                self.get_container(tank.index, ServiceType.BITCOIN)
+            )
+        logger.debug(f"Tank healthcheck: {status}")
+
+        return status[0] == "healthy" and all(i == status[0] for i in status)
+
+    def wait_for_healthy_tanks(self, warnet, timeout=60) -> bool:
+        start = time.time()
+        healthy = False
+        logger.debug("Waiting for all tanks to reach healthy")
+
+        while not healthy and (time.time() < start + timeout):
+            healthy = self.check_health_all_bitcoind(warnet)
+            time.sleep(2)
+
+        if not healthy:
+            raise Exception(f"Tanks did not reach healthy status in {timeout} seconds")
+
+        return healthy

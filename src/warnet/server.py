@@ -351,6 +351,7 @@ class Server:
                 # Update warnet from docker here to get ip addresses
                 wn = Warnet.from_network(network, self.backend)
                 wn.apply_network_conditions()
+                wn.wait_for_health()
                 wn.connect_edges()
                 self.logger.info(
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
@@ -384,6 +385,7 @@ class Server:
                     # wn.write_fork_observer_config()
                     wn.warnet_build()
                     wn.warnet_up()
+                    wn.wait_for_health()
                     wn.apply_network_conditions()
                     wn.connect_edges()
                 except Exception as e:
