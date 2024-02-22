@@ -122,7 +122,7 @@ class TestBase:
             print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
 
             self.server = Popen(
-                ["warnet", "--backend", self.backend],
+                ["warnet", "--backend", self.backend, "--debug"],
                 stdout=PIPE,
                 stderr=STDOUT,
                 bufsize=1,

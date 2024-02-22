@@ -39,7 +39,7 @@ CONFIG_DIR_ALREADY_EXISTS = 32001
 
 
 class Server:
-    def __init__(self, backend):
+    def __init__(self, backend, debug):
         self.backend = backend
         system = os.name
         if system == "nt" or platform.system() == "Windows":
@@ -63,7 +63,7 @@ class Server:
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
         self.logger: logging.Logger
         self.setup_global_exception_handler()
-        self.setup_logging()
+        self.setup_logging(debug)
         self.setup_rpc()
         self.logger.info(f"Started server version {SERVER_VERSION}")
         self.app.add_url_rule("/-/healthy", view_func=self.healthy)
@@ -101,13 +101,14 @@ class Server:
     def healthy(self):
         return "warnet is healthy"
 
-    def setup_logging(self):
+    def setup_logging(self, debug):
         # Ensure the directory exists
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
+        log_level = logging.DEBUG if debug else logging.INFO
 
         # Configure root logger
         logging.basicConfig(
-            level=logging.DEBUG,
+            level=log_level,
             handlers=[
                 RotatingFileHandler(
                     self.log_file_path, maxBytes=16_000_000, backupCount=3, delay=True
@@ -118,8 +119,10 @@ class Server:
         )
         # Disable urllib3.connectionpool logging
         logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
+        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.CRITICAL)
         self.logger = logging.getLogger("warnet")
-        self.logger.info("Logging started")
+        self.logger.setLevel(log_level)
+        self.logger.info(f"Logging started at level {logging.getLevelName(self.logger.level)}")
 
         if self.backend == "k8s":
             # if using k8s as a backend, tone the logging down
@@ -473,6 +476,9 @@ class Server:
                     wn.wait_for_health()
                     wn.apply_network_conditions()
                     wn.connect_edges()
+                    self.logger.info(
+                        f"Started warnet named '{network}' using config dir {wn.config_dir}"
+                    )
                 except Exception as e:
                     trace = traceback.format_exc()
                     self.logger.error(f"Unhandled exception starting warnet: {e}\n{trace}")
@@ -623,7 +629,14 @@ def run_server():
         help="Specify the backend to use",
     )
     parser.add_argument(
-        "--dev", action="store_true", help="Run in development mode with debug enabled"
+        "--dev",
+        action="store_true",
+        help="Run in development mode with hot-reloading of server code and debug level logs",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug level logs."
     )
 
     args = parser.parse_args()
@@ -632,10 +645,8 @@ def run_server():
         print(f"Invalid backend {args.backend}")
         sys.exit(1)
 
-    debug_mode = args.dev
-    server = Server(args.backend)
-
-    server.app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=debug_mode)
+    server = Server(args.backend, args.debug or args.dev)
+    server.app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=args.dev)
 
 
 if __name__ == "__main__":
