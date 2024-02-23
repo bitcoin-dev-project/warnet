@@ -33,24 +33,3 @@ dynamic = ["version"]
 [project.scripts]
 warnet = "warnet.server:run_server"
 warcli = "cli.main:cli"
-
-[tool.ruff]
-extend-exclude = ["src/test_framework/*.py"]
-line-length = 100
-indent-width = 4
-[tool.ruff.lint]
-select = [
-    # pycodestyle
-    "E",
-    # Pyflakes
-    "F",
-    # pyupgrade
-    "UP",
-    # flake8-bugbear
-    "B",
-    # flake8-simplify
-    "SIM",
-    # isort
-    "I",
-]
-ignore = ["E501"] # Line too long
