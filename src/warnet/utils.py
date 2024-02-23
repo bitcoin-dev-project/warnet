@@ -410,17 +410,17 @@ def create_cycle_graph(
 
     # Graph is a simply cycle graph with all nodes connected in a loop, including both ends.
     # Ensure each node has at least 8 outbound connections by making 7 more outbound connections
-    for node in graph.nodes():
-        logger.debug(f"Creating additional connections for node {node}")
+    for src_node in graph.nodes():
+        logger.debug(f"Creating additional connections for node {src_node}")
         for _ in range(8):
             # Choose a random node to connect to
-            # Make sure it's not the same node and they aren't already connected
-            potential_nodes = [ node for node in range(n) if n != node and not graph.has_edge(node, n) ]
+            # Make sure it's not the same node and they aren't already connected in either direction
+            potential_nodes = [ dst_node for dst_node in range(n) if dst_node != src_node and not graph.has_edge(dst_node, src_node) and not graph.has_edge(src_node, dst_node) ]
             if potential_nodes:
                 chosen_node = random.choice(potential_nodes)
-                graph.add_edge(node, chosen_node)
-                logger.debug(f"Added edge: {node}:{chosen_node}")
-        logger.debug(f"Node {node} edges: {graph.edges(node)}")
+                graph.add_edge(src_node, chosen_node)
+                logger.debug(f"Added edge: {src_node}:{chosen_node}")
+        logger.debug(f"Node {src_node} edges: {graph.edges(src_node)}")
 
     # calculate degree
     degree_dict = dict(graph.degree(graph.nodes()))
