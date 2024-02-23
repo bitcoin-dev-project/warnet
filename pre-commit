@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+GIT_ROOT=$(git rev-parse --show-toplevel)
+cd "$GIT_ROOT" || exit
+
+run_ruff_on_staged() {
+    local operation=$1 # 'format' or 'check'
+    local staged_files
+    staged_files=$(git diff --cached --name-only --diff-filter=d)
+
+    local has_changes=0
+    for file in $staged_files; do
+        if [[ $file == *".py" ]]; then
+            if [ "$operation" == "format" ]; then
+                ruff format --diff "$file"
+            else
+                ruff check "$file"
+            fi
+
+            # Capture the exit status of ruff
+            local status=$?
+            if [ $status -ne 0 ]; then
+                has_changes=1
+            fi
+        fi
+    done
+
+    return $has_changes
+}
+
+# Check formatting of staged Python files
+if ! run_ruff_on_staged "format" ; then
+    echo "Ruff would make formatting changes. Please run 'ruff format' on the staged files and commit again."
+    exit 1
+fi
+
+# Lint staged Python files
+if ! run_ruff_on_staged "check" ; then
+    echo "Ruff linter found issues that need to be resolved. Please run 'ruff check' on the staged files and address the issues."
+    exit 1
+fi
+
+exit 0
