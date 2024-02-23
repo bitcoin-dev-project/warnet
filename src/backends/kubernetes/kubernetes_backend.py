@@ -78,7 +78,7 @@ class KubernetesBackend(BackendInterface):
         Read a file from inside a container
         """
         pod_name = self.get_pod_name(tank_index, service)
-        exec_command = ['sh', '-c', f'cat "{file_path}" | base64']
+        exec_command = ["sh", "-c", f'cat "{file_path}" | base64']
 
         resp = stream(
             self.client.connect_get_namespaced_pod_exec,
@@ -256,9 +256,7 @@ class KubernetesBackend(BackendInterface):
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     # Fetch the file contents from the container
                     file_path = f"{base_dir}/{dir_name}/{file}"
-                    blob = self.get_file(
-                        a_index, ServiceType.BITCOIN, f"{file_path}"
-                    )
+                    blob = self.get_file(a_index, ServiceType.BITCOIN, f"{file_path}")
                     # Parse the blob
                     json = parse_raw_messages(blob, outbound)
                     messages = messages + json

@@ -22,9 +22,7 @@ base.warcli("rpc 1 -generate 101")
 
 base.wait_for_predicate(lambda: "101" in base.warcli("rpc 0 getblockcount"))
 
-txid = base.warcli(
-    "rpc 1 sendtoaddress bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46 0.1"
-)
+txid = base.warcli("rpc 1 sendtoaddress bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46 0.1")
 
 base.wait_for_predicate(lambda: txid in base.warcli("rpc 0 getrawmempool"))
 

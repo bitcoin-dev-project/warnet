@@ -81,6 +81,7 @@ class Server:
         """
         Use flask to log traceback of unhandled excpetions
         """
+
         @self.app.errorhandler(Exception)
         def handle_exception(e):
             trace = traceback.format_exc()
@@ -147,7 +148,9 @@ class Server:
                     time_elapsed += check_interval
 
             # If we've reached here, the lock wasn't acquired in time
-            raise Exception(f"Failed to acquire the build lock within {timeout} seconds, aborting RPC.")
+            raise Exception(
+                f"Failed to acquire the build lock within {timeout} seconds, aborting RPC."
+            )
 
         self.app.before_request(log_request)
         self.app.before_request(build_check)
@@ -455,14 +458,13 @@ class Server:
             bio = BytesIO()
             nx.write_graphml(graph, bio, named_key_ids=True)
             xml_data = bio.getvalue()
-            return xml_data.decode('utf-8')
+            return xml_data.decode("utf-8")
         except Exception as e:
             msg = f"Error generating graph: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
     def graph_validate(self, graph_path: str) -> str:
-
         schema = load_schema()
         with open(graph_path) as f:
             graph = nx.parse_graphml(f.read(), node_type=int)

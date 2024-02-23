@@ -51,7 +51,7 @@ class ComposeBackend(BackendInterface):
         super().__init__(config_dir)
         self.network_name = network_name
         self.client: docker.DockerClient = docker.from_env()
-        self._apiclient: docker.APIClient = docker.APIClient(base_url='unix://var/run/docker.sock')
+        self._apiclient: docker.APIClient = docker.APIClient(base_url="unix://var/run/docker.sock")
 
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
@@ -139,7 +139,7 @@ class ComposeBackend(BackendInterface):
             case _:
                 return RunningStatus.PENDING
 
-    def exec_run( self, tank_index: int, service: ServiceType, cmd: str) -> str:
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str) -> str:
         c = self.get_container(tank_index, service)
         result = c.exec_run(cmd=cmd)
         if result.exit_code != 0:
@@ -194,9 +194,7 @@ class ComposeBackend(BackendInterface):
         # (which may include the internal port if connection is inbound)
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         base_dir = f"/root/.bitcoin/{subdir}message_capture"
-        dirs = self.exec_run(
-            a_index, ServiceType.BITCOIN, f"ls {base_dir}"
-        )
+        dirs = self.exec_run(a_index, ServiceType.BITCOIN, f"ls {base_dir}")
         dirs = dirs.splitlines()
         messages = []
         for dir_name in dirs:
@@ -365,7 +363,14 @@ class ComposeBackend(BackendInterface):
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
             services[container_name]["image"] = f"{LOCAL_REGISTRY}:{branch}"
-            build_image(repo, branch, LOCAL_REGISTRY, branch, tank.DEFAULT_BUILD_ARGS + tank.build_args, arches="amd64")
+            build_image(
+                repo,
+                branch,
+                LOCAL_REGISTRY,
+                branch,
+                tank.DEFAULT_BUILD_ARGS + tank.build_args,
+                arches="amd64",
+            )
             self.copy_configs(tank)
         elif tank.image:
             # Pre-built custom image
@@ -511,7 +516,7 @@ class ComposeBackend(BackendInterface):
         Fetches the IPv4 address of a given container.
         """
         container_inspect = self.client.containers.get(container.id).attrs
-        return container_inspect['NetworkSettings']['Networks'][self.network_name]['IPAddress']
+        return container_inspect["NetworkSettings"]["Networks"][self.network_name]["IPAddress"]
 
     def get_container_health(self, container: Container):
         c_inspect = self._apiclient.inspect_container(container.name)
