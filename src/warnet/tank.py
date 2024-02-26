@@ -75,7 +75,8 @@ class Tank:
         if "ln" in node:
             impl = node["ln"]
             image = node.get("ln-image", None)
-            self.lnnode = LNNode(self.warnet, self, impl, image, self.warnet.container_interface)
+            cb_image = node.get("ln-cb-image", None)
+            self.lnnode = LNNode(self.warnet, self, impl, image, self.warnet.container_interface, cb_image)
 
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)

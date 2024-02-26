@@ -7,7 +7,7 @@ from .status import RunningStatus
 
 
 class LNNode:
-    def __init__(self, warnet, tank, impl, image, backend: BackendInterface):
+    def __init__(self, warnet, tank, impl, image, backend: BackendInterface, cb=None):
         self.warnet = warnet
         self.tank = tank
         assert impl == "lnd"
@@ -16,6 +16,7 @@ class LNNode:
         if image:
             self.image = image
         self.backend = backend
+        self.cb = cb
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 

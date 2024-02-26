@@ -39,6 +39,8 @@ LOCAL_REGISTRY = "warnet/bitcoin-core"
 GRAFANA_PROVISIONING = "grafana-provisioning"
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
+CONTAINER_PREFIX_CIRCUITBREAKER = "tank-ln-cb"
+LND_MOUNT_PATH = '/root/.lnd'
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -114,6 +116,8 @@ class ComposeBackend(BackendInterface):
                 return f"{self.network_name}-{CONTAINER_PREFIX_BITCOIND}-{tank_index:06}"
             case ServiceType.LIGHTNING:
                 return f"{self.network_name}-{CONTAINER_PREFIX_LN}-{tank_index:06}"
+            case ServiceType.CIRCUITBREAKER:
+                return f"{self.network_name}-{CONTAINER_PREFIX_CIRCUITBREAKER}-{tank_index:06}"
             case _:
                 raise Exception("Unsupported service type")
 
@@ -301,7 +305,7 @@ class ComposeBackend(BackendInterface):
 
         # Pass services object to each tank so they can add whatever they need.
         for tank in warnet.tanks:
-            self.add_services(tank, compose["services"])
+            self.add_services(tank, compose)
 
         # Initialize services and add them to the compose
         services = [
@@ -362,7 +366,8 @@ class ComposeBackend(BackendInterface):
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
         set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
 
-    def add_services(self, tank: Tank, services):
+    def add_services(self, tank: Tank, compose):
+        services = compose["services"]
         assert tank.index is not None
         container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         services[container_name] = {}
@@ -411,7 +416,7 @@ class ComposeBackend(BackendInterface):
             services[container_name]["labels"].update({"collect_logs": True})
 
         if tank.lnnode is not None:
-            self.add_lnd_service(tank, services)
+            self.add_lnd_service(tank, compose)
 
         # Add the prometheus data exporter in a neighboring container
         if tank.exporter:
@@ -427,8 +432,10 @@ class ComposeBackend(BackendInterface):
                 "networks": [tank.network_name],
             }
 
-    def add_lnd_service(self, tank, services):
+    def add_lnd_service(self, tank, compose):
+        services = compose["services"]
         ln_container_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
+        ln_cb_container_name = self.get_container_name(tank.index, ServiceType.CIRCUITBREAKER)
         bitcoin_container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         args = [
@@ -447,6 +454,7 @@ class ComposeBackend(BackendInterface):
             f"--externalip={tank.lnnode.ipv4}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
             f"--alias={tank.index}",
+            f"--tlsextradomain={ln_container_name}",
         ]
         services[ln_container_name] = {
             "container_name": ln_container_name,
@@ -477,6 +485,23 @@ class ComposeBackend(BackendInterface):
         )
         if tank.collect_logs:
             services[ln_container_name]["labels"].update({"collect_logs": True})
+        if tank.lnnode.cb is not None:
+            services[ln_container_name].update({
+                "volumes": [f"{ln_container_name}-data:{LND_MOUNT_PATH}"]
+            })
+            services[ln_cb_container_name] = {
+                "container_name": ln_cb_container_name,
+                "image": tank.lnnode.cb,
+                "volumes": [f"{ln_container_name}-data:{LND_MOUNT_PATH}"],
+                "command": "--network=regtest " +
+                           f"--rpcserver={ln_container_name}:{tank.lnnode.rpc_port} " +
+                           f" --tlscertpath={LND_MOUNT_PATH}/tls.cert " +
+                           f" --macaroonpath={LND_MOUNT_PATH}/data/chain/bitcoin/regtest/admin.macaroon",
+                "networks": [tank.network_name],
+                "restart": "on-failure",
+            }
+            compose["volumes"].update({f"{ln_container_name}-data": None})
+
 
     def get_ipv4_address(self, container: Container) -> str:
         """

@@ -12,7 +12,8 @@
     "collect_logs": {"type": "boolean", "default": false},
     "build_args": {"type": "string"},
     "ln": {"type": "string"},
-    "ln-image": {"type": "string"}
+    "ln-image": {"type": "string"},
+    "ln-cb-image": {"type": "string"}
   },
   "additionalProperties": false,
   "oneOf": [

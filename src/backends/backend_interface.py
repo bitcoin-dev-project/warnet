@@ -6,6 +6,7 @@ from pathlib import Path
 class ServiceType(Enum):
     BITCOIN = 1
     LIGHTNING = 2
+    CIRCUITBREAKER = 3
 
 
 class BackendInterface(ABC):
