@@ -443,7 +443,7 @@ class ComposeBackend(BackendInterface):
         ]
         services[ln_container_name] = {
             "container_name": ln_container_name,
-            "image": "lightninglabs/lnd:v0.17.0-beta",
+            "image": tank.lnnode.image,
             "command": " ".join(args),
             "networks": {
                 tank.network_name: {
@@ -464,6 +464,7 @@ class ComposeBackend(BackendInterface):
                     "lnnode_container_name": ln_container_name,
                     "lnnode_ipv4_address": tank.lnnode.ipv4,
                     "lnnode_impl": tank.lnnode.impl,
+                    "lnnode_image": tank.lnnode.image,
                 }
             }
         )
@@ -502,7 +503,7 @@ class ComposeBackend(BackendInterface):
 
         labels = service.get("labels", {})
         if "lnnode_impl" in labels:
-            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"], self)
+            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"], labels["lnnode_image"], self)
             tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
         return tank
 

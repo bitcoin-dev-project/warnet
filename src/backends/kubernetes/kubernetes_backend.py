@@ -19,7 +19,6 @@ from warnet.tank import Tank
 from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
 
 DOCKER_REGISTRY_CORE = "bitcoindevproject/bitcoin"
-DOCKER_REGISTRY_LND = "lightninglabs/lnd:v0.17.0-beta"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
 
 POD_PREFIX = "tank"
@@ -344,11 +343,26 @@ class KubernetesBackend(BackendInterface):
                     tank.version = f"{c_repo}#{c_branch}"
         self.log.debug(f"Created tank {tank.index} from deployment: {tank=:}")
 
-        # check if we can find a corresponding lnd pod
-        lnd_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
-        if lnd_pod:
-            tank.lnnode = LNNode(warnet, tank, "lnd", self)
-            tank.lnnode.ipv4 = lnd_pod.status.pod_ip
+        # check if we can find a corresponding ln pod
+        ln_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
+        if ln_pod:
+            ln_container = None
+            for container in ln_pod.spec.containers:
+                if container.name == LN_CONTAINER_NAME:
+                    ln_container = container
+                    break
+            if not ln_container:
+                raise Exception("Could not find LN container in pod")
+            impl = None
+            for env in ln_container.env:
+                if env.name == "LN_IMPL":
+                    impl = env.value
+                    break
+            if not impl:
+                raise Exception("Could not determine LN container implementation")
+            image = ln_container.image
+            tank.lnnode = LNNode(warnet, tank, impl, image, self)
+            tank.lnnode.ipv4 = ln_pod.status.pod_ip
             self.log.debug(
                 f"Created lightning for tank {tank.index} from deployment {tank.lnnode=:}"
             )
@@ -512,10 +526,10 @@ class KubernetesBackend(BackendInterface):
         self.log.debug(f"Creating lightning container for tank {tank.index} using {args=:}")
         lightning_container = client.V1Container(
             name=LN_CONTAINER_NAME,
-            image=f"{DOCKER_REGISTRY_LND}",
+            image=tank.lnnode.image,
             args=args,
             env=[
-                client.V1EnvVar(name="LND_NETWORK", value="regtest"),
+                client.V1EnvVar(name="LN_IMPL", value=tank.lnnode.impl),
             ],
             readiness_probe=client.V1Probe(
                 failure_threshold=1,
