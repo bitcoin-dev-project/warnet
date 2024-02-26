@@ -93,7 +93,7 @@ class ComposeBackend(BackendInterface):
             )
 
     def down(self, warnet):
-        command = ["docker", "compose", "down"]
+        command = ["docker", "compose", "down", "-v"]
         try:
             with subprocess.Popen(
                 command,
@@ -101,7 +101,7 @@ class ComposeBackend(BackendInterface):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             ) as process:
-                logger.debug(f"Running docker compose down with PID {process.pid}")
+                logger.debug(f"Running 'docker compose down -v' with PID {process.pid}")
                 if process.stdout:
                     for line in process.stdout:
                         logger.info(line.decode().rstrip())
