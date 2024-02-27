@@ -23,8 +23,10 @@ LOCAL_REGISTRY = "warnet/bitcoin-core"
 POD_PREFIX = "tank"
 BITCOIN_CONTAINER_NAME = "bitcoin"
 LN_CONTAINER_NAME = "ln"
+LN_CB_CONTAINER_NAME = "ln-cb"
 MAIN_NAMESPACE = "warnet"
 PROMETHEUS_METRICS_PORT = 9332
+LND_MOUNT_PATH = '/root/.lnd'
 
 
 logger = logging.getLogger("KubernetesBackend")
@@ -432,7 +434,7 @@ class KubernetesBackend(BackendInterface):
                 if e.status != 404:
                     raise e
 
-    def create_lnd_container(self, tank, bitcoind_service_name) -> client.V1Container:
+    def create_lnd_container(self, tank, bitcoind_service_name, volume_mounts) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}"
         lightning_dns = f"lightning-{tank.index}.{self.namespace}"
@@ -475,12 +477,33 @@ class KubernetesBackend(BackendInterface):
                 privileged=True,
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
+            volume_mounts=volume_mounts,
         )
         self.log.debug(f"Created lightning container for tank {tank.index}")
         return lightning_container
 
+    def create_circuitbreaker_container(self, tank, volume_mounts) -> client.V1Container:
+        self.log.debug(f"Creating circuitbreaker container for tank {tank.index}")
+        cb_container = client.V1Container(
+            name=LN_CB_CONTAINER_NAME,
+            image=tank.lnnode.cb,
+            args=[
+                "--network=regtest",
+                f"--rpcserver=localhost:{tank.lnnode.rpc_port}",
+                f"--tlscertpath={LND_MOUNT_PATH}/tls.cert",
+                f"--macaroonpath={LND_MOUNT_PATH}/data/chain/bitcoin/regtest/admin.macaroon"
+            ],
+            security_context=client.V1SecurityContext(
+                privileged=True,
+                capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
+            ),
+            volume_mounts=volume_mounts,
+        )
+        self.log.debug(f"Created circuitbreaker container for tank {tank.index}")
+        return cb_container
+
     def create_pod_object(
-        self, tank: Tank, container: client.V1Container, name: str
+        self, tank: Tank, containers: list[client.V1Container], volumes: list[client.V1Volume], name: str
     ) -> client.V1Pod:
         # Create and return a Pod object
         # TODO: pass a custom namespace , e.g. different warnet sims can be deployed into diff namespaces
@@ -500,7 +523,8 @@ class KubernetesBackend(BackendInterface):
                 # Might need some more thinking on the pod restart policy, setting to Never for now
                 # This means if a node has a problem it dies
                 restart_policy="OnFailure",
-                containers=[container],
+                containers=containers,
+                volumes=volumes,
             ),
         )
 
@@ -588,7 +612,7 @@ class KubernetesBackend(BackendInterface):
             # Create and deploy bitcoind pod and service
             bitcoind_container = self.create_bitcoind_container(tank)
             bitcoind_pod = self.create_pod_object(
-                tank, bitcoind_container, self.get_pod_name(tank.index, ServiceType.BITCOIN)
+                tank, [bitcoind_container], [], self.get_pod_name(tank.index, ServiceType.BITCOIN)
             )
 
             if tank.exporter and self.check_logging_crds_installed():
@@ -609,11 +633,30 @@ class KubernetesBackend(BackendInterface):
 
             # Create and deploy LND pod
             if tank.lnnode:
-                lnd_container = self.create_lnd_container(tank, bitcoind_service.metadata.name)
+                conts = []
+                vols = []
+                volume_mounts = []
+                if tank.lnnode.cb:
+                    # Create a shared volume between containers in the pod
+                    volume_name = f"ln-cb-data-{tank.index}"
+                    vols.append(client.V1Volume(
+                        name=volume_name,
+                        empty_dir=client.V1EmptyDirVolumeSource()
+                    ))
+                    volume_mounts.append(client.V1VolumeMount(
+                        name=volume_name,
+                        mount_path=LND_MOUNT_PATH,
+                    ))
+                    # Add circuit breaker container
+                    conts.append(self.create_circuitbreaker_container(tank, volume_mounts))
+                # Add lnd container
+                conts.append(self.create_lnd_container(tank, bitcoind_service.metadata.name, volume_mounts))
+                # Put it all together in a pod
                 lnd_pod = self.create_pod_object(
-                    tank, lnd_container, self.get_pod_name(tank.index, ServiceType.LIGHTNING)
+                    tank, conts, vols, self.get_pod_name(tank.index, ServiceType.LIGHTNING)
                 )
                 self.client.create_namespaced_pod(namespace=self.namespace, body=lnd_pod)
+                # Create service for the pod
                 lightning_service = self.create_lightning_service(tank)
                 try:
                     self.client.delete_namespaced_service(
