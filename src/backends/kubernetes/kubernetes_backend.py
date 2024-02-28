@@ -109,7 +109,7 @@ class KubernetesBackend(BackendInterface):
         return decoded_bytes
 
     def get_pod_name(self, tank_index: int, type: ServiceType) -> str:
-        if type == ServiceType.LIGHTNING:
+        if type == ServiceType.LIGHTNING or type == ServiceType.CIRCUITBREAKER:
             return f"{self.network_name}-{POD_PREFIX}-ln-{tank_index:06d}"
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
 
@@ -175,18 +175,19 @@ class KubernetesBackend(BackendInterface):
 
     def exec_run(self, tank_index: int, service: ServiceType, cmd: str):
         pod_name = self.get_pod_name(tank_index, service)
-        if service == ServiceType.BITCOIN:
-            exec_cmd = ["/bin/bash", "-c", f"{cmd}"]
-        elif service == ServiceType.LIGHTNING:
-            exec_cmd = ["/bin/sh", "-c", f"{cmd}"]
+        exec_cmd = ["/bin/sh", "-c", f"{cmd}"]
         self.log.debug(f"Running {exec_cmd=:} on {tank_index=:}")
+        if service == ServiceType.BITCOIN:
+            container = BITCOIN_CONTAINER_NAME
+        if service == ServiceType.LIGHTNING:
+            container = LN_CONTAINER_NAME
+        if service == ServiceType.CIRCUITBREAKER:
+            container = LN_CB_CONTAINER_NAME
         result = stream(
             self.client.connect_get_namespaced_pod_exec,
             pod_name,
             self.namespace,
-            container=BITCOIN_CONTAINER_NAME
-            if service == ServiceType.BITCOIN
-            else LN_CONTAINER_NAME,
+            container=container,
             command=exec_cmd,
             stderr=True,
             stdin=False,
