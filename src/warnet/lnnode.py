@@ -7,11 +7,14 @@ from .status import RunningStatus
 
 
 class LNNode:
-    def __init__(self, warnet, tank, impl, backend: BackendInterface):
+    def __init__(self, warnet, tank, impl, image, backend: BackendInterface):
         self.warnet = warnet
         self.tank = tank
         assert impl == "lnd"
         self.impl = impl
+        self.image = "lightninglabs/lnd:v0.17.0-beta"
+        if image:
+            self.image = image
         self.backend = backend
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009

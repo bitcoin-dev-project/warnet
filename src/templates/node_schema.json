@@ -11,7 +11,8 @@
     "exporter": {"type": "boolean", "default": false},
     "collect_logs": {"type": "boolean", "default": false},
     "build_args": {"type": "string"},
-    "ln": {"type": "string"}
+    "ln": {"type": "string"},
+    "ln-image": {"type": "string"}
   },
   "additionalProperties": false,
   "oneOf": [
