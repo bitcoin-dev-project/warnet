@@ -1,4 +1,5 @@
 import argparse
+import base64
 import logging
 import os
 import pkgutil
@@ -7,6 +8,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -147,7 +149,9 @@ class Server:
                     time_elapsed += check_interval
 
             # If we've reached here, the lock wasn't acquired in time
-            raise Exception(f"Failed to acquire the build lock within {timeout} seconds, aborting RPC.")
+            raise Exception(
+                f"Failed to acquire the build lock within {timeout} seconds, aborting RPC."
+            )
 
         self.app.before_request(log_request)
         self.app.before_request(build_check)
@@ -161,6 +165,7 @@ class Server:
         # Scenarios
         self.jsonrpc.register(self.scenarios_available)
         self.jsonrpc.register(self.scenarios_run)
+        self.jsonrpc.register(self.scenarios_run_file)
         self.jsonrpc.register(self.scenarios_stop)
         self.jsonrpc.register(self.scenarios_list_running)
         # Networks
@@ -293,6 +298,61 @@ class Server:
             return scenario_list
         except Exception as e:
             msg = f"Error listing scenarios: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
+
+    def scenarios_run_file(
+        self, scenario_base64: str, additional_args: list[str], network: str = "warnet"
+    ) -> str:
+        scenario_path = None
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp_file:
+            scenario_path = temp_file.name
+
+            # decode base64 string to binary
+            scenario_bytes = base64.b64decode(scenario_base64)
+            # write binary to file
+            temp_file.write(scenario_bytes)
+
+        if not os.path.exists(scenario_path):
+            raise ServerError(f"Scenario not found at {scenario_path}.")
+
+        try:
+            run_cmd = (
+                [sys.executable, scenario_path]
+                + additional_args
+                + [f"--network={network}", f"--backend={self.backend}"]
+            )
+            self.logger.debug(f"Running {run_cmd}")
+
+            proc = subprocess.Popen(
+                run_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            def proc_logger():
+                while not proc.stdout:
+                    time.sleep(0.1)
+                for line in proc.stdout:
+                    self.logger.info(line.decode().rstrip())
+
+            t = threading.Thread(target=lambda: proc_logger())
+            t.daemon = True
+            t.start()
+
+            self.running_scenarios.append(
+                {
+                    "pid": proc.pid,
+                    "cmd": f"{scenario_path} {' '.join(additional_args)}",
+                    "proc": proc,
+                    "network": network,
+                }
+            )
+
+            return f"Running scenario with PID {proc.pid} in the background..."
+
+        except Exception as e:
+            msg = f"Error running scenario: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
@@ -455,7 +515,7 @@ class Server:
             bio = BytesIO()
             nx.write_graphml(graph, bio, named_key_ids=True)
             xml_data = bio.getvalue()
-            return xml_data.decode('utf-8')
+            return xml_data.decode("utf-8")
         except Exception as e:
             msg = f"Error generating graph: {e}"
             self.logger.error(msg)
