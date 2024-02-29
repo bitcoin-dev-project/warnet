@@ -13,7 +13,6 @@ from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
-from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
@@ -299,75 +298,6 @@ class KubernetesBackend(BackendInterface):
         TODO: implement this
         """
         pass
-
-    def warnet_from_deployment(self, warnet):
-        # Get pod details from Kubernetes deployment
-        pods_by_name = {}
-        pods = self.client.list_namespaced_pod(namespace=self.namespace)
-        for pod in pods.items:
-            pods_by_name[pod.metadata.name] = pod
-        for pod in pods.items:
-            tank = self.tank_from_deployment(pod, pods_by_name, warnet)
-            if tank is not None:
-                warnet.tanks.append(tank)
-        self.log.debug("reated warnet from deployment")
-
-    def tank_from_deployment(self, pod, pods_by_name, warnet):
-        rex = rf"{warnet.network_name}-{POD_PREFIX}-([0-9]{{6}})"
-        match = re.match(rex, pod.metadata.name)
-        if match is None:
-            return None
-
-        index = int(match.group(1))
-        tank = Tank(index, warnet.config_dir, warnet)
-
-        # Get IP address from pod status
-        tank._ipv4 = pod.status.pod_ip
-
-        # Extract version details from pod spec (assuming it's passed as environment variables)
-        for container in pod.spec.containers:
-            if container.name == BITCOIN_CONTAINER_NAME and container.env is None:
-                continue
-
-            c_repo = None
-            c_branch = None
-            for env in container.env:
-                match env.name:
-                    case "BITCOIN_VERSION":
-                        tank.version = env.value
-                    case "REPO":
-                        c_repo = env.value
-                    case "BRANCH":
-                        c_branch = env.value
-                if c_repo and c_branch:
-                    tank.version = f"{c_repo}#{c_branch}"
-        self.log.debug(f"Created tank {tank.index} from deployment: {tank=:}")
-
-        # check if we can find a corresponding ln pod
-        ln_pod = pods_by_name.get(self.get_pod_name(index, ServiceType.LIGHTNING))
-        if ln_pod:
-            ln_container = None
-            for container in ln_pod.spec.containers:
-                if container.name == LN_CONTAINER_NAME:
-                    ln_container = container
-                    break
-            if not ln_container:
-                raise Exception("Could not find LN container in pod")
-            impl = None
-            for env in ln_container.env:
-                if env.name == "LN_IMPL":
-                    impl = env.value
-                    break
-            if not impl:
-                raise Exception("Could not determine LN container implementation")
-            image = ln_container.image
-            tank.lnnode = LNNode(warnet, tank, impl, image, self)
-            tank.lnnode.ipv4 = ln_pod.status.pod_ip
-            self.log.debug(
-                f"Created lightning for tank {tank.index} from deployment {tank.lnnode=:}"
-            )
-
-        return tank
 
     def default_bitcoind_config_args(self, tank):
         defaults = default_bitcoin_conf_args()

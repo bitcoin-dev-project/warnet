@@ -141,12 +141,10 @@ class Warnet:
         config_dir = gen_config_dir(network_name)
         self = cls(config_dir, backend, network_name)
         self.network_name = network_name
-        self.container_interface.warnet_from_deployment(self)
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
         validate_graph_schema(self.node_schema, self.graph)
-        if self.tanks == []:
-            self.tanks_from_graph()
+        self.tanks_from_graph()
         return self
 
     @property

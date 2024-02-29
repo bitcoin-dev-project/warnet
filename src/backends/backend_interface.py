@@ -102,13 +102,6 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def warnet_from_deployment(self, warnet):
-        """
-        Rebuild a warnet object from an active deployment
-        """
-        raise NotImplementedError("This method should be overridden by child class")
-
-    @abstractmethod
     def wait_for_healthy_tanks(self, warnet, timeout=60) -> bool:
         """
         Wait for healthy status on all bitcoind nodes

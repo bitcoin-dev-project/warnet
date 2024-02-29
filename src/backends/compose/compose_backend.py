@@ -13,7 +13,6 @@ from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from docker.models.containers import Container
 from templates import TEMPLATES
-from warnet.lnnode import LNNode
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import (
@@ -470,42 +469,6 @@ class ComposeBackend(BackendInterface):
         )
         if tank.collect_logs:
             services[ln_container_name]["labels"].update({"collect_logs": True})
-
-    def warnet_from_deployment(self, warnet):
-        # Get tank names, versions and IP addresses from docker-compose
-        docker_compose_path = warnet.config_dir / DOCKER_COMPOSE_NAME
-        compose = None
-        with open(docker_compose_path) as file:
-            compose = yaml.safe_load(file)
-        for service_name in compose["services"]:
-            tank = self.tank_from_deployment(compose["services"][service_name], warnet)
-            if tank is not None:
-                warnet.tanks.append(tank)
-
-    def tank_from_deployment(self, service, warnet):
-        rex = rf"{warnet.network_name}-{CONTAINER_PREFIX_BITCOIND}-([0-9]{{6}})"
-        # Not a tank, maybe a scaled service
-        if "container_name" not in service:
-            return None
-        match = re.match(rex, service["container_name"])
-        if match is None:
-            return None
-
-        index = int(match.group(1))
-        tank = Tank(index, warnet.config_dir, warnet)
-        tank._ipv4 = service["networks"][tank.network_name]["ipv4_address"]
-        if "image" in service:
-            tank.version = service["image"].split(":")[1]
-        else:
-            tank.version = (
-                f"{service['build']['args']['REPO']}#{service['build']['args']['BRANCH']}"
-            )
-
-        labels = service.get("labels", {})
-        if "lnnode_impl" in labels:
-            tank.lnnode = LNNode(warnet, tank, labels["lnnode_impl"], labels["lnnode_image"], self)
-            tank.lnnode.ipv4 = labels.get("lnnode_ipv4_address")
-        return tank
 
     def get_ipv4_address(self, container: Container) -> str:
         """
