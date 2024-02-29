@@ -185,9 +185,17 @@ class ComposeBackend(BackendInterface):
         out = out[: stat["size"]]
         return out
 
+    def get_tank_ipv4(self, index: int) -> str:
+        c = self.get_container(index, ServiceType.BITCOIN)
+        if c:
+            return self.get_ipv4_address(c)
+        else:
+            return None
+
+
     def get_messages(self, a_index: int, b_index: int, bitcoin_network: str = "regtest"):
         # Find the ip of peer B
-        b_ipv4 = self.get_ipv4_address(self.get_container(b_index, ServiceType.BITCOIN))
+        b_ipv4 = self.get_tank_ipv4(b_index)
 
         # find the corresponding message capture folder
         # (which may include the internal port if connection is inbound)

@@ -507,6 +507,14 @@ class KubernetesBackend(BackendInterface):
     def get_service_name(self, tank_index: int) -> str:
         return f"bitcoind-{POD_PREFIX}-{tank_index:06d}"
 
+    def get_tank_ipv4(self, index: int) -> str:
+        pod_name = self.get_pod_name(index, ServiceType.BITCOIN)
+        pod = self.get_pod(pod_name)
+        if pod:
+            return pod.status.pod_ip
+        else:
+            return None
+
     def create_bitcoind_service(self, tank) -> client.V1Service:
         service_name = self.get_service_name(tank.index)
         self.log.debug(f"Creating bitcoind service {service_name} for tank {tank.index}")

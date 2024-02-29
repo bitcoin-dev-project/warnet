@@ -145,6 +145,8 @@ class Warnet:
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
         validate_graph_schema(self.node_schema, self.graph)
         self.tanks_from_graph()
+        for tank in self.tanks:
+            tank._ipv4 = self.container_interface.get_tank_ipv4(tank.index)
         return self
 
     @property
