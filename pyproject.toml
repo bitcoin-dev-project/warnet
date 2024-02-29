@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -33,6 +33,9 @@ dynamic = ["version"]
 [project.scripts]
 warnet = "warnet.server:run_server"
 warcli = "cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.ruff]
 extend-exclude = ["src/test_framework/*.py"]

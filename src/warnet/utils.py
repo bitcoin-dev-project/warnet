@@ -14,6 +14,7 @@ from pathlib import Path
 
 import networkx as nx
 from jsonschema import validate
+from schema import SCHEMA
 from templates import TEMPLATES
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
@@ -32,7 +33,7 @@ DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
 ]
-NODE_SCHEMA_PATH = TEMPLATES / "node_schema.json"
+NODE_SCHEMA_PATH = SCHEMA / "node_schema.json"
 
 
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
