@@ -455,8 +455,8 @@ def create_cycle_graph(
         graph.nodes[node]["bitcoin_config"] = conf_contents
         graph.nodes[node]["tc_netem"] = ""
         graph.nodes[node]["build_args"] = ""
-        graph.nodes[node]["exporter"] = ""
-        graph.nodes[node]["collect_logs"] = ""
+        graph.nodes[node]["exporter"] = False
+        graph.nodes[node]["collect_logs"] = False
 
     convert_unsupported_attributes(graph)
     return graph
