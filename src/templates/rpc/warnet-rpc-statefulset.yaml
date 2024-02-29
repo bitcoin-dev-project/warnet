@@ -20,4 +20,3 @@ spec:
         image: bitcoindevproject/warnet-rpc:latest
         ports:
         - containerPort: 9276
-
