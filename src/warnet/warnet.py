@@ -221,3 +221,16 @@ class Warnet:
 
     def wait_for_health(self):
         self.container_interface.wait_for_healthy_tanks(self)
+
+    def network_connected(self):
+        for tank in self.tanks:
+            peerinfo = json.loads(self.container_interface.get_bitcoin_cli(tank, "getpeerinfo"))
+            manuals = 0
+            for peer in peerinfo:
+                if peer["connection_type"] == "manual":
+                    manuals += 1
+            # Even if more edges are specifed, bitcoind only allows
+            # 8 manual outbound connections
+            if min(8, len(tank.init_peers)) > manuals:
+                return False
+        return True

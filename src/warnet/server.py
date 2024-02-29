@@ -14,7 +14,6 @@ import time
 import traceback
 from datetime import datetime
 from io import BytesIO
-from json import loads
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -570,24 +569,13 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-
     def network_connected(self, network: str = "warnet") -> bool:
         """
-        Indicate whether the <threshold> of graph edges is connected in <network>
+        Indicate whether all of the graph edges are connected in <network>
         """
         try:
             wn = Warnet.from_network(network, self.backend)
-            for tank in wn.tanks:
-                peerinfo = loads(wn.container_interface.get_bitcoin_cli(tank, "getpeerinfo"))
-                manuals = 0
-                for peer in peerinfo:
-                    if peer["connection_type"] == "manual":
-                        manuals += 1
-                # Even if more edges are specifed, bitcoind only allows
-                # 8 manual outbound connections
-                if min(8, len(tank.init_peers)) > manuals:
-                    return False
-            return True
+            return wn.network_connected()
         except Exception as e:
             self.logger.error(f"{e}")
             return False
