@@ -27,6 +27,12 @@ class LNNode:
     def status(self) -> RunningStatus:
         return self.warnet.container_interface.get_status(self.tank.index, ServiceType.LIGHTNING)
 
+    @property
+    def cb_status(self) -> RunningStatus:
+        if not self.cb:
+            return None
+        return self.warnet.container_interface.get_status(self.tank.index, ServiceType.CIRCUITBREAKER)
+
     @exponential_backoff(max_retries=20, max_delay=300)
     @handle_json
     def lncli(self, cmd) -> dict:

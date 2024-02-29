@@ -565,6 +565,8 @@ class Server:
                 status = {"tank_index": tank.index, "bitcoin_status": tank.status.name.lower()}
                 if tank.lnnode is not None:
                     status["lightning_status"] = tank.lnnode.status.name.lower()
+                    if tank.lnnode.cb is not None:
+                        status["circuitbreaker_status"] = tank.lnnode.cb_status.name.lower()
                 stats.append(status)
             return stats
         except Exception as e:

@@ -175,6 +175,12 @@ class TestBase:
                     if lightning_status not in stats:
                         stats[lightning_status] = 0
                     stats[lightning_status] += 1
+                if "circuitbreaker_status" in tank:
+                    stats["total"] += 1
+                    circuitbreaker_status = tank["circuitbreaker_status"]
+                    if circuitbreaker_status not in stats:
+                        stats[circuitbreaker_status] = 0
+                    stats[circuitbreaker_status] += 1
             print(f"Waiting for all tanks to reach '{target}': {stats}")
             # All tanks are running, proceed
             return target in stats and stats[target] == stats["total"]
