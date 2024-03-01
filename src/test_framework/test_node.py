@@ -134,6 +134,7 @@ class TestNode():
         self.process = None
         self.rpc_connected = False
         self.rpc = None
+        self.miniwallet = None
         self.url = None
         self.log = logging.getLogger('TestFramework.node%d' % i)
         self.cleanup_on_exit = True # Whether to kill the node when this object goes away
