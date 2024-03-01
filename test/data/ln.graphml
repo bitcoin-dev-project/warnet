@@ -20,14 +20,14 @@
         <data key="bitcoin_config">-uacomment=w1</data>
         <data key="ln">lnd</data>
         <data key="ln-image">lightninglabs/lnd:v0.15.5-beta</data>
-        <data key="ln-cb-image">carlakirkcohen/circuitbreaker:endorsement-experiment</data>
+        <data key="ln-cb-image">pinheadmz/circuitbreaker:278737d</data>
         <data key="collect_logs">true</data>
     </node>
     <node id="2">
         <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w2</data>
         <data key="ln">lnd</data>
-        <data key="ln-cb-image">carlakirkcohen/circuitbreaker:endorsement-experiment</data>
+        <data key="ln-cb-image">pinheadmz/circuitbreaker:278737d</data>
     </node>
     <node id="3">
         <data key="version">26.0</data>
