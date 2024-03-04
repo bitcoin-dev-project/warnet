@@ -2,6 +2,7 @@ import argparse
 import configparser
 import logging
 import os
+import pathlib
 import random
 import signal
 import sys
@@ -64,7 +65,7 @@ class WarnetTestFramework(BitcoinTestFramework):
             self.log.info(f"Adding TestNode {i} from tank {tank.index} with IP {ip}")
             node = TestNode(
                 i,
-                "",  # datadir path
+                pathlib.Path(),  # datadir path
                 chain=tank.bitcoin_network,
                 rpchost=ip,
                 timewait=60,
