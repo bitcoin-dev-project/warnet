@@ -15,6 +15,9 @@ This script can be run in the following way:
 ```bash
 DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
 ```
+
+You can optionally specify `LATEST=1` to also include the `latest` tag on docker hub.
+
 > [!important]
 > The `TAG` used **must** match the `SERVER_VERSION` found in [server.py](src/warnet/server.py]
 

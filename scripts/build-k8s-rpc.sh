@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Run with e.g.:
-# $ DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
+# $ DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 LATEST=1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
 
 # Fail on any step
 set -ex
@@ -10,9 +10,10 @@ set -ex
 BUILDER_NAME="warnet-rpc-builder"
 docker buildx create --name "$BUILDER_NAME" --use
 
-# Read DOCKER_REGISTRY from the environment
+# Read DOCKER_REGISTRY and TAG from the environment
 : "${DOCKER_REGISTRY?Need to set DOCKER_REGISTRY}"
 : "${TAG?Need to set TAG}"
+: "${LATEST:=0}"
 
 # Architectures for building
 ARCHS="linux/amd64,linux/arm64"
@@ -24,14 +25,21 @@ if [[ ! -f "$DOCKERFILE_PATH" ]]; then
   exit 1
 fi
 
-# Loop through each architecture to build and push
+# Determine the image tags
 IMAGE_FULL_NAME="$DOCKER_REGISTRY:$TAG"
+TAGS="--tag $IMAGE_FULL_NAME"
 
-# Use Buildx to build the image for the specified architecture
+# If LATEST=1, add the latest tag
+if [[ "$LATEST" -eq 1 ]]; then
+    LATEST_TAG_IMAGE="$DOCKER_REGISTRY:latest"
+    TAGS="$TAGS --tag $LATEST_TAG_IMAGE"
+fi
+
+# Use Buildx to build the image for the specified architectures and tag it accordingly
 docker buildx build --platform "$ARCHS" \
     --file "$DOCKERFILE_PATH" \
     --progress=plain \
-    --tag "$IMAGE_FULL_NAME" \
+    $TAGS \
     . --push
 
 docker buildx rm "$BUILDER_NAME"

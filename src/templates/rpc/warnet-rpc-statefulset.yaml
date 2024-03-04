@@ -17,7 +17,7 @@ spec:
       containers:
       - name: warnet-rpc
         imagePullPolicy: Always
-        image: bitcoindevproject/warnet-rpc:0.2
+        image: bitcoindevproject/warnet-rpc:latest
         ports:
         - containerPort: 9276
 
