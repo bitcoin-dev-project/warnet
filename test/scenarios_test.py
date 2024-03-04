@@ -16,10 +16,6 @@ base.wait_for_all_tanks_status(target="running")
 scenarios = base.rpc("scenarios_available")
 assert len(scenarios) == 4
 
-# Exponential backoff will repeat this command until it succeeds.
-# That's when we are ready for scenarios
-base.warcli("rpc 0 getblockcount")
-
 # Start scenario
 base.warcli("scenarios run miner_std --allnodes --interval=1")
 

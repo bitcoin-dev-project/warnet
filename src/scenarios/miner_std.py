@@ -31,6 +31,9 @@ class MinerStd(WarnetTestFramework):
         )
 
     def run_test(self):
+        while not self.warnet.network_connected():
+            sleep(1)
+
         current_miner = 0
 
         while True:

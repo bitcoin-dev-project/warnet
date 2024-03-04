@@ -10,8 +10,10 @@ from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.models.v1_pod import V1Pod
+from kubernetes.client.models.v1_service import V1Service
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
+from kubernetes.dynamic.exceptions import ResourceNotFoundError
 from kubernetes.stream import stream
 from warnet.status import RunningStatus
 from warnet.tank import Tank
@@ -117,6 +119,15 @@ class KubernetesBackend(BackendInterface):
         try:
             return cast(
                 V1Pod, self.client.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return None
+
+    def get_service(self, service_name: str) -> V1Service | None:
+        try:
+            return cast(
+                V1Service, self.client.read_namespaced_service(name=service_name, namespace=self.namespace)
             )
         except ApiException as e:
             if e.status == 404:
@@ -239,6 +250,7 @@ class KubernetesBackend(BackendInterface):
         bitcoin_network: str = "regtest",
     ):
         b_pod = self.get_pod(self.get_pod_name(b_index, ServiceType.BITCOIN))
+        b_service = self.get_service(self.get_service_name(b_index))
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         base_dir = f"/root/.bitcoin/{subdir}message_capture"
         cmd = f"ls {base_dir}"
@@ -253,7 +265,7 @@ class KubernetesBackend(BackendInterface):
         messages = []
 
         for dir_name in dirs:
-            if b_pod.status.pod_ip in dir_name:
+            if b_pod.status.pod_ip in dir_name or b_service.spec.cluster_ip in dir_name:
                 for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                     # Fetch the file contents from the container
                     file_path = f"{base_dir}/{dir_name}/{file}"
@@ -309,6 +321,9 @@ class KubernetesBackend(BackendInterface):
         defaults += f" -rpcport={tank.rpc_port}"
         defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
         defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
+        # connect to initial peers as defined in graph file
+        for dst_index in tank.init_peers:
+            defaults += f" -addnode={self.get_service_name(dst_index)}"
         return defaults
 
     def create_bitcoind_container(self, tank: Tank) -> client.V1Container:
@@ -431,9 +446,8 @@ class KubernetesBackend(BackendInterface):
                     name=f"warnet-tank-{tank.index:06d}",
                     namespace=MAIN_NAMESPACE,
                 )
-            except ApiException as e:
-                if e.status != 404:
-                    raise e
+            except ResourceNotFoundError:
+                continue
 
     def create_lnd_container(self, tank, bitcoind_service_name, volume_mounts) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
@@ -557,7 +571,7 @@ class KubernetesBackend(BackendInterface):
                 selector={"app": self.get_pod_name(tank.index, ServiceType.BITCOIN)},
                 publish_not_ready_addresses=True,
                 ports=[
-                    # TODO: do we need to add 18444 here too?
+                    client.V1ServicePort(port=18444, target_port=18444, name="p2p"),
                     client.V1ServicePort(port=tank.rpc_port, target_port=tank.rpc_port, name="rpc"),
                     client.V1ServicePort(
                         port=tank.zmqblockport, target_port=tank.zmqblockport, name="zmqblock"

@@ -132,6 +132,15 @@ def status(network: str):
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
+def connected(network: str):
+    """
+    Indicate whether the all of the edges in the gaph file are connected in <network>
+    """
+    print(rpc_call("network_connected", {"network": network}))
+
+
+@network.command()
+@click.option("--network", default="warnet", show_default=True)
 def export(network):
     """
     Export all data for sim-ln to subdirectory

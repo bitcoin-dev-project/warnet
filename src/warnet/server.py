@@ -175,6 +175,7 @@ class Server:
         self.jsonrpc.register(self.network_down)
         self.jsonrpc.register(self.network_info)
         self.jsonrpc.register(self.network_status)
+        self.jsonrpc.register(self.network_connected)
         self.jsonrpc.register(self.network_export)
         # Graph
         self.jsonrpc.register(self.graph_generate)
@@ -439,7 +440,6 @@ class Server:
                 wn = Warnet.from_network(network, self.backend)
                 wn.apply_network_conditions()
                 wn.wait_for_health()
-                wn.connect_edges()
                 self.logger.info(
                     f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
                 )
@@ -474,7 +474,6 @@ class Server:
                     wn.warnet_up()
                     wn.wait_for_health()
                     wn.apply_network_conditions()
-                    wn.connect_edges()
                 except Exception as e:
                     trace = traceback.format_exc()
                     self.logger.error(f"Unhandled exception starting warnet: {e}\n{trace}")
@@ -573,6 +572,17 @@ class Server:
             msg = f"Error getting network status: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
+
+    def network_connected(self, network: str = "warnet") -> bool:
+        """
+        Indicate whether all of the graph edges are connected in <network>
+        """
+        try:
+            wn = Warnet.from_network(network, self.backend)
+            return wn.network_connected()
+        except Exception as e:
+            self.logger.error(f"{e}")
+            return False
 
     def generate_deployment(self, graph_file: str, network: str = "warnet") -> str:
         """

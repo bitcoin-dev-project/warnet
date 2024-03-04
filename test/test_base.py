@@ -187,6 +187,13 @@ class TestBase:
 
         self.wait_for_predicate(check_status, timeout, interval)
 
+    # Ensure all tanks have all the connections they are supposed to have
+    # Block until all success
+    def wait_for_all_edges(self, timeout=20 * 60, interval=5):
+        def check_status():
+            return self.wait_for_rpc("network_connected", {"network": self.network_name})
+        self.wait_for_predicate(check_status, timeout, interval)
+
     def wait_for_all_scenarios(self):
         def check_scenarios():
             scns = self.rpc("scenarios_list_running")
