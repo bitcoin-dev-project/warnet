@@ -36,6 +36,12 @@ WEIGHTED_TAGS = [
 NODE_SCHEMA_PATH = SCHEMA / "node_schema.json"
 
 
+class NonErrorFilter(logging.Filter):
+
+    def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
+        return record.levelno <= logging.INFO
+
+
 def exponential_backoff(max_retries=5, base_delay=1, max_delay=32):
     """
     A decorator for exponential backoff.

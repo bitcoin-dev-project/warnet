@@ -1,6 +1,8 @@
 import argparse
 import base64
+import json
 import logging
+import logging.config
 import os
 import pkgutil
 import platform
@@ -14,8 +16,6 @@ import time
 import traceback
 from datetime import datetime
 from io import BytesIO
-from logging import StreamHandler
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import jsonschema
@@ -35,6 +35,7 @@ from warnet.warnet import Warnet
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
+LOGGING_CONFIG_PATH = Path("src/logging_config/config.json")
 
 
 class Server:
@@ -60,7 +61,6 @@ class Server:
         self.jsonrpc = JSONRPC(self.app, "/api")
 
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
-        self.logger: logging.Logger
         self.setup_global_exception_handler()
         self.setup_logging()
         self.setup_rpc()
@@ -101,28 +101,19 @@ class Server:
         return "warnet is healthy"
 
     def setup_logging(self):
-        # Ensure the directory exists
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
 
-        # Configure root logger
-        logging.basicConfig(
-            level=logging.DEBUG,
-            handlers=[
-                RotatingFileHandler(
-                    self.log_file_path, maxBytes=16_000_000, backupCount=3, delay=True
-                ),
-                StreamHandler(sys.stdout),
-            ],
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
-        # Disable urllib3.connectionpool logging
-        logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
+        with open(LOGGING_CONFIG_PATH) as f:
+            logging_config = json.load(f)
+
+        # Update log file path
+        logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
+
+        # Apply the config
+        logging.config.dictConfig(logging_config)
+
         self.logger = logging.getLogger("warnet")
         self.logger.info("Logging started")
-
-        if self.backend == "k8s":
-            # if using k8s as a backend, tone the logging down
-            logging.getLogger("kubernetes.client.rest").setLevel(logging.WARNING)
 
         def log_request():
             if not request.path.startswith("/api/"):
@@ -439,7 +430,7 @@ class Server:
                 wn.apply_network_conditions()
                 wn.wait_for_health()
                 self.logger.info(
-                    f"Resumed warnet named '{network}' from config dir {wn.config_dir}"
+                    f"Successfully resumed warnet named '{network}' from config dir {wn.config_dir}"
                 )
             except Exception as e:
                 trace = traceback.format_exc()
@@ -472,6 +463,7 @@ class Server:
                     wn.warnet_up()
                     wn.wait_for_health()
                     wn.apply_network_conditions()
+                    self.logger.info("Warnet started successfully")
                 except Exception as e:
                     trace = traceback.format_exc()
                     self.logger.error(f"Unhandled exception starting warnet: {e}\n{trace}")
