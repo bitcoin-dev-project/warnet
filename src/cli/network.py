@@ -122,9 +122,12 @@ def status(network: str):
     assert isinstance(result, list), "Result is not a list"  # Make mypy happy
     for tank in result:
         lightning_status = ""
+        circuitbreaker_status = ""
         if "lightning_status" in tank:
             lightning_status = f"\tLightning: {tank['lightning_status']}"
-        print(f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}")
+        if "circuitbreaker_status" in tank:
+            circuitbreaker_status = f"\tCircuit Breaker: {tank['circuitbreaker_status']}"
+        print(f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}{circuitbreaker_status}")
 
 
 @network.command()

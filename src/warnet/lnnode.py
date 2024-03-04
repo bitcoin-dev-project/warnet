@@ -7,7 +7,7 @@ from .status import RunningStatus
 
 
 class LNNode:
-    def __init__(self, warnet, tank, impl, image, backend: BackendInterface):
+    def __init__(self, warnet, tank, impl, image, backend: BackendInterface, cb=None):
         self.warnet = warnet
         self.tank = tank
         assert impl == "lnd"
@@ -16,6 +16,7 @@ class LNNode:
         if image:
             self.image = image
         self.backend = backend
+        self.cb = cb
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 
@@ -25,6 +26,12 @@ class LNNode:
     @property
     def status(self) -> RunningStatus:
         return self.warnet.container_interface.get_status(self.tank.index, ServiceType.LIGHTNING)
+
+    @property
+    def cb_status(self) -> RunningStatus:
+        if not self.cb:
+            return None
+        return self.warnet.container_interface.get_status(self.tank.index, ServiceType.CIRCUITBREAKER)
 
     @exponential_backoff(max_retries=20, max_delay=300)
     @handle_json

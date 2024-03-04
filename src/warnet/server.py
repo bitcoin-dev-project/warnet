@@ -21,6 +21,7 @@ from pathlib import Path
 import jsonschema
 import networkx as nx
 import scenarios
+from backends import ServiceType
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
@@ -180,6 +181,7 @@ class Server:
         self.jsonrpc.register(self.graph_validate)
         # Debug
         self.jsonrpc.register(self.generate_deployment)
+        self.jsonrpc.register(self.exec_run)
         # Server
         self.jsonrpc.register(self.server_stop)
         # Logs
@@ -563,6 +565,8 @@ class Server:
                 status = {"tank_index": tank.index, "bitcoin_status": tank.status.name.lower()}
                 if tank.lnnode is not None:
                     status["lightning_status"] = tank.lnnode.status.name.lower()
+                    if tank.lnnode.cb is not None:
+                        status["circuitbreaker_status"] = tank.lnnode.cb_status.name.lower()
                 stats.append(status)
             return stats
         except Exception as e:
@@ -611,6 +615,14 @@ class Server:
             msg = f"Error grepping logs using pattern {pattern}: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
+
+    def exec_run(self, index: int, service_type: int, cmd: str, network: str = "warnet") -> str:
+        """
+        Execute an arbitrary command in an arbitrary container,
+        identified by tank index and ServiceType
+        """
+        wn = Warnet.from_network(network, self.backend)
+        return wn.container_interface.exec_run(index, ServiceType(service_type), cmd)
 
 
 def run_server():

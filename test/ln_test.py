@@ -4,12 +4,19 @@ import json
 import os
 from pathlib import Path
 
+from backends import ServiceType
 from test_base import TestBase
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ln.graphml"
 
 base = TestBase()
 base.start_server()
+
+def get_cb_forwards(index):
+    cmd = "wget -q -O - localhost:9235/api/forwarding_history"
+    res = base.wait_for_rpc("exec_run", [index, ServiceType.CIRCUITBREAKER.value, cmd, base.network_name])
+    return json.loads(res)
+
 print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
 
@@ -33,6 +40,8 @@ base.warcli("rpc 0 getblockcount")
 base.warcli("scenarios run ln_init")
 base.wait_for_all_scenarios()
 
+print("\nEnsuring no circuit breaker forwards yet")
+assert len(get_cb_forwards(1)["forwards"]) == 0
 
 print("\nTest LN payment from 0 -> 2")
 inv = json.loads(base.warcli("lncli 2 addinvoice --amt=1234"))["payment_request"]
@@ -50,5 +59,8 @@ def check_invoices():
     else:
         return False
 base.wait_for_predicate(check_invoices)
+
+print("\nEnsuring circuit breaker tracked payment")
+assert len(get_cb_forwards(1)["forwards"]) == 1
 
 base.stop_server()
