@@ -17,9 +17,7 @@ def graph():
 @click.option("--version", type=str, default=DEFAULT_TAG)
 @click.option("--bitcoin_conf", type=Path)
 @click.option("--random", is_flag=True)
-def create(
-        number: int, outfile: Path, version: str, bitcoin_conf: Path, random: bool = False
-):
+def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random: bool = False):
     """
     Create a cycle graph with [n] nodes, and additionally include 7 extra random outbounds per node.
     Returns XML file as string with or without --outfile option
@@ -36,6 +34,7 @@ def create(
             },
         )
     )
+
 
 @graph.command()
 @click.argument("graph", type=Path)
