@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "simple": {
+      "format": " %(asctime)s - %(levelname)s - %(message)s",
+      "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+    },
+    "detailed": {
+      "format": " %(asctime)s - %(levelname)s - [%(module)s|L%(lineno)d] - %(message)s",
+      "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+    }
+  },
+  "filters": {
+    "no_errors": {
+      "()": "warnet.utils.NonErrorFilter"
+    }
+  },
+  "handlers": {
+    "stdout": {
+      "class": "logging.StreamHandler",
+      "level": "DEBUG",
+      "formatter": "simple",
+      "filters": ["no_errors"],
+      "stream": "ext://sys.stdout"
+    },
+    "stderr": {
+      "class": "logging.StreamHandler",
+      "level": "WARNING",
+      "formatter": "simple",
+      "stream": "ext://sys.stderr"
+    },
+    "file": {
+      "class": "logging.handlers.RotatingFileHandler",
+      "level": "DEBUG",
+      "formatter": "detailed",
+      "filename": "warnet.log",
+      "maxBytes": 16000000,
+      "backupCount": 3
+    }
+  },
+  "loggers": {
+    "root": {
+      "level": "DEBUG",
+      "handlers": [
+        "stdout",
+        "stderr",
+        "file"
+      ]
+    },
+    "urllib3.connectionpool": {
+        "level": "WARNING",
+        "propagate": 1
+    },
+
+    "kubernetes.client.rest": {
+        "level": "WARNING",
+        "propagate": 1
+    }
+  }
+}

@@ -62,12 +62,13 @@ class Tank:
 
     def parse_graph_node(self, node):
         # Dynamically parse properties based on the schema
+        graph_properties = {}
         for property, specs in self.warnet.node_schema["properties"].items():
             value = node.get(property, specs.get("default"))
             if property == "version":
                 self._parse_version()
             setattr(self, property, value)
-            logger.debug(f"{property}={value}")
+            graph_properties[property] = value
 
         if self.version and self.image:
             raise Exception(
@@ -83,7 +84,8 @@ class Tank:
 
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"{self=:}")
+
+        logger.debug(f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}")
 
     @classmethod
     def from_graph_node(cls, index, warnet, tank=None):
