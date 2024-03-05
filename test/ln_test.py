@@ -12,10 +12,14 @@ graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ln.graphml"
 base = TestBase()
 base.start_server()
 
+
 def get_cb_forwards(index):
     cmd = "wget -q -O - localhost:9235/api/forwarding_history"
-    res = base.wait_for_rpc("exec_run", [index, ServiceType.CIRCUITBREAKER.value, cmd, base.network_name])
+    res = base.wait_for_rpc(
+        "exec_run", [index, ServiceType.CIRCUITBREAKER.value, cmd, base.network_name]
+    )
     return json.loads(res)
+
 
 print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
@@ -51,6 +55,8 @@ print("\nPaying invoice from node 0...")
 print(base.warcli(f"lncli 0 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
+
+
 def check_invoices():
     invs = json.loads(base.warcli("lncli 2 listinvoices"))["invoices"]
     if len(invs) > 0 and invs[0]["state"] == "SETTLED":
@@ -58,6 +64,8 @@ def check_invoices():
         return True
     else:
         return False
+
+
 base.wait_for_predicate(check_invoices)
 
 print("\nEnsuring circuit breaker tracked payment")

@@ -81,6 +81,7 @@ class Server:
         """
         Use flask to log traceback of unhandled excpetions
         """
+
         @self.app.errorhandler(Exception)
         def handle_exception(e):
             trace = traceback.format_exc()
@@ -116,7 +117,7 @@ class Server:
 
         def log_request():
             if "healthy" in request.path:
-                return # No need to log all these
+                return  # No need to log all these
             if not request.path.startswith("/api/"):
                 self.logger.debug(request.path)
             else:
@@ -514,7 +515,6 @@ class Server:
             raise ServerError(message=msg) from e
 
     def graph_validate(self, graph_path: str) -> str:
-
         schema = load_schema()
         with open(graph_path) as f:
             graph = nx.parse_graphml(f.read(), node_type=int)

@@ -192,6 +192,7 @@ class TestBase:
     def wait_for_all_edges(self, timeout=20 * 60, interval=5):
         def check_status():
             return self.wait_for_rpc("network_connected", {"network": self.network_name})
+
         self.wait_for_predicate(check_status, timeout, interval)
 
     def wait_for_all_scenarios(self):

@@ -80,12 +80,16 @@ class Tank:
             impl = node["ln"]
             image = node.get("ln-image", None)
             cb_image = node.get("ln-cb-image", None)
-            self.lnnode = LNNode(self.warnet, self, impl, image, self.warnet.container_interface, cb_image)
+            self.lnnode = LNNode(
+                self.warnet, self, impl, image, self.warnet.container_interface, cb_image
+            )
 
         self.config_dir = self.warnet.config_dir / str(self.suffix)
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.debug(f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}")
+        logger.debug(
+            f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"
+        )
 
     @classmethod
     def from_graph_node(cls, index, warnet, tank=None):

@@ -40,7 +40,7 @@ GRAFANA_PROVISIONING = "grafana-provisioning"
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
 CONTAINER_PREFIX_CIRCUITBREAKER = "tank-ln-cb"
-LND_MOUNT_PATH = '/root/.lnd'
+LND_MOUNT_PATH = "/root/.lnd"
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -52,7 +52,7 @@ class ComposeBackend(BackendInterface):
         super().__init__(config_dir)
         self.network_name = network_name
         self.client: docker.DockerClient = docker.from_env()
-        self._apiclient: docker.APIClient = docker.APIClient(base_url='unix://var/run/docker.sock')
+        self._apiclient: docker.APIClient = docker.APIClient(base_url="unix://var/run/docker.sock")
 
     def build(self) -> bool:
         command = ["docker", "compose", "build"]
@@ -142,7 +142,7 @@ class ComposeBackend(BackendInterface):
             case _:
                 return RunningStatus.PENDING
 
-    def exec_run( self, tank_index: int, service: ServiceType, cmd: str) -> str:
+    def exec_run(self, tank_index: int, service: ServiceType, cmd: str) -> str:
         c = self.get_container(tank_index, service)
         result = c.exec_run(cmd=cmd)
         if result.exit_code != 0:
@@ -196,7 +196,6 @@ class ComposeBackend(BackendInterface):
         else:
             return None
 
-
     def get_messages(self, a_index: int, b_index: int, bitcoin_network: str = "regtest"):
         # Find the ip of peer B
         b_ipv4 = self.get_tank_ipv4(b_index)
@@ -205,9 +204,7 @@ class ComposeBackend(BackendInterface):
         # (which may include the internal port if connection is inbound)
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         base_dir = f"/root/.bitcoin/{subdir}message_capture"
-        dirs = self.exec_run(
-            a_index, ServiceType.BITCOIN, f"ls {base_dir}"
-        )
+        dirs = self.exec_run(a_index, ServiceType.BITCOIN, f"ls {base_dir}")
         dirs = dirs.splitlines()
         messages = []
         for dir_name in dirs:
@@ -380,7 +377,14 @@ class ComposeBackend(BackendInterface):
             # it's a git branch, building step is necessary
             repo, branch = tank.version.split("#")
             services[container_name]["image"] = f"{LOCAL_REGISTRY}:{branch}"
-            build_image(repo, branch, LOCAL_REGISTRY, branch, tank.DEFAULT_BUILD_ARGS + tank.build_args, arches="amd64")
+            build_image(
+                repo,
+                branch,
+                LOCAL_REGISTRY,
+                branch,
+                tank.DEFAULT_BUILD_ARGS + tank.build_args,
+                arches="amd64",
+            )
             self.copy_configs(tank)
         elif tank.image:
             # Pre-built custom image
@@ -489,29 +493,28 @@ class ComposeBackend(BackendInterface):
         if tank.collect_logs:
             services[ln_container_name]["labels"].update({"collect_logs": True})
         if tank.lnnode.cb is not None:
-            services[ln_container_name].update({
-                "volumes": [f"{ln_container_name}-data:{LND_MOUNT_PATH}"]
-            })
+            services[ln_container_name].update(
+                {"volumes": [f"{ln_container_name}-data:{LND_MOUNT_PATH}"]}
+            )
             services[ln_cb_container_name] = {
                 "container_name": ln_cb_container_name,
                 "image": tank.lnnode.cb,
                 "volumes": [f"{ln_container_name}-data:{LND_MOUNT_PATH}"],
-                "command": "--network=regtest " +
-                           f"--rpcserver={ln_container_name}:{tank.lnnode.rpc_port} " +
-                           f" --tlscertpath={LND_MOUNT_PATH}/tls.cert " +
-                           f" --macaroonpath={LND_MOUNT_PATH}/data/chain/bitcoin/regtest/admin.macaroon",
+                "command": "--network=regtest "
+                + f"--rpcserver={ln_container_name}:{tank.lnnode.rpc_port} "
+                + f" --tlscertpath={LND_MOUNT_PATH}/tls.cert "
+                + f" --macaroonpath={LND_MOUNT_PATH}/data/chain/bitcoin/regtest/admin.macaroon",
                 "networks": [tank.network_name],
                 "restart": "on-failure",
             }
             compose["volumes"].update({f"{ln_container_name}-data": None})
-
 
     def get_ipv4_address(self, container: Container) -> str:
         """
         Fetches the IPv4 address of a given container.
         """
         container_inspect = self.client.containers.get(container.id).attrs
-        return container_inspect['NetworkSettings']['Networks'][self.network_name]['IPAddress']
+        return container_inspect["NetworkSettings"]["Networks"][self.network_name]["IPAddress"]
 
     def get_container_health(self, container: Container):
         c_inspect = self._apiclient.inspect_container(container.name)

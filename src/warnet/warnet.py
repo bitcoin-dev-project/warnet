@@ -1,5 +1,5 @@
 """
-  Warnet is the top-level class for a simulated network.
+Warnet is the top-level class for a simulated network.
 """
 
 import base64
@@ -41,7 +41,9 @@ class Warnet:
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
         #       if we write a helper function that can text-wrap inside a column
-        template = "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
+        template = (
+            "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
+        )
         tanks_str = template % ("Index", "Version", "IPv4", "LN", "LN Image", "LN IPv4")
         for tank in self.tanks:
             tanks_str += template % (
@@ -83,7 +85,16 @@ class Warnet:
         ]
 
         # Tanks
-        tank_headers = ["Index", "Version", "IPv4", "bitcoin conf", "tc_netem", "LN", "LN Image", "LN IPv4"]
+        tank_headers = [
+            "Index",
+            "Version",
+            "IPv4",
+            "bitcoin conf",
+            "tc_netem",
+            "LN",
+            "LN Image",
+            "LN IPv4",
+        ]
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:

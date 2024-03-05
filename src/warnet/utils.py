@@ -37,7 +37,6 @@ NODE_SCHEMA_PATH = SCHEMA / "node_schema.json"
 
 
 class NonErrorFilter(logging.Filter):
-
     def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
         return record.levelno <= logging.INFO
 
@@ -86,7 +85,9 @@ def handle_json(func):
             parsed_result = json.loads(result)
             return parsed_result
         except json.JSONDecodeError as e:
-            logging.error(f"JSON parsing error in {func.__name__}: {e}. Undecodable result: {result}")
+            logging.error(
+                f"JSON parsing error in {func.__name__}: {e}. Undecodable result: {result}"
+            )
             raise
         except Exception as e:
             logger.error(f"Error in {func.__name__}: {e}")
@@ -403,10 +404,7 @@ def default_bitcoin_conf_args() -> str:
     return " ".join(conf_args)
 
 
-def create_cycle_graph(
-        n: int, version: str, bitcoin_conf: str | None, random_version: bool
-):
-
+def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):
     try:
         # Use nx.DiGraph() as base otherwise edges not always made in specific directions
         graph = nx.generators.cycle_graph(n, nx.DiGraph())
@@ -422,7 +420,13 @@ def create_cycle_graph(
         for _ in range(8):
             # Choose a random node to connect to
             # Make sure it's not the same node and they aren't already connected in either direction
-            potential_nodes = [ dst_node for dst_node in range(n) if dst_node != src_node and not graph.has_edge(dst_node, src_node) and not graph.has_edge(src_node, dst_node) ]
+            potential_nodes = [
+                dst_node
+                for dst_node in range(n)
+                if dst_node != src_node
+                and not graph.has_edge(dst_node, src_node)
+                and not graph.has_edge(src_node, dst_node)
+            ]
             if potential_nodes:
                 chosen_node = random.choice(potential_nodes)
                 graph.add_edge(src_node, chosen_node)
@@ -502,4 +506,3 @@ def validate_graph_schema(node_schema: dict, graph: nx.Graph):
     """
     for i in list(graph.nodes):
         validate(instance=graph.nodes[i], schema=node_schema)
-
