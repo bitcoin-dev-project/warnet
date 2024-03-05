@@ -20,7 +20,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=ref,event=pr
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable={{is_default_branch}}
           labels: |
             maintainer=bitcoindevproject
             org.opencontainers.image.title=warnet-rpc
