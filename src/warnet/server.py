@@ -33,8 +33,6 @@ from warnet.utils import (
 )
 from warnet.warnet import Warnet
 
-# Breaking API changes should bump/change this for k8s
-SERVER_VERSION = "0.1"
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
 
@@ -59,14 +57,14 @@ class Server:
         self.running_scenarios = []
 
         self.app = Flask(__name__)
-        self.jsonrpc = JSONRPC(self.app, f"/api/{SERVER_VERSION}")
+        self.jsonrpc = JSONRPC(self.app, "/api")
 
         self.log_file_path = os.path.join(self.basedir, "warnet.log")
         self.logger: logging.Logger
         self.setup_global_exception_handler()
         self.setup_logging()
         self.setup_rpc()
-        self.logger.info(f"Started server version {SERVER_VERSION}")
+        self.logger.info("Started server")
         self.app.add_url_rule("/-/healthy", view_func=self.healthy)
 
         # register a well known /-/healthy endpoint for liveness tests

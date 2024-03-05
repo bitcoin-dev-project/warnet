@@ -15,9 +15,7 @@ This script can be run in the following way:
 ```bash
 DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
 ```
-> [!important]
-> The `TAG` used **must** match the `SERVER_VERSION` found in [server.py](src/warnet/server.py]
 
-The versioning/tagging is so that the CLI will call the correct URL on the RPC server, and breaking changes will be obvious to the user as no RPCs will be found at the called URL.
+You can optionally specify `LATEST=1` to also include the `latest` tag on docker hub.
 
 Once a new image has been pushed, it should be referenced in [warnet-rpc-statefulset.yaml](../src/templates/warnet-rpc-statefulset.yaml) in the `image` field.
