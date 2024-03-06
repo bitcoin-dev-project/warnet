@@ -33,7 +33,7 @@ from .services.tor_da import TorDA
 
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
-TORRC_NAME = "torrc"
+TORRC_NAME = "torrc.relay"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
@@ -376,7 +376,7 @@ class ComposeBackend(BackendInterface):
         warnet_tor_dir = tank.config_dir / "tor"
         warnet_tor_dir.mkdir()
         shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
-        shutil.copyfile(TEMPLATES / "tor" / TORRC_NAME, warnet_tor_dir / TORRC_NAME)
+        shutil.copyfile(TEMPLATES / "tor" / TORRC_NAME, warnet_tor_dir / "torrc")
         shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
         set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
 
