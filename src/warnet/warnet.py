@@ -48,7 +48,7 @@ class Warnet:
         for tank in self.tanks:
             tanks_str += template % (
                 tank.index,
-                tank.version,
+                tank.version if tank.version is not None else tank.image,
                 tank.ipv4,
                 tank.lnnode.impl if tank.lnnode is not None else None,
                 tank.lnnode.image if tank.lnnode is not None else None,
@@ -98,7 +98,7 @@ class Warnet:
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [tank.index, tank.version, tank.ipv4, tank.bitcoin_config, tank.netem]
+            tank_data = [tank.index, tank.version if tank.version else tank.image, tank.ipv4, tank.bitcoin_config, tank.netem]
             if has_ln:
                 tank_data.extend(
                     [

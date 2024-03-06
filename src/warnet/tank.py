@@ -30,7 +30,7 @@ class Tank:
         self.warnet = warnet
         self.network_name = warnet.network_name
         self.bitcoin_network = warnet.bitcoin_network
-        self.version = "25.1"
+        self.version: str = ""
         self.image: str = ""
         self.bitcoin_config = ""
         self.conf_file = None
@@ -52,13 +52,17 @@ class Tank:
         self.init_peers = []
 
     def __str__(self) -> str:
-        return f"Tank(index: {self.index}, version: {self.version}, conf: {self.bitcoin_config}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
+        version_str = f"version: {self.version}" if self.version else f"image: {self.image}"
+        return f"Tank(index: {self.index}, {version_str}, conf: {self.bitcoin_config}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
 
-    def _parse_version(self):
-        if self.version not in SUPPORTED_TAGS or ("/" in self.version and "#" in self.version):
+    def _parse_version(self, version):
+        if not version:
+            return
+        if version not in SUPPORTED_TAGS and not ("/" in version and "#" in version):
             raise Exception(
                 f"Unsupported version: can't be generated from Docker images: {self.version}"
             )
+        self.version = version
 
     def parse_graph_node(self, node):
         # Dynamically parse properties based on the schema
@@ -66,7 +70,7 @@ class Tank:
         for property, specs in self.warnet.node_schema["properties"].items():
             value = node.get(property, specs.get("default"))
             if property == "version":
-                self._parse_version()
+                self._parse_version(value)
             setattr(self, property, value)
             graph_properties[property] = value
 
