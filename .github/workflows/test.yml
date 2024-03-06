@@ -91,8 +91,29 @@ jobs:
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
       - run: ./test/ln_test.py ${{matrix.backend}}
+  onion:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [compose]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions
+      - if: matrix.backend == 'k8s'
+        uses: extractions/setup-just@v1
+      - if: matrix.backend == 'k8s'
+        uses: medyagh/setup-minikube@master
+      - if: matrix.backend == 'k8s'
+        run: |
+          eval $(minikube docker-env)
+          pip install --upgrade pip
+          pip install -e .
+          just start
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+          kubectl port-forward svc/rpc 9276:9276 &
+      - run: ./test/onion_test.py ${{matrix.backend}}
   build:
-    needs: [scenarios, rpc, graph, ln] # Only run if the others complete successfully as it's slow
+    needs: [scenarios, rpc, graph, ln, onion] # Only run if the others complete successfully as it's slow
     runs-on: ubuntu-latest
     strategy:
       matrix:
