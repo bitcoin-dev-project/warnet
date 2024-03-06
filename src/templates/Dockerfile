@@ -72,11 +72,15 @@ RUN --mount=type=cache,target=/var/cache/apk sed -i 's/http\:\/\/dl-cdn.alpineli
     libzmq \
     shadow \
     sqlite-dev \
-    su-exec
+    su-exec \
+    tor
 
 COPY --from=build /opt/bitcoin /usr/local
 COPY src/templates/entrypoint.sh /entrypoint.sh
-COPY src/templates/tor/torrc /etc/tor/warnet-torr
+COPY src/templates/tor/torrc.relay /etc/tor/torrc
+
+RUN chown -R bitcoin:bitcoin /etc/tor
+RUN chown -R bitcoin /var/log/tor
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332

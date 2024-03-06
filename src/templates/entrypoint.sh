@@ -3,21 +3,10 @@ set -e
 
 # Only run this tor section if the TOR=1 env var is set
 if [ "${TOR:-0}" -eq 1 ]; then
-
-    # Add bitcoin user to tor group to read the auth cookie
-    usermod -a -G debian-tor bitcoin
-
-    # ===========Tor setup===========
-    # Use custom torrc for warnet
-    if [ "${WARNET:-0}" -eq 1 ]; then
-        mv /etc/tor/warnet-torrc /etc/tor/torrc
-    fi
+    # Add our own IP address into Tor configuration file
     echo "Address $(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)" >> /etc/tor/torrc
-    mkdir -p /home/debian-tor/.tor/keys
-    chown -R debian-tor:debian-tor /home/debian-tor
-    # Start tor in the background
-    su-exec debian-tor:debian-tor tor &
-    # ===============================
+    # Start tor in the background as bitcoin user
+    su-exec bitcoin:bitcoin tor -f /etc/tor/torrc &
 fi
 
 if [ "$(echo "$1" | cut -c1)" = "-" ]; then
