@@ -1,18 +1,19 @@
-FROM debian:bookworm-slim
-ENV DEBIAN_FRONTEND=noninteractive
+FROM alpine
 
-RUN apt-get update && apt-get install -y tor
+RUN apk add bash tor
 
-RUN mkdir -p /home/debian-tor/.tor/keys
-RUN chown -R debian-tor:debian-tor /home/debian-tor
+RUN mkdir -p /etc/tor/keys
+
 RUN mkdir -p /var/log/tor
-RUN chown -R debian-tor:debian-tor /var/log/tor
 
-COPY tor/tor-keys /home/debian-tor/.tor/keys
-RUN chown -R debian-tor:debian-tor /home/debian-tor/.tor/keys
-COPY tor/torrc.da /etc/tor/torrc
+COPY src/templates/tor/tor-keys /etc/tor/keys
+COPY src/templates/tor/torrc.da /etc/tor/torrc
+COPY src/templates/tor/tor-da-entrypoint.sh /entrypoint.sh
 
 EXPOSE 9050
 
-USER debian-tor
-CMD ["tor", "-f", "/etc/tor/torrc"]
+RUN chown -R tor /etc/tor
+RUN chown -R tor /var/log/tor
+USER tor
+
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,10 +1,10 @@
 # Common
 Log err stdout
-DataDirectory /home/debian-tor/.tor
+DataDirectory /etc/tor
 RunAsDaemon 0
 ControlPort 9051
 ORPort 9001 IPv4Only
-CookieAuthentication 1
+CookieAuthentication 0
 CookieAuthFileGroupReadable 1
 DataDirectoryGroupReadable 1
 
@@ -14,7 +14,7 @@ ClientUseIPv6 0
 ClientUseIPv4 1
 
 # Relay
-DirAuthority orport=9001 no-v2 v3ident=15E09A6BE3619593076D8324A2E1DBEEAD4539CD 100.20.15.18:9030 03E942A4F12D85B2CF7CBA4E910F321AE98EC233
+DirAuthority orport=9001 v3ident=15E09A6BE3619593076D8324A2E1DBEEAD4539CD 100.20.15.18:9030 03E942A4F12D85B2CF7CBA4E910F321AE98EC233
 AssumeReachable 1
 
 # Directory Authority
@@ -37,5 +37,3 @@ OverloadStatistics 0
 PaddingStatistics 0
 ConstrainedSockets 1
 ConstrainedSockSize 8192 Bytes
-
-Address 100.20.15.18
