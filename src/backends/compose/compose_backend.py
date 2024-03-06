@@ -29,6 +29,7 @@ from .services.loki.loki import Loki
 from .services.node_exporter import NodeExporter
 from .services.prometheus import Prometheus
 from .services.promtail.promtail import Promtail
+from .services.tor_da import TorDA
 
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
@@ -126,6 +127,16 @@ class ComposeBackend(BackendInterface):
         if len(self.client.containers.list(filters={"name": container_name})) == 0:
             return None
         return cast(Container, self.client.containers.get(container_name))
+
+    def tor_ready(self) -> bool:
+        container_name = "tor_da"
+        if len(self.client.containers.list(filters={"name": container_name})) == 0:
+            return False
+        container = cast(Container, self.client.containers.get(container_name))
+        if container is None:
+            return False
+        return self.get_container_health(container) == "healthy"
+
 
     def get_status(self, tank_index: int, service: ServiceType) -> RunningStatus:
         container = self.get_container(tank_index, service)
@@ -315,6 +326,9 @@ class ComposeBackend(BackendInterface):
             Promtail(warnet.network_name),
         ]
 
+        if warnet.tor:
+            services.append(TorDA(warnet.network_name))
+
         for service_obj in services:
             service_name = service_obj.__class__.__name__.lower()
             compose["services"][service_name] = service_obj.get_service()
@@ -394,13 +408,22 @@ class ComposeBackend(BackendInterface):
             # Pre-built regular release
             image = f"{DOCKER_REGISTRY}:{tank.version}"
             services[container_name]["image"] = image
+
+        environment =  {
+            "BITCOIN_ARGS": self.config_args(tank)
+        }
+        if tank.tor:
+            # Tor DA required in the network to be usable by tank
+            assert tank.warnet.tor
+            environment["TOR"] = "1"
+
         # Add common bitcoind service details
         services[container_name].update(
             {
                 "container_name": container_name,
                 # logging with json-file to support log shipping with promtail into loki
                 "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
-                "environment": {"BITCOIN_ARGS": self.config_args(tank)},
+                "environment": environment,
                 "networks": {
                     tank.network_name: {
                         "ipv4_address": f"{tank.ipv4}",
