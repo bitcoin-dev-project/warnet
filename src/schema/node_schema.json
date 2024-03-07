@@ -10,7 +10,7 @@
     "tc_netem": {"type": "string"},
     "exporter": {"type": "boolean", "default": false},
     "collect_logs": {"type": "boolean", "default": false},
-    "build_args": {"type": "string"},
+    "build_args": {"type": "string", "default": ""},
     "ln": {"type": "string"},
     "ln-image": {"type": "string"},
     "ln-cb-image": {"type": "string"}
