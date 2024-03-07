@@ -52,8 +52,11 @@
         "level": "WARNING",
         "propagate": 1
     },
-
     "kubernetes.client.rest": {
+        "level": "WARNING",
+        "propagate": 1
+    },
+    "werkzeug": {
         "level": "WARNING",
         "propagate": 1
     }
