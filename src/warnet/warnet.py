@@ -30,7 +30,6 @@ class Warnet:
         )
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
-        self.subnet: str = "100.0.0.0/8"
         self.graph: networkx.Graph | None = None
         self.graph_name = "graph.graphml"
         self.tanks: list[Tank] = []
@@ -41,25 +40,20 @@ class Warnet:
     def __str__(self) -> str:
         # TODO: bitcoin_conf and tc_netem can be added back in to this table
         #       if we write a helper function that can text-wrap inside a column
-        template = (
-            "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
-        )
-        tanks_str = template % ("Index", "Version", "IPv4", "LN", "LN Image", "LN IPv4")
+        template = "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "\n"
+        tanks_str = template % ("Index", "Version", "LN", "LN Image")
         for tank in self.tanks:
             tanks_str += template % (
                 tank.index,
                 tank.version,
-                tank.ipv4,
                 tank.lnnode.impl if tank.lnnode is not None else None,
                 tank.lnnode.image if tank.lnnode is not None else None,
-                tank.lnnode.ipv4 if tank.lnnode is not None else None,
             )
         return (
             f"Warnet:\n"
             f"\tTemp Directory: {self.config_dir}\n"
             f"\tBitcoin Network: {self.bitcoin_network}\n"
             f"\tDocker Network: {self.network_name}\n"
-            f"\tSubnet: {self.subnet}\n"
             f"\tGraph: {self.graph}\n"
             f"Tanks:\n{tanks_str}"
         )
@@ -71,7 +65,6 @@ class Warnet:
             "Temp dir",
             "Bitcoin network",
             "Docker network",
-            "Subnet",
             "Graph",
         ]
         repr["warnet"] = [
@@ -79,7 +72,6 @@ class Warnet:
                 str(self.config_dir),
                 self.bitcoin_network,
                 self.network_name,
-                self.subnet,
                 str(self.graph),
             ]
         ]
@@ -88,29 +80,26 @@ class Warnet:
         tank_headers = [
             "Index",
             "Version",
-            "IPv4",
             "bitcoin conf",
             "tc_netem",
             "LN",
             "LN Image",
-            "LN IPv4",
         ]
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [tank.index, tank.version, tank.ipv4, tank.bitcoin_config, tank.netem]
+            tank_data = [tank.index, tank.version, tank.bitcoin_config, tank.netem]
             if has_ln:
                 tank_data.extend(
                     [
                         tank.lnnode.impl if tank.lnnode else "",
                         tank.lnnode.image if tank.lnnode else "",
-                        tank.lnnode.ipv4 if tank.lnnode else "",
                     ]
                 )
             tanks.append(tank_data)
         if not has_ln:
             tank_headers.remove("LN")
-            tank_headers.remove("LN IPv4")
+            tank_headers.remove("LN Image")
 
         repr["tank_headers"] = tank_headers
         repr["tanks"] = tanks
@@ -156,8 +145,6 @@ class Warnet:
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
         validate_graph_schema(self.node_schema, self.graph)
         self.tanks_from_graph()
-        for tank in self.tanks:
-            tank._ipv4 = self.container_interface.get_tank_ipv4(tank.index)
         return self
 
     @property

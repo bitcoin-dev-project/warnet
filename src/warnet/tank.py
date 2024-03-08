@@ -10,7 +10,6 @@ from warnet.lnnode import LNNode
 from warnet.utils import (
     SUPPORTED_TAGS,
     exponential_backoff,
-    generate_ipv4_addr,
     sanitize_tc_netem_command,
 )
 
@@ -109,12 +108,6 @@ class Tank:
         if self._suffix is None:
             self._suffix = f"{self.index:06}"
         return self._suffix
-
-    @property
-    def ipv4(self):
-        if self._ipv4 is None:
-            self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
-        return self._ipv4
 
     @property
     def exporter_name(self):

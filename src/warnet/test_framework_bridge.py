@@ -61,13 +61,13 @@ class WarnetTestFramework(BitcoinTestFramework):
 
         self.warnet = Warnet.from_network(self.options.network, self.options.backend)
         for i, tank in enumerate(self.warnet.tanks):
-            ip = tank.ipv4
-            self.log.info(f"Adding TestNode {i} from tank {tank.index} with IP {ip}")
+            self.log.info(f"Adding TestNode {i} from tank {tank.index}")
+            tank_ip = self.warnet.container_interface.get_tank_ipv4(tank.index)
             node = TestNode(
                 i,
                 pathlib.Path(),  # datadir path
                 chain=tank.bitcoin_network,
-                rpchost=ip,
+                rpchost=tank_ip,
                 timewait=60,
                 timeout_factor=self.options.timeout_factor,
                 bitcoind=None,
@@ -76,7 +76,7 @@ class WarnetTestFramework(BitcoinTestFramework):
                 coverage_dir=self.options.coveragedir,
             )
             node.rpc = get_rpc_proxy(
-                f"http://{tank.rpc_user}:{tank.rpc_password}@{ip}:{tank.rpc_port}",
+                f"http://{tank.rpc_user}:{tank.rpc_password}@{tank_ip}:{tank.rpc_port}",
                 i,
                 timeout=60,
                 coveragedir=self.options.coveragedir,

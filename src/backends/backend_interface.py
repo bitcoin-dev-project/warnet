@@ -115,3 +115,11 @@ class BackendInterface(ABC):
         Wait for healthy status on all bitcoind nodes
         """
         raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def get_container_name(self, tank_index: int, service: ServiceType) -> str:
+        """
+        Get the container name of the service of a tank.
+        Must be suitable for making connections to.
+        """
+        raise NotImplementedError("This method should be overridden by child class")

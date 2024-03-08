@@ -31,17 +31,26 @@ from .services.node_exporter import NodeExporter
 from .services.prometheus import Prometheus
 from .services.promtail.promtail import Promtail
 
+# Docker config
+DEFAULT_SUBNET = "100.0.0.0/8"
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
+REMOTE_REGISTRY = "bitcoindevproject/bitcoin"
+LOCAL_REGISTRY = "warnet/bitcoin-core"
+
+# Docker image config
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
-DOCKER_REGISTRY = "bitcoindevproject/bitcoin"
-LOCAL_REGISTRY = "warnet/bitcoin-core"
-GRAFANA_PROVISIONING = "grafana-provisioning"
+
+# Continer config
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
 CONTAINER_PREFIX_CIRCUITBREAKER = "tank-ln-cb"
 LND_MOUNT_PATH = "/root/.lnd"
+
+# Logging config
+GRAFANA_PROVISIONING = "grafana-provisioning"
+
 
 logger = logging.getLogger("docker-interface")
 logging.getLogger("docker.utils.config").setLevel(logging.WARNING)
@@ -294,7 +303,7 @@ class ComposeBackend(BackendInterface):
             "networks": {
                 warnet.network_name: {
                     "name": warnet.network_name,
-                    "ipam": {"config": [{"subnet": warnet.subnet}]},
+                    "ipam": {"config": [{"subnet": DEFAULT_SUBNET}]},
                 }
             },
             "volumes": {"grafana-storage": None},
@@ -393,7 +402,7 @@ class ComposeBackend(BackendInterface):
             services[container_name]["image"] = image
         else:
             # Pre-built regular release
-            image = f"{DOCKER_REGISTRY}:{tank.version}"
+            image = f"{REMOTE_REGISTRY}:{tank.version}"
             services[container_name]["image"] = image
         # Add common bitcoind service details
         services[container_name].update(
@@ -402,11 +411,7 @@ class ComposeBackend(BackendInterface):
                 # logging with json-file to support log shipping with promtail into loki
                 "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
                 "environment": {"BITCOIN_ARGS": self.config_args(tank)},
-                "networks": {
-                    tank.network_name: {
-                        "ipv4_address": f"{tank.ipv4}",
-                    }
-                },
+                "networks": [tank.network_name],
                 "labels": {"warnet": "tank"},
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
@@ -432,7 +437,7 @@ class ComposeBackend(BackendInterface):
                 "image": "jvstein/bitcoin-prometheus-exporter:latest",
                 "container_name": tank.exporter_name,
                 "environment": {
-                    "BITCOIN_RPC_HOST": tank.ipv4,
+                    "BITCOIN_RPC_HOST": container_name,
                     "BITCOIN_RPC_PORT": tank.rpc_port,
                     "BITCOIN_RPC_USER": tank.rpc_user,
                     "BITCOIN_RPC_PASSWORD": tank.rpc_password,
@@ -456,10 +461,9 @@ class ComposeBackend(BackendInterface):
             "--bitcoin.node=bitcoind",
             f"--bitcoind.rpcuser={tank.rpc_user}",
             f"--bitcoind.rpcpass={tank.rpc_password}",
-            f"--bitcoind.rpchost={tank.ipv4}:{tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://{tank.ipv4}:{tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx=tcp://{tank.ipv4}:{tank.zmqtxport}",
-            f"--externalip={tank.lnnode.ipv4}",
+            f"--bitcoind.rpchost={bitcoin_container_name}:{tank.rpc_port}",
+            f"--bitcoind.zmqpubrawblock=tcp://{bitcoin_container_name}:{tank.zmqblockport}",
+            f"--bitcoind.zmqpubrawtx=tcp://{bitcoin_container_name}:{tank.zmqtxport}",
             f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
             f"--alias={tank.index}",
             f"--tlsextradomain={ln_container_name}",
@@ -468,15 +472,11 @@ class ComposeBackend(BackendInterface):
             "container_name": ln_container_name,
             "image": tank.lnnode.image,
             "command": " ".join(args),
-            "networks": {
-                tank.network_name: {
-                    "ipv4_address": f"{tank.lnnode.ipv4}",
-                }
-            },
+            "networks": [tank.network_name],
             "labels": {
                 "tank_index": tank.index,
                 "tank_container_name": bitcoin_container_name,
-                "tank_ipv4_address": tank.ipv4,
+                "tank_ipv4_address": bitcoin_container_name,
             },
             "depends_on": {bitcoin_container_name: {"condition": "service_healthy"}},
             "restart": "on-failure",
@@ -485,7 +485,7 @@ class ComposeBackend(BackendInterface):
             {
                 "labels": {
                     "lnnode_container_name": ln_container_name,
-                    "lnnode_ipv4_address": tank.lnnode.ipv4,
+                    "lnnode_ipv4_address": ln_container_name,
                     "lnnode_impl": tank.lnnode.impl,
                     "lnnode_image": tank.lnnode.image,
                 }
