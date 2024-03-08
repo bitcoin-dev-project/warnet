@@ -414,17 +414,27 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_stop(self, pid: int) -> str:
-        matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
-        if matching_scenarios:
-            matching_scenarios[0]["proc"].terminate()  # sends SIGTERM
-            # Remove from running list
-            self.running_scenarios = [sc for sc in self.running_scenarios if sc["pid"] != pid]
-            return f"Stopped scenario with PID {pid}."
-        else:
-            msg = f"Could not find scenario with PID {pid}"
-            self.logger.error(msg)
-            raise ServerError(message=msg)
+    def scenarios_stop(self, pid: str) -> str:
+        match pid:
+            case "all":
+                self.logger.debug("Recieved request to stop all running scenarios")
+                _all_running = self.running_scenarios
+                [sc["proc"].terminate() for sc in _all_running]
+                self.running_scenarios = []
+                return f"Stopped all running scenarios: {[sc['pid'] for sc in _all_running]}"
+            case _:
+                ipid = int(pid)
+                matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == ipid]
+
+                if matching_scenarios:
+                    matching_scenarios[0]["proc"].terminate()  # sends SIGTERM
+                    # Remove from running list
+                    self.running_scenarios = [sc for sc in self.running_scenarios if sc["pid"] != ipid]
+                    return f"Stopped scenario with PID {ipid}."
+
+                err_msg = f"Could not find scenario with PID {ipid}"
+                self.logger.error(err_msg)
+                raise ServerError(message=err_msg)
 
     def scenarios_list_running(self) -> list[dict]:
         running = [

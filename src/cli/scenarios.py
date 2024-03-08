@@ -93,10 +93,10 @@ def active():
 
 
 @scenarios.command()
-@click.argument("pid", type=int)
-def stop(pid: int):
+@click.argument("pid", type=str)
+def stop(pid: str):
     """
-    Stop scenario with PID <pid> from running
+    Stop scenario with PID <pid> from running. Use string "all" to stop all running scenarios.
     """
     params = {"pid": pid}
     print(rpc_call("scenarios_stop", params))
