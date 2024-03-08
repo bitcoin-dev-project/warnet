@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
+import atexit
+import multiprocessing
 import time
-from decimal import Decimal
 
 from test_framework.authproxy import JSONRPCException
 from test_framework.blocktools import COINBASE_MATURITY
 from test_framework.wallet import MiniWallet
 from warnet.test_framework_bridge import WarnetTestFramework
 
-BLOCKS_WAIT_TILL_SPENDABLE = 101
-MIN_UTXO_AMOUNT = Decimal(0.001)
 AVERAGE_BLOCK_TIME = 600
 
 
@@ -30,7 +29,7 @@ class DoubleTXRelay(WarnetTestFramework):
         )
 
     def generate_spendable_coins(self):
-        num_blocks = COINBASE_MATURITY + 100
+        num_blocks = COINBASE_MATURITY + 250
         self.log.info(f"Generating {num_blocks} blocks...")
         self.generate(self.miniwallet, num_blocks)
         self.log.info("Rescanning utxos")
@@ -45,7 +44,7 @@ class DoubleTXRelay(WarnetTestFramework):
                 from_node=self.nodes[0], utxos_to_spend=[utxo], num_outputs=num_outputs
             )
             self.log.info(f"Sent tx {i} of {len(confirmed_utxos)}: {tx['txid']}")
-        self.generate(self.miniwallet, 3)
+        self.generate(self.miniwallet, 6)
         self.miniwallet.rescan_utxos()
         self.log.info("Split complete")
         confirmed_utxos = self.miniwallet.get_utxos(confirmed_only=True)
@@ -77,6 +76,7 @@ class DoubleTXRelay(WarnetTestFramework):
 
                 utxo = confirmed_utxos.pop()
                 try:
+                    # self.miniwallet.send_self_transfer(from_node=self.nodes[0], utxo_to_spend=utxo)
                     self.miniwallet.send_self_transfer(from_node=node, utxo_to_spend=utxo)
                     tx_count += 1
                 except JSONRPCException as e:
@@ -97,15 +97,50 @@ class DoubleTXRelay(WarnetTestFramework):
                     interval_start_time = time.time()
                     tx_count = 0
 
-    def run_test(self):
-        self.log.info("Starting Double TX Relay Scenario")
+    def mine_blocks(self, miniwallet, stop_event):
+        while not stop_event.is_set():
+            start_time = time.time()
+            miniwallet.generate(1)
+            elapsed = time.time() - start_time
+            sleep_time = max(0, AVERAGE_BLOCK_TIME - elapsed)
+            time.sleep(sleep_time)
+
+    def run_test_multiprocessing(self):
+        self.log.info("Starting Double TX Relay Scenario with multiprocessing")
         self.miniwallet = MiniWallet(self.nodes[0])
         self.generate_spendable_coins()
         confirmed_utxos = self.split_utxos(num_outputs=1000)
-        self.produce_transactions(confirmed_utxos)
+        print("Waiting for chain tip to sync on all nodes...")
+        self.sync_blocks()
+        print("Chain tips synced")
+
+        stop_event = multiprocessing.Event()
+        tx_process = multiprocessing.Process(
+            target=self.produce_transactions, args=(confirmed_utxos,)
+        )
+        mine_process = multiprocessing.Process(
+            target=self.mine_blocks, args=(self.miniwallet, stop_event)
+        )
+
+        def cleanup_processes():
+            stop_event.set()
+            tx_process.terminate()
+            mine_process.terminate()
+            tx_process.join()
+            mine_process.join()
+
+        atexit.register(cleanup_processes)
+
+        tx_process.start()
+        mine_process.start()
+
+        tx_process.join()
+        mine_process.join()
+
+    def run_test(self):
+        self.run_test_multiprocessing()
 
 
 if __name__ == "__main__":
     print("Running Double TX Relay Scenario")
     DoubleTXRelay().main()
-
