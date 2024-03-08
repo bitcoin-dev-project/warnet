@@ -17,6 +17,7 @@ from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import (
     default_bitcoin_conf_args,
+    get_architecture,
     parse_raw_messages,
     set_execute_permission,
 )
@@ -383,7 +384,7 @@ class ComposeBackend(BackendInterface):
                 LOCAL_REGISTRY,
                 branch,
                 tank.DEFAULT_BUILD_ARGS + tank.build_args,
-                arches="amd64",
+                arches=get_architecture(),
             )
             self.copy_configs(tank)
         elif tank.image:

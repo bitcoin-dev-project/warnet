@@ -103,8 +103,8 @@ def get_architecture():
     """
     result = subprocess.run(["uname", "-m"], stdout=subprocess.PIPE)
     arch = result.stdout.decode("utf-8").strip()
-    if arch == "arm64":
-        arch = "aarch64"
+    if arch == "x86_64":
+        arch = "amd64"
     if arch is None:
         raise Exception("Failed to detect architecture.")
     return arch

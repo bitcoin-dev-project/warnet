@@ -119,7 +119,7 @@ class Server:
         def log_request():
             if "healthy" in request.path:
                 return  # No need to log all these
-            if not request.path.startswith("/api/"):
+            if not request.path.startswith("/api"):
                 self.logger.debug(request.path)
             else:
                 self.logger.debug(request.json)
