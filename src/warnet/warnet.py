@@ -38,32 +38,6 @@ class Warnet:
         self.backend = backend
         self.node_schema = load_schema()
 
-    def __str__(self) -> str:
-        # TODO: bitcoin_conf and tc_netem can be added back in to this table
-        #       if we write a helper function that can text-wrap inside a column
-        template = (
-            "\t" + "%-8.8s" + "%-25.24s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "%-18.18s" + "\n"
-        )
-        tanks_str = template % ("Index", "Version", "IPv4", "LN", "LN Image", "LN IPv4")
-        for tank in self.tanks:
-            tanks_str += template % (
-                tank.index,
-                tank.version if tank.version is not None else tank.image,
-                tank.ipv4,
-                tank.lnnode.impl if tank.lnnode is not None else None,
-                tank.lnnode.image if tank.lnnode is not None else None,
-                tank.lnnode.ipv4 if tank.lnnode is not None else None,
-            )
-        return (
-            f"Warnet:\n"
-            f"\tTemp Directory: {self.config_dir}\n"
-            f"\tBitcoin Network: {self.bitcoin_network}\n"
-            f"\tDocker Network: {self.network_name}\n"
-            f"\tSubnet: {self.subnet}\n"
-            f"\tGraph: {self.graph}\n"
-            f"Tanks:\n{tanks_str}"
-        )
-
     def _warnet_dict_representation(self) -> dict:
         repr = {}
         # Warnet

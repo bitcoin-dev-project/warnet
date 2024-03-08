@@ -51,10 +51,6 @@ class Tank:
         # indicating which tanks to initially connect to
         self.init_peers = []
 
-    def __str__(self) -> str:
-        version_str = f"version: {self.version}" if self.version else f"image: {self.image}"
-        return f"Tank(index: {self.index}, {version_str}, conf: {self.bitcoin_config}, conf file: {self.conf_file}, netem: {self.netem}, IPv4: {self._ipv4})"
-
     def _parse_version(self, version):
         if not version:
             return
