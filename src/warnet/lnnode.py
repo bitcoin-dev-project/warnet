@@ -20,9 +20,6 @@ class LNNode:
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 
-    def __str__(self):
-        return f"LNNode: index={self.tank.index}, ipv4={self.ipv4}, rpc_port={self.rpc_port}"
-
     @property
     def status(self) -> RunningStatus:
         return self.warnet.container_interface.get_status(self.tank.index, ServiceType.LIGHTNING)
