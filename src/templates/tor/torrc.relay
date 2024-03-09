@@ -1,6 +1,6 @@
 # Common
 Log err stdout
-DataDirectory /home/debian-tor/.tor
+DataDirectory /etc/tor
 RunAsDaemon 0
 ControlPort 9051
 CookieAuthentication 1

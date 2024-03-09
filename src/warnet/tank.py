@@ -47,6 +47,8 @@ class Tank:
         self._suffix = None
         self._ipv4 = None
         self._exporter_name = None
+        self.tor = False
+
         # index of integers imported from graph file
         # indicating which tanks to initially connect to
         self.init_peers = []

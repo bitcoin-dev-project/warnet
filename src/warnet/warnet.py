@@ -37,6 +37,7 @@ class Warnet:
         self.deployment_file: Path | None = None
         self.backend = backend
         self.node_schema = load_schema()
+        self.tor = False
 
     def _warnet_dict_representation(self) -> dict:
         repr = {}
@@ -109,6 +110,8 @@ class Warnet:
         self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int)
         validate_graph_schema(self.node_schema, self.graph)
         self.tanks_from_graph()
+        if "tor" in self.graph.graph and self.graph.graph["tor"]:
+            self.tor = True
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
 

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key attr.name="version" attr.type="string" for="node" id="version"/>
+  <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
+  <key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
+  <key attr.name="build_args" attr.type="string" for="node" id="build_args"/>
+  <key attr.name="exporter" attr.type="boolean" for="node" id="exporter"/>
+  <key attr.name="collect_logs" attr.type="boolean" for="node" id="collect_logs"/>
+  <key attr.name="image" attr.type="string" for="node" id="image"/>
+  <key attr.name="tor" attr.type="boolean" for="graph" id="tor"/>
+  <key attr.name="tor" attr.type="boolean" for="node" id="tor"/>
+  <graph edgedefault="directed">
+    <data key="tor">true</data>
+    <node id="0">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w0 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="1">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w1 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="2">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w2 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="3">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w3 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="4">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w4 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="5">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w5 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="6">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w6 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <node id="7">
+        <data key="image">pinheadmz/bitcoin:26.0_with_tor</data>
+        <data key="bitcoin_config">-uacomment=w7 -onion=localhost:9050</data>
+        <data key="tor">true</data>
+    </node>
+    <!-- no edges to start -->
+  </graph>
+</graphml>
