@@ -3,7 +3,6 @@ Tanks are containerized bitcoind nodes
 """
 
 import logging
-from pathlib import Path
 
 from backends import ServiceType
 from warnet.lnnode import LNNode
@@ -24,9 +23,8 @@ logger = logging.getLogger("tank")
 class Tank:
     DEFAULT_BUILD_ARGS = "--disable-tests --with-incompatible-bdb --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --enable-debug "
 
-    def __init__(self, index: int, config_dir: Path, warnet):
+    def __init__(self, index: int, warnet):
         self.index = index
-        self.config_dir = config_dir
         self.warnet = warnet
         self.network_name = warnet.network_name
         self.bitcoin_network = warnet.bitcoin_network
@@ -84,9 +82,6 @@ class Tank:
                 self.warnet, self, impl, image, self.warnet.container_interface, cb_image
             )
 
-        self.config_dir = self.warnet.config_dir / str(self.suffix)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-
         logger.debug(
             f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"
         )
@@ -95,11 +90,9 @@ class Tank:
     def from_graph_node(cls, index, warnet, tank=None):
         assert index is not None
         index = int(index)
-        config_dir = warnet.config_dir / str(f"{index:06}")
-        config_dir.mkdir(parents=True, exist_ok=True)
         self = tank
         if self is None:
-            self = cls(index, config_dir, warnet)
+            self = cls(index, warnet)
         node = warnet.graph.nodes[index]
         self.parse_graph_node(node)
         return self
