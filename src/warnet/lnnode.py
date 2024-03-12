@@ -5,6 +5,16 @@ from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
 from .status import RunningStatus
 
+LND_CONFIG_BASE = " ".join([
+    "--noseedbackup",
+    "--norest",
+    "--debuglevel=debug",
+    "--accept-keysend",
+    "--bitcoin.active",
+    "--bitcoin.regtest",
+    "--bitcoin.node=bitcoind",
+    "--maxpendingchannels=64"
+])
 
 class LNNode:
     def __init__(self, warnet, tank, impl, image, backend: BackendInterface, cb=None):
@@ -31,6 +41,21 @@ class LNNode:
         return self.warnet.container_interface.get_status(
             self.tank.index, ServiceType.CIRCUITBREAKER
         )
+
+    def get_conf(self, ln_container_name, tank_container_name) -> str:
+        if self.impl == "lnd":
+            conf = LND_CONFIG_BASE
+            conf += f" --bitcoind.rpcuser={self.tank.rpc_user}"
+            conf += f" --bitcoind.rpcpass={self.tank.rpc_password}"
+            conf += f" --bitcoind.rpchost={tank_container_name}:{self.tank.rpc_port}"
+            conf += f" --bitcoind.zmqpubrawblock=tcp://{tank_container_name}:{self.tank.zmqblockport}"
+            conf += f" --bitcoind.zmqpubrawtx=tcp://{tank_container_name}:{self.tank.zmqtxport}"
+            conf += f" --rpclisten=0.0.0.0:{self.rpc_port}"
+            conf += f" --alias={self.tank.index}"
+            conf += f" --externalhosts={ln_container_name}"
+            conf += f" --tlsextradomain={ln_container_name}"
+            return conf
+        return ""
 
     @exponential_backoff(max_retries=20, max_delay=300)
     @handle_json

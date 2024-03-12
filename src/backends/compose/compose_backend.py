@@ -421,28 +421,11 @@ class ComposeBackend(BackendInterface):
         ln_cb_container_name = self.get_container_name(tank.index, ServiceType.CIRCUITBREAKER)
         bitcoin_container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
-        args = [
-            "--noseedbackup",
-            "--norest",
-            "--debuglevel=debug",
-            "--accept-keysend",
-            "--bitcoin.active",
-            "--bitcoin.regtest",
-            "--bitcoin.node=bitcoind",
-            f"--bitcoind.rpcuser={tank.rpc_user}",
-            f"--bitcoind.rpcpass={tank.rpc_password}",
-            f"--bitcoind.rpchost={tank.ipv4}:{tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock=tcp://{tank.ipv4}:{tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx=tcp://{tank.ipv4}:{tank.zmqtxport}",
-            f"--externalip={tank.lnnode.ipv4}",
-            f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
-            f"--alias={tank.index}",
-            f"--tlsextradomain={ln_container_name}",
-        ]
+        args = tank.lnnode.get_conf(ln_container_name, bitcoin_container_name)
         services[ln_container_name] = {
             "container_name": ln_container_name,
             "image": tank.lnnode.image,
-            "command": " ".join(args),
+            "command": args,
             "networks": {
                 tank.network_name: {
                     "ipv4_address": f"{tank.lnnode.ipv4}",
