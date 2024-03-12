@@ -15,7 +15,6 @@ from pathlib import Path
 import networkx as nx
 from jsonschema import validate
 from schema import SCHEMA
-from templates import TEMPLATES
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
@@ -386,22 +385,6 @@ def remove_version_prefix(version_str):
 def set_execute_permission(file_path):
     current_permissions = os.stat(file_path).st_mode
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
-
-def default_bitcoin_conf_args() -> str:
-    default_conf: Path = TEMPLATES / "bitcoin.conf"
-
-    with default_conf.open("r") as f:
-        defaults = parse_bitcoin_conf(f.read())
-
-    conf_args = []
-
-    for kvs in defaults.values():
-        # Skip section names, just focus on key-value pairs
-        for key, value in kvs:
-            conf_args.append(f"-{key}={value}")
-
-    return " ".join(conf_args)
 
 
 def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):

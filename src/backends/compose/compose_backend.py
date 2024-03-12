@@ -16,7 +16,6 @@ from templates import TEMPLATES
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import (
-    default_bitcoin_conf_args,
     get_architecture,
     parse_raw_messages,
 )
@@ -340,24 +339,6 @@ class ComposeBackend(BackendInterface):
             dirs_exist_ok=True,
         )
 
-    def config_args(self, tank: Tank):
-        args = self.default_config_args(tank)
-        if tank.bitcoin_config is not None:
-            args = f"{args} -{tank.bitcoin_config.replace(',', ' -')}"
-        return args
-
-    def default_config_args(self, tank):
-        defaults = default_bitcoin_conf_args()
-        defaults += f" -rpcuser={tank.rpc_user}"
-        defaults += f" -rpcpassword={tank.rpc_password}"
-        defaults += f" -rpcport={tank.rpc_port}"
-        defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
-        defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
-        # connect to initial peers as defined in graph file
-        for dst_index in tank.init_peers:
-            defaults += f" -addnode={self.get_container_name(dst_index, ServiceType.BITCOIN)}"
-        return defaults
-
     def add_services(self, tank: Tank, compose):
         services = compose["services"]
         assert tank.index is not None
@@ -385,13 +366,17 @@ class ComposeBackend(BackendInterface):
             # Pre-built regular release
             image = f"{DOCKER_REGISTRY}:{tank.version}"
             services[container_name]["image"] = image
+
+        peers = [self.get_container_name(dst_index, ServiceType.BITCOIN) for dst_index in tank.init_peers]
+        args = tank.get_bitcoin_conf(peers)
+
         # Add common bitcoind service details
         services[container_name].update(
             {
                 "container_name": container_name,
                 # logging with json-file to support log shipping with promtail into loki
                 "logging": {"driver": "json-file", "options": {"max-size": "10m"}},
-                "environment": {"BITCOIN_ARGS": self.config_args(tank)},
+                "environment": {"BITCOIN_ARGS": args},
                 "networks": {
                     tank.network_name: {
                         "ipv4_address": f"{tank.ipv4}",
