@@ -19,7 +19,6 @@ from warnet.utils import (
     default_bitcoin_conf_args,
     get_architecture,
     parse_raw_messages,
-    set_execute_permission,
 )
 
 from .services import SERVICES
@@ -359,14 +358,6 @@ class ComposeBackend(BackendInterface):
             defaults += f" -addnode={self.get_container_name(dst_index, ServiceType.BITCOIN)}"
         return defaults
 
-    def copy_configs(self, tank):
-        warnet_tor_dir = tank.config_dir / "tor"
-        warnet_tor_dir.mkdir()
-        shutil.copyfile(TEMPLATES / DOCKERFILE_NAME, tank.config_dir / DOCKERFILE_NAME)
-        shutil.copyfile(TEMPLATES / "tor" / TORRC_NAME, warnet_tor_dir / TORRC_NAME)
-        shutil.copyfile(TEMPLATES / ENTRYPOINT_NAME, tank.config_dir / ENTRYPOINT_NAME)
-        set_execute_permission(tank.config_dir / ENTRYPOINT_NAME)
-
     def add_services(self, tank: Tank, compose):
         services = compose["services"]
         assert tank.index is not None
@@ -386,7 +377,6 @@ class ComposeBackend(BackendInterface):
                 tank.DEFAULT_BUILD_ARGS + tank.build_args,
                 arches=get_architecture(),
             )
-            self.copy_configs(tank)
         elif tank.image:
             # Pre-built custom image
             image = tank.image
