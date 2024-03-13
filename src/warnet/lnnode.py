@@ -17,16 +17,14 @@ LND_CONFIG_BASE = " ".join([
 ])
 
 class LNNode:
-    def __init__(self, warnet, tank, impl, image, backend: BackendInterface, cb=None):
+    def __init__(self, warnet, tank, backend: BackendInterface, options):
         self.warnet = warnet
         self.tank = tank
-        assert impl == "lnd"
-        self.impl = impl
-        self.image = "lightninglabs/lnd:v0.17.0-beta"
-        if image:
-            self.image = image
         self.backend = backend
-        self.cb = cb
+        self.impl = options["impl"]
+        self.image = options["ln_image"]
+        self.cb = options["cb_image"]
+        self.ln_config = options["ln_config"]
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 
@@ -54,6 +52,7 @@ class LNNode:
             conf += f" --alias={self.tank.index}"
             conf += f" --externalhosts={ln_container_name}"
             conf += f" --tlsextradomain={ln_container_name}"
+            conf += " " + self.ln_config
             return conf
         return ""
 

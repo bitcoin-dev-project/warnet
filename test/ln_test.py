@@ -44,6 +44,13 @@ base.warcli("rpc 0 getblockcount")
 base.warcli("scenarios run ln_init")
 base.wait_for_all_scenarios()
 
+print("\nEnsuring channel policy settings")
+chans = json.loads(base.warcli("lncli 1 describegraph"))["edges"]
+for chan in chans:
+    # node_1 or node_2 is tank 1 with its non-default --bitcoin.timelockdelta=20
+    if chan["node1_policy"]["time_lock_delta"] != 20:
+        assert chan["node2_policy"]["time_lock_delta"] == 20
+
 print("\nEnsuring no circuit breaker forwards yet")
 assert len(get_cb_forwards(1)["forwards"]) == 0
 
@@ -55,8 +62,6 @@ print("\nPaying invoice from node 0...")
 print(base.warcli(f"lncli 0 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
-
-
 def check_invoices():
     invs = json.loads(base.warcli("lncli 2 listinvoices"))["invoices"]
     if len(invs) > 0 and invs[0]["state"] == "SETTLED":
@@ -64,8 +69,6 @@ def check_invoices():
         return True
     else:
         return False
-
-
 base.wait_for_predicate(check_invoices)
 
 print("\nEnsuring circuit breaker tracked payment")

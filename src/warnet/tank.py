@@ -87,12 +87,13 @@ class Tank:
 
         # Special handling for complex properties
         if "ln" in node:
-            impl = node["ln"]
-            image = node.get("ln-image", None)
-            cb_image = node.get("ln-cb-image", None)
-            self.lnnode = LNNode(
-                self.warnet, self, impl, image, self.warnet.container_interface, cb_image
-            )
+            options = {
+                "impl": node["ln"],
+                "ln_image": node.get("ln_image", "lightninglabs/lnd:v0.17.0-beta"),
+                "cb_image": node.get("ln_cb_image", None),
+                "ln_config": node.get("ln_config", "")
+            }
+            self.lnnode = LNNode(self.warnet, self, self.warnet.container_interface, options)
 
         logger.debug(
             f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"
