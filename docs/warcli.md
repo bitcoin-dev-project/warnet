@@ -10,6 +10,9 @@ to simplify default operation.
 
 Execute `warcli --help` or `warcli help` to see a list of command categories.
 
+Help text is provided, with optional parameters in [square brackets] and required
+parameters in <angle brackets>.
+
 `warcli` commands are organized in a hierarchy of categories and subcommands.
 
 ## API Commands
@@ -20,201 +23,202 @@ Fetch the Bitcoin Core debug log from \<node> in [network]
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| node    | Int    | True       |           |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| node    | Int    | yes        |           |
+| network | String |            | "warnet"  |
 
 ### `warcli grep-logs`
-Grep combined logs via fluentd using regex [pattern]
+Grep combined logs via fluentd using regex \<pattern>
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| pattern | String | True       |           |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| pattern | String | yes        |           |
+| network | String |            | "warnet"  |
 
 ### `warcli help`
-Display help information for the given command.
+Display help information for the given [command] (and sub-command).
     If no command is given, display help for the main CLI.
 
 options:
 | name     | type   | required   | default   |
 |----------|--------|------------|-----------|
-| commands | String | False      |           |
-| help     | Bool   | False      | False     |
+| commands | String |            |           |
 
 ### `warcli lncli`
-Call lightning cli \<command> on \<node> in \<--network>
+Call lightning cli \<command> on \<node> in [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| node    | Int    | True       |           |
-| command | String | True       |           |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| node    | Int    | yes        |           |
+| command | String | yes        |           |
+| network | String |            | "warnet"  |
 
 ### `warcli messages`
-Fetch messages sent between \<node_a> and \<node_b> in \<network>
+Fetch messages sent between \<node_a> and \<node_b> in [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| node_a  | Int    | True       |           |
-| node_b  | Int    | True       |           |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| node_a  | Int    | yes        |           |
+| node_b  | Int    | yes        |           |
+| network | String |            | "warnet"  |
 
 ### `warcli rpc`
-Call bitcoin-cli \<method> \<params> on \<node> in \<--network>
+Call bitcoin-cli \<method> [params] on \<node> in [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| node    | Int    | True       |           |
-| method  | String | False      |           |
-| params  | String | False      | ()        |
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| node    | Int    | yes        |           |
+| method  | String | yes        |           |
+| params  | String |            |           |
+| network | String |            | "warnet"  |
 
 ### `warcli stop`
 Stop warnet.
 
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| help   | Bool   | False      | False     |
 
 ## Debug
 
 ### `warcli debug generate-compose`
-Generate the docker-compose file for a given \<graph_file> and \<--network> (default: "warnet") name and return it.
+Generate the docker-compose file for a given \<graph_file> and [network] and return it.
 
 options:
 | name       | type   | required   | default   |
 |------------|--------|------------|-----------|
-| graph_file | String | True       |           |
-| network    | String | False      | warnet    |
-| help       | Bool   | False      | False     |
+| graph_file | String | yes        |           |
+| network    | String |            | "warnet"  |
 
 ## Graph
 
 ### `warcli graph create`
-Create a graph file of type random AS graph with [params]
+Create a cycle graph with \<n> nodes, and additionally include 7 extra random outbounds per node.
+    Returns XML file as string with or without --outfile option
 
 options:
-| name         | type   | required   |   default |
+| name         | type   | required   | default   |
 |--------------|--------|------------|-----------|
-| params       | String | False      |           |
-| outfile      | Func   | False      |           |
-| version      | String | False      |        26 |
-| bitcoin_conf | Func   | False      |           |
-| random       | Bool   | False      |         0 |
-| help         | Bool   | False      |         0 |
+| number       | Int    | yes        |           |
+| outfile      | Path   |            |           |
+| version      | String |            | "26.0"    |
+| bitcoin_conf | Path   |            |           |
+| random       | Bool   |            | False     |
+
+### `warcli graph validate`
+Validate a \<graph file> against the schema.
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| graph  | Path   | yes        |           |
 
 ## Image
 
 ### `warcli image build`
-Build bitcoind and bitcoin-cli from \<repo>/\<branch> and deploy to \<registry>
-    This requires docker and buildkit to be enabled.
+Build bitcoind and bitcoin-cli from \<repo>/\<branch> as \<registry>:\<tag>.
+    Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
 
 options:
 | name       | type   | required   | default   |
 |------------|--------|------------|-----------|
-| registry   | String | True       |           |
-| repo       | String | True       |           |
-| branch     | String | True       |           |
-| build_args | String | False      |           |
-| arches     | String | False      |           |
-| help       | Bool   | False      | False     |
+| repo       | String | yes        |           |
+| branch     | String | yes        |           |
+| registry   | String | yes        |           |
+| tag        | String | yes        |           |
+| build_args | String |            |           |
+| arches     | String |            |           |
+| action     | String |            |           |
 
 ## Network
 
-### `warcli network down`
-Bring down a running warnet named \<--network> (default: "warnet").
+### `warcli network connected`
+Indicate whether the all of the edges in the gaph file are connected in [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| network | String |            | "warnet"  |
+
+### `warcli network down`
+Bring down a running warnet named [network]
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| network | String |            | "warnet"  |
 
 ### `warcli network export`
-Export all data for sim-ln to subdirectory
+Export all [network] data for sim-ln to subdirectory
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| network | String |            | "warnet"  |
 
 ### `warcli network info`
-Get info about a warnet named \<--network> (default: "warnet").
+Get info about a warnet named [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| network | String |            | "warnet"  |
 
 ### `warcli network start`
-Start a warnet with topology loaded from a \<graph_file> into \<--network> (default: "warnet")
+Start a warnet with topology loaded from a \<graph_file> into [network]
 
 options:
 | name       | type   | required   | default                    |
 |------------|--------|------------|----------------------------|
-| graph_file | Path   | False      | src/graphs/default.graphml |
-| force      | Bool   | False      | False                      |
-| network    | String | False      | warnet                     |
-| help       | Bool   | False      | False                      |
+| graph_file | Path   |            | src/graphs/default.graphml |
+| force      | Bool   |            | False                      |
+| network    | String |            | "warnet"                   |
 
 ### `warcli network status`
-Get status of a warnet named \<--network> (default: "warnet").
+Get status of a warnet named [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| network | String |            | "warnet"  |
 
 ### `warcli network up`
-Bring up a previously-stopped warnet named \<--network> (default: "warnet").
+Bring up a previously-stopped warnet named [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
-| network | String | False      | warnet    |
-| help    | Bool   | False      | False     |
+| network | String |            | "warnet"  |
 
 ## Scenarios
 
 ### `warcli scenarios active`
 List running scenarios "name": "pid" pairs
 
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| help   | Bool   | False      | False     |
 
 ### `warcli scenarios available`
 List available scenarios in the Warnet Test Framework
 
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| help   | Bool   | False      | False     |
 
 ### `warcli scenarios run`
-Run \<scenario> from the Warnet Test Framework on \<--network> with optional arguments
+Run \<scenario> from the Warnet Test Framework on [network] with optional arguments
 
 options:
-| name            | type        | required   | default   |
-|-----------------|-------------|------------|-----------|
-| scenario        | String      | True       |           |
-| additional_args | Unprocessed | False      |           |
-| network         | String      | False      | warnet    |
-| help            | Bool        | False      | False     |
+| name            | type   | required   | default   |
+|-----------------|--------|------------|-----------|
+| scenario        | String | yes        |           |
+| additional_args | String |            |           |
+| network         | String |            | "warnet"  |
+
+### `warcli scenarios run-file`
+Run \<scenario_path> from the Warnet Test Framework on [network] with optional arguments
+
+options:
+| name            | type   | required   | default   |
+|-----------------|--------|------------|-----------|
+| scenario_path   | String | yes        |           |
+| additional_args | String |            |           |
+| network         | String |            | "warnet"  |
 
 ### `warcli scenarios stop`
 Stop scenario with PID \<pid> from running
@@ -222,5 +226,6 @@ Stop scenario with PID \<pid> from running
 options:
 | name   | type   | required   | default   |
 |--------|--------|------------|-----------|
-| pid    | Int    | True       |           |
-| help   | Bool   | False      | False     |
+| pid    | Int    | yes        |           |
+
+

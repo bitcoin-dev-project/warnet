@@ -26,7 +26,7 @@ cli.add_command(scenarios)
 @click.pass_context
 def help_command(ctx, commands):
     """
-    Display help information for the given command.
+    Display help information for the given [command] (and sub-command).
     If no command is given, display help for the main CLI.
     """
     if not commands:
@@ -64,7 +64,7 @@ cli.add_command(help_command)
 @click.option("--network", default="warnet", show_default=True)
 def rpc(node, method, params, network):
     """
-    Call bitcoin-cli <method> <params> on <node> in <--network>
+    Call bitcoin-cli <method> [params] on <node> in [network]
     """
     print(
         rpc_call(
@@ -79,7 +79,7 @@ def rpc(node, method, params, network):
 @click.option("--network", default="warnet", show_default=True, type=str)
 def lncli(node: int, command: tuple, network: str):
     """
-    Call lightning cli <command> on <node> in <--network>
+    Call lightning cli <command> on <node> in [network]
     """
     print(
         rpc_call(
@@ -105,7 +105,7 @@ def debug_log(node, network):
 @click.option("--network", default="warnet", show_default=True)
 def messages(node_a, node_b, network):
     """
-    Fetch messages sent between <node_a> and <node_b> in <network>
+    Fetch messages sent between <node_a> and <node_b> in [network]
     """
     print(rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}))
 
@@ -115,7 +115,7 @@ def messages(node_a, node_b, network):
 @click.option("--network", default="warnet", show_default=True)
 def grep_logs(pattern, network):
     """
-    Grep combined logs via fluentd using regex [pattern]
+    Grep combined logs via fluentd using regex <pattern>
     """
     print(rpc_call("logs_grep", {"network": network, "pattern": pattern}))
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import re
 from pathlib import Path
@@ -13,20 +15,21 @@ def print_cmd(cmd, super=""):
     global doc
     doc += f"### `warcli{super} {cmd['name']}`" + "\n"
     doc += cmd["help"].strip().replace("<", "\\<") + "\n"
-    doc += "\noptions:\n"
-    headers = ["name", "type", "required", "default"]
-    data = [
-        [
-            p["name"],
-            p["type"]["param_type"],
-            p["required"],
-            p["default"]
-            if p["type"]["param_type"] != "Path"
-            else Path(p["default"]).relative_to(Path.cwd()),
+    if len(cmd["params"]) > 1:
+        doc += "\noptions:\n"
+        headers = ["name", "type", "required", "default"]
+        data = [
+            [
+                p["name"],
+                p["type"]["param_type"] if p["type"]["param_type"] != "Unprocessed" else "String",
+                "yes" if p["required"] else "",
+                '"' + p["default"] + '"' if p["default"] and p["type"]["param_type"] == "String"
+                else Path(p["default"]).relative_to(Path.cwd()) if p["default"] and p["type"]["param_type"] == "Path"
+                else p["default"]
+            ]
+            for p in cmd["params"] if p["name"] != "help"
         ]
-        for p in cmd["params"]
-    ]
-    doc += tabulate(data, headers=headers, tablefmt="github")
+        doc += tabulate(data, headers=headers, tablefmt="github")
     doc += "\n\n"
 
 
@@ -48,8 +51,8 @@ file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / "docs" / "
 with open(file_path) as file:
     text = file.read()
 
-pattern = r"(## API Commands\n)(.*\n)*?(# Next)"
-updated_text = re.sub(pattern, rf"\1\n{doc}\n\3", text)
+pattern = r"(## API Commands\n)(.*\n)*?\Z"
+updated_text = re.sub(pattern, rf"\1\n{doc}\n", text)
 
 with open(file_path, "w") as file:
     file.write(updated_text)

@@ -13,13 +13,13 @@ def graph():
 
 @graph.command()
 @click.argument("number", type=int)
-@click.option("--outfile", type=Path)
+@click.option("--outfile", type=click.Path())
 @click.option("--version", type=str, default=DEFAULT_TAG)
-@click.option("--bitcoin_conf", type=Path)
+@click.option("--bitcoin_conf", type=click.Path())
 @click.option("--random", is_flag=True)
 def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random: bool = False):
     """
-    Create a cycle graph with [n] nodes, and additionally include 7 extra random outbounds per node.
+    Create a cycle graph with <n> nodes, and additionally include 7 extra random outbounds per node.
     Returns XML file as string with or without --outfile option
     """
     print(
@@ -37,9 +37,9 @@ def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random:
 
 
 @graph.command()
-@click.argument("graph", type=Path)
+@click.argument("graph", type=click.Path())
 def validate(graph: Path):
     """
-    Validate a graph file against the schema.
+    Validate a <graph file> against the schema.
     """
     print(rpc_call("graph_validate", {"graph_path": graph.as_posix()}))

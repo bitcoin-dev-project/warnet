@@ -49,7 +49,7 @@ def network():
 @click.option("--network", default="warnet", show_default=True)
 def start(graph_file: Path, force: bool, network: str):
     """
-    Start a warnet with topology loaded from a <graph_file> into <--network> (default: "warnet")
+    Start a warnet with topology loaded from a <graph_file> into [network]
     """
     try:
         encoded_graph_file = ""
@@ -71,7 +71,7 @@ def start(graph_file: Path, force: bool, network: str):
 @click.option("--network", default="warnet", show_default=True)
 def up(network: str):
     """
-    Bring up a previously-stopped warnet named <--network> (default: "warnet").
+    Bring up a previously-stopped warnet named [network]
     """
     print(rpc_call("network_up", {"network": network}))
 
@@ -80,7 +80,7 @@ def up(network: str):
 @click.option("--network", default="warnet", show_default=True)
 def down(network: str):
     """
-    Bring down a running warnet named <--network> (default: "warnet").
+    Bring down a running warnet named [network]
     """
 
     running_scenarios = rpc_call("scenarios_list_running", {})
@@ -105,7 +105,7 @@ def down(network: str):
 @click.option("--network", default="warnet", show_default=True)
 def info(network: str):
     """
-    Get info about a warnet named <--network> (default: "warnet").
+    Get info about a warnet named [network]
     """
     result = rpc_call("network_info", {"network": network})
     assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
@@ -116,7 +116,7 @@ def info(network: str):
 @click.option("--network", default="warnet", show_default=True)
 def status(network: str):
     """
-    Get status of a warnet named <--network> (default: "warnet").
+    Get status of a warnet named [network]
     """
     result = rpc_call("network_status", {"network": network})
     assert isinstance(result, list), "Result is not a list"  # Make mypy happy
@@ -136,7 +136,7 @@ def status(network: str):
 @click.option("--network", default="warnet", show_default=True)
 def connected(network: str):
     """
-    Indicate whether the all of the edges in the gaph file are connected in <network>
+    Indicate whether the all of the edges in the gaph file are connected in [network]
     """
     print(rpc_call("network_connected", {"network": network}))
 
@@ -145,6 +145,6 @@ def connected(network: str):
 @click.option("--network", default="warnet", show_default=True)
 def export(network):
     """
-    Export all data for sim-ln to subdirectory
+    Export all [network] data for sim-ln to subdirectory
     """
     print(rpc_call("network_export", {"network": network}))
