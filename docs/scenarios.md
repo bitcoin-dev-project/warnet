@@ -45,5 +45,3 @@ Stopped scenario with PID 14683.
 
 To add your own scenario make a copy of one of the existing python tests in src/scenarios/ and write the desired scenario.
 Save this file back into the same src/scenarios/ directory and it will be listed and available for running using the aforementioned commands.
-
-# Next: [Collecting Data](data.md)

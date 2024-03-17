@@ -81,5 +81,3 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .
 ```
-
-# Next: [Running Warnet](running.md)

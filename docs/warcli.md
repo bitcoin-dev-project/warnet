@@ -224,6 +224,3 @@ options:
 |--------|--------|------------|-----------|
 | pid    | Int    | True       |           |
 | help   | Bool   | False      | False     |
-
-
-# Next: [Scenarios](scenarios.md)

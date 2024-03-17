@@ -89,7 +89,3 @@ $ sim-cli --data-dir /Users/bitcoin-dev-project/.warnet/warnet/warnet/simln
 2023-11-18T16:58:28.826Z INFO  [sim_lib] Started random activity producer for warnet_ln_000001(02318b...c7bf05): activity generator for capacity: 100000000 with multiplier 2: 52.63157894736842 payments per month (0.07309941520467836 per hour).
 2023-11-18T16:58:28.826Z INFO  [sim_lib] Started random activity producer for warnet_ln_000002(0393aa...9804d5): activity generator for capacity: 50000000 with multiplier 2: 26.31578947368421 payments per month (0.03654970760233918 per hour).
 ```
-
-
-
-
