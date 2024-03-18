@@ -42,4 +42,4 @@ def validate(graph: Path):
     """
     Validate a <graph file> against the schema.
     """
-    print(rpc_call("graph_validate", {"graph_path": graph.as_posix()}))
+    print(rpc_call("graph_validate", {"graph_path": Path(graph).as_posix()}))

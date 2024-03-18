@@ -61,7 +61,7 @@ class Tank:
     def parse_graph_node(self, node):
         # Dynamically parse properties based on the schema
         graph_properties = {}
-        for property, specs in self.warnet.node_schema["properties"].items():
+        for property, specs in self.warnet.graph_schema["node"]["properties"].items():
             value = node.get(property, specs.get("default"))
             if property == "version":
                 self._parse_version(value)

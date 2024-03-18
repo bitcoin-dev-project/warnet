@@ -33,7 +33,7 @@ DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
 ]
-NODE_SCHEMA_PATH = SCHEMA / "node_schema.json"
+GRAPH_SCHEMA_PATH = SCHEMA / "graph_schema.json"
 
 
 class NonErrorFilter(logging.Filter):
@@ -496,13 +496,16 @@ def convert_unsupported_attributes(graph: nx.Graph):
 
 
 def load_schema():
-    with open(NODE_SCHEMA_PATH) as schema_file:
+    with open(GRAPH_SCHEMA_PATH) as schema_file:
         return json.load(schema_file)
 
 
-def validate_graph_schema(node_schema: dict, graph: nx.Graph):
+def validate_graph_schema(graph: nx.Graph):
     """
     Validate a networkx.Graph against the node schema
     """
-    for i in list(graph.nodes):
-        validate(instance=graph.nodes[i], schema=node_schema)
+    graph_schema = load_schema()
+    for n in list(graph.nodes):
+        validate(instance=graph.nodes[n], schema=graph_schema["node"])
+    for e in list(graph.edges):
+        validate(instance=graph.edges[e], schema=graph_schema["edge"])
