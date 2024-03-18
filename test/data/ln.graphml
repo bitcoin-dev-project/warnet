@@ -5,7 +5,7 @@
   <key attr.name="ln"             attr.type="string" for="node" id="ln"/>
   <key attr.name="ln-image"       attr.type="string" for="node" id="ln-image"/>
   <key attr.name="ln-cb-image"    attr.type="string" for="node" id="ln-cb-image"/>
-  <key attr.name="channel"        attr.type="string" for="edge" id="channel"/>
+  <key attr.name="channel"        attr.type="int" for="edge" id="channel"/>
   <key attr.name="collect_logs"   attr.type="boolean" for="node" id="collect_logs"/>
   <key attr.name="image"          attr.type="string" for="node" id="image"/>
   <graph edgedefault="directed">

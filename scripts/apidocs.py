@@ -8,6 +8,8 @@ from cli.main import cli
 from click import Context
 from tabulate import tabulate
 
+file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / "docs" / "warcli.md"
+
 doc = ""
 
 
@@ -45,8 +47,6 @@ with Context(cli) as ctx:
             doc += f"## {cmd['name'].capitalize()}\n\n"
             for subcmd in cmd["commands"].values():
                 print_cmd(subcmd, " " + cmd["name"])
-
-file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / "docs" / "warcli.md"
 
 with open(file_path) as file:
     text = file.read()

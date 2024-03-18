@@ -2,19 +2,40 @@
   "node": {
     "type": "object",
     "properties": {
-      "degree": {"type": "number"},
-      "x": {"type": "number"},
-      "y": {"type": "number"},
-      "version": {"type": "string"},
-      "image": {"type": "string"},
-      "bitcoin_config": {"type": "string", "default": ""},
-      "tc_netem": {"type": "string"},
-      "exporter": {"type": "boolean", "default": false},
-      "collect_logs": {"type": "boolean", "default": false},
-      "build_args": {"type": "string", "default": ""},
-      "ln": {"type": "string"},
-      "ln-image": {"type": "string"},
-      "ln-cb-image": {"type": "string"}
+      "version": {
+        "type": "string",
+        "comment": "Bitcoin Core version with an available Warnet tank image on Dockerhub. May also be a GitHub repository with format user/repository:branch to build from source code"},
+      "image": {
+        "type": "string",
+        "comment": "Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag"},
+      "bitcoin_config": {
+        "type": "string",
+        "default": "",
+        "comment": "A string of Bitcoin Core options in command-line format, e.g. '-debug=net -blocksonly'"},
+      "tc_netem": {
+        "type": "string",
+        "comment": "A tc-netem command as a string beginning with 'tc qdisc add dev eth0 root netem'"},
+      "exporter": {
+        "type": "boolean",
+        "default": false,
+        "comment": "Whether to attach a Prometheus data exporter to the tank"},
+      "collect_logs": {
+        "type": "boolean",
+        "default": false,
+        "comment": "Whether to collect Bitcoin Core debug logs with Promtail"},
+      "build_args": {
+        "type": "string",
+        "default": "",
+        "comment": "A string of configure options used when building Bitcoin Core from source code, e.g. '--without-gui --disable-tests'"},
+      "ln": {
+        "type": "string",
+        "comment": "Attach a lightning network node of this implementation (currently only supports 'lnd')"},
+      "ln-image": {
+        "type": "string",
+        "comment": "Specify a lightning network node image from Dockerhub with the format repository/image:tag"},
+      "ln-cb-image": {
+        "type": "string",
+        "comment": "Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag"}
     },
     "additionalProperties": false,
     "oneOf": [
@@ -26,7 +47,9 @@
   "edge": {
     "type": "object",
     "properties": {
-      "channel": {"type": "string"}
+      "channel": {
+        "type": "number",
+        "comment": "Indicate that this edge is a lightning channel with this specified capacity"}
     },
     "additionalProperties": false,
     "required": []
