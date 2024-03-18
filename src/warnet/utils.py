@@ -433,16 +433,6 @@ def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_ve
                 logger.debug(f"Added edge: {src_node}:{chosen_node}")
         logger.debug(f"Node {src_node} edges: {graph.edges(src_node)}")
 
-    # calculate degree
-    degree_dict = dict(graph.degree(graph.nodes()))
-    nx.set_node_attributes(graph, degree_dict, "degree")
-
-    # add a default layout
-    pos = nx.spring_layout(graph)
-    for node in graph.nodes():
-        graph.nodes[node]["x"] = float(pos[node][0])
-        graph.nodes[node]["y"] = float(pos[node][1])
-
     # parse and process conf file
     conf_contents = ""
     if bitcoin_conf is not None:
