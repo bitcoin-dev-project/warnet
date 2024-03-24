@@ -30,10 +30,10 @@
       "ln": {
         "type": "string",
         "comment": "Attach a lightning network node of this implementation (currently only supports 'lnd')"},
-      "ln-image": {
+      "ln_image": {
         "type": "string",
         "comment": "Specify a lightning network node image from Dockerhub with the format repository/image:tag"},
-      "ln-cb-image": {
+      "ln_cb_image": {
         "type": "string",
         "comment": "Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag"},
       "ln_config": {
@@ -50,9 +50,15 @@
   "edge": {
     "type": "object",
     "properties": {
-      "channel": {
-        "type": "number",
-        "comment": "Indicate that this edge is a lightning channel with this specified capacity"}
+      "channel_open": {
+        "type": "string",
+        "comment": "Indicate that this edge is a lightning channel with these arguments passed to lnd openchannel"},
+      "source_policy": {
+        "type": "string",
+        "comment": "Update the channel originator policy by passing these arguments passed to lnd updatechanpolicy"},
+      "target_policy": {
+        "type": "string",
+        "comment": "Update the channel partner policy by passing these arguments passed to lnd updatechanpolicy"}
     },
     "additionalProperties": false,
     "required": []
