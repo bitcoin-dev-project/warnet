@@ -482,3 +482,25 @@ def validate_graph_schema(graph: nx.Graph):
         validate(instance=graph.nodes[n], schema=graph_schema["node"])
     for e in list(graph.edges):
         validate(instance=graph.edges[e], schema=graph_schema["edge"])
+
+
+def policy_match(pol1, pol2):
+    return (
+        pol1["time_lock_delta"] == pol2["time_lock_delta"]
+        and pol1["min_htlc"] == pol2["min_htlc"]
+        and pol1["fee_base_msat"] == pol2["fee_base_msat"]
+        and pol1["fee_rate_milli_msat"] == pol2["fee_rate_milli_msat"]
+        # Ignoring this for now since we use capacity/2
+        # and pol1["max_htlc_msat"] == pol2["max_htlc_msat"]
+    )
+
+
+def channel_match(ch1, ch2, allow_flip=False):
+    if ch1["capacity"] != ch2["capacity"]:
+        return False
+    if policy_match(ch1["node1_policy"], ch2["node1_policy"]) and policy_match(ch1["node2_policy"], ch2["node2_policy"]):
+        return True
+    if not allow_flip:
+        return False
+    else:
+        return policy_match(ch1["node1_policy"], ch2["node2_policy"]) and policy_match(ch1["node2_policy"], ch2["node1_policy"])
