@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from pathlib import Path
 
@@ -28,7 +29,79 @@ def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random:
     if outfile:
         file_path = Path(outfile)
         nx.write_graphml(graph, file_path, named_key_ids=True)
-        return f"Generated graph written to file: {outfile}"
+    bio = BytesIO()
+    nx.write_graphml(graph, bio, named_key_ids=True)
+    xml_data = bio.getvalue()
+    print(xml_data.decode("utf-8"))
+
+
+@graph.command()
+@click.argument("infile", type=click.Path())
+@click.option("--outfile", type=click.Path())
+def import_json(infile: Path, outfile: Path):
+    """
+    Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
+    and additionally include 7 extra random outbounds per node. Include lightning
+    channels and their policies as well.
+    Returns XML file as string with or without --outfile option.
+    """
+    with open(infile) as f:
+        json_graph = json.loads(f.read())
+
+    # Start with a connected L1 graph with the right amount of tanks
+    graph = create_cycle_graph(len(json_graph["nodes"]), version=DEFAULT_TAG, bitcoin_conf=None, random_version=False)
+
+    # Initialize all the tanks with basic LN node configurations
+    for index, n in enumerate(graph.nodes()):
+        graph.nodes[n]["bitcoin_config"] = f"-uacomment=tank{index:06}"
+        graph.nodes[n]["ln"] = "lnd"
+        graph.nodes[n]["ln_cb_image"] = "pinheadmz/circuitbreaker:278737d"
+        graph.nodes[n]["ln_config"] = "--protocol.wumbo-channels"
+
+    # Save a map of LN pubkey -> Tank index
+    ln_ids = {}
+    for index, node in enumerate(json_graph["nodes"]):
+        ln_ids[node["id"]] = index
+
+    # Offset for edge IDs
+    # Note create_cycle_graph() creates L1 edges all with the same id "0"
+    L1_edges = len(graph.edges)
+
+    # Insert LN channels
+    # Ensure channels are in order by channel ID like lnd describegraph output
+    sorted_edges = sorted(json_graph["edges"], key=lambda chan: int(chan['channel_id']))
+    for ln_index, channel in enumerate(sorted_edges):
+        src = ln_ids[channel["node1_pub"]]
+        tgt = ln_ids[channel["node2_pub"]]
+        cap = int(channel["capacity"])
+        push = cap // 2
+        openp = f"--local_amt={cap} --push_amt={push}"
+        srcp = ""
+        tgtp = ""
+        if channel["node1_policy"]:
+            srcp += f" --base_fee_msat={channel['node1_policy']['fee_base_msat']}"
+            srcp += f" --fee_rate_ppm={channel['node1_policy']['fee_rate_milli_msat']}"
+            srcp += f" --time_lock_delta={channel['node1_policy']['time_lock_delta']}"
+            srcp += f" --min_htlc_msat={channel['node1_policy']['min_htlc']}"
+            srcp += f" --max_htlc_msat={push * 1000}"
+        if channel["node2_policy"]:
+            tgtp += f" --base_fee_msat={channel['node2_policy']['fee_base_msat']}"
+            tgtp += f" --fee_rate_ppm={channel['node2_policy']['fee_rate_milli_msat']}"
+            tgtp += f" --time_lock_delta={channel['node2_policy']['time_lock_delta']}"
+            tgtp += f" --min_htlc_msat={channel['node2_policy']['min_htlc']}"
+            tgtp += f" --max_htlc_msat={push * 1000}"
+
+        graph.add_edge(
+            src,
+            tgt,
+            key = ln_index+L1_edges,
+            channel_open = openp,
+            source_policy = srcp,
+            target_policy = tgtp)
+
+    if outfile:
+        file_path = Path(outfile)
+        nx.write_graphml(graph, file_path, named_key_ids=True)
     bio = BytesIO()
     nx.write_graphml(graph, bio, named_key_ids=True)
     xml_data = bio.getvalue()
@@ -42,5 +115,5 @@ def validate(graph: Path):
     Validate a <graph file> against the schema.
     """
     with open(graph) as f:
-        graph = nx.parse_graphml(f.read(), node_type=int)
+        graph = nx.parse_graphml(f.read(), node_type=int, force_multigraph=True)
     return validate_graph_schema(graph)

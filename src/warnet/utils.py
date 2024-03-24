@@ -389,8 +389,9 @@ def set_execute_permission(file_path):
 
 def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):
     try:
-        # Use nx.DiGraph() as base otherwise edges not always made in specific directions
-        graph = nx.generators.cycle_graph(n, nx.DiGraph())
+        # Use nx.MultiDiGraph() so we get directed edges (source->target)
+        # and still allow parallel edges (L1 p2p connections + LN channels)
+        graph = nx.generators.cycle_graph(n, nx.MultiDiGraph())
     except TypeError as e:
         msg = f"Failed to create graph: {e}"
         logger.error(msg)
