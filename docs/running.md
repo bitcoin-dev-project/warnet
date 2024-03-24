@@ -115,5 +115,3 @@ sudo systemctl restart docker
 ```
 
 On Ubuntu this file is located at `/lib/systemd/system/docker.service` but you can find it using `sudo systemctl status docker`.
-
-# Next: [Network Topology](graph.md)

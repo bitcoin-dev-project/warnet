@@ -40,5 +40,3 @@ warnet_test_uhynisdj_tank_000002: 2023-10-11T17:44:52.325691Z [mempool] AcceptTo
 warnet_test_uhynisdj_tank_000002: 2023-10-11T17:44:52.325838Z [validation] TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
 ... (etc)
 ```
-
-# Next: [Monitoring](monitoring.md)

@@ -5,8 +5,7 @@ Warnet creates a Bitcoin network using a network topology from a [graphml](https
 Before any scenarios or RPC commands can be executed, a Warnet network must be started from a graph.
 See [warcli.md](warcli.md) for more details on these commands.
 
-To start a network called `"warnet"` from the [default graph file](../src/graphs/default.graphml)
-which consists of 12 Bitcoin Core v26.0 nodes connected in a ring:
+To start a network called `"warnet"` from the [default graph file](../src/graphs/default.graphml):
 ```
 warcli network start
 ```
@@ -16,92 +15,7 @@ To start a network with custom configurations:
 warcli network start <path/to/file.graphml> --network="network_name"
 ```
 
-## GraphML file specification
-
-```graphml
-<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
-<key attr.name="label" attr.type="string" for="node" id="label"/>
-<key attr.name="x" attr.type="float" for="node" id="x"/>
-<key attr.name="y" attr.type="float" for="node" id="y"/>
-<key attr.name="version" attr.type="string" for="node" id="version"/>
-<key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
-<key attr.name="tc_netem" attr.type="string" for="node" id="tc_netem"/>
-<graph edgedefault="directed">
-
-<!-- <nodes> -->
-<!-- <edges> -->
-
-</graph>
-</graphml>
-
-```
-### Node attributes
-
-* `id` should be a unique integer identifier
-* `label` [optional] specifies the node's label
-* `x` specifies the node's x position when rendered in a GUI
-* `y` specifies the node's y position when rendered in a GUI
-* `version` specifies the node's Bitcoin Core release version, or GitHub branch
-* `bitcoin_config` is a comma-separated list of values the node should apply to it's bitcoin.conf, using bitcoin.conf syntax
-* `tc_netem` is a `tc-netem` command as a string beginning with "tc qdisc add dev eth0 root netem"
-
-`version` should be either a version number from the pre-compiled binary list on https://bitcoincore.org/bin/ **or** a branch to be compiled from GitHub using `<user>/<repo>#<branch>` syntax.
-
-Nodes can be added to the graph as follows:
-
-
-#### Release binaries
-
-```graphml
-<node id="0">
-<data key="x">5.5</data>
-<data key="y">2.5</data>
-<data key="version">26.0</data>
-<data key="bitcoin_config">uacomment=warnet0_v24,debugexclude=libevent</data>
-<data key="tc_netem"></data>
-</node>
-```
-#### Pre-built custom image
-
-For a pre-built custom image, remove the `version` tag, and add the image repository to an `image` tag.
-These should be built using the `warcli image build` command to ensure they have the needed patches.
-
-```graphml
-<node id="0">
-<data key="x">5.5</data>
-<data key="y">2.5</data>
-<data key="image">bitcoindevproject/bitcoin:26.0</data>
-<data key="bitcoin_config">uacomment=warnet0_v24,debugexclude=libevent</data>
-<data key="tc_netem"></data>
-</node>
-```
-
-#### On-demand built branch
-
-For an on-demand built branch with traffic shaping rules applied using `tc_netem`:
-
-```graphml
-<node id="0">
-<data key="x">2.5</data>
-<data key="y">5.0</data>
-<data key="version">vasild/bitcoin#relay_tx_to_priv_nets</data>
-<data key="bitcoin_config">uacomment=warnet1_custom,debug=1</data>
-<data key="tc_netem">tc qdisc add dev eth0 root netem delay 100ms</data>
-</node>
-```
-
-`x`, `y`, `version`, `bitcoin_config` and `tc_netem` data fields are optional for all nodes.
-
-### Edges
-
-Edges can be added between the nodes as follows:
-
-```graphml
-<edge id="0" source="0" target="1">
-</edge>
-```
-
-## Creating graphs
+## Creating graphs automatically
 
 Graphs can be created via the graph menu:
 
@@ -109,20 +23,55 @@ Graphs can be created via the graph menu:
 # show graph commands
 warcli graph --help
 
-# Create an erdos renyi graph of 12 nodes using edge connection probability of 0.3 and default bitcoin version (v26.0)
-warcli graph create n=12 p=0.3 --outfile=erdos-renyi_n12_v26.0.graphml
+# Create a cycle graph of 12 nodes using default Bitcoin Core version (v26.0)
+warcli graph create 12 --outfile=./12_x_v26.0.graphml
 
-# Create an erdos renyi graph of 15 nodes using default edge connection probability of p=0.2 and using random bitcoin versions
-warcli graph create n=15 --outfile=erdos-renyi_n15_random.graphml --random
+# Start network with default name "warnet"
+warcli network start ./12_x_v26.0.graphml
 ```
 
-## Examples
+## Warnet graph nodes and edges
 
-1. [example.graphml](../src/graphs/default.graphml) -- This is the default graph.
-2. [random_internet_as_graph_n100_pos.graphml](../src/graphs/random_internet_as_graph_n100_pos.graphml)
+Nodes in a Warnet graph MUST have either a `"version"` key or an `"image"` key.
+These dictate what version of Bitcoin Core to deploy in a fiven tank.
 
-![random_internet_as_graph_n100](../docs/random_internet_as_graph_n100.png)
-*random_internet_as_graph_n100*
+Edges without additional properties are interpreted as Bitcoin p2p connections.
+If an edge has additional key-value properties, it will be interpreted as a
+lightning network channel (see [lightning.md](lightning.md)).
 
+## GraphML file specification
 
-# Next: [`warcli` commands](warcli.md)
+### GraphML file format and headers
+```xml
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
+  <key id="image"           attr.name="image"            attr.type="string"   for="node" />
+  <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
+  <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
+  <key id="exporter"        attr.name="exporter"         attr.type="boolean"  for="node" />
+  <key id="collect_logs"    attr.name="collect_logs"     attr.type="boolean"  for="node" />
+  <key id="build_args"      attr.name="build_args"       attr.type="string"   for="node" />
+  <key id="ln"              attr.name="ln"               attr.type="string"   for="node" />
+  <key id="ln-image"        attr.name="ln-image"         attr.type="string"   for="node" />
+  <key id="ln-cb-image"     attr.name="ln-cb-image"      attr.type="string"   for="node" />
+  <key id="channel"         attr.name="channel"          attr.type="number"   for="edge" />
+  <graph edgedefault="directed">
+    <!-- <nodes> -->
+    <!-- <edges> -->
+  </graph>
+</graphml>
+```
+
+| key            | for   | type    | default   | explanation                                                                                                                                                         |
+|----------------|-------|---------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| version        | node  | string  |           | Bitcoin Core version with an available Warnet tank image on Dockerhub. May also be a GitHub repository with format user/repository:branch to build from source code |
+| image          | node  | string  |           | Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag                                                                                    |
+| bitcoin_config | node  | string  |           | A string of Bitcoin Core options in command-line format, e.g. '-debug=net -blocksonly'                                                                              |
+| tc_netem       | node  | string  |           | A tc-netem command as a string beginning with 'tc qdisc add dev eth0 root netem'                                                                                    |
+| exporter       | node  | boolean | False     | Whether to attach a Prometheus data exporter to the tank                                                                                                            |
+| collect_logs   | node  | boolean | False     | Whether to collect Bitcoin Core debug logs with Promtail                                                                                                            |
+| build_args     | node  | string  |           | A string of configure options used when building Bitcoin Core from source code, e.g. '--without-gui --disable-tests'                                                |
+| ln             | node  | string  |           | Attach a lightning network node of this implementation (currently only supports 'lnd')                                                                              |
+| ln-image       | node  | string  |           | Specify a lightning network node image from Dockerhub with the format repository/image:tag                                                                          |
+| ln-cb-image    | node  | string  |           | Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag                                                                             |
+| channel        | edge  | number  |           | Indicate that this edge is a lightning channel with this specified capacity                                                                                         |

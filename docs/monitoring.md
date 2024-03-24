@@ -30,5 +30,3 @@ The default dashboard is called "Docker Container & Host Metrics" and can be
 accessed via the "dashboards" tab, or from the bottom right of the home screen.
 
 Additional dashboards and datasources may be added in the future.
-
-# Next: [Lightning Network](lightning.md)

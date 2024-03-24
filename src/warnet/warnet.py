@@ -36,7 +36,7 @@ class Warnet:
         self.tanks: list[Tank] = []
         self.deployment_file: Path | None = None
         self.backend = backend
-        self.node_schema = load_schema()
+        self.graph_schema = load_schema()
 
     def _warnet_dict_representation(self) -> dict:
         repr = {}
@@ -106,8 +106,8 @@ class Warnet:
         with open(destination, "wb") as f:
             f.write(graph_file)
         self.network_name = network
-        self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int)
-        validate_graph_schema(self.node_schema, self.graph)
+        self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int, force_multigraph=True)
+        validate_graph_schema(self.graph)
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
@@ -116,7 +116,7 @@ class Warnet:
     def from_graph(cls, graph, backend="compose", network="warnet"):
         self = cls(Path(), backend, network)
         self.graph = graph
-        validate_graph_schema(self.node_schema, self.graph)
+        validate_graph_schema(self.graph)
         self.tanks_from_graph()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
@@ -127,8 +127,8 @@ class Warnet:
         self = cls(config_dir, backend, network_name)
         self.network_name = network_name
         # Get network graph edges from graph file (required for network restarts)
-        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int)
-        validate_graph_schema(self.node_schema, self.graph)
+        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int, force_multigraph=True)
+        validate_graph_schema(self.graph)
         self.tanks_from_graph()
         for tank in self.tanks:
             tank._ipv4 = self.container_interface.get_tank_ipv4(tank.index)

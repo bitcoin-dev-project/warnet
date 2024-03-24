@@ -13,6 +13,6 @@ def debug():
 @click.option("--network", default="warnet", show_default=True)
 def generate_compose(graph_file: str, network: str):
     """
-    Generate the docker-compose file for a given <graph_file> and <--network> (default: "warnet") name and return it.
+    Generate the docker-compose file for a given <graph_file> and [network] and return it.
     """
     print(rpc_call("generate_compose", {"graph_file": graph_file, "network": network}))

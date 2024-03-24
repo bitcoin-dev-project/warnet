@@ -40,7 +40,7 @@ def available():
 @click.option("--network", default="warnet", show_default=True)
 def run(scenario, network, additional_args):
     """
-    Run <scenario> from the Warnet Test Framework on <--network> with optional arguments
+    Run <scenario> from the Warnet Test Framework on [network] with optional arguments
     """
     params = {
         "scenario": scenario,
@@ -56,7 +56,7 @@ def run(scenario, network, additional_args):
 @click.option("--network", default="warnet", show_default=True)
 def run_file(scenario_path, network, additional_args):
     """
-    Run <scenario_path> from the Warnet Test Framework on <--network> with optional arguments
+    Run <scenario_path> from the Warnet Test Framework on [network] with optional arguments
     """
     scenario_base64 = ""
     with open(scenario_path, "rb") as f:
