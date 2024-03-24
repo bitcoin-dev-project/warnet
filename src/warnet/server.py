@@ -15,21 +15,14 @@ import threading
 import time
 import traceback
 from datetime import datetime
-from io import BytesIO
 from pathlib import Path
 
-import jsonschema
-import networkx as nx
 import scenarios
 from backends import ServiceType
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
-from warnet.utils import (
-    create_cycle_graph,
-    gen_config_dir,
-    validate_graph_schema,
-)
+from warnet.utils import gen_config_dir
 from warnet.warnet import Warnet
 
 WARNET_SERVER_PORT = 9276
@@ -168,9 +161,6 @@ class Server:
         self.jsonrpc.register(self.network_status)
         self.jsonrpc.register(self.network_connected)
         self.jsonrpc.register(self.network_export)
-        # Graph
-        self.jsonrpc.register(self.graph_generate)
-        self.jsonrpc.register(self.graph_validate)
         # Debug
         self.jsonrpc.register(self.generate_deployment)
         self.jsonrpc.register(self.exec_run)
@@ -504,39 +494,6 @@ class Server:
             msg = f"Error bring up warnet: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
-
-    def graph_generate(
-        self,
-        n: int,
-        outfile: str,
-        version: str,
-        bitcoin_conf: str | None = None,
-        random: bool = False,
-    ) -> str:
-        try:
-            graph = create_cycle_graph(n, version, bitcoin_conf, random)
-
-            if outfile:
-                file_path = Path(outfile)
-                nx.write_graphml(graph, file_path, named_key_ids=True)
-                return f"Generated graph written to file: {outfile}"
-            bio = BytesIO()
-            nx.write_graphml(graph, bio, named_key_ids=True)
-            xml_data = bio.getvalue()
-            return xml_data.decode("utf-8")
-        except Exception as e:
-            msg = f"Error generating graph: {e}"
-            self.logger.error(msg)
-            raise ServerError(message=msg) from e
-
-    def graph_validate(self, graph_path: str) -> str:
-        with open(graph_path) as f:
-            graph = nx.parse_graphml(f.read(), node_type=int, force_multigraph=True)
-        try:
-            validate_graph_schema(graph)
-        except (jsonschema.ValidationError, jsonschema.SchemaError) as e:
-            raise ServerError(message=f"Schema of {graph_path} is invalid: {e}") from e
-        return f"Schema of {graph_path} is valid"
 
     def network_down(self, network: str = "warnet") -> str:
         """
