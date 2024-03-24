@@ -82,6 +82,9 @@ class TestBase:
         if network:
             cmd += ["--network", self.network_name]
         proc = run(cmd, capture_output=True)
+
+        if proc.stderr:
+            raise Exception(proc.stderr.decode().strip())
         return proc.stdout.decode().strip()
 
     # Execute a warnet RPC API call directly (may return dict or list)

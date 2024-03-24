@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as dir:
             file.write(xml)
 
     # Validate the graph schema
-    assert "invalid" not in base.warcli(f"graph validate {Path(tf)}")
+    assert "invalid" not in base.warcli(f"graph validate {Path(tf)}", False)
     print(f"Graph at {tf} validated successfully")
 
     # Test that the graph actually works
