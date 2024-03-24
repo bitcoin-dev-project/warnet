@@ -401,7 +401,7 @@ class ComposeBackend(BackendInterface):
                 "privileged": True,
                 "cap_add": ["NET_ADMIN", "NET_RAW"],
                 "healthcheck": {
-                    "test": ["CMD-SHELL", f"nc -z localhost {tank.rpc_port} || exit 1"],
+                    "test": ["CMD-SHELL", f"nc -z 127.0.0.1 {tank.rpc_port} || exit 1"],
                     "interval": "10s",  # Check every 10 seconds
                     "timeout": "1s",  # Give the check 1 second to complete
                     "start_period": "5s",  # Start checking after 5 seconds

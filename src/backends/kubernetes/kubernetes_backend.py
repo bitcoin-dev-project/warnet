@@ -393,7 +393,7 @@ class KubernetesBackend(BackendInterface):
             name="prometheus",
             image="jvstein/bitcoin-prometheus-exporter:latest",
             env=[
-                client.V1EnvVar(name="BITCOIN_RPC_HOST", value="localhost"),
+                client.V1EnvVar(name="BITCOIN_RPC_HOST", value="127.0.0.1"),
                 client.V1EnvVar(name="BITCOIN_RPC_PORT", value=str(tank.rpc_port)),
                 client.V1EnvVar(name="BITCOIN_RPC_USER", value=tank.rpc_user),
                 client.V1EnvVar(name="BITCOIN_RPC_PASSWORD", value=tank.rpc_password),
@@ -505,7 +505,7 @@ class KubernetesBackend(BackendInterface):
             image=tank.lnnode.cb,
             args=[
                 "--network=regtest",
-                f"--rpcserver=localhost:{tank.lnnode.rpc_port}",
+                f"--rpcserver=127.0.0.1:{tank.lnnode.rpc_port}",
                 f"--tlscertpath={LND_MOUNT_PATH}/tls.cert",
                 f"--macaroonpath={LND_MOUNT_PATH}/data/chain/bitcoin/regtest/admin.macaroon",
             ],
