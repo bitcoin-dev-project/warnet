@@ -14,7 +14,7 @@ base.start_server()
 
 
 def get_cb_forwards(index):
-    cmd = "wget -q -O - localhost:9235/api/forwarding_history"
+    cmd = "wget -q -O - 127.0.0.1:9235/api/forwarding_history"
     res = base.wait_for_rpc(
         "exec_run", [index, ServiceType.CIRCUITBREAKER.value, cmd, base.network_name]
     )

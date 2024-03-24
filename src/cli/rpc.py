@@ -19,7 +19,7 @@ class JSONRPCException(Exception):
 
 def rpc_call(rpc_method, params: dict[str, Any] | tuple[Any, ...] | None):
     payload = request(rpc_method, params)
-    url = f"http://localhost:{WARNET_SERVER_PORT}/api"
+    url = f"http://127.0.0.1:{WARNET_SERVER_PORT}/api"
     try:
         response = requests.post(url, json=payload)
     except ConnectionRefusedError as e:
