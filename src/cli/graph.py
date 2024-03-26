@@ -1,9 +1,10 @@
+from io import BytesIO
 from pathlib import Path
 
 import click
-from cli.rpc import rpc_call
+import networkx as nx
 from rich import print
-from warnet.utils import DEFAULT_TAG
+from warnet.utils import DEFAULT_TAG, create_cycle_graph, validate_graph_schema
 
 
 @click.group(name="graph")
@@ -19,21 +20,19 @@ def graph():
 @click.option("--random", is_flag=True)
 def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random: bool = False):
     """
-    Create a cycle graph with <n> nodes, and additionally include 7 extra random outbounds per node.
+    Create a cycle graph with <number> nodes, and include 7 extra random outbounds per node.
     Returns XML file as string with or without --outfile option
     """
-    print(
-        rpc_call(
-            "graph_generate",
-            {
-                "n": number,
-                "outfile": str(outfile) if outfile else "",
-                "version": version,
-                "bitcoin_conf": str(bitcoin_conf),
-                "random": random,
-            },
-        )
-    )
+    graph = create_cycle_graph(number, version, bitcoin_conf, random)
+
+    if outfile:
+        file_path = Path(outfile)
+        nx.write_graphml(graph, file_path, named_key_ids=True)
+        return f"Generated graph written to file: {outfile}"
+    bio = BytesIO()
+    nx.write_graphml(graph, bio, named_key_ids=True)
+    xml_data = bio.getvalue()
+    print(xml_data.decode("utf-8"))
 
 
 @graph.command()
@@ -42,4 +41,6 @@ def validate(graph: Path):
     """
     Validate a <graph file> against the schema.
     """
-    print(rpc_call("graph_validate", {"graph_path": Path(graph).as_posix()}))
+    with open(graph) as f:
+        graph = nx.parse_graphml(f.read(), node_type=int)
+    return validate_graph_schema(graph)
