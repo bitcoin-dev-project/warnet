@@ -1,33 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
-  <key attr.name="version"        attr.type="string" for="node" id="version"/>
-  <key attr.name="bitcoin_config" attr.type="string" for="node" id="bitcoin_config"/>
-  <key attr.name="tc_netem"       attr.type="string" for="node" id="tc_netem"/>
-  <key attr.name="ln"             attr.type="string" for="node" id="ln"/>
-  <key attr.name="ln-image"       attr.type="string" for="node" id="ln-image"/>
-  <key attr.name="ln-cb-image"    attr.type="string" for="node" id="ln-cb-image"/>
-  <key attr.name="channel"        attr.type="int" for="edge" id="channel"/>
-  <key attr.name="collect_logs"   attr.type="boolean" for="node" id="collect_logs"/>
-  <key attr.name="image"          attr.type="string" for="node" id="image"/>
+  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
+  <key id="image"           attr.name="image"            attr.type="string"   for="node" />
+  <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
+  <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
+  <key id="exporter"        attr.name="exporter"         attr.type="boolean"  for="node" />
+  <key id="collect_logs"    attr.name="collect_logs"     attr.type="boolean"  for="node" />
+  <key id="build_args"      attr.name="build_args"       attr.type="string"   for="node" />
+  <key id="ln"              attr.name="ln"               attr.type="string"   for="node" />
+  <key id="ln_image"        attr.name="ln_image"         attr.type="string"   for="node" />
+  <key id="ln_cb_image"     attr.name="ln_cb_image"      attr.type="string"   for="node" />
+  <key id="ln_config"       attr.name="ln_config"        attr.type="string"   for="node" />
+  <key id="channel_open"    attr.name="channel_open"     attr.type="string"   for="edge" />
+  <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
+  <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w0</data>
         <data key="ln">lnd</data>
+        <data key="ln_image">lightninglabs/lnd:v0.15.5-beta</data>
         <data key="collect_logs">true</data>
     </node>
     <node id="1">
         <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w1</data>
         <data key="ln">lnd</data>
-        <data key="ln-image">lightninglabs/lnd:v0.15.5-beta</data>
-        <data key="ln-cb-image">pinheadmz/circuitbreaker:278737d</data>
+        <data key="ln_cb_image">pinheadmz/circuitbreaker:278737d</data>
         <data key="collect_logs">true</data>
     </node>
     <node id="2">
         <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w2</data>
         <data key="ln">lnd</data>
-        <data key="ln-cb-image">pinheadmz/circuitbreaker:278737d</data>
+        <data key="ln_cb_image">pinheadmz/circuitbreaker:278737d</data>
+        <data key="ln_config">--bitcoin.timelockdelta=33</data>
     </node>
     <node id="3">
         <data key="version">26.0</data>
@@ -36,13 +42,16 @@
     <edge id="1" source="0" target="1"></edge>
     <edge id="2" source="1" target="2"></edge>
     <edge id="3" source="2" target="3"></edge>
+    <edge id="4" source="2" target="0"></edge>
     <edge id="4" source="3" target="0"></edge>
     <!-- LN channels -->
     <edge id="5" source="0" target="1">
-        <data key="channel">100000</data>
+        <data key="channel_open">--local_amt=100000</data>
+        <data key="target_policy">--base_fee_msat=2200 --fee_rate_ppm=13 --time_lock_delta=20</data>
     </edge>
     <edge id="6" source="1" target="2">
-        <data key="channel">100000</data>
+        <data key="channel_open">--local_amt=100000 --push_amt=50000</data>
+        <data key="source_policy">--base_fee_msat=5500 --fee_rate_ppm=3 --time_lock_delta=40</data>
     </edge>
   </graph>
 </graphml>

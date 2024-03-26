@@ -150,7 +150,8 @@ class Warnet:
             # import edges as list of destinations to connect to
             for edge in self.graph.edges(data=True):
                 (src, dst, data) = edge
-                if "channel" in data:
+                # Ignore LN edges for now
+                if "channel_open" in data:
                     continue
                 if src == node_id:
                     tank.init_peers.append(int(dst))

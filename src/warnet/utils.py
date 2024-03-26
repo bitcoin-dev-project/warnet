@@ -15,7 +15,6 @@ from pathlib import Path
 import networkx as nx
 from jsonschema import validate
 from schema import SCHEMA
-from templates import TEMPLATES
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
@@ -388,26 +387,11 @@ def set_execute_permission(file_path):
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def default_bitcoin_conf_args() -> str:
-    default_conf: Path = TEMPLATES / "bitcoin.conf"
-
-    with default_conf.open("r") as f:
-        defaults = parse_bitcoin_conf(f.read())
-
-    conf_args = []
-
-    for kvs in defaults.values():
-        # Skip section names, just focus on key-value pairs
-        for key, value in kvs:
-            conf_args.append(f"-{key}={value}")
-
-    return " ".join(conf_args)
-
-
 def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):
     try:
-        # Use nx.DiGraph() as base otherwise edges not always made in specific directions
-        graph = nx.generators.cycle_graph(n, nx.DiGraph())
+        # Use nx.MultiDiGraph() so we get directed edges (source->target)
+        # and still allow parallel edges (L1 p2p connections + LN channels)
+        graph = nx.generators.cycle_graph(n, nx.MultiDiGraph())
     except TypeError as e:
         msg = f"Failed to create graph: {e}"
         logger.error(msg)
@@ -499,3 +483,25 @@ def validate_graph_schema(graph: nx.Graph):
         validate(instance=graph.nodes[n], schema=graph_schema["node"])
     for e in list(graph.edges):
         validate(instance=graph.edges[e], schema=graph_schema["edge"])
+
+
+def policy_match(pol1, pol2):
+    return (
+        pol1["time_lock_delta"] == pol2["time_lock_delta"]
+        and pol1["min_htlc"] == pol2["min_htlc"]
+        and pol1["fee_base_msat"] == pol2["fee_base_msat"]
+        and pol1["fee_rate_milli_msat"] == pol2["fee_rate_milli_msat"]
+        # Ignoring this for now since we use capacity/2
+        # and pol1["max_htlc_msat"] == pol2["max_htlc_msat"]
+    )
+
+
+def channel_match(ch1, ch2, allow_flip=False):
+    if ch1["capacity"] != ch2["capacity"]:
+        return False
+    if policy_match(ch1["node1_policy"], ch2["node1_policy"]) and policy_match(ch1["node2_policy"], ch2["node2_policy"]):
+        return True
+    if not allow_flip:
+        return False
+    else:
+        return policy_match(ch1["node1_policy"], ch2["node2_policy"]) and policy_match(ch1["node2_policy"], ch2["node1_policy"])

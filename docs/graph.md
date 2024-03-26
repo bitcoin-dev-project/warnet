@@ -52,9 +52,12 @@ lightning network channel (see [lightning.md](lightning.md)).
   <key id="collect_logs"    attr.name="collect_logs"     attr.type="boolean"  for="node" />
   <key id="build_args"      attr.name="build_args"       attr.type="string"   for="node" />
   <key id="ln"              attr.name="ln"               attr.type="string"   for="node" />
-  <key id="ln-image"        attr.name="ln-image"         attr.type="string"   for="node" />
-  <key id="ln-cb-image"     attr.name="ln-cb-image"      attr.type="string"   for="node" />
-  <key id="channel"         attr.name="channel"          attr.type="number"   for="edge" />
+  <key id="ln_image"        attr.name="ln_image"         attr.type="string"   for="node" />
+  <key id="ln_cb_image"     attr.name="ln_cb_image"      attr.type="string"   for="node" />
+  <key id="ln_config"       attr.name="ln_config"        attr.type="string"   for="node" />
+  <key id="channel_open"    attr.name="channel_open"     attr.type="string"   for="edge" />
+  <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
+  <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
   <graph edgedefault="directed">
     <!-- <nodes> -->
     <!-- <edges> -->
@@ -72,6 +75,9 @@ lightning network channel (see [lightning.md](lightning.md)).
 | collect_logs   | node  | boolean | False     | Whether to collect Bitcoin Core debug logs with Promtail                                                                                                            |
 | build_args     | node  | string  |           | A string of configure options used when building Bitcoin Core from source code, e.g. '--without-gui --disable-tests'                                                |
 | ln             | node  | string  |           | Attach a lightning network node of this implementation (currently only supports 'lnd')                                                                              |
-| ln-image       | node  | string  |           | Specify a lightning network node image from Dockerhub with the format repository/image:tag                                                                          |
-| ln-cb-image    | node  | string  |           | Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag                                                                             |
-| channel        | edge  | number  |           | Indicate that this edge is a lightning channel with this specified capacity                                                                                         |
+| ln_image       | node  | string  |           | Specify a lightning network node image from Dockerhub with the format repository/image:tag                                                                          |
+| ln_cb_image    | node  | string  |           | Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag                                                                             |
+| ln_config      | node  | string  |           | A string of arguments for the lightning network node in command-line format, e.g. '--protocol.wumbo-channels --bitcoin.timelockdelta=80'                            |
+| channel_open   | edge  | string  |           | Indicate that this edge is a lightning channel with these arguments passed to lnd openchannel                                                                       |
+| source_policy  | edge  | string  |           | Update the channel originator policy by passing these arguments passed to lnd updatechanpolicy                                                                      |
+| target_policy  | edge  | string  |           | Update the channel partner policy by passing these arguments passed to lnd updatechanpolicy                                                                         |

@@ -17,7 +17,7 @@ from kubernetes.dynamic.exceptions import ResourceNotFoundError
 from kubernetes.stream import stream
 from warnet.status import RunningStatus
 from warnet.tank import Tank
-from warnet.utils import default_bitcoin_conf_args, parse_raw_messages
+from warnet.utils import parse_raw_messages
 
 DOCKER_REGISTRY_CORE = "bitcoindevproject/bitcoin"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
@@ -313,18 +313,6 @@ class KubernetesBackend(BackendInterface):
         """
         pass
 
-    def default_bitcoind_config_args(self, tank):
-        defaults = default_bitcoin_conf_args()
-        defaults += f" -rpcuser={tank.rpc_user}"
-        defaults += f" -rpcpassword={tank.rpc_password}"
-        defaults += f" -rpcport={tank.rpc_port}"
-        defaults += f" -zmqpubrawblock=tcp://0.0.0.0:{tank.zmqblockport}"
-        defaults += f" -zmqpubrawtx=tcp://0.0.0.0:{tank.zmqtxport}"
-        # connect to initial peers as defined in graph file
-        for dst_index in tank.init_peers:
-            defaults += f" -addnode={self.get_service_name(dst_index)}"
-        return defaults
-
     def create_bitcoind_container(self, tank: Tank) -> client.V1Container:
         self.log.debug(f"Creating bitcoind container for tank {tank.index}")
         container_name = BITCOIN_CONTAINER_NAME
@@ -356,8 +344,8 @@ class KubernetesBackend(BackendInterface):
         else:
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
-        bitcoind_options = self.default_bitcoind_config_args(tank)
-        bitcoind_options += f" {tank.bitcoin_config}"
+        peers = [self.get_service_name(dst_index) for dst_index in tank.init_peers]
+        bitcoind_options = tank.get_bitcoin_conf(peers)
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
         bitcoind_container = client.V1Container(
@@ -454,28 +442,12 @@ class KubernetesBackend(BackendInterface):
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}"
         lightning_dns = f"lightning-{tank.index}.{self.namespace}"
-        args = [
-            "--noseedbackup",
-            "--norest",
-            "--debuglevel=debug",
-            "--accept-keysend",
-            "--bitcoin.active",
-            "--bitcoin.regtest",
-            "--bitcoin.node=bitcoind",
-            f"--bitcoind.rpcuser={tank.rpc_user}",
-            f"--bitcoind.rpcpass={tank.rpc_password}",
-            f"--bitcoind.rpchost={bitcoind_rpc_host}:{tank.rpc_port}",
-            f"--bitcoind.zmqpubrawblock={bitcoind_rpc_host}:{tank.zmqblockport}",
-            f"--bitcoind.zmqpubrawtx={bitcoind_rpc_host}:{tank.zmqtxport}",
-            f"--rpclisten=0.0.0.0:{tank.lnnode.rpc_port}",
-            f"--externalhosts={lightning_dns}",
-            f"--alias={tank.index}",
-        ]
+        args = tank.lnnode.get_conf(lightning_dns, bitcoind_rpc_host)
         self.log.debug(f"Creating lightning container for tank {tank.index} using {args=:}")
         lightning_container = client.V1Container(
             name=LN_CONTAINER_NAME,
             image=tank.lnnode.image,
-            args=args,
+            args=args.split(" "),
             env=[
                 client.V1EnvVar(name="LN_IMPL", value=tank.lnnode.impl),
             ],

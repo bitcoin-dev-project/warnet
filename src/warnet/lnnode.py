@@ -5,18 +5,26 @@ from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
 from .status import RunningStatus
 
+LND_CONFIG_BASE = " ".join([
+    "--noseedbackup",
+    "--norest",
+    "--debuglevel=debug",
+    "--accept-keysend",
+    "--bitcoin.active",
+    "--bitcoin.regtest",
+    "--bitcoin.node=bitcoind",
+    "--maxpendingchannels=64"
+])
 
 class LNNode:
-    def __init__(self, warnet, tank, impl, image, backend: BackendInterface, cb=None):
+    def __init__(self, warnet, tank, backend: BackendInterface, options):
         self.warnet = warnet
         self.tank = tank
-        assert impl == "lnd"
-        self.impl = impl
-        self.image = "lightninglabs/lnd:v0.17.0-beta"
-        if image:
-            self.image = image
         self.backend = backend
-        self.cb = cb
+        self.impl = options["impl"]
+        self.image = options["ln_image"]
+        self.cb = options["cb_image"]
+        self.ln_config = options["ln_config"]
         self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
 
@@ -32,6 +40,22 @@ class LNNode:
             self.tank.index, ServiceType.CIRCUITBREAKER
         )
 
+    def get_conf(self, ln_container_name, tank_container_name) -> str:
+        if self.impl == "lnd":
+            conf = LND_CONFIG_BASE
+            conf += f" --bitcoind.rpcuser={self.tank.rpc_user}"
+            conf += f" --bitcoind.rpcpass={self.tank.rpc_password}"
+            conf += f" --bitcoind.rpchost={tank_container_name}:{self.tank.rpc_port}"
+            conf += f" --bitcoind.zmqpubrawblock=tcp://{tank_container_name}:{self.tank.zmqblockport}"
+            conf += f" --bitcoind.zmqpubrawtx=tcp://{tank_container_name}:{self.tank.zmqtxport}"
+            conf += f" --rpclisten=0.0.0.0:{self.rpc_port}"
+            conf += f" --alias={self.tank.index}"
+            conf += f" --externalhosts={ln_container_name}"
+            conf += f" --tlsextradomain={ln_container_name}"
+            conf += " " + self.ln_config
+            return conf
+        return ""
+
     @exponential_backoff(max_retries=20, max_delay=300)
     @handle_json
     def lncli(self, cmd) -> dict:
@@ -44,17 +68,33 @@ class LNNode:
 
     def getURI(self):
         res = self.lncli("getinfo")
+        if len(res["uris"]) < 1:
+            return None
         return res["uris"][0]
 
     def get_wallet_balance(self):
         res = self.lncli("walletbalance")
         return res
 
-    def open_channel_to_tank(self, index, amt):
+    # returns the channel point in the form txid:output_index
+    def open_channel_to_tank(self, index: int, policy: str) -> str:
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
-        res = self.lncli(f"openchannel --node_key={pubkey} --connect={host} --local_amt={amt}")
-        return res
+        txid = self.lncli(f"openchannel --node_key={pubkey} --connect={host} {policy}")["funding_txid"]
+        # Why doesn't LND return the output index as well?
+        # Do they charge by the RPC call or something?!
+        pending = self.lncli("pendingchannels")
+        for chan in pending["pending_open_channels"]:
+            if txid in chan["channel"]["channel_point"]:
+                return chan["channel"]["channel_point"]
+        raise Exception(f"Opened channel with txid {txid} not found in pending channels")
+
+    def update_channel_policy(self, chan_point: str, policy: str) -> str:
+        ret = self.lncli(f"updatechanpolicy --chan_point={chan_point} {policy}")
+        if len(ret["failed_updates"]) == 0:
+            return ret
+        else:
+            raise Exception(ret)
 
     def connect_to_tank(self, index):
         tank = self.warnet.tanks[index]

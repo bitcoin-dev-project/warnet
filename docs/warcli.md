@@ -105,6 +105,18 @@ options:
 | bitcoin_conf | Path   |            |           |
 | random       | Bool   |            | False     |
 
+### `warcli graph import-json`
+Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
+    and additionally include 7 extra random outbounds per node. Include lightning
+    channels and their policies as well.
+    Returns XML file as string with or without --outfile option.
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| infile  | Path   | yes        |           |
+| outfile | Path   |            |           |
+
 ### `warcli graph validate`
 Validate a \<graph file> against the schema.
 
