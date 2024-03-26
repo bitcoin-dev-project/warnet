@@ -44,6 +44,7 @@ lightning network channel (see [lightning.md](lightning.md)).
 ### GraphML file format and headers
 ```xml
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key id="services"        attr.name="services"         attr.type="string"   for="graph" />
   <key id="version"         attr.name="version"          attr.type="string"   for="node" />
   <key id="image"           attr.name="image"            attr.type="string"   for="node" />
   <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
@@ -67,6 +68,7 @@ lightning network channel (see [lightning.md](lightning.md)).
 
 | key            | for   | type    | default   | explanation                                                                                                                                                         |
 |----------------|-------|---------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| services       | graph | string  |           | A space-separated list of extra service containers to deploy in the network. See [docs/services.md](services.md) for complete list of available services            |
 | version        | node  | string  |           | Bitcoin Core version with an available Warnet tank image on Dockerhub. May also be a GitHub repository with format user/repository:branch to build from source code |
 | image          | node  | string  |           | Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag                                                                                    |
 | bitcoin_config | node  | string  |           | A string of Bitcoin Core options in command-line format, e.g. '-debug=net -blocksonly'                                                                              |
