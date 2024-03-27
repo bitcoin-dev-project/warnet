@@ -181,18 +181,19 @@ class Warnet:
         shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
         with open(self.fork_observer_config, "a") as f:
             for tank in self.tanks:
-                f.write(
-                    f"""
-                    [[networks.nodes]]
-                    id = {tank.index}
-                    name = "Node {tank.index}"
-                    description = "Warnet tank {tank.index}"
-                    rpc_host = "{tank.ipv4}"
-                    rpc_port = {tank.rpc_port}
-                    rpc_user = "{tank.rpc_user}"
-                    rpc_password = "{tank.rpc_password}"
-                """
-                )
+                if tank.fork_observer:
+                    f.write(
+                        f"""
+                        [[networks.nodes]]
+                        id = {tank.index}
+                        name = "Node {tank.index}"
+                        description = "Warnet tank {tank.index}"
+                        rpc_host = "{tank.ipv4}"
+                        rpc_port = {tank.rpc_port}
+                        rpc_user = "{tank.rpc_user}"
+                        rpc_password = "{tank.rpc_password}"
+                    """
+                    )
         logger.info(f"Wrote file: {self.fork_observer_config}")
 
     def export(self, subdir):

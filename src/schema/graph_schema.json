@@ -23,6 +23,10 @@
         "type": "boolean",
         "default": false,
         "comment": "Whether to collect Bitcoin Core debug logs with Promtail"},
+      "fork_observer": {
+        "type": "boolean",
+        "default": false,
+        "comment": "Whether it should be monitored with Fork Observer."},
       "build_args": {
         "type": "string",
         "default": "",
