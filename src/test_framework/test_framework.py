@@ -712,6 +712,8 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             if best_hash.count(best_hash[0]) == len(rpc_connections):
                 return
             # Check that each peer has at least one connection
+            for i, node in enumerate(self.nodes):
+                print(f"Peers for node {i}: {len(node.getpeerinfo())}")
             assert (all([len(x.getpeerinfo()) for x in rpc_connections]))
             time.sleep(wait)
         raise AssertionError("Block sync timed out after {}s:{}".format(
