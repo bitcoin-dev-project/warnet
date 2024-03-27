@@ -30,7 +30,8 @@ CONFIG_BASE = " ".join([
     "-rpcallowip=0.0.0.0/0",
     "-rpcbind=0.0.0.0",
     "-fallbackfee=0.00001000",
-    "-listen=1"
+    "-listen=1",
+    "-rest"
 ])
 
 class Tank:
