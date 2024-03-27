@@ -30,8 +30,7 @@ CONFIG_BASE = " ".join([
     "-rpcallowip=0.0.0.0/0",
     "-rpcbind=0.0.0.0",
     "-fallbackfee=0.00001000",
-    "-listen=1",
-    "-rest"
+    "-listen=1"
 ])
 
 class Tank:
@@ -61,6 +60,7 @@ class Tank:
         # index of integers imported from graph file
         # indicating which tanks to initially connect to
         self.init_peers = []
+        self.fork_observer = False
 
     def _parse_version(self, version):
         if not version:
@@ -95,6 +95,9 @@ class Tank:
                 "ln_config": node.get("ln_config", "")
             }
             self.lnnode = LNNode(self.warnet, self, self.warnet.container_interface, options)
+
+        if self.fork_observer:
+            self.bitcoin_config += " -rest"
 
         logger.debug(
             f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"
