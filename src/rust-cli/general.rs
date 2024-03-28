@@ -40,3 +40,19 @@ pub async fn handle_rpc_commands(
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
 }
+
+pub async fn handle_debug_log_command(node: &u64, network: &String) -> anyhow::Result<()> {
+    let mut rpc_params = ObjectParams::new();
+    rpc_params
+        .insert("node", node)
+        .context("add node_index param")?;
+    rpc_params
+        .insert("network", network)
+        .context("add network param")?;
+    let data =  make_rpc_call("tank_debug_log", rpc_params)
+            .await
+            .context("Failed to make RPC call tank_debug_log")?;
+    pretty_print_value(&data).context("pretty print result")?;
+    Ok(())
+
+}

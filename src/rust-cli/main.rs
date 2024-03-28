@@ -7,7 +7,7 @@ mod rpc_call;
 mod scenarios;
 mod util;
 use crate::debug::{handle_debug_command, DebugCommand};
-use crate::general::{handle_rpc_commands, NodeType};
+use crate::general::*;
 use crate::network::{handle_network_command, NetworkCommand};
 use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 
@@ -50,6 +50,10 @@ enum Commands {
         method: String,
         params: Option<Vec<String>>,
     },
+    /// Fetch the Bitcoin Core debug log from <node> in [network]
+    DebugLog {
+        node: u64,
+    },
 }
 
 #[tokio::main]
@@ -85,6 +89,9 @@ async fn main() -> anyhow::Result<()> {
             params,
         }) => {
             handle_rpc_commands(NodeType::LnCli, node, method, params, &cli.network).await?;
+        }
+        Some(Commands::DebugLog { node }) => {
+            handle_debug_log_command(node, &cli.network).await?;
         }
         None => println!("No command provided"),
     }
