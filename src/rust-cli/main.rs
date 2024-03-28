@@ -2,9 +2,11 @@ use clap::{Parser, Subcommand};
 
 use crate::debug::{handle_debug_command, DebugCommands};
 use crate::network::{handle_network_command, NetworkCommands};
+use crate::scenarios::{handle_scenario_command, ScenarioCommands};
 mod debug;
 mod network;
 mod rpc_call;
+mod scenarios;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -23,10 +25,15 @@ enum Commands {
         #[command(subcommand)]
         command: Option<NetworkCommands>,
     },
-    /// Debug commands
+    /// Debug commands [[deprecated]]
     Debug {
         #[command(subcommand)]
         command: Option<DebugCommands>,
+    },
+    /// Scenario commands
+    Scenarios {
+        #[command(subcommand)]
+        command: Option<ScenarioCommands>,
     },
 }
 
@@ -43,6 +50,11 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Debug { command }) => {
             if let Some(command) = command {
                 handle_debug_command(command, &cli.network).await?;
+            }
+        }
+        Some(Commands::Scenarios { command }) => {
+            if let Some(command) = command {
+                handle_scenario_command(command, &cli.network).await?;
             }
         }
         None => println!("No command provided"),

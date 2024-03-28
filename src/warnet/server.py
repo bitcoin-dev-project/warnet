@@ -283,7 +283,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_available(self) -> list[tuple]:
+    def scenarios_available(self, network: str) -> list[tuple]:
         """
         List available scenarios in the Warnet Test Framework
         """
