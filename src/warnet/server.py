@@ -463,7 +463,6 @@ class Server:
                 try:
                     wn = server.get_warnet(network)
                     wn.generate_deployment()
-                    wn.write_fork_observer_config()
                     wn.warnet_build()
                     wn.warnet_up()
                     wn.wait_for_health()
