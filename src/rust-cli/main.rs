@@ -1,14 +1,16 @@
-use clap::{Parser, Subcommand};
 use anyhow::Context;
+use clap::{Parser, Subcommand};
 
 mod debug;
 mod general;
+mod graph;
 mod network;
 mod rpc_call;
 mod scenarios;
 mod util;
 use crate::debug::{handle_debug_command, DebugCommand};
 use crate::general::*;
+use crate::graph::{handle_graph_command, GraphCommand};
 use crate::network::{handle_network_command, NetworkCommand};
 use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 
@@ -34,6 +36,11 @@ enum Commands {
         #[command(subcommand)]
         command: Option<DebugCommand>,
     },
+    /// Graph commands
+    Graph {
+        #[command(subcommand)]
+        command: Option<GraphCommand>,
+    },
     /// Scenario commands
     Scenarios {
         #[command(subcommand)]
@@ -52,18 +59,11 @@ enum Commands {
         params: Option<Vec<String>>,
     },
     /// Fetch the Bitcoin Core debug log from <node> in [network]
-    DebugLog {
-        node: u64,
-    },
+    DebugLog { node: u64 },
     /// Fetch messages sent between <node_a> and <node_b> in [network]
-    Messages {
-        node_a: u64,
-        node_b: u64,
-    },
+    Messages { node_a: u64, node_b: u64 },
     /// Grep combined logs via fluentd using regex <pattern>
-    GrepLogs {
-        pattern: String,
-    },
+    GrepLogs { pattern: String },
     /// Stop warnet
     Stop {},
 }
@@ -77,14 +77,19 @@ async fn main() -> anyhow::Result<()> {
         .context("add network param")?;
 
     match &cli.command {
-        Some(Commands::Network { command }) => {
-            if let Some(command) = command {
-                handle_network_command(command, rpc_params).await?;
-            }
-        }
         Some(Commands::Debug { command }) => {
             if let Some(command) = command {
                 handle_debug_command(command, rpc_params).await?;
+            }
+        }
+        Some(Commands::Graph { command }) => {
+            if let Some(command) = command {
+                handle_graph_command(command).await?;
+            }
+        }
+        Some(Commands::Network { command }) => {
+            if let Some(command) = command {
+                handle_network_command(command, rpc_params).await?;
             }
         }
         Some(Commands::Scenarios { command }) => {
@@ -115,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::GrepLogs { pattern }) => {
             handle_grep_logs_command(pattern, rpc_params).await?;
         }
-        Some(Commands::Stop { }) => {
+        Some(Commands::Stop {}) => {
             handle_stop_command(rpc_params).await?;
         }
         None => println!("No command provided"),
