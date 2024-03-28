@@ -11,21 +11,13 @@ import yaml
 from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from docker.models.containers import Container
-from templates import TEMPLATES
+from warnet.services import services
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import (
     get_architecture,
     parse_raw_messages,
 )
-
-from .services.cadvisor import CAdvisor
-from .services.fork_observer import ForkObserver
-from .services.grafana import Grafana
-from .services.loki.loki import Loki
-from .services.node_exporter import NodeExporter
-from .services.prometheus import Prometheus
-from .services.promtail.promtail import Promtail
 
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
@@ -272,19 +264,9 @@ class ComposeBackend(BackendInterface):
             self.add_services(tank, compose)
 
         # Initialize services and add them to the compose
-        services = [
-            Prometheus(warnet.network_name, self.config_dir),
-            NodeExporter(warnet.network_name),
-            Grafana(warnet.network_name),
-            CAdvisor(warnet.network_name, TEMPLATES),
-            ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            Loki(warnet.network_name),
-            Promtail(warnet.network_name),
-        ]
-
-        for service_obj in services:
-            service_name = service_obj.__class__.__name__.lower()
-            compose["services"][service_name] = service_obj.get_service()
+        for service_name in warnet.services:
+            if "compose" in services[service_name]["backends"]:
+                compose["services"][service_name] = self.service_from_json(services[service_name])
 
         docker_compose_path = warnet.config_dir / "docker-compose.yml"
         try:
