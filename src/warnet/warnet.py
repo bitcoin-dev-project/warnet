@@ -10,13 +10,14 @@ import shutil
 from pathlib import Path
 
 import networkx
+import yaml
 from backends import ComposeBackend, KubernetesBackend
 from templates import TEMPLATES
+from warnet.services import FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
 from warnet.tank import Tank
 from warnet.utils import gen_config_dir, load_schema, validate_graph_schema
 
 logger = logging.getLogger("warnet")
-FO_CONF_NAME = "fork_observer_config.toml"
 
 
 class Warnet:
@@ -37,6 +38,7 @@ class Warnet:
         self.deployment_file: Path | None = None
         self.backend = backend
         self.graph_schema = load_schema()
+        self.services = []
 
     def _warnet_dict_representation(self) -> dict:
         repr = {}
@@ -109,6 +111,8 @@ class Warnet:
         self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int, force_multigraph=True)
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
+        if "services" in self.graph.graph:
+            self.services = self.graph.graph["services"].split()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
 
@@ -118,6 +122,8 @@ class Warnet:
         self.graph = graph
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
+        if "services" in self.graph.graph:
+            self.services = self.graph.graph["services"].split()
         logger.info(f"Created Warnet using directory {self.config_dir}")
         return self
 
@@ -133,10 +139,6 @@ class Warnet:
         for tank in self.tanks:
             tank._ipv4 = self.container_interface.get_tank_ipv4(tank.index)
         return self
-
-    @property
-    def fork_observer_config(self):
-        return self.config_dir / FO_CONF_NAME
 
     def tanks_from_graph(self):
         if not self.graph:
@@ -176,10 +178,18 @@ class Warnet:
 
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
+        if "forkobserver" in self.services:
+            self.write_fork_observer_config()
+        if "grafana" in self.services:
+            self.write_grafna_config()
+        if "prometheus" in self.services:
+            self.write_prometheus_config()
 
     def write_fork_observer_config(self):
-        shutil.copy(TEMPLATES / FO_CONF_NAME, self.fork_observer_config)
-        with open(self.fork_observer_config, "a") as f:
+        src = TEMPLATES / FO_CONF_NAME
+        dst = self.config_dir / FO_CONF_NAME
+        shutil.copy(src, dst)
+        with open(dst, "a") as f:
             for tank in self.tanks:
                 f.write(
                     f"""
@@ -193,7 +203,39 @@ class Warnet:
                     rpc_password = "{tank.rpc_password}"
                 """
                 )
-        logger.info(f"Wrote file: {self.fork_observer_config}")
+        logger.info(f"Wrote file: {dst}")
+
+    def write_grafna_config(self):
+        src = TEMPLATES / GRAFANA_PROVISIONING
+        dst = self.config_dir / GRAFANA_PROVISIONING
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+        logger.info(f"Wrote directory: {dst}")
+
+    def write_prometheus_config(self):
+        scrape_configs = [
+            {
+                "job_name": "cadvisor",
+                "scrape_interval": "15s",
+                "static_configs": [{"targets": [f"{self.network_name}_cadvisor:8080"]}],
+            }
+        ]
+        for tank in self.tanks:
+            if tank.exporter:
+                scrape_configs.append(
+                    {
+                        "job_name": tank.exporter_name,
+                        "scrape_interval": "5s",
+                        "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
+                    }
+                )
+        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
+        prometheus_path = self.config_dir / PROM_CONF_NAME
+        try:
+            with open(prometheus_path, "w") as file:
+                yaml.dump(config, file)
+            logger.info(f"Wrote file: {prometheus_path}")
+        except Exception as e:
+            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
     def export(self, subdir):
         if self.backend != "compose":

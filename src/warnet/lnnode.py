@@ -13,7 +13,8 @@ LND_CONFIG_BASE = " ".join([
     "--bitcoin.active",
     "--bitcoin.regtest",
     "--bitcoin.node=bitcoind",
-    "--maxpendingchannels=64"
+    "--maxpendingchannels=64",
+    "--trickledelay=1"
 ])
 
 class LNNode:

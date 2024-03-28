@@ -1,4 +1,18 @@
 {
+  "graph": {
+    "type": "object",
+    "properties": {
+      "node": {"type": "object"},
+      "edge": {"type": "object"},
+      "node_default": {"type": "object"},
+      "edge_default": {"type": "object"},
+      "services": {
+        "type": "string",
+        "comment": "A space-separated list of extra service containers to deploy in the network. See [docs/services.md](services.md) for complete list of available services"
+      }
+    },
+    "additionalProperties": false
+  },
   "node": {
     "type": "object",
     "properties": {

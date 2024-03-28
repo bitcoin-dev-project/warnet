@@ -15,6 +15,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.dynamic.exceptions import ResourceNotFoundError
 from kubernetes.stream import stream
+from warnet.services import services
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import parse_raw_messages
@@ -72,6 +73,10 @@ class KubernetesBackend(BackendInterface):
                 self.client.delete_namespaced_pod(pod_name, self.namespace)
 
         self.remove_prometheus_service_monitors(warnet.tanks)
+
+        for service_name in warnet.services:
+            if "k8s" in services[service_name]["backends"]:
+                self.client.delete_namespaced_pod(services[service_name]["container_name_suffix"], self.namespace)
 
         return True
 
@@ -668,6 +673,10 @@ class KubernetesBackend(BackendInterface):
         if self.check_logging_crds_installed():
             self.apply_prometheus_service_monitors(warnet.tanks)
 
+        for service_name in warnet.services:
+            if "k8s" in services[service_name]["backends"]:
+                self.service_from_json(services[service_name])
+
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
@@ -699,3 +708,36 @@ class KubernetesBackend(BackendInterface):
         Wait for healthy status on all bitcoind nodes
         """
         pass
+
+    def service_from_json(self, obj):
+        env = []
+        for pair in obj.get("environment", []):
+            name, value = pair.split("=")
+            env.append(client.V1EnvVar(name=name, value=value))
+        service_container = client.V1Container(
+            name=obj["container_name_suffix"],
+            image=obj["image"],
+            env=env,
+            security_context=client.V1SecurityContext(
+                privileged=True,
+                capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
+            ),
+        )
+        service_pod = client.V1Pod(
+            api_version="v1",
+            kind="Pod",
+            metadata=client.V1ObjectMeta(
+                name=obj["container_name_suffix"],
+                namespace=self.namespace,
+                labels={
+                    "app": obj["container_name_suffix"],
+                    "network": self.network_name,
+                },
+            ),
+            spec=client.V1PodSpec(
+                restart_policy="OnFailure",
+                containers=[service_container],
+                volumes=[],
+            ),
+        )
+        self.client.create_namespaced_pod(namespace=self.namespace, body=service_pod)
