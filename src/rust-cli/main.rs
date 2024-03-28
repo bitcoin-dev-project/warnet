@@ -64,6 +64,8 @@ enum Commands {
     GrepLogs {
         pattern: String,
     },
+    /// Stop warnet
+    Stop {},
 }
 
 #[tokio::main]
@@ -112,6 +114,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::GrepLogs { pattern }) => {
             handle_grep_logs_command(pattern, rpc_params).await?;
+        }
+        Some(Commands::Stop { }) => {
+            handle_stop_command(rpc_params).await?;
         }
         None => println!("No command provided"),
     }

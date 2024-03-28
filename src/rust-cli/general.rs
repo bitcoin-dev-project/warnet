@@ -75,3 +75,12 @@ pub async fn handle_grep_logs_command(pattern: &String, mut params: ObjectParams
     Ok(())
 
 }
+
+pub async fn handle_stop_command(params: ObjectParams) -> anyhow::Result<()> {
+    let data =  make_rpc_call("server_stop", params)
+            .await
+            .context("Failed to make RPC call server_stop")?;
+    pretty_print_value(&data).context("pretty print result")?;
+    Ok(())
+
+}

@@ -567,7 +567,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def server_stop(self) -> None:
+    def server_stop(self, network: str = "warnet") -> None:
         """
         Stop warnet.
         """
