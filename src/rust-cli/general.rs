@@ -56,3 +56,22 @@ pub async fn handle_debug_log_command(node: &u64, network: &String) -> anyhow::R
     Ok(())
 
 }
+
+pub async fn handle_messages_command(node_a: &u64, node_b: &u64, network: &String) -> anyhow::Result<()> {
+    let mut rpc_params = ObjectParams::new();
+    rpc_params
+        .insert("node_a", node_a)
+        .context("add node_b param")?;
+    rpc_params
+        .insert("node_b", node_b)
+        .context("add node_b param")?;
+    rpc_params
+        .insert("network", network)
+        .context("add network param")?;
+    let data =  make_rpc_call("tank_messages", rpc_params)
+            .await
+            .context("Failed to make RPC call tank_messages")?;
+    pretty_print_value(&data).context("pretty print result")?;
+    Ok(())
+
+}

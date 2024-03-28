@@ -54,6 +54,11 @@ enum Commands {
     DebugLog {
         node: u64,
     },
+    /// Fetch messages sent between <node_a> and <node_b> in [network]
+    Messages {
+        node_a: u64,
+        node_b: u64,
+    },
 }
 
 #[tokio::main]
@@ -92,6 +97,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::DebugLog { node }) => {
             handle_debug_log_command(node, &cli.network).await?;
+        }
+        Some(Commands::Messages { node_a, node_b }) => {
+            handle_messages_command(node_a, node_b, &cli.network).await?;
         }
         None => println!("No command provided"),
     }
