@@ -78,5 +78,11 @@ services = {
         "container_port": "9090",
         "config_files": [f"/{PROM_CONF_NAME}:/etc/prometheus/prometheus.yml"],
         "args": ["--config.file=/etc/prometheus/prometheus.yml"]
-    }
+    },
+    "simln": {
+        "backends": ["compose", "k8s"],
+        "image": "bitcoindevproject/simln:0.2.0",
+        "container_name_suffix": "simln",
+        "args": ["--log-level=debug"]
+    },
 }

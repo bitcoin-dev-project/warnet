@@ -15,11 +15,12 @@
   <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
   <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
   <graph edgedefault="directed">
-    <data key="services">cadvisor forkobserver grafana nodeexporter prometheus</data>
+    <data key="services">cadvisor forkobserver grafana nodeexporter prometheus simln</data>
     <node id="0">
         <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w0 -debug=validation</data>
         <data key="exporter">true</data>
+        <data key="ln">lnd</data>
     </node>
   </graph>
 </graphml>

@@ -464,5 +464,6 @@ class ComposeBackend(BackendInterface):
             "devices": obj.get("devices", []),
             "command": obj.get("args", []),
             "environment": obj.get("environment", []),
+            "restart": "on-failure",
             "networks": [self.network_name]
         }
