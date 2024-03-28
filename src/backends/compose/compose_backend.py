@@ -1,6 +1,5 @@
 import logging
 import re
-import shutil
 import subprocess
 import time
 from datetime import datetime
@@ -20,7 +19,6 @@ from warnet.utils import (
     parse_raw_messages,
 )
 
-from .services import SERVICES
 from .services.cadvisor import CAdvisor
 from .services.fork_observer import ForkObserver
 from .services.grafana import Grafana
@@ -35,7 +33,6 @@ TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
-GRAFANA_PROVISIONING = "grafana-provisioning"
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
 CONTAINER_PREFIX_CIRCUITBREAKER = "tank-ln-cb"
@@ -256,35 +253,6 @@ class ComposeBackend(BackendInterface):
 
         return "\n".join(sorted_logs)
 
-    def write_prometheus_config(self, warnet):
-        scrape_configs = [
-            {
-                "job_name": "cadvisor",
-                "scrape_interval": "15s",
-                "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
-            }
-        ]
-
-        for tank in warnet.tanks:
-            if tank.exporter:
-                scrape_configs.append(
-                    {
-                        "job_name": tank.exporter_name,
-                        "scrape_interval": "5s",
-                        "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
-                    }
-                )
-
-        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
-
-        prometheus_path = self.config_dir / "prometheus.yml"
-        try:
-            with open(prometheus_path, "w") as file:
-                yaml.dump(config, file)
-            logger.info(f"Wrote file: {prometheus_path}")
-        except Exception as e:
-            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
-
     def _write_docker_compose(self, warnet):
         compose = {
             "version": "3.8",
@@ -328,16 +296,7 @@ class ComposeBackend(BackendInterface):
 
     def generate_deployment_file(self, warnet):
         self._write_docker_compose(warnet)
-        self.write_prometheus_config(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
-        logger.debug(f"{SERVICES=}")
-        logger.debug(f"{SERVICES / GRAFANA_PROVISIONING=}")
-        logger.debug(f"{self.config_dir=}")
-        shutil.copytree(
-            SERVICES / GRAFANA_PROVISIONING,
-            self.config_dir / GRAFANA_PROVISIONING,
-            dirs_exist_ok=True,
-        )
 
     def add_services(self, tank: Tank, compose):
         services = compose["services"]
