@@ -403,7 +403,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_stop(self, pid: int) -> str:
+    def scenarios_stop(self, pid: int, network: str = "warnet") -> str:
         matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
         if matching_scenarios:
             matching_scenarios[0]["proc"].terminate()  # sends SIGTERM
@@ -415,7 +415,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg)
 
-    def scenarios_list_running(self) -> list[dict]:
+    def scenarios_list_running(self, network: str) -> list[dict]:
         running = [
             {
                 "pid": sc["pid"],
