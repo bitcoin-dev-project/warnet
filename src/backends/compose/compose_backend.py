@@ -506,3 +506,22 @@ class ComposeBackend(BackendInterface):
             raise Exception(f"Tanks did not reach healthy status in {timeout} seconds")
 
         return healthy
+
+    def service_from_json(self, obj: dict) -> dict:
+        volumes = obj.get("volumes", [])
+        volumes += [f"{self.config_dir}" + filepath for filepath in obj.get("config_files", [])]
+
+        ports = []
+        if "container_port" and "warnet_port" in obj:
+            ports = [f"{obj['warnet_port']}:{obj['container_port']}"]
+        return {
+            "image": obj["image"],
+            "container_name": f"{self.network_name}_{obj['container_name_suffix']}",
+            "ports": ports,
+            "volumes": volumes,
+            "privileged": obj.get("privileged", False),
+            "devices": obj.get("devices", []),
+            "command": obj.get("args", []),
+            "environment": obj.get("environment", []),
+            "networks": [self.network_name]
+        }

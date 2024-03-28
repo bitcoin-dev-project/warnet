@@ -699,3 +699,6 @@ class KubernetesBackend(BackendInterface):
         Wait for healthy status on all bitcoind nodes
         """
         pass
+
+    def service_from_json(self, obj: dict) -> dict:
+        pass
