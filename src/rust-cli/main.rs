@@ -60,6 +60,10 @@ enum Commands {
         node_a: u64,
         node_b: u64,
     },
+    /// Grep combined logs via fluentd using regex <pattern>
+    GrepLogs {
+        pattern: String,
+    },
 }
 
 #[tokio::main]
@@ -105,6 +109,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::Messages { node_a, node_b }) => {
             handle_messages_command(node_a, node_b, rpc_params).await?;
+        }
+        Some(Commands::GrepLogs { pattern }) => {
+            handle_grep_logs_command(pattern, rpc_params).await?;
         }
         None => println!("No command provided"),
     }

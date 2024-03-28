@@ -63,3 +63,15 @@ pub async fn handle_messages_command(node_a: &u64, node_b: &u64, mut params: Obj
     Ok(())
 
 }
+
+pub async fn handle_grep_logs_command(pattern: &String, mut params: ObjectParams) -> anyhow::Result<()> {
+    params
+        .insert("pattern", pattern)
+        .context("add pattern param")?;
+    let data =  make_rpc_call("logs_grep", params)
+            .await
+            .context("Failed to make RPC call tank_messages")?;
+    pretty_print_value(&data).context("pretty print result")?;
+    Ok(())
+
+}
