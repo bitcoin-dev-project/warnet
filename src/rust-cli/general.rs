@@ -4,14 +4,22 @@ use jsonrpsee::core::params::ObjectParams;
 
 use crate::util::pretty_print_value;
 
-pub async fn handle_rpc_command(
-    node: &u64,
+pub enum NodeType {
+    LnCli,
+    BitcoinCli,
+}
+
+pub async fn handle_rpc_commands(
+    node_type: NodeType,
+    node_index: &u64,
     method: &String,
     params: &Option<Vec<String>>,
     network: &String,
 ) -> anyhow::Result<()> {
     let mut rpc_params = ObjectParams::new();
-    rpc_params.insert("node", node).context("add node param")?;
+    rpc_params
+        .insert("node", node_index)
+        .context("add node_index param")?;
     rpc_params
         .insert("method", method)
         .context("add method param")?;
@@ -21,9 +29,14 @@ pub async fn handle_rpc_command(
     rpc_params
         .insert("network", network)
         .context("add network param")?;
-    let data = make_rpc_call("tank_bcli", rpc_params)
-        .await
-        .context("Failed to make RPC call")?;
+    let data = match node_type {
+        NodeType::LnCli => make_rpc_call("tank_bcli", rpc_params)
+            .await
+            .context("Failed to make RPC call LnCli")?,
+        NodeType::BitcoinCli => make_rpc_call("tank_bcli", rpc_params)
+            .await
+            .context("Failed to make RPC call BitcoinCli")?,
+    };
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
 }

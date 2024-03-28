@@ -7,7 +7,7 @@ mod rpc_call;
 mod scenarios;
 mod util;
 use crate::debug::{handle_debug_command, DebugCommand};
-use crate::general::handle_rpc_command;
+use crate::general::{handle_rpc_commands, NodeType};
 use crate::network::{handle_network_command, NetworkCommand};
 use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 
@@ -44,6 +44,12 @@ enum Commands {
         method: String,
         params: Option<Vec<String>>,
     },
+    /// Call lncli <method> [params] on <node> in [network]
+    LnCli {
+        node: u64,
+        method: String,
+        params: Option<Vec<String>>,
+    },
 }
 
 #[tokio::main]
@@ -71,7 +77,14 @@ async fn main() -> anyhow::Result<()> {
             method,
             params,
         }) => {
-            handle_rpc_command(node, method, params, &cli.network).await?;
+            handle_rpc_commands(NodeType::BitcoinCli, node, method, params, &cli.network).await?;
+        }
+        Some(Commands::LnCli {
+            node,
+            method,
+            params,
+        }) => {
+            handle_rpc_commands(NodeType::LnCli, node, method, params, &cli.network).await?;
         }
         None => println!("No command provided"),
     }
