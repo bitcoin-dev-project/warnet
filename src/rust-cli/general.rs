@@ -41,46 +41,49 @@ pub async fn handle_debug_log_command(node: &u64, mut params: ObjectParams) -> a
     params
         .insert("node", node)
         .context("add node_index param")?;
-    let data =  make_rpc_call("tank_debug_log", params)
-            .await
-            .context("Failed to make RPC call tank_debug_log")?;
+    let data = make_rpc_call("tank_debug_log", params)
+        .await
+        .context("Failed to make RPC call tank_debug_log")?;
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
-
 }
 
-pub async fn handle_messages_command(node_a: &u64, node_b: &u64, mut params: ObjectParams) -> anyhow::Result<()> {
+pub async fn handle_messages_command(
+    node_a: &u64,
+    node_b: &u64,
+    mut params: ObjectParams,
+) -> anyhow::Result<()> {
     params
         .insert("node_a", node_a)
         .context("add node_b param")?;
     params
         .insert("node_b", node_b)
         .context("add node_b param")?;
-    let data =  make_rpc_call("tank_messages", params)
-            .await
-            .context("Failed to make RPC call tank_messages")?;
+    let data = make_rpc_call("tank_messages", params)
+        .await
+        .context("Failed to make RPC call tank_messages")?;
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
-
 }
 
-pub async fn handle_grep_logs_command(pattern: &String, mut params: ObjectParams) -> anyhow::Result<()> {
+pub async fn handle_grep_logs_command(
+    pattern: &String,
+    mut params: ObjectParams,
+) -> anyhow::Result<()> {
     params
         .insert("pattern", pattern)
         .context("add pattern param")?;
-    let data =  make_rpc_call("logs_grep", params)
-            .await
-            .context("Failed to make RPC call tank_messages")?;
+    let data = make_rpc_call("logs_grep", params)
+        .await
+        .context("Failed to make RPC call tank_messages")?;
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
-
 }
 
 pub async fn handle_stop_command(params: ObjectParams) -> anyhow::Result<()> {
-    let data =  make_rpc_call("server_stop", params)
-            .await
-            .context("Failed to make RPC call server_stop")?;
+    let data = make_rpc_call("server_stop", params)
+        .await
+        .context("Failed to make RPC call server_stop")?;
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
-
 }

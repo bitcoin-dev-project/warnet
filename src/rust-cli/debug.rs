@@ -12,7 +12,10 @@ pub enum DebugCommand {
     GenerateCompose { graph_file_path: PathBuf },
 }
 
-pub async fn handle_debug_command(command: &DebugCommand, mut rpc_params: ObjectParams) -> anyhow::Result<()> {
+pub async fn handle_debug_command(
+    command: &DebugCommand,
+    mut rpc_params: ObjectParams,
+) -> anyhow::Result<()> {
     match command {
         DebugCommand::GenerateCompose { graph_file_path } => {
             rpc_params
