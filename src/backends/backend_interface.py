@@ -115,3 +115,11 @@ class BackendInterface(ABC):
         Wait for healthy status on all bitcoind nodes
         """
         raise NotImplementedError("This method should be overridden by child class")
+
+
+    @abstractmethod
+    def service_from_json(self, json: object):
+        """
+        Create a single container from an object of settings
+        """
+        raise NotImplementedError("This method should be overridden by child class")
