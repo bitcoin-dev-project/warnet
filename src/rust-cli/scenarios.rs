@@ -7,7 +7,7 @@ use prettytable::{row, Table};
 use std::path::PathBuf;
 
 #[derive(Subcommand, Debug)]
-pub enum ScenarioCommands {
+pub enum ScenarioCommand {
     /// List available scenarios in the Warnet Test Framework
     Available {},
     /// Run a scenario from remote repository with <name>
@@ -27,7 +27,7 @@ pub enum ScenarioCommands {
 }
 
 pub async fn handle_scenario_command(
-    command: &ScenarioCommands,
+    command: &ScenarioCommand,
     network: &String,
 ) -> anyhow::Result<()> {
     let mut params = ObjectParams::new();
@@ -36,7 +36,7 @@ pub async fn handle_scenario_command(
         .context("Add network to params")?;
 
     match command {
-        ScenarioCommands::Available {} => {
+        ScenarioCommand::Available {} => {
             let data = make_rpc_call("scenarios_available", params)
                 .await
                 .context("Failed to fetch available scenarios")?;
@@ -57,7 +57,7 @@ pub async fn handle_scenario_command(
                 println!("Unexpected response format.");
             }
         }
-        ScenarioCommands::Run {
+        ScenarioCommand::Run {
             scenario,
             additional_args,
         } => {
@@ -73,7 +73,7 @@ pub async fn handle_scenario_command(
             println!("{:?}", data);
         }
 
-        ScenarioCommands::RunFile {
+        ScenarioCommand::RunFile {
             scenario_path,
             additional_args,
         } => {
@@ -91,7 +91,7 @@ pub async fn handle_scenario_command(
                 .context("Failed to run scenario")?;
             println!("{:?}", data);
         }
-        ScenarioCommands::Active {} => {
+        ScenarioCommand::Active {} => {
             let data = make_rpc_call("scenarios_list_running", params)
                 .await
                 .context("Failed to list running scenarios")?;
@@ -124,7 +124,7 @@ pub async fn handle_scenario_command(
                 println!("Unexpected response format.");
             }
         }
-        ScenarioCommands::Stop { pid } => {
+        ScenarioCommand::Stop { pid } => {
             params.insert("pid", pid).context("Add pid to params")?;
             let data = make_rpc_call("scenarios_stop", params)
                 .await

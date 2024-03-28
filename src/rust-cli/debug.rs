@@ -7,18 +7,18 @@ use clap::Subcommand;
 use crate::rpc_call::make_rpc_call;
 
 #[derive(Subcommand, Debug)]
-pub enum DebugCommands {
+pub enum DebugCommand {
     /// Generate the docker-compose file for a given <graph_file> and return it.
     GenerateCompose { graph_file_path: PathBuf },
 }
 
-pub async fn handle_debug_command(command: &DebugCommands, network: &String) -> anyhow::Result<()> {
+pub async fn handle_debug_command(command: &DebugCommand, network: &String) -> anyhow::Result<()> {
     let mut params = ObjectParams::new();
     params
         .insert("network", network)
         .context("Add network to params")?;
     match command {
-        DebugCommands::GenerateCompose { graph_file_path } => {
+        DebugCommand::GenerateCompose { graph_file_path } => {
             params
                 .insert("graph_file", graph_file_path.to_str())
                 .context("Add graph file path to params")?;

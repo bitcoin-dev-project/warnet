@@ -1,12 +1,14 @@
 use clap::{Parser, Subcommand};
 
-use crate::debug::{handle_debug_command, DebugCommands};
-use crate::network::{handle_network_command, NetworkCommands};
-use crate::scenarios::{handle_scenario_command, ScenarioCommands};
 mod debug;
+mod general;
 mod network;
 mod rpc_call;
 mod scenarios;
+use crate::debug::{handle_debug_command, DebugCommand};
+use crate::general::handle_rpc_command;
+use crate::network::{handle_network_command, NetworkCommand};
+use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -23,17 +25,23 @@ enum Commands {
     /// Network commands
     Network {
         #[command(subcommand)]
-        command: Option<NetworkCommands>,
+        command: Option<NetworkCommand>,
     },
     /// Debug commands [[deprecated]]
     Debug {
         #[command(subcommand)]
-        command: Option<DebugCommands>,
+        command: Option<DebugCommand>,
     },
     /// Scenario commands
     Scenarios {
         #[command(subcommand)]
-        command: Option<ScenarioCommands>,
+        command: Option<ScenarioCommand>,
+    },
+    /// Call bitcoin-cli <method> [params] on <node> in [network]
+    Rpc {
+        node: u64,
+        method: String,
+        params: Option<Vec<String>>,
     },
 }
 
@@ -56,6 +64,13 @@ async fn main() -> anyhow::Result<()> {
             if let Some(command) = command {
                 handle_scenario_command(command, &cli.network).await?;
             }
+        }
+        Some(Commands::Rpc {
+            node,
+            method,
+            params,
+        }) => {
+            handle_rpc_command(node, method, params, &cli.network).await?;
         }
         None => println!("No command provided"),
     }

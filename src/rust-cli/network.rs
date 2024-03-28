@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::rpc_call::make_rpc_call;
 
 #[derive(Subcommand, Debug)]
-pub enum NetworkCommands {
+pub enum NetworkCommand {
     /// Start a network from a <graph_file>
     Start {
         graph_file: PathBuf,
@@ -29,7 +29,7 @@ pub enum NetworkCommands {
 }
 
 pub async fn handle_network_command(
-    command: &NetworkCommands,
+    command: &NetworkCommand,
     network: &String,
 ) -> anyhow::Result<()> {
     let mut params = ObjectParams::new();
@@ -37,7 +37,7 @@ pub async fn handle_network_command(
         .insert("network", network)
         .context("Add network to params")?;
     let (request, params) = match command {
-        NetworkCommands::Start { graph_file, force } => {
+        NetworkCommand::Start { graph_file, force } => {
             let file_contents = std::fs::read(graph_file).context("Failed to read graph file")?;
             let graph_file_base64 = general_purpose::STANDARD.encode(file_contents);
             params
@@ -48,12 +48,12 @@ pub async fn handle_network_command(
                 .context("Add force bool to params")?;
             ("network_from_file", params)
         }
-        NetworkCommands::Up {} => ("network_up", params),
-        NetworkCommands::Down {} => ("network_down", params),
-        NetworkCommands::Info {} => ("network_info", params),
-        NetworkCommands::Status {} => ("network_status", params),
-        NetworkCommands::Connected {} => ("network_connected", params),
-        NetworkCommands::Export {} => ("network_export", params),
+        NetworkCommand::Up {} => ("network_up", params),
+        NetworkCommand::Down {} => ("network_down", params),
+        NetworkCommand::Info {} => ("network_info", params),
+        NetworkCommand::Status {} => ("network_status", params),
+        NetworkCommand::Connected {} => ("network_connected", params),
+        NetworkCommand::Export {} => ("network_export", params),
     };
 
     let data = make_rpc_call(request, params).await?;
@@ -75,7 +75,7 @@ pub async fn handle_network_command(
             }
         }
         "network_start" => {
-            println!("Got response: {}", data);
+            todo!("Format this {:?}", data);
         }
         _ => {
             println!("{}", data)
