@@ -5,6 +5,7 @@ mod general;
 mod network;
 mod rpc_call;
 mod scenarios;
+mod util;
 use crate::debug::{handle_debug_command, DebugCommand};
 use crate::general::handle_rpc_command;
 use crate::network::{handle_network_command, NetworkCommand};
