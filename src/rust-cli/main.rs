@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use anyhow::Context;
 
 mod debug;
 mod general;
@@ -64,21 +65,25 @@ enum Commands {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let mut rpc_params = jsonrpsee::core::params::ObjectParams::new();
+    rpc_params
+        .insert("network", &cli.network)
+        .context("add network param")?;
 
     match &cli.command {
         Some(Commands::Network { command }) => {
             if let Some(command) = command {
-                handle_network_command(command, &cli.network).await?;
+                handle_network_command(command, rpc_params).await?;
             }
         }
         Some(Commands::Debug { command }) => {
             if let Some(command) = command {
-                handle_debug_command(command, &cli.network).await?;
+                handle_debug_command(command, rpc_params).await?;
             }
         }
         Some(Commands::Scenarios { command }) => {
             if let Some(command) = command {
-                handle_scenario_command(command, &cli.network).await?;
+                handle_scenario_command(command, rpc_params).await?;
             }
         }
         Some(Commands::Rpc {
@@ -86,20 +91,20 @@ async fn main() -> anyhow::Result<()> {
             method,
             params,
         }) => {
-            handle_rpc_commands(NodeType::BitcoinCli, node, method, params, &cli.network).await?;
+            handle_rpc_commands(NodeType::BitcoinCli, node, method, params, rpc_params).await?;
         }
         Some(Commands::LnCli {
             node,
             method,
             params,
         }) => {
-            handle_rpc_commands(NodeType::LnCli, node, method, params, &cli.network).await?;
+            handle_rpc_commands(NodeType::LnCli, node, method, params, rpc_params).await?;
         }
         Some(Commands::DebugLog { node }) => {
-            handle_debug_log_command(node, &cli.network).await?;
+            handle_debug_log_command(node, rpc_params).await?;
         }
         Some(Commands::Messages { node_a, node_b }) => {
-            handle_messages_command(node_a, node_b, &cli.network).await?;
+            handle_messages_command(node_a, node_b, rpc_params).await?;
         }
         None => println!("No command provided"),
     }

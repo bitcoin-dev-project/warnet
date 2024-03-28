@@ -28,13 +28,8 @@ pub enum ScenarioCommand {
 
 pub async fn handle_scenario_command(
     command: &ScenarioCommand,
-    network: &String,
+    mut params: ObjectParams,
 ) -> anyhow::Result<()> {
-    let mut params = ObjectParams::new();
-    params
-        .insert("network", network)
-        .context("Add network to params")?;
-
     match command {
         ScenarioCommand::Available {} => {
             let data = make_rpc_call("scenarios_available", params)

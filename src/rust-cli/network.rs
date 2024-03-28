@@ -30,12 +30,8 @@ pub enum NetworkCommand {
 
 pub async fn handle_network_command(
     command: &NetworkCommand,
-    network: &String,
+    mut params: ObjectParams,
 ) -> anyhow::Result<()> {
-    let mut params = ObjectParams::new();
-    params
-        .insert("network", network)
-        .context("Add network to params")?;
     let (request, params) = match command {
         NetworkCommand::Start { graph_file, force } => {
             let file_contents = std::fs::read(graph_file).context("Failed to read graph file")?;

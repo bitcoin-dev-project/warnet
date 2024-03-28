@@ -12,17 +12,13 @@ pub enum DebugCommand {
     GenerateCompose { graph_file_path: PathBuf },
 }
 
-pub async fn handle_debug_command(command: &DebugCommand, network: &String) -> anyhow::Result<()> {
-    let mut params = ObjectParams::new();
-    params
-        .insert("network", network)
-        .context("Add network to params")?;
+pub async fn handle_debug_command(command: &DebugCommand, mut rpc_params: ObjectParams) -> anyhow::Result<()> {
     match command {
         DebugCommand::GenerateCompose { graph_file_path } => {
-            params
+            rpc_params
                 .insert("graph_file", graph_file_path.to_str())
                 .context("Add graph file path to params")?;
-            let data = make_rpc_call("generate_compose", params).await?;
+            let data = make_rpc_call("generate_compose", rpc_params).await?;
             println!("Docker-compose file generated: {:?}", data);
         }
     }
