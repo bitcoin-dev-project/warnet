@@ -1,7 +1,8 @@
 use base64::{engine::general_purpose, Engine as _};
 use clap::Subcommand;
-use jsonrpsee::rpc_params;
+use jsonrpsee::core::params::ObjectParams;
 use std::path::PathBuf;
+use anyhow::Context;
 
 use crate::rpc_call::make_rpc_call;
 
@@ -27,21 +28,23 @@ pub enum NetworkCommands {
     Export {},
 }
 
-pub async fn handle_network_command(command: &NetworkCommands) -> anyhow::Result<()> {
+pub async fn handle_network_command(command: &NetworkCommands, network: &String) -> anyhow::Result<()> {
+    let mut params = ObjectParams::new();
+    params.insert("network", network).context("Add network to params")?;
     let (request, params) = match command {
         NetworkCommands::Start { graph_file, force } => {
-            let file_contents = std::fs::read(graph_file)
-                .map_err(|e| anyhow::Error::new(e).context("Failed to read graph file"))?;
-            // base64 encode
+            let file_contents = std::fs::read(graph_file).context("Failed to read graph file")?;
             let graph_file_base64 = general_purpose::STANDARD.encode(file_contents);
-            ("network_from_file", rpc_params![graph_file_base64, *force])
+            params.insert("graph_file", graph_file_base64).context("Add base64 graph file to params")?;
+            params.insert("force", *force).context("Add force bool to params")?;
+            ("network_from_file", params)
         }
-        NetworkCommands::Up {} => ("network_up", rpc_params![]),
-        NetworkCommands::Down {} => ("network_down", rpc_params![]),
-        NetworkCommands::Info {} => ("network_info", rpc_params![]),
-        NetworkCommands::Status {} => ("network_status", rpc_params![]),
-        NetworkCommands::Connected {} => ("network_connected", rpc_params![]),
-        NetworkCommands::Export {} => ("network_export", rpc_params![]),
+        NetworkCommands::Up {} => ("network_up", params),
+        NetworkCommands::Down {} => ("network_down", params),
+        NetworkCommands::Info {} => ("network_info", params),
+        NetworkCommands::Status {} => ("network_status", params),
+        NetworkCommands::Connected {} => ("network_connected", params),
+        NetworkCommands::Export {} => ("network_export", params),
     };
 
     let data = make_rpc_call(request, params).await?;
@@ -66,7 +69,7 @@ pub async fn handle_network_command(command: &NetworkCommands) -> anyhow::Result
             println!("Got response: {}", data);
         }
         _ => {
-            println!("Got response: {}", data)
+            println!("{}", data)
         }
     }
     // TODO: add response handling for other network commands

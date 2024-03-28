@@ -10,7 +10,7 @@ mod rpc_call;
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(long, default_value = "warnet")]
-    network: Option<String>,
+    network: String,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -37,12 +37,12 @@ async fn main() -> anyhow::Result<()> {
     match &cli.command {
         Some(Commands::Network { command }) => {
             if let Some(command) = command {
-                handle_network_command(command).await?;
+                handle_network_command(command, &cli.network).await?;
             }
         }
         Some(Commands::Debug { command }) => {
             if let Some(command) = command {
-                handle_debug_command(command).await?;
+                handle_debug_command(command, &cli.network).await?;
             }
         }
         None => println!("No command provided"),
