@@ -71,6 +71,83 @@ fn handle_bitcoin_conf(bitcoin_conf: Option<&Path>) -> String {
     conf_contents
 }
 
+fn convert_to_graphml(graph: &petgraph::graph::DiGraph<(), ()>) -> anyhow::Result<Vec<u8>> {
+    let graphml = GraphMl::new(graph).pretty_print(true);
+    let mut buf = Vec::new();
+    graphml
+        .to_writer(&mut buf)
+        .expect("Failed to write GraphML data");
+    Ok(buf)
+}
+
+fn add_custom_attributes(
+    graphml_buf: Vec<u8>,
+    version_str: &str,
+    bitcoin_conf: &str,
+) -> xmltree::Element {
+    let cursor = Cursor::new(graphml_buf);
+    let mut graphml_element = Element::parse(cursor).unwrap();
+
+    let keys = vec![
+        ("version", "string"),
+        ("bitcoin_config", "string"),
+        ("tc_netem", "string"),
+        ("build_args", "string"),
+        ("exporter", "boolean"),
+        ("collect_logs", "boolean"),
+        ("image", "string"),
+    ];
+    for (attr_name, attr_type) in keys {
+        let mut key_element = Element::new("key");
+        key_element
+            .attributes
+            .insert("attr.name".to_string(), attr_name.to_string());
+        key_element
+            .attributes
+            .insert("attr.type".to_string(), attr_type.to_string());
+        key_element
+            .attributes
+            .insert("for".to_string(), "node".to_string());
+        key_element
+            .attributes
+            .insert("id".to_string(), attr_name.to_string());
+
+        graphml_element.children.push(XMLNode::Element(key_element));
+    }
+    // Find the <graph> element first
+    if let Some(XMLNode::Element(graph_el)) = graphml_element
+        .children
+        .iter_mut()
+        .find(|e| matches!(e, XMLNode::Element(el) if el.name == "graph"))
+    {
+        // Iterate over the children of the <graph> element to find <node> elements
+        for node in graph_el.children.iter_mut() {
+            if let XMLNode::Element(ref mut el) = node {
+                if el.name == "node" {
+                    let data_elements = vec![
+                        ("version", version_str),
+                        ("bitcoin_config", bitcoin_conf),
+                        ("tc_netem", ""),
+                        ("build_args", ""),
+                        ("exporter", "false"),
+                        ("collect_logs", "false"),
+                        ("image", ""),
+                    ];
+                    for (key, value) in data_elements {
+                        let mut data_element = Element::new("data");
+                        data_element
+                            .attributes
+                            .insert("key".to_string(), key.to_string());
+                        data_element.children.push(XMLNode::Text(value.to_string()));
+                        el.children.push(XMLNode::Element(data_element));
+                    }
+                }
+            }
+        }
+    }
+    graphml_element
+}
+
 pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> {
     match command {
         GraphCommand::Create {
@@ -79,79 +156,20 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
             version,
             bitcoin_conf,
         } => {
-            let version_str = version.as_deref().unwrap_or("26.0");
-            let graph = create_graph(*number).context("creating graph")?;
-            let bitcoin_conf = handle_bitcoin_conf(bitcoin_conf.as_deref());
+            let version_str: &str = version.as_deref().unwrap_or("26.0");
 
-            // Convert to graphml
-            let graphml = GraphMl::new(&graph).pretty_print(true);
-            let mut buf = Vec::new();
-            graphml
-                .to_writer(&mut buf)
-                .expect("Failed to write GraphML data");
+            // Create empty graph
+            let graph: petgraph::graph::DiGraph<(), ()> =
+                create_graph(*number).context("creating graph")?;
 
-            let cursor = Cursor::new(buf);
-            let mut graphml_element = Element::parse(cursor).unwrap();
+            // Parse any bitcoin conf arg
+            let bitcoin_conf: String = handle_bitcoin_conf(bitcoin_conf.as_deref());
 
-            let keys = vec![
-                ("version", "string"),
-                ("bitcoin_config", "string"),
-                ("tc_netem", "string"),
-                ("build_args", "string"),
-                ("exporter", "boolean"),
-                ("collect_logs", "boolean"),
-                ("image", "string"),
-            ];
-            for (attr_name, attr_type) in keys {
-                let mut key_element = Element::new("key");
-                key_element
-                    .attributes
-                    .insert("attr.name".to_string(), attr_name.to_string());
-                key_element
-                    .attributes
-                    .insert("attr.type".to_string(), attr_type.to_string());
-                key_element
-                    .attributes
-                    .insert("for".to_string(), "node".to_string());
-                key_element
-                    .attributes
-                    .insert("id".to_string(), attr_name.to_string());
+            // Dump graph to graphml format
+            let graphml_buf: Vec<u8> = convert_to_graphml(&graph).context("Convert to graphml")?;
 
-                graphml_element.children.push(XMLNode::Element(key_element));
-            }
-            // Find the <graph> element first
-            if let Some(XMLNode::Element(graph_el)) = graphml_element
-                .children
-                .iter_mut()
-                .find(|e| matches!(e, XMLNode::Element(el) if el.name == "graph"))
-            {
-                // iterate over the children of the <graph> element to find <node> elements
-                for node in graph_el.children.iter_mut() {
-                    if let XMLNode::Element(ref mut el) = node {
-                        if el.name == "node" {
-                            let data_elements = vec![
-                                ("version", version_str),
-                                ("bitcoin_config", bitcoin_conf.as_str()),
-                                ("tc_netem", ""),
-                                ("build_args", ""),
-                                ("exporter", "false"),
-                                ("collect_logs", "false"),
-                                ("image", ""),
-                            ];
-                            for (key, value) in data_elements {
-                                let mut data_element = Element::new("data");
-                                data_element
-                                    .attributes
-                                    .insert("key".to_string(), key.to_string());
-                                data_element.children.push(XMLNode::Text(value.to_string()));
-                                el.children.push(XMLNode::Element(data_element));
-                            }
-                        }
-                    }
-                }
-            }
-
-            let config = EmitterConfig {
+            // Graphml output settings
+            let graphml_config = EmitterConfig {
                 write_document_declaration: true,
                 perform_indent: true,
                 indent_string: Cow::Borrowed("    "),
@@ -159,20 +177,20 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
                 ..Default::default() // Keep other defaults
             };
 
-            let mut buf_after = Vec::new();
-            graphml_element
-                .write_with_config(&mut buf_after, config.clone())
-                .expect("Failed to write modified GraphML data");
+            // Add custom elements
+            let modified_graphml: xmltree::Element =
+                add_custom_attributes(graphml_buf, version_str, bitcoin_conf.as_str());
+
+            // Write either to outfile or stdout
             match outfile {
                 Some(path) => {
                     let file = File::create(path).context("Writing final graphml file")?;
-                    graphml_element.write_with_config(file, config)?;
+                    modified_graphml.write_with_config(file, graphml_config)?;
                 }
                 None => {
-                    // Write to stdout
                     let stdout = std::io::stdout();
                     let handle = stdout.lock();
-                    graphml_element.write_with_config(handle, config)?;
+                    modified_graphml.write_with_config(handle, graphml_config)?;
                 }
             }
         }
