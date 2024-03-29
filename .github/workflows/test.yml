@@ -33,6 +33,7 @@ jobs:
     strategy:
       matrix:
         backend: [compose, k8s]
+        cli: [--rust_cli, ""]
     steps:
       - uses: actions/checkout@v4
       - if: matrix.backend == 'compose'
@@ -41,6 +42,9 @@ jobs:
         uses: extractions/setup-just@v1
       - if: matrix.backend == 'k8s'
         uses: medyagh/setup-minikube@master
+      - if: matrix.cli == '--rust_cli'
+        run: |
+          cargo build
       - if: matrix.backend == 'k8s'
         run: |
           pip install --upgrade pip
@@ -48,7 +52,7 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/rpc_test.py --backend=${{matrix.backend}}
+      - run: ./test/rpc_test.py --backend=${{matrix.backend}} ${{matrix.cli}}
   graph:
     runs-on: ubuntu-latest
     strategy:
