@@ -1,8 +1,7 @@
 use anyhow::Context;
 use clap::Subcommand;
+use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph_graphml::GraphMl;
-use rustworkx_core::generators::cycle_graph;
-use rustworkx_core::petgraph;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::Cursor;
@@ -28,11 +27,27 @@ pub enum GraphCommand {
     },
 }
 
-fn create_graph(number: usize) -> anyhow::Result<petgraph::graph::DiGraph<(), ()>> {
+fn create_graph(number: usize) -> anyhow::Result<DiGraph<(), ()>> {
     // Create initial cycle graph
-    let mut graph: petgraph::graph::DiGraph<(), ()> =
-        cycle_graph(Some(number), None, || {}, || {}, false)
-            .context("Create initial cycle graph")?;
+    let mut graph = DiGraph::new();
+    let mut last_node: Option<NodeIndex> = None;
+    let mut first_node: Option<NodeIndex> = None;
+
+    for _ in 0..number {
+        let new_node = graph.add_node(());
+        if let Some(ln) = last_node {
+            graph.add_edge(ln, new_node, ()); // Add an edge from the last node to the new one
+        } else {
+            first_node = Some(new_node);
+        }
+        last_node = Some(new_node);
+    }
+
+    if number > 0 {
+        if let (Some(first), Some(last)) = (first_node, last_node) {
+            graph.add_edge(last, first, ()); // Connect the last node to the first to complete the cycle
+        }
+    }
 
     // Add more outbound connections to each node
     for node in graph.node_indices() {
@@ -55,7 +70,6 @@ fn create_graph(number: usize) -> anyhow::Result<petgraph::graph::DiGraph<(), ()
 }
 
 fn handle_bitcoin_conf(bitcoin_conf: Option<&Path>) -> String {
-    // handle custom bitcoin.conf
     let mut conf_contents: String = String::new();
     if bitcoin_conf.is_some() {
         let conf = parse_bitcoin_conf(bitcoin_conf);
@@ -159,16 +173,15 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
             let version_str: &str = version.as_deref().unwrap_or("26.0");
 
             // Create empty graph
-            let graph: petgraph::graph::DiGraph<(), ()> =
-                create_graph(*number).context("creating graph")?;
+            let graph: DiGraph<(), ()> = create_graph(*number).context("creating graph")?;
 
-            // Parse any bitcoin conf arg
+            // Parse any custom bitcoin conf
             let bitcoin_conf: String = handle_bitcoin_conf(bitcoin_conf.as_deref());
 
             // Dump graph to graphml format
             let graphml_buf: Vec<u8> = convert_to_graphml(&graph).context("Convert to graphml")?;
 
-            // Graphml output settings
+            // Configure graphml output settings
             let graphml_config = EmitterConfig {
                 write_document_declaration: true,
                 perform_indent: true,
@@ -177,7 +190,7 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
                 ..Default::default() // Keep other defaults
             };
 
-            // Add custom elements
+            // Add custom elements to graph
             let modified_graphml: xmltree::Element =
                 add_custom_attributes(graphml_buf, version_str, bitcoin_conf.as_str());
 

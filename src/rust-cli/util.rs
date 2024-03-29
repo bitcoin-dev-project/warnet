@@ -1,7 +1,7 @@
 use anyhow::Context;
 use ini::Ini;
 use serde_json::Value;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn pretty_print_value(value: &Value) -> anyhow::Result<()> {
     match value {
