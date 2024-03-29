@@ -10,9 +10,11 @@ anyhow = "1.0.81"
 base64 = "0.22.0"
 clap = { version = "4.5.4", features = ["derive"] }
 jsonrpsee = { version = "0.22.3", features = ["http-client", "client"] }
+jsonschema = "0.17.1"
 petgraph = "0.6.4"
 petgraph-graphml = "3.0.0"
 prettytable-rs = "0.10.0"
+quickxml_to_serde = "0.6.0"
 rand = "0.8.5"
 rust-ini = "0.21.0"
 serde = { version = "1.0.197", features = ["derive"] }

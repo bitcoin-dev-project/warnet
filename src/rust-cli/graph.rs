@@ -1,16 +1,18 @@
-use anyhow::Context;
-use clap::Subcommand;
-use petgraph::graph::{DiGraph, NodeIndex};
-use petgraph_graphml::GraphMl;
-use std::borrow::Cow;
-use std::fs::File;
-use std::io::Cursor;
-use std::path::{Path, PathBuf};
-use xmltree::{Element, EmitterConfig, XMLNode};
-
-use crate::util::{dump_bitcoin_conf, parse_bitcoin_conf};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::borrow::Cow;
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read};
+use std::path::{Path, PathBuf};
+
+use crate::util::{dump_bitcoin_conf, parse_bitcoin_conf};
+use anyhow::Context;
+use clap::Subcommand;
+use jsonschema::JSONSchema;
+use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph_graphml::GraphMl;
+use quickxml_to_serde::{xml_string_to_json, Config};
+use xmltree::{Element, EmitterConfig, XMLNode};
 
 #[derive(Subcommand, Debug)]
 pub enum GraphCommand {
@@ -24,6 +26,9 @@ pub enum GraphCommand {
         version: Option<String>,
         #[arg(short, long)]
         bitcoin_conf: Option<PathBuf>,
+    },
+    Validate {
+        graph: PathBuf,
     },
 }
 
@@ -162,6 +167,41 @@ fn add_custom_attributes(
     graphml_element
 }
 
+fn validate_schema(graph: &PathBuf) -> anyhow::Result<()> {
+    let f =
+        File::open("src/schema/graph_schema.json").context("Read schema file from source dir")?;
+    let reader = BufReader::new(f);
+    let schema: serde_json::Value =
+        serde_json::from_reader(reader).context("Read schema into serde_json Value")?;
+    // TODO: this hack needing a static lifetime seems wrong. Try and fix it
+    let schema_static: &'static serde_json::Value = Box::leak(Box::new(schema));
+    let compiled_schema =
+        JSONSchema::compile(schema_static).context("compile schema into JSONSchema")?;
+
+    // Parse graph into serde_json::Value
+    let f = File::open(graph).context("Read xml graph from disk")?;
+    let mut reader = BufReader::new(f);
+    let mut xml_string = String::new();
+    reader.read_to_string(&mut xml_string)?;
+    let conf = Config::new_with_defaults();
+    let json = xml_string_to_json(xml_string, &conf).context("Convert xml string to JSON")?;
+    println!("{}", json);
+
+    // Validate schema
+    // TODO: THIS IS NOT WORKING
+    // We need to iterate over nodes and edges and call validate on each one, I think?
+    let result = compiled_schema.validate(&json);
+    if let Err(errors) = result {
+        for error in errors {
+            println!("Validation error: {}", error);
+            println!("Instance path: {}", error.instance_path);
+        }
+    }
+    println!("Schema validated successfully!");
+
+    Ok(())
+}
+
 pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> {
     match command {
         GraphCommand::Create {
@@ -206,6 +246,10 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
                     modified_graphml.write_with_config(handle, graphml_config)?;
                 }
             }
+        }
+
+        GraphCommand::Validate { graph } => {
+            let _ = validate_schema(graph);
         }
     }
     Ok(())
