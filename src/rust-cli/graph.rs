@@ -202,6 +202,51 @@ fn validate_schema(graph: &PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn handle_create_command(
+    number: &usize,
+    outfile: &Option<PathBuf>,
+    version: &Option<String>,
+    bitcoin_conf: &Option<PathBuf>,
+) -> anyhow::Result<()> {
+    let version_str: &str = version.as_deref().unwrap_or("26.0");
+
+    // Create empty graph
+    let graph: DiGraph<(), ()> = create_graph(*number).context("creating graph")?;
+
+    // Parse any custom bitcoin conf
+    let bitcoin_conf: String = handle_bitcoin_conf(bitcoin_conf.as_deref());
+
+    // Dump graph to graphml format
+    let graphml_buf: Vec<u8> = convert_to_graphml(&graph).context("Convert to graphml")?;
+
+    // Configure graphml output settings
+    let graphml_config = EmitterConfig {
+        write_document_declaration: true,
+        perform_indent: true,
+        indent_string: Cow::Borrowed("    "),
+        line_separator: Cow::Borrowed("\n"),
+        ..Default::default() // Keep other defaults
+    };
+
+    // Add custom elements to graph
+    let modified_graphml: xmltree::Element =
+        add_custom_attributes(graphml_buf, version_str, bitcoin_conf.as_str());
+
+    // Write either to outfile or stdout
+    match outfile {
+        Some(path) => {
+            let file = File::create(path).context("Writing final graphml file")?;
+            modified_graphml.write_with_config(file, graphml_config)?;
+        }
+        None => {
+            let stdout = std::io::stdout();
+            let handle = stdout.lock();
+            modified_graphml.write_with_config(handle, graphml_config)?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> {
     match command {
         GraphCommand::Create {
@@ -209,44 +254,8 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
             outfile,
             version,
             bitcoin_conf,
-        } => {
-            let version_str: &str = version.as_deref().unwrap_or("26.0");
-
-            // Create empty graph
-            let graph: DiGraph<(), ()> = create_graph(*number).context("creating graph")?;
-
-            // Parse any custom bitcoin conf
-            let bitcoin_conf: String = handle_bitcoin_conf(bitcoin_conf.as_deref());
-
-            // Dump graph to graphml format
-            let graphml_buf: Vec<u8> = convert_to_graphml(&graph).context("Convert to graphml")?;
-
-            // Configure graphml output settings
-            let graphml_config = EmitterConfig {
-                write_document_declaration: true,
-                perform_indent: true,
-                indent_string: Cow::Borrowed("    "),
-                line_separator: Cow::Borrowed("\n"),
-                ..Default::default() // Keep other defaults
-            };
-
-            // Add custom elements to graph
-            let modified_graphml: xmltree::Element =
-                add_custom_attributes(graphml_buf, version_str, bitcoin_conf.as_str());
-
-            // Write either to outfile or stdout
-            match outfile {
-                Some(path) => {
-                    let file = File::create(path).context("Writing final graphml file")?;
-                    modified_graphml.write_with_config(file, graphml_config)?;
-                }
-                None => {
-                    let stdout = std::io::stdout();
-                    let handle = stdout.lock();
-                    modified_graphml.write_with_config(handle, graphml_config)?;
-                }
-            }
-        }
+        } => handle_create_command(number, outfile, version, bitcoin_conf)
+            .context("Create a graph")?,
 
         GraphCommand::Validate { graph } => {
             let _ = validate_schema(graph);
