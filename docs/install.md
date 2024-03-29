@@ -70,14 +70,27 @@ cd warnet
 
 ## Install Warnet
 
-### Optional: use a virtual Python environment such as `venv`
+The Warnet server and cli tool need to be installed using PIP:
 
-```bash
-python3 -m venv .venv # Use alternative venv manager if desired
-source .venv/bin/activate
-```
+> [!TIP]
+> Use a python virtual environment such as venv
+> ```bash
+> python3 -m venv .venv # Use alternative venv manager if desired
+> source .venv/bin/activate
+> ```
 
 ```bash
 pip install --upgrade pip
 pip install -e .
+```
+
+### Experimental Rust cli tool
+
+There is an experimental Rust cli tool which can be built using `cargo`:
+
+```bash
+# build
+cargo build
+# Run
+./target/debug/warcli help
 ```
