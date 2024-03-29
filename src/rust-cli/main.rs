@@ -17,8 +17,8 @@ use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    #[arg(long, default_value = "warnet")]
-    network: String,
+    #[arg(long)]
+    network: Option<String>,
 
     #[command(subcommand)]
     command: Option<Commands>,

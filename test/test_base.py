@@ -1,6 +1,7 @@
 import argparse
 import atexit
 import os
+import shlex
 import sys
 import threading
 from pathlib import Path
@@ -79,14 +80,25 @@ class TestBase:
             self.server = None
 
     # Execute a warcli RPC using command line (always returns string)
-    def warcli(self, str, network=True):
-        if not self.rust_cli:
-            print("Not using rust cli")
-            cmd = ["warcli"] + str.split()
+    def warcli(self, commands, network=True):
+        cmd = ""
+        cmd_args = ' '.join(commands.split())
+        if self.rust_cli:
+            # a temporary hack to fetch the path of the debug binary
+            script_path = Path(__file__).resolve()
+            project_root = script_path.parent.parent
+            warcli_relative_path = Path("target/debug/warcli")
+            warcli_absolute_path = project_root / warcli_relative_path
+            cmd += f"{warcli_absolute_path} "
             if network:
-                cmd += ["--network", self.network_name]
+                cmd += f"--network {self.network_name} "
+            cmd += cmd_args
         else:
-            cmd = ["target/debug/warcli"] + str.split()
+            cmd += "warcli "
+            cmd += cmd_args
+            if network:
+                cmd += f" --network {self.network_name} "
+        cmd = shlex.split(cmd)
         proc = run(cmd, capture_output=True)
 
         if proc.stderr:
