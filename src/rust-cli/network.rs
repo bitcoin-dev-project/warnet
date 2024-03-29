@@ -28,16 +28,37 @@ pub enum NetworkCommand {
     Export {},
 }
 
+fn graph_file_to_b64(graph_file: &PathBuf) -> anyhow::Result<String> {
+    let file_contents = std::fs::read(graph_file).context("Failed to read graph file")?;
+    Ok(general_purpose::STANDARD.encode(file_contents))
+}
+
+fn handle_network_status_response(data: serde_json::Value) {
+    if let serde_json::Value::Array(items) = &data {
+        for item in items {
+            if let (Some(tank_index), Some(bitcoin_status)) = (
+                item.get("tank_index").and_then(|v| v.as_i64()),
+                item.get("bitcoin_status").and_then(|v| v.as_str()),
+            ) {
+                println!("Tank: {:<6} Bitcoin: {}", tank_index, bitcoin_status);
+            } else {
+                println!("Error: Response item is missing expected fields");
+            }
+        }
+    } else {
+        println!("Error: Expected an array in the response");
+    }
+}
+
 pub async fn handle_network_command(
     command: &NetworkCommand,
     mut params: ObjectParams,
 ) -> anyhow::Result<()> {
     let (request, params) = match command {
         NetworkCommand::Start { graph_file, force } => {
-            let file_contents = std::fs::read(graph_file).context("Failed to read graph file")?;
-            let graph_file_base64 = general_purpose::STANDARD.encode(file_contents);
+            let b64_graph = graph_file_to_b64(graph_file).context("Read graph file")?;
             params
-                .insert("graph_file", graph_file_base64)
+                .insert("graph_file", b64_graph)
                 .context("Add base64 graph file to params")?;
             params
                 .insert("force", *force)
@@ -54,22 +75,7 @@ pub async fn handle_network_command(
 
     let data = make_rpc_call(request, params).await?;
     match request {
-        "network_status" => {
-            if let serde_json::Value::Array(items) = &data {
-                for item in items {
-                    if let (Some(tank_index), Some(bitcoin_status)) = (
-                        item.get("tank_index").and_then(|v| v.as_i64()),
-                        item.get("bitcoin_status").and_then(|v| v.as_str()),
-                    ) {
-                        println!("Tank: {:<6} Bitcoin: {}", tank_index, bitcoin_status);
-                    } else {
-                        println!("Error: Response item is missing expected fields");
-                    }
-                }
-            } else {
-                println!("Error: Expected an array in the response");
-            }
-        }
+        "network_status" => handle_network_status_response(data),
         "network_start" => {
             todo!("Format this {:?}", data);
         }
