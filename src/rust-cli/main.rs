@@ -49,6 +49,7 @@ enum Commands {
     /// Call bitcoin-cli <method> [params] on <node> in [network]
     Rpc {
         node: u64,
+        #[arg(allow_hyphen_values=true)]
         method: String,
         params: Option<Vec<String>>,
     },
