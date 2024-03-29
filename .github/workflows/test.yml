@@ -27,7 +27,7 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/scenarios_test.py ${{matrix.backend}}
+      - run: ./test/scenarios_test.py --backend=${{matrix.backend}}
   rpc:
     runs-on: ubuntu-latest
     strategy:
@@ -48,7 +48,7 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/rpc_test.py ${{matrix.backend}}
+      - run: ./test/rpc_test.py --backend=${{matrix.backend}}
   graph:
     runs-on: ubuntu-latest
     strategy:
@@ -69,7 +69,7 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/graph_test.py ${{matrix.backend}}
+      - run: ./test/graph_test.py --backend=${{matrix.backend}}
   ln:
     runs-on: ubuntu-latest
     strategy:
@@ -90,7 +90,7 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/ln_test.py ${{matrix.backend}}
+      - run: ./test/ln_test.py --backend=${{matrix.backend}}
   build:
     needs: [scenarios, rpc, graph, ln] # Only run if the others complete successfully as it's slow
     runs-on: ubuntu-latest
@@ -112,4 +112,4 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/build_branch_test.py ${{matrix.backend}}
+      - run: ./test/build_branch_test.py --backend=${{matrix.backend}}

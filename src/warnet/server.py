@@ -169,7 +169,7 @@ class Server:
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
-    def get_warnet(self, network: str) -> Warnet:
+    def get_warnet(self, network: str = "warnet") -> Warnet:
         """
         Will get a warnet from the cache if it exists.
         Otherwise it will create the network using from_network() and save it
@@ -268,7 +268,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def network_export(self, network: str) -> str:
+    def network_export(self, network: str = "warnet") -> str:
         """
         Export all data for sim-ln to subdirectory
         """
@@ -283,7 +283,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_available(self, network: str) -> list[tuple]:
+    def scenarios_available(self, network: str = "warnet") -> list[tuple]:
         """
         List available scenarios in the Warnet Test Framework
         """
@@ -415,7 +415,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg)
 
-    def scenarios_list_running(self, network: str) -> list[dict]:
+    def scenarios_list_running(self, network: str = "warnet") -> list[dict]:
         running = [
             {
                 "pid": sc["pid"],
