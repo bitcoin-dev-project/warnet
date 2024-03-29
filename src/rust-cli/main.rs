@@ -72,9 +72,11 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let mut rpc_params = jsonrpsee::core::params::ObjectParams::new();
-    rpc_params
-        .insert("network", &cli.network)
-        .context("add network param")?;
+    if let Some(network_value) = &cli.network {
+        rpc_params
+            .insert("network", network_value)
+            .context("add network param")?;
+    }
 
     match &cli.command {
         Some(Commands::Debug { command }) => {
