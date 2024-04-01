@@ -2,6 +2,8 @@ use anyhow::Context;
 use base64::{engine::general_purpose, Engine as _};
 use clap::Subcommand;
 use jsonrpsee::core::params::ObjectParams;
+use prettytable::{cell, Row, Table};
+use serde_json::Value;
 use std::path::PathBuf;
 
 use crate::rpc_call::make_rpc_call;
@@ -50,6 +52,65 @@ fn handle_network_status_response(data: serde_json::Value) {
     }
 }
 
+fn handle_network_start_response(data: serde_json::Value) -> anyhow::Result<()> {
+    // warnet table
+    if let Some(warnet_headers) = data["warnet_headers"].as_array() {
+        let mut table = Table::new();
+        let headers: Vec<_> = warnet_headers
+            .iter()
+            .map(|header| header.as_str().unwrap_or(""))
+            .collect();
+        table.add_row(Row::new(
+            headers.into_iter().map(|header| cell!(header)).collect(),
+        ));
+        // just used as fallback if warnet or its array content is missing
+        let v: Vec<Value> = vec![Value::Null];
+
+        if let Some(warnet) = data["warnet"].as_array().and_then(|row| row.first()) {
+            let row_data: Vec<_> = match warnet.as_array() {
+                Some(array) => array,
+                None => &v,
+            }
+            .iter()
+            .map(|item| item.as_str().unwrap_or(""))
+            .collect();
+            table.add_row(Row::new(
+                row_data.into_iter().map(|row| cell!(row)).collect(),
+            ));
+        }
+        table.printstd();
+    }
+    // tanks table
+    if let Some(tank_headers) = data["tank_headers"].as_array() {
+        let mut table = Table::new();
+        let headers: Vec<_> = tank_headers
+            .iter()
+            .map(|header| header.as_str().unwrap_or(""))
+            .collect();
+        table.add_row(Row::new(
+            headers.into_iter().map(|header| cell!(header)).collect(),
+        ));
+
+        let v: Vec<Value> = vec![Value::Null];
+        if let Some(tanks) = data["tanks"].as_array() {
+            for tank in tanks {
+                let row_data: Vec<_> = match tank.as_array() {
+                    Some(array) => array,
+                    None => &v,
+                }
+                .iter()
+                .map(|item| item.as_str().unwrap_or(""))
+                .collect();
+                table.add_row(Row::new(
+                    row_data.into_iter().map(|row| cell!(row)).collect(),
+                ));
+            }
+        }
+        table.printstd();
+    }
+    Ok(())
+}
+
 pub async fn handle_network_command(
     command: &NetworkCommand,
     mut params: ObjectParams,
@@ -76,8 +137,8 @@ pub async fn handle_network_command(
     let data = make_rpc_call(request, params).await?;
     match request {
         "network_status" => handle_network_status_response(data),
-        "network_start" => {
-            todo!("Format this {:?}", data);
+        "network_from_file" => {
+            handle_network_start_response(data.clone())?;
         }
         _ => {
             println!("{}", data)
