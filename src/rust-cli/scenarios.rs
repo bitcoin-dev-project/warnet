@@ -10,20 +10,27 @@ use std::path::PathBuf;
 pub enum ScenarioCommand {
     /// List available scenarios in the Warnet Test Framework
     Available {},
-    /// Run a scenario from remote repository with <name>
+    /// Run a scenario file from remote repository (on warnet server)
     Run {
+        /// Scenario name
         scenario: String,
+        /// Arguments to scenario
         additional_args: Vec<String>,
     },
-    /// Run a local scenario <file> by sending it to the server
+    /// Run a local scenario file by sending it to the server
     RunFile {
+        /// Path to scenario file
         scenario_path: PathBuf,
+        /// Arguments to scenario
         additional_args: Vec<String>,
     },
     /// List active scenarios
     Active {},
-    /// Stop a scenario with <PID>
-    Stop { pid: u64 },
+    /// Stop a scenario
+    Stop {
+        /// PID of scenario to stop
+        pid: u64,
+    },
 }
 async fn handle_available(params: ObjectParams) -> anyhow::Result<()> {
     let data = make_rpc_call("scenarios_available", params)

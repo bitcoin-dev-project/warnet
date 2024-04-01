@@ -16,18 +16,23 @@ use xmltree::{Element, EmitterConfig, XMLNode};
 
 #[derive(Subcommand, Debug)]
 pub enum GraphCommand {
-    /// Create a cycle graph with <number> nodes, and include 7 extra random outbounds per node.
-    /// Returns XML file as string with or without --outfile option
+    /// Create a cycle graph with 7 extra random outbounds per node.
     Create {
+        /// Number of nodes in the graph
         number: usize,
+        /// Write graph to a this file path
         #[arg(short, long)]
         outfile: Option<PathBuf>,
+        /// Bitcoin Core version to set on nodes
         #[arg(short, long)]
         version: Option<String>,
+        /// config values to add to bitcoin.conf
         #[arg(short, long)]
         bitcoin_conf: Option<PathBuf>,
     },
+    /// (broken) Validate a *.graphml file against the graph schema
     Validate {
+        /// Path to graph file
         graph: PathBuf,
     },
 }

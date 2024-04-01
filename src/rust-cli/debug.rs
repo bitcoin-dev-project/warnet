@@ -8,8 +8,11 @@ use crate::rpc_call::make_rpc_call;
 
 #[derive(Subcommand, Debug)]
 pub enum DebugCommand {
-    /// Generate the docker-compose file for a given <graph_file> and return it.
-    GenerateCompose { graph_file_path: PathBuf },
+    /// Generate the docker-compose file for a given graph_file
+    GenerateCompose {
+        /// Path to graph file to generate from
+        graph_file_path: PathBuf,
+    },
 }
 
 pub async fn handle_debug_command(

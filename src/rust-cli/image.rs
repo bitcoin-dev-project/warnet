@@ -5,21 +5,28 @@ use std::process::{Command, Stdio};
 
 #[derive(Subcommand, Debug)]
 pub enum ImageCommand {
-    /// Build bitcoind and bitcoin-cli from <repo>/<branch> as <registry>:<tag>.
+    /// Build a bitcoind/bitcoin-cli docker image.
     /// Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
     Build {
+        /// Github repo e.g. bitcoin/bitcoin
         #[arg(long)]
         repo: String,
+        /// Branch e.g. v27.0
         #[arg(long)]
         branch: String,
+        /// docker registry e.g. user/repo
         #[arg(long)]
         registry: String,
+        /// docker image tag(s) to apply e.g. 27.0-warnet
         #[arg(long)]
         tag: String,
+        /// Custom Bitcoin Core build args to use
         #[arg(long)]
         build_args: Option<String>,
+        /// Arches to build for (multiple arches only supported with action=push)
         #[arg(long)]
         arches: Option<String>,
+        /// Load (to local) or push (to remote) registry
         #[arg(long)]
         action: Option<String>,
     },

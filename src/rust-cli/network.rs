@@ -10,9 +10,11 @@ use crate::rpc_call::make_rpc_call;
 
 #[derive(Subcommand, Debug)]
 pub enum NetworkCommand {
-    /// Start a network from a <graph_file>
+    /// Start a network from a graph_file
     Start {
+        /// Path to graph file
         graph_file: PathBuf,
+        /// Force overwite config dir if already exists
         #[arg(long, short)]
         force: bool,
     },

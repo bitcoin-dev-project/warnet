@@ -34,38 +34,55 @@ enum Commands {
         #[command(subcommand)]
         command: Option<DebugCommand>,
     },
-    /// Fetch the Bitcoin Core debug log from <node> in [network]
-    DebugLog { node: u64 },
+    /// Fetch the Bitcoin Core debug log from a node
+    DebugLog {
+        /// Node index (integer)
+        node: u64,
+    },
     /// Graph commands
     Graph {
         #[command(subcommand)]
         command: Option<GraphCommand>,
     },
-    /// Grep combined logs via fluentd using regex <pattern>
-    GrepLogs { pattern: String },
+    /// Grep combined logs using regex
+    GrepLogs {
+        /// Pattern to search for (as regex)
+        pattern: String,
+    },
     /// Build a warnet-ready bitcoind docker image from a github branch
     Image {
         #[command(subcommand)]
         command: Option<ImageCommand>,
     },
-    /// Call lncli <method> [params] on <node> in [network]
+    /// Call "lncli ..." on a node
     LnCli {
+        /// Node index (integer)
         node: u64,
+        /// lncli method
         method: String,
+        /// Optional arguments to method
         params: Option<Vec<String>>,
     },
-    /// Fetch messages sent between <node_a> and <node_b> in [network]
-    Messages { node_a: u64, node_b: u64 },
+    /// Fetch bitcoin P2P messages sent between two nodes
+    Messages {
+        /// First node
+        node_a: u64,
+        /// Second node
+        node_b: u64,
+    },
     /// Network commands
     Network {
         #[command(subcommand)]
         command: Option<NetworkCommand>,
     },
-    /// Call bitcoin-cli <method> [params] on <node> in [network]
+    /// Call "bitcoin-cli ..." on a node
     Rpc {
+        /// Node index (integer)
         node: u64,
+        /// bitcoin-cli method
         #[arg(allow_hyphen_values = true)]
         method: String,
+        /// Optional arguments to method
         params: Option<Vec<String>>,
     },
     /// Scenario commands
