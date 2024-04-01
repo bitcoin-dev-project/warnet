@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::bail;
 use clap::Subcommand;
 use std::fs;
 use std::process::{Command, Stdio};
@@ -48,7 +48,7 @@ fn run_command(command: &str) -> anyhow::Result<bool> {
     if output.success() {
         Ok(true)
     } else {
-        Err(anyhow!("Command failed"))
+        bail!("Command failed")
     }
 }
 
@@ -75,7 +75,7 @@ fn build_image(
     for arch in &build_arches {
         if !ARCHES.contains(&arch.as_str()) {
             println!("Error: {} is not a supported architecture", arch);
-            return Err(anyhow!("Unsupported architecture: {}", arch));
+            bail!("Unsupported architecture: {}", arch);
         }
     }
 
@@ -92,7 +92,7 @@ fn build_image(
     {
         println!("Directory src/templates does not exist.");
         println!("Please run this script from the project root.");
-        return Err(anyhow!("src/templates directory not found"));
+        bail!("src/templates directory not found");
     }
 
     let builder_name = "bitcoind-builder";
@@ -140,10 +140,8 @@ fn build_image(
 
     match res {
         Ok(true) => Ok(()),
-        Ok(false) => Err(anyhow!(
-            "Build command failed, but no specific error was provided."
-        )),
-        Err(e) => Err(anyhow!("Build command failed with error: {}", e)),
+        Ok(false) => bail!("Build command failed, but no specific error was provided."),
+        Err(e) => bail!("Build command failed with error: {}", e),
     }
 }
 

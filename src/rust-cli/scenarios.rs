@@ -1,5 +1,5 @@
 use crate::rpc_call::make_rpc_call;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use base64::{engine::general_purpose, Engine as _};
 use clap::Subcommand;
 use jsonrpsee::core::params::ObjectParams;
@@ -35,7 +35,7 @@ pub enum ScenarioCommand {
 async fn handle_available(params: ObjectParams) -> anyhow::Result<()> {
     let data = make_rpc_call("scenarios_available", params)
         .await
-        .context("Failed to fetch available scenarios")?;
+        .context("Making RPC to fetch available scenarios")?;
     if let serde_json::Value::Array(scenarios) = data {
         let mut table = Table::new();
         table.add_row(row!["Scenario", "Description"]);
@@ -50,7 +50,7 @@ async fn handle_available(params: ObjectParams) -> anyhow::Result<()> {
         }
         table.printstd();
     } else {
-        println!("Unexpected response format.");
+        bail!("Unexpected response format.");
     }
     Ok(())
 }
@@ -68,7 +68,7 @@ async fn handle_run(
         .context("Add additional_args to params")?;
     let data = make_rpc_call("scenarios_run", params)
         .await
-        .context("Failed to run scenario")?;
+        .context("Making RPC call to run scenario with remote file")?;
     println!("{:?}", data);
     Ok(())
 }
@@ -82,13 +82,13 @@ async fn handle_run_file(
     let scenario_base64 = general_purpose::STANDARD.encode(file_contents);
     params
         .insert("scenario_base64", scenario_base64)
-        .context("Add scenario to params")?;
+        .context("Adding scenario to params")?;
     params
         .insert("additional_args", additional_args)
-        .context("Add additional_args to params")?;
+        .context("Adding additional_args to params")?;
     let data = make_rpc_call("scenarios_run_file", params)
         .await
-        .context("Failed to run scenario")?;
+        .context("Making RPC call to run scenario with local file")?;
     println!("{:?}", data);
     Ok(())
 }
@@ -96,7 +96,7 @@ async fn handle_run_file(
 async fn handle_active(params: ObjectParams) -> anyhow::Result<()> {
     let data = make_rpc_call("scenarios_list_running", params)
         .await
-        .context("Failed to list running scenarios")?;
+        .context("Making RPC call to list running scenarios")?;
     if let serde_json::Value::Array(scenarios) = data {
         let mut table = Table::new();
         table.add_row(row!["PID", "Command", "Network", "Active"]);
@@ -123,7 +123,7 @@ async fn handle_active(params: ObjectParams) -> anyhow::Result<()> {
         }
         table.printstd();
     } else {
-        println!("Unexpected response format.");
+        bail!("Unexpected response format.");
     }
     Ok(())
 }
@@ -132,11 +132,11 @@ async fn handle_stop(mut params: ObjectParams, pid: &u64) -> anyhow::Result<()> 
     params.insert("pid", pid).context("Add pid to params")?;
     let data = make_rpc_call("scenarios_stop", params)
         .await
-        .context("Failed to stop running scenario")?;
+        .context("Making RPC call to stop running scenario")?;
     if let serde_json::Value::String(message) = data {
         println!("{}", message);
     } else {
-        println!("Unexpected response format.");
+        bail!("Unexpected response format.");
     }
     Ok(())
 }

@@ -23,8 +23,10 @@ pub async fn handle_debug_command(
         DebugCommand::GenerateCompose { graph_file_path } => {
             rpc_params
                 .insert("graph_file", graph_file_path.to_str())
-                .context("Add graph file path to params")?;
-            let data = make_rpc_call("generate_compose", rpc_params).await?;
+                .context("Adding graph_file_path to rpc params")?;
+            let data = make_rpc_call("generate_compose", rpc_params)
+                .await
+                .context("Calling generate_compose RPC")?;
             println!("Docker-compose file generated: {:?}", data);
         }
     }

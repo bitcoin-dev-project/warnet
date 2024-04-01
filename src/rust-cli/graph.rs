@@ -20,7 +20,7 @@ pub enum GraphCommand {
     Create {
         /// Number of nodes in the graph
         number: usize,
-        /// Write graph to a this file path
+        /// Write graph to this file path
         #[arg(short, long)]
         outfile: Option<PathBuf>,
         /// Bitcoin Core version to set on nodes
@@ -263,7 +263,7 @@ pub async fn handle_graph_command(command: &GraphCommand) -> anyhow::Result<()> 
             .context("Create a graph")?,
 
         GraphCommand::Validate { graph } => {
-            let _ = validate_schema(graph);
+            let _ = validate_schema(graph).context("Validating graph schema");
         }
     }
     Ok(())

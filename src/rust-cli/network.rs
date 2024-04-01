@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
 use base64::{engine::general_purpose, Engine as _};
 use clap::Subcommand;
 use jsonrpsee::core::params::ObjectParams;
@@ -33,11 +33,11 @@ pub enum NetworkCommand {
 }
 
 fn graph_file_to_b64(graph_file: &PathBuf) -> anyhow::Result<String> {
-    let file_contents = std::fs::read(graph_file).context("Failed to read graph file")?;
+    let file_contents = std::fs::read(graph_file).context("Failed to read graph file from fs")?;
     Ok(general_purpose::STANDARD.encode(file_contents))
 }
 
-fn handle_network_status_response(data: serde_json::Value) {
+fn handle_network_status_response(data: serde_json::Value) -> anyhow::Result<()> {
     if let serde_json::Value::Array(items) = &data {
         for item in items {
             if let (Some(tank_index), Some(bitcoin_status)) = (
@@ -46,12 +46,13 @@ fn handle_network_status_response(data: serde_json::Value) {
             ) {
                 println!("Tank: {:<6} Bitcoin: {}", tank_index, bitcoin_status);
             } else {
-                println!("Error: Response item is missing expected fields");
+                bail!("Error: Response item is missing expected fields");
             }
         }
     } else {
-        println!("Error: Expected an array in the response");
+        bail!("Error: Expected an array in the response");
     }
+    Ok(())
 }
 
 fn handle_network_start_response(data: serde_json::Value) -> anyhow::Result<()> {
@@ -81,6 +82,8 @@ fn handle_network_start_response(data: serde_json::Value) -> anyhow::Result<()> 
             ));
         }
         table.printstd();
+    } else {
+        bail!("No warnet table headers found in response")
     }
     // tanks table
     if let Some(tank_headers) = data["tank_headers"].as_array() {
@@ -109,6 +112,8 @@ fn handle_network_start_response(data: serde_json::Value) -> anyhow::Result<()> 
             }
         }
         table.printstd();
+    } else {
+        bail!("no tank headers found in response")
     }
     Ok(())
 }
@@ -119,7 +124,8 @@ pub async fn handle_network_command(
 ) -> anyhow::Result<()> {
     let (request, params) = match command {
         NetworkCommand::Start { graph_file, force } => {
-            let b64_graph = graph_file_to_b64(graph_file).context("Read graph file")?;
+            let b64_graph =
+                graph_file_to_b64(graph_file).context("Reading graph file to base 64")?;
             params
                 .insert("graph_file", b64_graph)
                 .context("Add base64 graph file to params")?;
@@ -138,9 +144,12 @@ pub async fn handle_network_command(
 
     let data = make_rpc_call(request, params).await?;
     match request {
-        "network_status" => handle_network_status_response(data),
+        "network_status" => {
+            handle_network_status_response(data).context("Handling network status response")?
+        }
         "network_from_file" => {
-            handle_network_start_response(data.clone())?;
+            handle_network_start_response(data.clone())
+                .context("Handling network start response")?;
         }
         _ => {
             println!("{}", data)

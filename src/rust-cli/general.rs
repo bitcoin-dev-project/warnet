@@ -26,14 +26,14 @@ pub async fn handle_rpc_commands(
         params.insert("params", p).context("add rpc params")?;
     }
     let data = match node_type {
-        NodeType::LnCli => make_rpc_call("tank_bcli", params)
+        NodeType::LnCli => make_rpc_call("tank_lncli", params)
             .await
-            .context("Failed to make RPC call LnCli")?,
+            .context("make RPC call lncli")?,
         NodeType::BitcoinCli => make_rpc_call("tank_bcli", params)
             .await
-            .context("Failed to make RPC call BitcoinCli")?,
+            .context("make RPC call bitcoin-cli")?,
     };
-    pretty_print_value(&data).context("pretty print result")?;
+    pretty_print_value(&data).context("Pretty print the result")?;
     Ok(())
 }
 
@@ -43,7 +43,7 @@ pub async fn handle_debug_log_command(node: &u64, mut params: ObjectParams) -> a
         .context("add node_index param")?;
     let data = make_rpc_call("tank_debug_log", params)
         .await
-        .context("Failed to make RPC call tank_debug_log")?;
+        .context("make RPC call tank_debug_log")?;
     pretty_print_value(&data).context("pretty print result")?;
     Ok(())
 }

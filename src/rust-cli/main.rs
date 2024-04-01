@@ -101,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(network_value) = &cli.network {
         rpc_params
             .insert("network", network_value)
-            .context("add network param")?;
+            .context("Adding --network to rpc_params")?;
     }
 
     match &cli.command {
