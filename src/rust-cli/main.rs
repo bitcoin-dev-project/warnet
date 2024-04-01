@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 mod debug;
 mod general;
 mod graph;
+mod image;
 mod network;
 mod rpc_call;
 mod scenarios;
@@ -11,6 +12,7 @@ mod util;
 use crate::debug::{handle_debug_command, DebugCommand};
 use crate::general::*;
 use crate::graph::{handle_graph_command, GraphCommand};
+use crate::image::{handle_image_command, ImageCommand};
 use crate::network::{handle_network_command, NetworkCommand};
 use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 
@@ -18,6 +20,7 @@ use crate::scenarios::{handle_scenario_command, ScenarioCommand};
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(long)]
+    /// The warnet network command corresponds to
     network: Option<String>,
 
     #[command(subcommand)]
@@ -26,32 +29,24 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Network commands
-    Network {
-        #[command(subcommand)]
-        command: Option<NetworkCommand>,
-    },
-    /// Debug commands [[deprecated]]
+    /// Debug commands (deprecated)
     Debug {
         #[command(subcommand)]
         command: Option<DebugCommand>,
     },
+    /// Fetch the Bitcoin Core debug log from <node> in [network]
+    DebugLog { node: u64 },
     /// Graph commands
     Graph {
         #[command(subcommand)]
         command: Option<GraphCommand>,
     },
-    /// Scenario commands
-    Scenarios {
+    /// Grep combined logs via fluentd using regex <pattern>
+    GrepLogs { pattern: String },
+    /// Build a warnet-ready bitcoind docker image from a github branch
+    Image {
         #[command(subcommand)]
-        command: Option<ScenarioCommand>,
-    },
-    /// Call bitcoin-cli <method> [params] on <node> in [network]
-    Rpc {
-        node: u64,
-        #[arg(allow_hyphen_values=true)]
-        method: String,
-        params: Option<Vec<String>>,
+        command: Option<ImageCommand>,
     },
     /// Call lncli <method> [params] on <node> in [network]
     LnCli {
@@ -59,13 +54,26 @@ enum Commands {
         method: String,
         params: Option<Vec<String>>,
     },
-    /// Fetch the Bitcoin Core debug log from <node> in [network]
-    DebugLog { node: u64 },
     /// Fetch messages sent between <node_a> and <node_b> in [network]
     Messages { node_a: u64, node_b: u64 },
-    /// Grep combined logs via fluentd using regex <pattern>
-    GrepLogs { pattern: String },
-    /// Stop warnet
+    /// Network commands
+    Network {
+        #[command(subcommand)]
+        command: Option<NetworkCommand>,
+    },
+    /// Call bitcoin-cli <method> [params] on <node> in [network]
+    Rpc {
+        node: u64,
+        #[arg(allow_hyphen_values = true)]
+        method: String,
+        params: Option<Vec<String>>,
+    },
+    /// Scenario commands
+    Scenarios {
+        #[command(subcommand)]
+        command: Option<ScenarioCommand>,
+    },
+    /// Stop warnet server
     Stop {},
 }
 
@@ -116,6 +124,11 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::DebugLog { node }) => {
             handle_debug_log_command(node, rpc_params).await?;
+        }
+        Some(Commands::Image { command }) => {
+            if let Some(command) = command {
+                handle_image_command(command).await?;
+            }
         }
         Some(Commands::Messages { node_a, node_b }) => {
             handle_messages_command(node_a, node_b, rpc_params).await?;
