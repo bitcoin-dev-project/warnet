@@ -266,7 +266,7 @@ class ComposeBackend(BackendInterface):
         # Initialize services and add them to the compose
         for service_name in warnet.services:
             if "compose" in services[service_name]["backends"]:
-                compose["services"][service_name] = self.service_from_json(services[service_name])
+                compose["services"][service_name] = self.service_from_json(service_name)
 
         docker_compose_path = warnet.config_dir / "docker-compose.yml"
         try:
@@ -448,7 +448,11 @@ class ComposeBackend(BackendInterface):
 
         return healthy
 
-    def service_from_json(self, obj: dict) -> dict:
+    def get_service_container_name(self, service_name: str):
+        return f"{self.network_name}_{services[service_name]['container_name_suffix']}"
+
+    def service_from_json(self, service_name: str) -> object:
+        obj = services[service_name]
         volumes = obj.get("volumes", [])
         volumes += [f"{self.config_dir}" + filepath for filepath in obj.get("config_files", [])]
 
@@ -457,7 +461,7 @@ class ComposeBackend(BackendInterface):
             ports = [f"{obj['warnet_port']}:{obj['container_port']}"]
         return {
             "image": obj["image"],
-            "container_name": f"{self.network_name}_{obj['container_name_suffix']}",
+            "container_name": self.get_service_container_name(service_name),
             "ports": ports,
             "volumes": volumes,
             "privileged": obj.get("privileged", False),
