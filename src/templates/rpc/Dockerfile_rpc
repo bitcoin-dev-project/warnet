@@ -3,7 +3,7 @@ FROM python:3.11-slim
 
 # Install procps, which includes pgrep
 RUN apt-get update && \
-    apt-get install -y procps && \
+    apt-get install -y procps openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
