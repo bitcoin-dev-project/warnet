@@ -60,12 +60,13 @@ jobs:
         with:
           name: image-tags-${{ github.sha }}
           path: tagname.txt
-  scenarios:
+  test:
     needs: [deploy]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         backend: [compose, k8s]
+        test: [scenarios_test.py, rpc_test.py, graph_test.py, ln_test.py]
     steps:
       - uses: actions/checkout@v4
       - if: matrix.backend == 'compose'
@@ -88,96 +89,9 @@ jobs:
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/scenarios_test.py ${{matrix.backend}}
-  rpc:
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        backend: [compose, k8s]
-    steps:
-      - uses: actions/checkout@v4
-      - if: matrix.backend == 'compose'
-        uses: ./.github/actions
-      - if: matrix.backend == 'k8s'
-        uses: extractions/setup-just@v1
-      - if: matrix.backend == 'k8s'
-        uses: actions/download-artifact@v4
-        with:
-          name: image-tags-${{ github.sha }}
-      - if: matrix.backend == 'k8s'
-        uses: medyagh/setup-minikube@master
-      - if: matrix.backend == 'k8s'
-        run: |
-          tagname=$(cat tagname.txt)
-          echo "Using tagname: $tagname"
-          pip install --upgrade pip
-          pip install -e .
-          sed -i "s|bitcoindevproject/warnet-rpc:dev-3|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-          just start
-          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
-          kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/rpc_test.py ${{matrix.backend}}
-  graph:
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        backend: [compose, k8s]
-    steps:
-      - uses: actions/checkout@v4
-      - if: matrix.backend == 'compose'
-        uses: ./.github/actions
-      - if: matrix.backend == 'k8s'
-        uses: extractions/setup-just@v1
-      - if: matrix.backend == 'k8s'
-        uses: actions/download-artifact@v4
-        with:
-          name: image-tags-${{ github.sha }}
-      - if: matrix.backend == 'k8s'
-        uses: medyagh/setup-minikube@master
-      - if: matrix.backend == 'k8s'
-        run: |
-          tagname=$(cat tagname.txt)
-          echo "Using tagname: $tagname"
-          pip install --upgrade pip
-          pip install -e .
-          sed -i "s|bitcoindevproject/warnet-rpc:dev-3|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-          just start
-          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
-          kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/graph_test.py ${{matrix.backend}}
-  ln:
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        backend: [compose, k8s]
-    steps:
-      - uses: actions/checkout@v4
-      - if: matrix.backend == 'compose'
-        uses: ./.github/actions
-      - if: matrix.backend == 'k8s'
-        uses: extractions/setup-just@v1
-      - if: matrix.backend == 'k8s'
-        uses: actions/download-artifact@v4
-        with:
-          name: image-tags-${{ github.sha }}
-      - if: matrix.backend == 'k8s'
-        uses: medyagh/setup-minikube@master
-      - if: matrix.backend == 'k8s'
-        run: |
-          tagname=$(cat tagname.txt)
-          echo "Using tagname: $tagname"
-          pip install --upgrade pip
-          pip install -e .
-          sed -i "s|bitcoindevproject/warnet-rpc:dev-3|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-          just start
-          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
-          kubectl port-forward svc/rpc 9276:9276 &
-      - run: ./test/ln_test.py ${{matrix.backend}}
+      - run: ./test/${{matrix.test}} ${{matrix.backend}}
   build:
-    needs: [deploy, rpc] # save resources, only start if at least RPC passes
+    needs: [deploy, test]
     runs-on: ubuntu-latest
     strategy:
       matrix:
