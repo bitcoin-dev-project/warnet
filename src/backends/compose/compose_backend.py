@@ -1,6 +1,5 @@
 import logging
 import re
-import shutil
 import subprocess
 import time
 from datetime import datetime
@@ -12,7 +11,7 @@ import yaml
 from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from docker.models.containers import Container
-from templates import TEMPLATES
+from warnet.services import services
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import (
@@ -20,22 +19,12 @@ from warnet.utils import (
     parse_raw_messages,
 )
 
-from .services import SERVICES
-from .services.cadvisor import CAdvisor
-from .services.fork_observer import ForkObserver
-from .services.grafana import Grafana
-from .services.loki.loki import Loki
-from .services.node_exporter import NodeExporter
-from .services.prometheus import Prometheus
-from .services.promtail.promtail import Promtail
-
 DOCKER_COMPOSE_NAME = "docker-compose.yml"
 DOCKERFILE_NAME = "Dockerfile"
 TORRC_NAME = "torrc"
 ENTRYPOINT_NAME = "entrypoint.sh"
 DOCKER_REGISTRY = "bitcoindevproject/bitcoin"
 LOCAL_REGISTRY = "warnet/bitcoin-core"
-GRAFANA_PROVISIONING = "grafana-provisioning"
 CONTAINER_PREFIX_BITCOIND = "tank-bitcoin"
 CONTAINER_PREFIX_LN = "tank-ln"
 CONTAINER_PREFIX_CIRCUITBREAKER = "tank-ln-cb"
@@ -256,35 +245,6 @@ class ComposeBackend(BackendInterface):
 
         return "\n".join(sorted_logs)
 
-    def write_prometheus_config(self, warnet):
-        scrape_configs = [
-            {
-                "job_name": "cadvisor",
-                "scrape_interval": "15s",
-                "static_configs": [{"targets": [f"{warnet.network_name}_cadvisor:8080"]}],
-            }
-        ]
-
-        for tank in warnet.tanks:
-            if tank.exporter:
-                scrape_configs.append(
-                    {
-                        "job_name": tank.exporter_name,
-                        "scrape_interval": "5s",
-                        "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
-                    }
-                )
-
-        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
-
-        prometheus_path = self.config_dir / "prometheus.yml"
-        try:
-            with open(prometheus_path, "w") as file:
-                yaml.dump(config, file)
-            logger.info(f"Wrote file: {prometheus_path}")
-        except Exception as e:
-            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
-
     def _write_docker_compose(self, warnet):
         compose = {
             "version": "3.8",
@@ -304,19 +264,9 @@ class ComposeBackend(BackendInterface):
             self.add_services(tank, compose)
 
         # Initialize services and add them to the compose
-        services = [
-            Prometheus(warnet.network_name, self.config_dir),
-            NodeExporter(warnet.network_name),
-            Grafana(warnet.network_name),
-            CAdvisor(warnet.network_name, TEMPLATES),
-            ForkObserver(warnet.network_name, warnet.fork_observer_config),
-            Loki(warnet.network_name),
-            Promtail(warnet.network_name),
-        ]
-
-        for service_obj in services:
-            service_name = service_obj.__class__.__name__.lower()
-            compose["services"][service_name] = service_obj.get_service()
+        for service_name in warnet.services:
+            if "compose" in services[service_name]["backends"]:
+                compose["services"][service_name] = self.service_from_json(services[service_name])
 
         docker_compose_path = warnet.config_dir / "docker-compose.yml"
         try:
@@ -328,16 +278,7 @@ class ComposeBackend(BackendInterface):
 
     def generate_deployment_file(self, warnet):
         self._write_docker_compose(warnet)
-        self.write_prometheus_config(warnet)
         warnet.deployment_file = warnet.config_dir / DOCKER_COMPOSE_NAME
-        logger.debug(f"{SERVICES=}")
-        logger.debug(f"{SERVICES / GRAFANA_PROVISIONING=}")
-        logger.debug(f"{self.config_dir=}")
-        shutil.copytree(
-            SERVICES / GRAFANA_PROVISIONING,
-            self.config_dir / GRAFANA_PROVISIONING,
-            dirs_exist_ok=True,
-        )
 
     def add_services(self, tank: Tank, compose):
         services = compose["services"]
@@ -506,3 +447,22 @@ class ComposeBackend(BackendInterface):
             raise Exception(f"Tanks did not reach healthy status in {timeout} seconds")
 
         return healthy
+
+    def service_from_json(self, obj: dict) -> dict:
+        volumes = obj.get("volumes", [])
+        volumes += [f"{self.config_dir}" + filepath for filepath in obj.get("config_files", [])]
+
+        ports = []
+        if "container_port" and "warnet_port" in obj:
+            ports = [f"{obj['warnet_port']}:{obj['container_port']}"]
+        return {
+            "image": obj["image"],
+            "container_name": f"{self.network_name}_{obj['container_name_suffix']}",
+            "ports": ports,
+            "volumes": volumes,
+            "privileged": obj.get("privileged", False),
+            "devices": obj.get("devices", []),
+            "command": obj.get("args", []),
+            "environment": obj.get("environment", []),
+            "networks": [self.network_name]
+        }
