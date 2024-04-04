@@ -1,5 +1,7 @@
+import argparse
 import atexit
 import os
+import shlex
 import sys
 import threading
 from pathlib import Path
@@ -10,6 +12,11 @@ from time import sleep
 from cli.rpc import rpc_call
 from warnet.utils import exponential_backoff
 from warnet.warnet import Warnet
+
+parser = argparse.ArgumentParser(description="TestBase args")
+parser.add_argument("--backend", type=str, default="compose", help="Use compose or k8s backend")
+parser.add_argument("--rust_cli", action="store_true", help="Use experimental Rust CLI")
+args = parser.parse_args()
 
 
 class TestBase:
@@ -31,15 +38,11 @@ class TestBase:
         self.server_thread = None
         self.stop_threads = threading.Event()
         self.network = True
+        self.rust_cli = args.rust_cli
 
         atexit.register(self.cleanup)
 
-        # Default backend
-        self.backend = "compose"
-        # CLI arg overrides env
-        if len(sys.argv) > 1:
-            self.backend = sys.argv[1]
-
+        self.backend = args.backend
         if self.backend not in ["compose", "k8s"]:
             print(f"Invalid backend {self.backend}")
             sys.exit(1)
@@ -77,10 +80,25 @@ class TestBase:
             self.server = None
 
     # Execute a warcli RPC using command line (always returns string)
-    def warcli(self, str, network=True):
-        cmd = ["warcli"] + str.split()
-        if network:
-            cmd += ["--network", self.network_name]
+    def warcli(self, commands, network=True):
+        cmd = ""
+        cmd_args = ' '.join(commands.split())
+        if self.rust_cli:
+            # a temporary hack to fetch the path of the debug binary
+            script_path = Path(__file__).resolve()
+            project_root = script_path.parent.parent
+            warcli_relative_path = Path("target/debug/warcli")
+            warcli_absolute_path = project_root / warcli_relative_path
+            cmd += f"{warcli_absolute_path} "
+            if network:
+                cmd += f"--network {self.network_name} "
+            cmd += cmd_args
+        else:
+            cmd += "warcli "
+            cmd += cmd_args
+            if network:
+                cmd += f" --network {self.network_name} "
+        cmd = shlex.split(cmd)
         proc = run(cmd, capture_output=True)
 
         if proc.stderr:
