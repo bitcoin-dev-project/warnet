@@ -19,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'main' }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || 'main' }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -69,6 +69,8 @@ jobs:
         test: [scenarios_test.py, rpc_test.py, graph_test.py, ln_test.py]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || 'main' }}
       - if: matrix.backend == 'compose'
         uses: ./.github/actions
       - if: matrix.backend == 'k8s'
@@ -98,6 +100,8 @@ jobs:
         backend: [compose]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || 'main' }}
       - uses: ./.github/actions
       - if: matrix.backend == 'k8s'
         uses: extractions/setup-just@v1
