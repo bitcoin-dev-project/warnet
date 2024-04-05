@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
   <key id="version"         attr.name="version"          attr.type="string"   for="node" />
+  <key id="services"        attr.name="services"         attr.type="string"   for="graph" />
   <key id="image"           attr.name="image"            attr.type="string"   for="node" />
   <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
   <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
@@ -14,6 +15,7 @@
   <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
   <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
   <graph edgedefault="directed">
+    <data key="services">simln</data>
     <node id="0">
         <data key="version">26.0</data>
         <data key="bitcoin_config">-uacomment=w0</data>
