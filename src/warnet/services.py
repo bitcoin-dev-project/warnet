@@ -31,7 +31,7 @@ services = {
         "container_name_suffix": "fork-observer",
         "warnet_port": "23001",
         "container_port": "2323",
-        "config_files": [f"/{FO_CONF_NAME}:/app/config.toml"],
+        "config_files": [f"{FO_CONF_NAME}:/app/config.toml"],
     },
     "grafana": {
         "backends": ["compose"],
@@ -43,8 +43,8 @@ services = {
             "grafana-storage:/var/lib/grafana"
         ],
         "config_files": [
-            f"/{GRAFANA_PROVISIONING}/datasources:/etc/grafana/provisioning/datasources",
-            f"/{GRAFANA_PROVISIONING}/dashboards:/etc/grafana/provisioning/dashboards",
+            f"{GRAFANA_PROVISIONING}/datasources:/etc/grafana/provisioning/datasources",
+            f"{GRAFANA_PROVISIONING}/dashboards:/etc/grafana/provisioning/dashboards",
         ],
         "environment": [
             "GF_LOG_LEVEL=debug",
@@ -76,7 +76,17 @@ services = {
         "container_name_suffix": "prometheus",
         "warnet_port": "23004",
         "container_port": "9090",
-        "config_files": [f"/{PROM_CONF_NAME}:/etc/prometheus/prometheus.yml"],
+        "config_files": [f"{PROM_CONF_NAME}:/etc/prometheus/prometheus.yml"],
         "args": ["--config.file=/etc/prometheus/prometheus.yml"]
-    }
+    },
+    "simln": {
+        "backends": ["compose", "k8s"],
+        "image": "bitcoindevproject/simln:0.2.0",
+        "container_name_suffix": "simln",
+        "environment": [
+            "LOG_LEVEL=debug",
+            "SIMFILE_PATH=/simln/sim.json"
+        ],
+        "config_files": ["simln/:/simln"]
+    },
 }

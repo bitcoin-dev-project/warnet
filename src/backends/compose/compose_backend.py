@@ -454,7 +454,14 @@ class ComposeBackend(BackendInterface):
     def service_from_json(self, service_name: str) -> object:
         obj = services[service_name]
         volumes = obj.get("volumes", [])
-        volumes += [f"{self.config_dir}" + filepath for filepath in obj.get("config_files", [])]
+        for bind_mount in obj.get("config_files", []):
+            volume_name, mount_path = bind_mount.split(":")
+            hostpath = self.config_dir / volume_name
+            # If it's starting off as an empty directory, create it now so
+            # it has python-user permissions instead of docker-root
+            if volume_name[-1] == "/":
+                hostpath.mkdir(parents=True, exist_ok=True)
+            volumes += [f"{hostpath}:{mount_path}"]
 
         ports = []
         if "container_port" and "warnet_port" in obj:

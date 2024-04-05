@@ -1,6 +1,7 @@
 import base64
 import logging
 import re
+import subprocess
 import time
 from pathlib import Path
 from typing import cast
@@ -779,3 +780,30 @@ class KubernetesBackend(BackendInterface):
         self.client.create_namespaced_pod(namespace=self.namespace, body=service_pod)
         self.client.create_namespaced_service(namespace=self.namespace, body=service_service)
 
+    def write_service_config(self, source_path: str, service_name: str, destination_path: str):
+        obj = services[service_name]
+        name = obj["container_name_suffix"]
+        container_name = "sidecar"
+        # Copy the archive from our local drive (Warnet RPC container/pod)
+        # to the destination service's sidecar container via ssh
+        self.log.info(f"Copying local {source_path} to remote {destination_path} for {service_name}")
+        subprocess.run([
+            "scp",
+            "-o", "StrictHostKeyChecking=accept-new",
+            source_path,
+            f"root@{name}-service.{self.namespace}:/arbitrary_filename.tar"])
+        self.log.info(f"Finished copying tarball for {service_name}, unpacking...")
+        # Unpack the archive
+        stream(
+            self.client.connect_get_namespaced_pod_exec,
+            name,
+            self.namespace,
+            container=container_name,
+            command=["/bin/sh", "-c", f"tar -xf /arbitrary_filename.tar -C {destination_path}"],
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            _preload_content=False
+        )
+        self.log.info(f"Finished unpacking config data for {service_name} to {destination_path}")
