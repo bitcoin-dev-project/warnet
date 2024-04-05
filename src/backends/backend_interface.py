@@ -110,6 +110,13 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
+    def get_lnnode_hostname(self, index: int) -> str:
+        """
+        Get the hostname assigned to a lnnode attached to a tank from the backend
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
     def wait_for_healthy_tanks(self, warnet, timeout=60) -> bool:
         """
         Wait for healthy status on all bitcoind nodes

@@ -356,9 +356,12 @@ class ComposeBackend(BackendInterface):
                 "networks": [tank.network_name],
             }
 
+    def get_lnnode_hostname(self, index: int) -> str:
+        return self.get_container_name(index, ServiceType.LIGHTNING)
+
     def add_lnd_service(self, tank, compose):
         services = compose["services"]
-        ln_container_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
+        ln_container_name = self.get_lnnode_hostname(tank.index)
         ln_cb_container_name = self.get_container_name(tank.index, ServiceType.CIRCUITBREAKER)
         bitcoin_container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
@@ -475,5 +478,10 @@ class ComposeBackend(BackendInterface):
             "devices": obj.get("devices", []),
             "command": obj.get("args", []),
             "environment": obj.get("environment", []),
+            "restart": "on-failure",
             "networks": [self.network_name]
         }
+
+    def restart_service_container(self, service_name: str):
+        container = self.client.containers.get(self.get_service_container_name(service_name))
+        container.restart()

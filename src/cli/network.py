@@ -143,8 +143,11 @@ def connected(network: str):
 
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
-def export(network):
+@click.option("--activity", type=str)
+def export(network: str, activity: str):
     """
-    Export all [network] data for sim-ln to subdirectory
+    Export all [network] data for a "simln" service running in a container
+    on the network. Optionally add JSON string [activity] to simln config.
+    Returns True on success.
     """
-    print(rpc_call("network_export", {"network": network}))
+    print(rpc_call("network_export", {"network": network, "activity": activity}))

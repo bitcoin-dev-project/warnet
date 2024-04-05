@@ -1,5 +1,6 @@
 import argparse
 import base64
+import io
 import json
 import logging
 import logging.config
@@ -10,6 +11,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -268,20 +270,47 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def network_export(self, network: str) -> str:
+    def network_export(self, network: str, activity: str | None) -> bool:
         """
-        Export all data for sim-ln to subdirectory
+        Export all data for a simln container running on the network
         """
-        try:
-            wn = self.get_warnet(network)
-            subdir = os.path.join(wn.config_dir, "simln")
-            os.makedirs(subdir, exist_ok=True)
-            wn.export(subdir)
-            return subdir
-        except Exception as e:
-            msg = f"Error exporting network: {e}"
-            self.logger.error(msg)
-            raise ServerError(message=msg) from e
+        wn = self.get_warnet(network)
+        if "simln" not in wn.services:
+            raise Exception("No simln service in network")
+
+        # JSON object that will eventually be written to simln config file
+        config = {"nodes": []}
+        if activity:
+            config["activity"] = json.loads(activity)
+        # In-memory file to build tar archive
+        tar_buffer = io.BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w") as tar_file:
+            # tank LN nodes add their credentials to tar archive
+            wn.export(config, tar_file)
+            # write config file
+            config_bytes = json.dumps(config).encode('utf-8')
+            config_stream = io.BytesIO(config_bytes)
+            tarinfo = tarfile.TarInfo(name="sim.json")
+            tarinfo.size = len(config_bytes)
+            tar_file.addfile(tarinfo=tarinfo, fileobj=config_stream)
+
+        # Write the archive to the RPC server's config directory
+        source_file = wn.config_dir / "simln.tar"
+        with open(source_file, "wb") as output:
+            tar_buffer.seek(0)
+            output.write(tar_buffer.read())
+
+        if self.backend == "compose":
+            # Extract the archive into a subdirectory that is already
+            # shared with the simln container as a volume
+            subprocess.run(["tar", "-xf", source_file, "-C", wn.config_dir / 'simln'])
+            # Force quick restart of the container instead of waiting
+            # for the exponential backoff to come around
+            wn.container_interface.restart_service_container("simln")
+        if self.backend == "k8s":
+            # Copy the archive to the "emptydir" volume in the simln pod
+            wn.container_interface.write_service_config(source_file, "simln", "/simln/")
+        return True
 
     def scenarios_available(self) -> list[tuple]:
         """

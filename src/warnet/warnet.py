@@ -5,7 +5,6 @@ Warnet is the top-level class for a simulated network.
 import base64
 import json
 import logging
-import os
 import shutil
 from pathlib import Path
 
@@ -239,15 +238,9 @@ class Warnet:
         except Exception as e:
             logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
-    def export(self, subdir):
-        if self.backend != "compose":
-            raise NotImplementedError("Export is only supported for compose backend")
-        config = {"nodes": []}
+    def export(self, config: object, tar_file):
         for tank in self.tanks:
-            tank.export(config, subdir)
-        config_path = os.path.join(subdir, "sim.json")
-        with open(config_path, "a") as f:
-            json.dump(config, f)
+            tank.export(config, tar_file)
 
     def wait_for_health(self):
         self.container_interface.wait_for_healthy_tanks(self)

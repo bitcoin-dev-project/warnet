@@ -1,4 +1,5 @@
-import os
+import io
+import tarfile
 
 from backends import BackendInterface, ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
@@ -115,30 +116,38 @@ class LNNode:
                 raise Exception(f"Unsupported LN implementation: {self.impl}")
         return cmd
 
-    def export(self, config, subdir):
-        container_name = self.backend.get_container_name(self.tank.index, ServiceType.LIGHTNING)
-        macaroon_filename = f"{container_name}_admin.macaroon"
-        cert_filename = f"{container_name}_tls.cert"
-        macaroon_path = os.path.join(subdir, macaroon_filename)
-        cert_path = os.path.join(subdir, cert_filename)
+    def export(self, config: object, tar_file):
+        # Retrieve the credentials
         macaroon = self.backend.get_file(
             self.tank.index,
             ServiceType.LIGHTNING,
             "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon",
         )
-        cert = self.backend.get_file(self.tank.index, ServiceType.LIGHTNING, "/root/.lnd/tls.cert")
+        cert = self.backend.get_file(
+            self.tank.index,
+            ServiceType.LIGHTNING,
+            "/root/.lnd/tls.cert"
+        )
+        name = f"ln-{self.tank.index}"
+        macaroon_filename = f"{name}_admin.macaroon"
+        cert_filename = f"{name}_tls.cert"
+        host = self.backend.get_lnnode_hostname(self.tank.index)
 
-        with open(macaroon_path, "wb") as f:
-            f.write(macaroon)
-
-        with open(cert_path, "wb") as f:
-            f.write(cert)
+        # Add the files to the in-memory tar archive
+        tarinfo1 = tarfile.TarInfo(name=macaroon_filename)
+        tarinfo1.size = len(macaroon)
+        fileobj1 = io.BytesIO(macaroon)
+        tar_file.addfile(tarinfo=tarinfo1, fileobj=fileobj1)
+        tarinfo2 = tarfile.TarInfo(name=cert_filename)
+        tarinfo2.size = len(cert)
+        fileobj2 = io.BytesIO(cert)
+        tar_file.addfile(tarinfo=tarinfo2, fileobj=fileobj2)
 
         config["nodes"].append(
             {
-                "id": container_name,
-                "address": f"https://{self.ipv4}:{self.rpc_port}",
-                "macaroon": macaroon_path,
-                "cert": cert_path,
+                "id": name,
+                "address": f"https://{host}:{self.rpc_port}",
+                "macaroon": f"/simln/{macaroon_filename}",
+                "cert": f"/simln/{cert_filename}",
             }
         )
