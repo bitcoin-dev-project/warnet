@@ -169,6 +169,6 @@ class Tank:
                 f"Error applying network conditions to tank {self.index}: `{self.netem}` ({e})"
             )
 
-    def export(self, config, subdir):
+    def export(self, config: object, tar_file):
         if self.lnnode is not None:
-            self.lnnode.export(config, subdir)
+            self.lnnode.export(config, tar_file)

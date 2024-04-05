@@ -5,7 +5,6 @@ Warnet is the top-level class for a simulated network.
 import base64
 import json
 import logging
-import os
 import shutil
 from pathlib import Path
 
@@ -136,6 +135,8 @@ class Warnet:
         self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int, force_multigraph=True)
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
+        if "services" in self.graph.graph:
+            self.services = self.graph.graph["services"].split()
         for tank in self.tanks:
             tank._ipv4 = self.container_interface.get_tank_ipv4(tank.index)
         return self
@@ -237,15 +238,9 @@ class Warnet:
         except Exception as e:
             logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
-    def export(self, subdir):
-        if self.backend != "compose":
-            raise NotImplementedError("Export is only supported for compose backend")
-        config = {"nodes": []}
+    def export(self, config: object, tar_file):
         for tank in self.tanks:
-            tank.export(config, subdir)
-        config_path = os.path.join(subdir, "sim.json")
-        with open(config_path, "a") as f:
-            json.dump(config, f)
+            tank.export(config, tar_file)
 
     def wait_for_health(self):
         self.container_interface.wait_for_healthy_tanks(self)

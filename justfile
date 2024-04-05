@@ -4,6 +4,12 @@ set shell := ["bash", "-uc"]
 default:
     just --list
 
+cluster:
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-statefulset.yaml
+
 # Setup and start the RPC in dev mode with minikube
 start:
     #!/usr/bin/env bash

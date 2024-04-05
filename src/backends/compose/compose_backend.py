@@ -266,7 +266,7 @@ class ComposeBackend(BackendInterface):
         # Initialize services and add them to the compose
         for service_name in warnet.services:
             if "compose" in services[service_name]["backends"]:
-                compose["services"][service_name] = self.service_from_json(services[service_name])
+                compose["services"][service_name] = self.service_from_json(service_name)
 
         docker_compose_path = warnet.config_dir / "docker-compose.yml"
         try:
@@ -356,9 +356,12 @@ class ComposeBackend(BackendInterface):
                 "networks": [tank.network_name],
             }
 
+    def get_lnnode_hostname(self, index: int) -> str:
+        return self.get_container_name(index, ServiceType.LIGHTNING)
+
     def add_lnd_service(self, tank, compose):
         services = compose["services"]
-        ln_container_name = self.get_container_name(tank.index, ServiceType.LIGHTNING)
+        ln_container_name = self.get_lnnode_hostname(tank.index)
         ln_cb_container_name = self.get_container_name(tank.index, ServiceType.CIRCUITBREAKER)
         bitcoin_container_name = self.get_container_name(tank.index, ServiceType.BITCOIN)
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
@@ -448,21 +451,37 @@ class ComposeBackend(BackendInterface):
 
         return healthy
 
-    def service_from_json(self, obj: dict) -> dict:
+    def get_service_container_name(self, service_name: str):
+        return f"{self.network_name}_{services[service_name]['container_name_suffix']}"
+
+    def service_from_json(self, service_name: str) -> object:
+        obj = services[service_name]
         volumes = obj.get("volumes", [])
-        volumes += [f"{self.config_dir}" + filepath for filepath in obj.get("config_files", [])]
+        for bind_mount in obj.get("config_files", []):
+            volume_name, mount_path = bind_mount.split(":")
+            hostpath = self.config_dir / volume_name
+            # If it's starting off as an empty directory, create it now so
+            # it has python-user permissions instead of docker-root
+            if volume_name[-1] == "/":
+                hostpath.mkdir(parents=True, exist_ok=True)
+            volumes += [f"{hostpath}:{mount_path}"]
 
         ports = []
         if "container_port" and "warnet_port" in obj:
             ports = [f"{obj['warnet_port']}:{obj['container_port']}"]
         return {
             "image": obj["image"],
-            "container_name": f"{self.network_name}_{obj['container_name_suffix']}",
+            "container_name": self.get_service_container_name(service_name),
             "ports": ports,
             "volumes": volumes,
             "privileged": obj.get("privileged", False),
             "devices": obj.get("devices", []),
             "command": obj.get("args", []),
             "environment": obj.get("environment", []),
+            "restart": "on-failure",
             "networks": [self.network_name]
         }
+
+    def restart_service_container(self, service_name: str):
+        container = self.client.containers.get(self.get_service_container_name(service_name))
+        container.restart()

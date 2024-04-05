@@ -25,20 +25,6 @@ print(base.warcli(f"network start {graph_file_path}"))
 base.wait_for_all_tanks_status(target="running")
 base.wait_for_all_edges()
 
-if base.backend != "compose":
-    print("\nSkipping network export test, only supported with compose backend")
-else:
-    print("\nTesting warcli network export")
-    path = Path(base.warcli("network export")) / "sim.json"
-    with open(path) as file:
-        data = json.load(file)
-        print(json.dumps(data, indent=4))
-        assert len(data["nodes"]) == 3
-        for node in data["nodes"]:
-            assert os.path.exists(node["macaroon"])
-            assert os.path.exists(node["cert"])
-
-
 print("\nRunning LN Init scenario")
 base.warcli("rpc 0 getblockcount")
 base.warcli("scenarios run ln_init")
@@ -86,17 +72,27 @@ print("\nPaying invoice from node 2...")
 print(base.warcli(f"lncli 2 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
-def check_invoices():
-    invs = json.loads(base.warcli("lncli 0 listinvoices"))["invoices"]
-    if len(invs) > 0 and invs[0]["state"] == "SETTLED":
-        print("\nSettled!")
-        return True
-    else:
-        return False
-base.wait_for_predicate(check_invoices)
+def check_invoices(index):
+    invs = json.loads(base.warcli(f"lncli {index} listinvoices"))["invoices"]
+    settled = 0
+    for inv in invs:
+        if inv["state"] == "SETTLED":
+            settled += 1
+    return settled
+base.wait_for_predicate(lambda: check_invoices(0) == 1)
 
 print("\nEnsuring channel-level channel policy settings: target")
 payment = json.loads(base.warcli("lncli 2 listpayments"))["payments"][0]
 assert payment["fee_msat"] == "2213"
+
+print("\nEngaging simln")
+activity = [{
+  "source": "ln-0",
+  "destination": chan["node1_pub"],
+  "interval_secs": 1,
+  "amount_msat": 2000
+}]
+base.warcli(f"network export --activity={json.dumps(activity).replace(' ', '')}")
+base.wait_for_predicate(lambda: check_invoices(0) > 1 or check_invoices(1) > 1 or check_invoices(2) > 1)
 
 base.stop_server()

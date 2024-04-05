@@ -1,6 +1,7 @@
 import base64
 import logging
 import re
+import subprocess
 import time
 from pathlib import Path
 from typing import cast
@@ -15,6 +16,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.dynamic.exceptions import ResourceNotFoundError
 from kubernetes.stream import stream
+from warnet.services import services
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import parse_raw_messages
@@ -72,6 +74,10 @@ class KubernetesBackend(BackendInterface):
                 self.client.delete_namespaced_pod(pod_name, self.namespace)
 
         self.remove_prometheus_service_monitors(warnet.tanks)
+
+        for service_name in warnet.services:
+            if "k8s" in services[service_name]["backends"]:
+                self.client.delete_namespaced_pod(f'{services[service_name]["container_name_suffix"]}-service', self.namespace)
 
         return True
 
@@ -436,12 +442,15 @@ class KubernetesBackend(BackendInterface):
             except ResourceNotFoundError:
                 continue
 
+    def get_lnnode_hostname(self, index: int) -> str:
+        return f"lightning-{index}.{self.namespace}"
+
     def create_lnd_container(
         self, tank, bitcoind_service_name, volume_mounts
     ) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}"
-        lightning_dns = f"lightning-{tank.index}.{self.namespace}"
+        lightning_dns = self.get_lnnode_hostname(tank.index)
         args = tank.lnnode.get_conf(lightning_dns, bitcoind_rpc_host)
         self.log.debug(f"Creating lightning container for tank {tank.index} using {args=:}")
         lightning_container = client.V1Container(
@@ -668,6 +677,10 @@ class KubernetesBackend(BackendInterface):
         if self.check_logging_crds_installed():
             self.apply_prometheus_service_monitors(warnet.tanks)
 
+        for service_name in warnet.services:
+            if "k8s" in services[service_name]["backends"]:
+                self.service_from_json(services[service_name])
+
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
@@ -700,5 +713,100 @@ class KubernetesBackend(BackendInterface):
         """
         pass
 
-    def service_from_json(self, obj: dict) -> dict:
-        pass
+    def service_from_json(self, obj):
+        env = []
+        for pair in obj.get("environment", []):
+            name, value = pair.split("=")
+            env.append(client.V1EnvVar(name=name, value=value))
+        volume_mounts = []
+        volumes = []
+        for vol in obj.get("config_files", []):
+            volume_name, mount_path = vol.split(":")
+            volume_name = volume_name.replace("/", "")
+            volume_mounts.append(client.V1VolumeMount(name=volume_name, mount_path=mount_path))
+            volumes.append(client.V1Volume(name=volume_name, empty_dir=client.V1EmptyDirVolumeSource()))
+
+        service_container = client.V1Container(
+            name=obj["container_name_suffix"],
+            image=obj["image"],
+            env=env,
+            security_context=client.V1SecurityContext(
+                privileged=True,
+                capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
+            ),
+            volume_mounts=volume_mounts
+        )
+        sidecar_container = client.V1Container(
+            name="sidecar",
+            image="pinheadmz/sidecar:latest",
+            volume_mounts=volume_mounts,
+            ports=[client.V1ContainerPort(container_port=22)],
+        )
+        service_pod = client.V1Pod(
+            api_version="v1",
+            kind="Pod",
+            metadata=client.V1ObjectMeta(
+                name=obj["container_name_suffix"],
+                namespace=self.namespace,
+                labels={
+                    "app": obj["container_name_suffix"],
+                    "network": self.network_name,
+                },
+            ),
+            spec=client.V1PodSpec(
+                restart_policy="OnFailure",
+                containers=[service_container, sidecar_container],
+                volumes=volumes,
+            ),
+        )
+
+        # Do not ever change this variable name. xoxo, --Zip
+        service_service = client.V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=client.V1ObjectMeta(
+                name=f'{obj["container_name_suffix"]}-service',
+                labels={
+                    "app": obj["container_name_suffix"],
+                    "network": self.network_name,
+                },
+            ),
+            spec=client.V1ServiceSpec(
+                selector={"app": obj["container_name_suffix"]},
+                publish_not_ready_addresses=True,
+                ports=[
+                    client.V1ServicePort(name="ssh", port=22, target_port=22),
+                ]
+            )
+        )
+
+        self.client.create_namespaced_pod(namespace=self.namespace, body=service_pod)
+        self.client.create_namespaced_service(namespace=self.namespace, body=service_service)
+
+    def write_service_config(self, source_path: str, service_name: str, destination_path: str):
+        obj = services[service_name]
+        name = obj["container_name_suffix"]
+        container_name = "sidecar"
+        # Copy the archive from our local drive (Warnet RPC container/pod)
+        # to the destination service's sidecar container via ssh
+        self.log.info(f"Copying local {source_path} to remote {destination_path} for {service_name}")
+        subprocess.run([
+            "scp",
+            "-o", "StrictHostKeyChecking=accept-new",
+            source_path,
+            f"root@{name}-service.{self.namespace}:/arbitrary_filename.tar"])
+        self.log.info(f"Finished copying tarball for {service_name}, unpacking...")
+        # Unpack the archive
+        stream(
+            self.client.connect_get_namespaced_pod_exec,
+            name,
+            self.namespace,
+            container=container_name,
+            command=["/bin/sh", "-c", f"tar -xf /arbitrary_filename.tar -C {destination_path}"],
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            _preload_content=False
+        )
+        self.log.info(f"Finished unpacking config data for {service_name} to {destination_path}")
