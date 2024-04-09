@@ -62,7 +62,7 @@ def import_json(infile: Path, outfile: Path, cb: str):
     # Save a map of LN pubkey -> Tank index
     ln_ids = {}
     for index, node in enumerate(json_graph["nodes"]):
-        ln_ids[node["id"]] = index
+        ln_ids[node["pub_key"]] = index
 
     # Offset for edge IDs
     # Note create_cycle_graph() creates L1 edges all with the same id "0"
