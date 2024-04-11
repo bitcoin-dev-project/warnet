@@ -12,7 +12,7 @@ import networkx
 import yaml
 from backends import ComposeBackend, KubernetesBackend
 from templates import TEMPLATES
-from warnet.services import FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
+from warnet.services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
 from warnet.tank import Tank
 from warnet.utils import gen_config_dir, load_schema, validate_graph_schema
 
@@ -181,8 +181,10 @@ class Warnet:
         self.container_interface.generate_deployment_file(self)
         if "forkobserver" in self.services:
             self.write_fork_observer_config()
+        if "addrmanobserver" in self.services:
+            self.write_addrman_observer_config()
         if "grafana" in self.services:
-            self.write_grafna_config()
+            self.write_grafana_config()
         if "prometheus" in self.services:
             self.write_prometheus_config()
 
@@ -205,8 +207,27 @@ class Warnet:
                 """
                 )
         logger.info(f"Wrote file: {dst}")
+        
+    def write_addrman_observer_config(self):
+        src = TEMPLATES / AO_CONF_NAME
+        dst = self.config_dir / AO_CONF_NAME
+        shutil.copy(src, dst)
+        with open(dst, "a") as f:
+            for tank in self.tanks:
+                f.write(
+                    f"""
+                    [[nodes]]
+                    id = {tank.index}
+                    name = "node-{tank.index}"
+                    rpc_host = "{tank.ipv4}"
+                    rpc_port = {tank.rpc_port}
+                    rpc_user = "{tank.rpc_user}"
+                    rpc_password = "{tank.rpc_password}"
+                """
+                )
+        logger.info(f"Wrote file: {dst}")
 
-    def write_grafna_config(self):
+    def write_grafana_config(self):
         src = TEMPLATES / GRAFANA_PROVISIONING
         dst = self.config_dir / GRAFANA_PROVISIONING
         shutil.copytree(src, dst, dirs_exist_ok=True)

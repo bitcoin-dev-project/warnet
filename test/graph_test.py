@@ -70,6 +70,15 @@ if base.backend == "compose":
     else:
         raise Exception("forkobserver not OK")
 
+    node_id = 0
+    ao_res = requests.get(f"http://localhost:23005/{node_id}")
+    assert ao_res.status_code == 200
+    addrman = ao_res.json()
+    if "new" in addrman and "tried" in addrman:
+        print("forkobserver OK")
+    else:
+        raise Exception("addrmanobserver not OK")
+
     grafana_res = requests.get("http://localhost:23002/api/datasources/uid/prometheusdatasource/health")
     assert grafana_res.status_code == 200
     health = grafana_res.json()

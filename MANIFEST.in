@@ -1,6 +1,7 @@
 include src/schema/*.json
 include src/templates/bitcoin.conf
 include src/templates/fork_observer_config.toml
+include src/templates/addrman_observer_config.toml
 include src/templates/addrman.patch
 include src/templates/isroutable.patch
 graft src/templates/k8s
