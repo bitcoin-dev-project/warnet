@@ -26,7 +26,7 @@ print(base.warcli(f"graph create 10 --outfile={tf_create} --version={DEFAULT_TAG
 base.wait_for_predicate(lambda: Path(tf_create).exists())
 
 print(f"\nCLI tool importing json and writing test graph file: {tf_import}")
-print(base.warcli(f"graph import-json {json_file_path} --outfile={tf_import} --ln_image=carlakirkcohen/lnd:attackathon --cb=pinheadmz/circuitbreaker:278737d", network=False))
+print(base.warcli(f"graph import-json {json_file_path} --outfile={tf_import} --ln_image=carlakirkcohen/lnd:attackathon --cb=carlakirkcohen/circuitbreaker:attackathon-test", network=False))
 base.wait_for_predicate(lambda: Path(tf_import).exists())
 
 # Validate the graph schema
