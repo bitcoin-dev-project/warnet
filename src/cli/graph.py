@@ -38,8 +38,9 @@ def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random:
 @graph.command()
 @click.argument("infile", type=click.Path())
 @click.option("--outfile", type=click.Path())
-@click.option("--cb", type=str, default="pinheadmz/circuitbreaker:278737d")
-def import_json(infile: Path, outfile: Path, cb: str):
+@click.option("--cb", type=str)
+@click.option("--ln_image", type=str)
+def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
     """
     Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
     and additionally include 7 extra random outbounds per node. Include lightning
@@ -56,8 +57,11 @@ def import_json(infile: Path, outfile: Path, cb: str):
     for index, n in enumerate(graph.nodes()):
         graph.nodes[n]["bitcoin_config"] = f"-uacomment=tank{index:06}"
         graph.nodes[n]["ln"] = "lnd"
-        graph.nodes[n]["ln_cb_image"] = cb
         graph.nodes[n]["ln_config"] = "--protocol.wumbo-channels"
+        if cb:
+            graph.nodes[n]["ln_cb_image"] = cb
+        if ln_image:
+            graph.nodes[n]["ln_image"] = ln_image
 
     # Save a map of LN pubkey -> Tank index
     ln_ids = {}
