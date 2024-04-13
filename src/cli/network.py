@@ -2,6 +2,7 @@ import base64  # noqa: I001
 from pathlib import Path
 
 import click
+import json
 from rich import print
 from rich.console import Console
 from rich.table import Table
@@ -144,10 +145,13 @@ def connected(network: str):
 @network.command()
 @click.option("--network", default="warnet", show_default=True)
 @click.option("--activity", type=str)
-def export(network: str, activity: str):
+@click.option("--exclude", type=str, default="[]")
+def export(network: str, activity: str, exclude: str):
     """
     Export all [network] data for a "simln" service running in a container
     on the network. Optionally add JSON string [activity] to simln config.
+    Optionally provide a list of tank indexes to [exclude].
     Returns True on success.
     """
-    print(rpc_call("network_export", {"network": network, "activity": activity}))
+    exclude = json.loads(exclude)
+    print(rpc_call("network_export", {"network": network, "activity": activity, "exclude": exclude}))
