@@ -238,9 +238,10 @@ class Warnet:
         except Exception as e:
             logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
-    def export(self, config: object, tar_file):
+    def export(self, config: object, tar_file, exclude: list[int]):
         for tank in self.tanks:
-            tank.export(config, tar_file)
+            if tank.index not in exclude:
+                tank.export(config, tar_file)
 
     def wait_for_health(self):
         self.container_interface.wait_for_healthy_tanks(self)

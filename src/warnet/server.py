@@ -270,7 +270,7 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def network_export(self, network: str, activity: str | None) -> bool:
+    def network_export(self, network: str, activity: str | None, exclude: list[int]) -> bool:
         """
         Export all data for a simln container running on the network
         """
@@ -286,7 +286,7 @@ class Server:
         tar_buffer = io.BytesIO()
         with tarfile.open(fileobj=tar_buffer, mode="w") as tar_file:
             # tank LN nodes add their credentials to tar archive
-            wn.export(config, tar_file)
+            wn.export(config, tar_file, exclude=exclude)
             # write config file
             config_bytes = json.dumps(config).encode('utf-8')
             config_stream = io.BytesIO(config_bytes)

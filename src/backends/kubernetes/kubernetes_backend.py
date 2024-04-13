@@ -77,7 +77,8 @@ class KubernetesBackend(BackendInterface):
 
         for service_name in warnet.services:
             if "k8s" in services[service_name]["backends"]:
-                self.client.delete_namespaced_pod(f'{services[service_name]["container_name_suffix"]}-service', self.namespace)
+                self.client.delete_namespaced_pod(services[service_name]["container_name_suffix"], self.namespace)
+                self.client.delete_namespaced_service(f'{services[service_name]["container_name_suffix"]}-service', self.namespace)
 
         return True
 

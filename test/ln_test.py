@@ -30,6 +30,8 @@ base.warcli("rpc 0 getblockcount")
 base.warcli("scenarios run ln_init")
 base.wait_for_all_scenarios()
 
+node2pub, node2host = json.loads(base.warcli(f"lncli 2 getinfo"))["uris"][0].split("@")
+
 print("\nEnsuring node-level channel policy settings")
 chan_id = json.loads(base.warcli("lncli 2 listchannels"))["channels"][0]["chan_id"]
 chan = json.loads(base.warcli(f"lncli 2 getchaninfo {chan_id}"))
@@ -88,11 +90,13 @@ assert payment["fee_msat"] == "2213"
 print("\nEngaging simln")
 activity = [{
   "source": "ln-0",
-  "destination": chan["node1_pub"],
+  "destination": node2pub,
   "interval_secs": 1,
   "amount_msat": 2000
 }]
-base.warcli(f"network export --activity={json.dumps(activity).replace(' ', '')}")
-base.wait_for_predicate(lambda: check_invoices(0) > 1 or check_invoices(1) > 1 or check_invoices(2) > 1)
+base.warcli(f"network export --exclude=[1] --activity={json.dumps(activity).replace(' ', '')}")
+base.wait_for_predicate(lambda: check_invoices(2) > 1)
+assert check_invoices(0) == 1
+assert check_invoices(1) == 0
 
 base.stop_server()
