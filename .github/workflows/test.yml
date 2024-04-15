@@ -99,7 +99,7 @@ jobs:
           echo "Using tagname: $tagname"
           pip install --upgrade pip
           pip install -e .
-          sed -i "s|bitcoindevproject/warnet-rpc:dev-3|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+          sed -i "s|bitcoindevproject/warnet-rpc:dev|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
@@ -130,7 +130,7 @@ jobs:
           eval $(minikube docker-env)
           pip install --upgrade pip
           pip install -e .
-          sed -i "s|bitcoindevproject/warnet-rpc:dev-3|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+          sed -i "s|bitcoindevproject/warnet-rpc:dev|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
           just start
           kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
           kubectl port-forward svc/rpc 9276:9276 &
