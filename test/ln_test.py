@@ -30,7 +30,7 @@ base.warcli("rpc 0 getblockcount")
 base.warcli("scenarios run ln_init")
 base.wait_for_all_scenarios()
 
-node2pub, node2host = json.loads(base.warcli(f"lncli 2 getinfo"))["uris"][0].split("@")
+node2pub, node2host = json.loads(base.warcli("lncli 2 getinfo"))["uris"][0].split("@")
 
 print("\nEnsuring node-level channel policy settings")
 chan_id = json.loads(base.warcli("lncli 2 listchannels"))["channels"][0]["chan_id"]
