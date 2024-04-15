@@ -61,7 +61,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
-          tags: dev
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:dev
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:dev
           cache-to: type=inline
