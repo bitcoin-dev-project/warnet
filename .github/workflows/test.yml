@@ -42,7 +42,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push
+      - name: Build and push production RPC image
         uses: docker/build-push-action@v5
         with:
           file: src/templates/rpc/Dockerfile_rpc
@@ -52,6 +52,18 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:latest
+          cache-to: type=inline
+      - name: Build and push dev RPC image
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          file: src/templates/rpc/Dockerfile_rpc_dev
+          platforms: linux/amd64,linux/arm64
+          context: .
+          push: true
+          tags: dev
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:dev
           cache-to: type=inline
       - name: Create tag name file
         run: echo "${{ steps.meta.outputs.tags }}" > tagname.txt
