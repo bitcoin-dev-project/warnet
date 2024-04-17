@@ -86,13 +86,13 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
         if channel["node1_policy"]:
             srcp += f" --base_fee_msat={channel['node1_policy']['fee_base_msat']}"
             srcp += f" --fee_rate_ppm={channel['node1_policy']['fee_rate_milli_msat']}"
-            srcp += f" --time_lock_delta={channel['node1_policy']['time_lock_delta']}"
+            srcp += f" --time_lock_delta={max(int(channel['node1_policy']['time_lock_delta']), 18)}"
             srcp += f" --min_htlc_msat={max(int(channel['node1_policy']['min_htlc']), 1)}"
             srcp += f" --max_htlc_msat={push * 1000}"
         if channel["node2_policy"]:
             tgtp += f" --base_fee_msat={channel['node2_policy']['fee_base_msat']}"
             tgtp += f" --fee_rate_ppm={channel['node2_policy']['fee_rate_milli_msat']}"
-            tgtp += f" --time_lock_delta={channel['node2_policy']['time_lock_delta']}"
+            tgtp += f" --time_lock_delta={max(int(channel['node1_policy']['time_lock_delta']), 18)}"
             tgtp += f" --min_htlc_msat={max(int(channel['node2_policy']['min_htlc']), 1)}"
             tgtp += f" --max_htlc_msat={push * 1000}"
 
