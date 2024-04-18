@@ -13,7 +13,7 @@ Deploy the resources in `src/templates/`, this sets up a Kubernetes cluster, app
 
 ### Using Justfile
 
-The `justfile` in this project defines various tasks for managing the Kubernetes deployment workflow. Go ahead and install [https://github.com/casey/just](https://github.com/casey/just) if you do not have it installed on your machine.
+The `justfile` in this project defines various tasks for managing the Kubernetes deployment workflow. Using this option requires that you have a local installation of [just](https://github.com/casey/just). So go ahead and install it if you do not have it already installed on your machine.
 
 Follow the usage example below to run a task from the `justfile`.
 
@@ -22,7 +22,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>start details</summary>
 
-    ```bash
+    ```shell
     # Mount local source dir
     minikube mount $PWD:/mnt/src > /tmp/minikube_mount.log 2>&1 &
 
@@ -53,7 +53,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>stop details</summary>
 
-    ```bash
+    ```shell
     kubectl delete namespace warnet
     kubectl delete namespace warnet-logging
     kubectl config set-context --current --namespace=default
@@ -77,7 +77,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>startd details</summary>
 
-    ```bash
+    ```shell
     kubectl apply -f src/templates/rpc/namespace.yaml
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
@@ -97,7 +97,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>stopd details</summary>
 
-    ```bash
+    ```shell
     # Delete all resources
     kubectl delete namespace warnet
     kubectl delete namespace warnet-logging
@@ -113,7 +113,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>port forward details</summary>
 
-    ```bash
+    ```shell
     kubectl port-forward svc/rpc 9276:9276
     ```
 
