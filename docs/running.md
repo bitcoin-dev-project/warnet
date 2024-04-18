@@ -11,7 +11,118 @@ a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet
 
 Deploy the resources in `src/templates/`, this sets up a Kubernetes cluster, apply correct permissions on the cluster (`rbac-config.yaml`), and deploys the warnet RPC server as a service + statefulset.
 
-Below are the commands to set these up correctly:
+### Using Justfile
+
+The `justfile` in this project defines various tasks for managing the Kubernetes deployment workflow. Go ahead and install [https://github.com/casey/just](https://github.com/casey/just) if you do not have it installed on your machine. 
+
+Follow the usage example below to run a task from the `justfile`.
+
+`just start` - setup and start the RPC with minikube
+
+<details>
+    <summary>start details</summary>
+
+    ```bash
+        #!/usr/bin/env bash
+        set -euxo pipefail
+
+        # Mount local source dir
+        minikube mount $PWD:/mnt/src > /tmp/minikube_mount.log 2>&1 &
+
+        # Capture the PID of the minikube mount command
+        MINIKUBE_MOUNT_PID=$!
+
+        # Save the PID to a file for later use
+        echo $MINIKUBE_MOUNT_PID > /tmp/minikube_mount.pid
+
+        # Setup k8s
+        kubectl apply -f src/templates/rpc/namespace.yaml
+        kubectl apply -f src/templates/rpc/rbac-config.yaml
+        kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+        kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        kubectl config set-context --current --namespace=warnet
+
+        echo waiting for rpc to come online
+        sleep 2
+        kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
+        echo Done...
+    ```
+</details>
+
+`just stop` - stop the RPC in dev mode with minikube
+
+<details>
+    <summary>stop details</summary>
+
+    ```bash
+        #!/usr/bin/env bash
+        set -euxo pipefail
+
+        kubectl delete namespace warnet
+        kubectl delete namespace warnet-logging
+        kubectl config set-context --current --namespace=default
+
+        # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
+        if [ -f /tmp/minikube_mount.pid ]; then
+        MINIKUBE_MOUNT_PID=$(cat /tmp/minikube_mount.pid)
+        # Stop the background job using its PID
+        kill -SIGINT $MINIKUBE_MOUNT_PID
+        # Optionally, remove the PID file
+        rm /tmp/minikube_mount.pid
+        else
+            echo "PID file not found. Minikube mount process may not have been started."
+        fi
+    ```
+</details>
+
+`just startd` - setup and start the RPC in dev mode with Docker Desktop
+
+<details>
+    <summary>startd details</summary>
+
+    ```bash
+        kubectl apply -f src/templates/rpc/namespace.yaml
+        kubectl apply -f src/templates/rpc/rbac-config.yaml
+        kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+        sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+        kubectl config set-context --current --namespace=warnet
+
+        echo waiting for rpc to come online
+        kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
+        echo Done...
+    ```
+</details>
+
+`just stopd` - stop the RPC in dev mode with Docker Desktop
+
+<details>
+    <summary>stopd details</summary>
+
+    ```bash
+        # Delete all resources
+        kubectl delete namespace warnet
+        kubectl delete namespace warnet-logging
+        kubectl config set-context --current --namespace=default
+
+        echo Done...
+    ```
+</details>
+
+`just p` - forwards port from local into the cluster
+
+<details>
+    <summary>port forward details</summary>
+
+    ```bash
+        kubectl port-forward svc/rpc 9276:9276
+    ```
+</details>
+
+### Running the commands directly
+
+You can setup the cluster following the steps below, if you do not wisht to use the `justfile` option. 
 
 ```bash
 # Creates a Kubernetes namespace for the RPC
@@ -24,7 +135,7 @@ kubectl apply -f src/templates/rpc/rbac-config.yaml
 kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
 
 # Deploys a statefulset for the RPC to manage stateful applications
-kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+kubectl apply -f src/templates/rpc/warnet-rpc-statefulset.yaml
 
 ```
 
