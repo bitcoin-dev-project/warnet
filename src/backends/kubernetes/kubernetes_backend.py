@@ -65,13 +65,11 @@ class KubernetesBackend(BackendInterface):
         """
 
         for tank in warnet.tanks:
-            pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
-            self.client.delete_namespaced_pod(pod_name, self.namespace)
-            service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
-            self.client.delete_namespaced_service(service_name, self.namespace)
+            self.client.delete_namespaced_pod(self.get_pod_name(tank.index, ServiceType.BITCOIN), self.namespace)
+            self.client.delete_namespaced_service(self.get_service_name(tank.index, ServiceType.BITCOIN), self.namespace)
             if tank.lnnode:
-                pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
-                self.client.delete_namespaced_pod(pod_name, self.namespace)
+                self.client.delete_namespaced_pod(self.get_pod_name(tank.index, ServiceType.LIGHTNING), self.namespace)
+                self.client.delete_namespaced_service(self.get_service_name(tank.index, ServiceType.LIGHTNING), self.namespace)
 
         self.remove_prometheus_service_monitors(warnet.tanks)
 
@@ -127,6 +125,9 @@ class KubernetesBackend(BackendInterface):
         if type == ServiceType.LIGHTNING or type == ServiceType.CIRCUITBREAKER:
             return f"{self.network_name}-{POD_PREFIX}-ln-{tank_index:06d}"
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
+
+    def get_service_name(self, tank_index: int, type: ServiceType) -> str:
+        return f"{self.get_pod_name(tank_index, type)}-service"
 
     def get_pod(self, pod_name: str) -> V1Pod | None:
         try:
@@ -264,7 +265,7 @@ class KubernetesBackend(BackendInterface):
         bitcoin_network: str = "regtest",
     ):
         b_pod = self.get_pod(self.get_pod_name(b_index, ServiceType.BITCOIN))
-        b_service = self.get_service(self.get_service_name(b_index))
+        b_service = self.get_service(self.get_service_name(b_index, ServiceType.BITCOIN))
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         base_dir = f"/root/.bitcoin/{subdir}message_capture"
         cmd = f"ls {base_dir}"
@@ -357,7 +358,7 @@ class KubernetesBackend(BackendInterface):
         else:
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
-        peers = [self.get_service_name(dst_index) for dst_index in tank.init_peers]
+        peers = [self.get_service_name(dst_index, ServiceType.BITCOIN) for dst_index in tank.init_peers]
         bitcoind_options = tank.get_bitcoin_conf(peers)
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
@@ -450,7 +451,7 @@ class KubernetesBackend(BackendInterface):
                 continue
 
     def get_lnnode_hostname(self, index: int) -> str:
-        return f"lightning-{index}.{self.namespace}"
+        return f"{self.get_service_name(index, ServiceType.LIGHTNING)}.{self.namespace}"
 
     def create_lnd_container(
         self, tank, bitcoind_service_name, volume_mounts
@@ -535,10 +536,6 @@ class KubernetesBackend(BackendInterface):
                 volumes=volumes,
             ),
         )
-
-    def get_service_name(self, tank_index: int) -> str:
-        return f"bitcoind-{POD_PREFIX}-{tank_index:06d}"
-
     def get_tank_ipv4(self, index: int) -> str:
         pod_name = self.get_pod_name(index, ServiceType.BITCOIN)
         pod = self.get_pod(pod_name)
@@ -548,7 +545,7 @@ class KubernetesBackend(BackendInterface):
             return None
 
     def create_bitcoind_service(self, tank) -> client.V1Service:
-        service_name = self.get_service_name(tank.index)
+        service_name = self.get_service_name(tank.index, ServiceType.BITCOIN)
         self.log.debug(f"Creating bitcoind service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
@@ -584,7 +581,7 @@ class KubernetesBackend(BackendInterface):
         return service
 
     def create_lightning_service(self, tank) -> client.V1Service:
-        service_name = f"lightning-{tank.index}"
+        service_name = self.get_service_name(tank.index, ServiceType.LIGHTNING)
         self.log.debug(f"Creating lightning service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
