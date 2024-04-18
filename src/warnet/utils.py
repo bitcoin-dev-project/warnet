@@ -488,8 +488,8 @@ def validate_graph_schema(graph: nx.Graph):
 
 def policy_match(pol1, pol2):
     return (
-        pol1["time_lock_delta"] == pol2["time_lock_delta"]
-        and pol1["min_htlc"] == pol2["min_htlc"]
+        max(int(pol1["time_lock_delta"]), 18) == max(int(pol2["time_lock_delta"]), 18)
+        and max(int(pol1["min_htlc"]), 1) == max(int(pol2["min_htlc"]), 1)
         and pol1["fee_base_msat"] == pol2["fee_base_msat"]
         and pol1["fee_rate_milli_msat"] == pol2["fee_rate_milli_msat"]
         # Ignoring this for now since we use capacity/2
