@@ -22,7 +22,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>start details</summary>
 
-    ```shell
+    ```
     # Mount local source dir
     minikube mount $PWD:/mnt/src > /tmp/minikube_mount.log 2>&1 &
 
@@ -53,7 +53,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>stop details</summary>
 
-    ```shell
+    ```
     kubectl delete namespace warnet
     kubectl delete namespace warnet-logging
     kubectl config set-context --current --namespace=default
@@ -77,7 +77,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>startd details</summary>
 
-    ```shell
+    ```
     kubectl apply -f src/templates/rpc/namespace.yaml
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
@@ -97,7 +97,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>stopd details</summary>
 
-    ```shell
+    ```
     # Delete all resources
     kubectl delete namespace warnet
     kubectl delete namespace warnet-logging
@@ -113,7 +113,7 @@ Follow the usage example below to run a task from the `justfile`.
 <details>
     <summary>port forward details</summary>
 
-    ```shell
+    ```
     kubectl port-forward svc/rpc 9276:9276
     ```
 
