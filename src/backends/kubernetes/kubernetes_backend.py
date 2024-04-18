@@ -772,7 +772,7 @@ class KubernetesBackend(BackendInterface):
             api_version="v1",
             kind="Service",
             metadata=client.V1ObjectMeta(
-                name=self.get_service_service_name({obj["container_name_suffix"]}),
+                name=self.get_service_service_name(obj["container_name_suffix"]),
                 labels={
                     "app": self.get_service_pod_name(obj["container_name_suffix"]),
                     "network": self.network_name,
