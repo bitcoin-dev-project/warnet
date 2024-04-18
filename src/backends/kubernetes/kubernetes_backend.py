@@ -77,8 +77,8 @@ class KubernetesBackend(BackendInterface):
 
         for service_name in warnet.services:
             if "k8s" in services[service_name]["backends"]:
-                self.client.delete_namespaced_pod(services[service_name]["container_name_suffix"], self.namespace)
-                self.client.delete_namespaced_service(f'{services[service_name]["container_name_suffix"]}-service', self.namespace)
+                self.client.delete_namespaced_pod(self.get_service_pod_name(services[service_name]["container_name_suffix"]), self.namespace)
+                self.client.delete_namespaced_service(self.get_service_service_name(services[service_name]["container_name_suffix"]), self.namespace)
 
         return True
 
@@ -116,6 +116,12 @@ class KubernetesBackend(BackendInterface):
 
         decoded_bytes = base64.b64decode(base64_encoded_data)
         return decoded_bytes
+
+    def get_service_pod_name(self, suffix: str) -> str:
+        return f"{self.network_name}-{suffix}"
+
+    def get_service_service_name(self, suffix: str) -> str:
+        return f"{self.network_name}-{suffix}-service"
 
     def get_pod_name(self, tank_index: int, type: ServiceType) -> str:
         if type == ServiceType.LIGHTNING or type == ServiceType.CIRCUITBREAKER:
@@ -728,7 +734,7 @@ class KubernetesBackend(BackendInterface):
             volumes.append(client.V1Volume(name=volume_name, empty_dir=client.V1EmptyDirVolumeSource()))
 
         service_container = client.V1Container(
-            name=obj["container_name_suffix"],
+            name=self.get_service_pod_name(obj["container_name_suffix"]),
             image=obj["image"],
             env=env,
             security_context=client.V1SecurityContext(
@@ -747,10 +753,10 @@ class KubernetesBackend(BackendInterface):
             api_version="v1",
             kind="Pod",
             metadata=client.V1ObjectMeta(
-                name=obj["container_name_suffix"],
+                name=self.get_service_pod_name(obj["container_name_suffix"]),
                 namespace=self.namespace,
                 labels={
-                    "app": obj["container_name_suffix"],
+                    "app": self.get_service_pod_name(obj["container_name_suffix"]),
                     "network": self.network_name,
                 },
             ),
@@ -766,14 +772,14 @@ class KubernetesBackend(BackendInterface):
             api_version="v1",
             kind="Service",
             metadata=client.V1ObjectMeta(
-                name=f'{obj["container_name_suffix"]}-service',
+                name=self.get_service_service_name({obj["container_name_suffix"]}),
                 labels={
-                    "app": obj["container_name_suffix"],
+                    "app": self.get_service_pod_name(obj["container_name_suffix"]),
                     "network": self.network_name,
                 },
             ),
             spec=client.V1ServiceSpec(
-                selector={"app": obj["container_name_suffix"]},
+                selector={"app": self.get_service_pod_name(obj["container_name_suffix"])},
                 publish_not_ready_addresses=True,
                 ports=[
                     client.V1ServicePort(name="ssh", port=22, target_port=22),
@@ -786,7 +792,6 @@ class KubernetesBackend(BackendInterface):
 
     def write_service_config(self, source_path: str, service_name: str, destination_path: str):
         obj = services[service_name]
-        name = obj["container_name_suffix"]
         container_name = "sidecar"
         # Copy the archive from our local drive (Warnet RPC container/pod)
         # to the destination service's sidecar container via ssh
@@ -795,12 +800,12 @@ class KubernetesBackend(BackendInterface):
             "scp",
             "-o", "StrictHostKeyChecking=accept-new",
             source_path,
-            f"root@{name}-service.{self.namespace}:/arbitrary_filename.tar"])
+            f"root@{self.get_service_service_name(obj['container_name_suffix'])}.{self.namespace}:/arbitrary_filename.tar"])
         self.log.info(f"Finished copying tarball for {service_name}, unpacking...")
         # Unpack the archive
         stream(
             self.client.connect_get_namespaced_pod_exec,
-            name,
+            self.get_service_pod_name(obj["container_name_suffix"]),
             self.namespace,
             container=container_name,
             command=["/bin/sh", "-c", f"tar -xf /arbitrary_filename.tar -C {destination_path}"],
