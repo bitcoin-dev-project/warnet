@@ -9,9 +9,9 @@ echo "Checking for mounted source code at ${SOURCE_DIR}..."
 
 check_setup_toml() {
     if [ -f "${SOURCE_DIR}/pyproject.toml" ]; then
-        return 0
-    else
         return 1
+    else
+        return 0
     fi
 }
 
