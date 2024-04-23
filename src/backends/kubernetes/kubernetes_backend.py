@@ -65,20 +65,18 @@ class KubernetesBackend(BackendInterface):
         """
 
         for tank in warnet.tanks:
-            pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
-            self.client.delete_namespaced_pod(pod_name, self.namespace)
-            service_name = f"bitcoind-{POD_PREFIX}-{tank.index:06d}"
-            self.client.delete_namespaced_service(service_name, self.namespace)
+            self.client.delete_namespaced_pod(self.get_pod_name(tank.index, ServiceType.BITCOIN), self.namespace)
+            self.client.delete_namespaced_service(self.get_service_name(tank.index, ServiceType.BITCOIN), self.namespace)
             if tank.lnnode:
-                pod_name = self.get_pod_name(tank.index, ServiceType.LIGHTNING)
-                self.client.delete_namespaced_pod(pod_name, self.namespace)
+                self.client.delete_namespaced_pod(self.get_pod_name(tank.index, ServiceType.LIGHTNING), self.namespace)
+                self.client.delete_namespaced_service(self.get_service_name(tank.index, ServiceType.LIGHTNING), self.namespace)
 
         self.remove_prometheus_service_monitors(warnet.tanks)
 
         for service_name in warnet.services:
             if "k8s" in services[service_name]["backends"]:
-                self.client.delete_namespaced_pod(services[service_name]["container_name_suffix"], self.namespace)
-                self.client.delete_namespaced_service(f'{services[service_name]["container_name_suffix"]}-service', self.namespace)
+                self.client.delete_namespaced_pod(self.get_service_pod_name(services[service_name]["container_name_suffix"]), self.namespace)
+                self.client.delete_namespaced_service(self.get_service_service_name(services[service_name]["container_name_suffix"]), self.namespace)
 
         return True
 
@@ -117,10 +115,19 @@ class KubernetesBackend(BackendInterface):
         decoded_bytes = base64.b64decode(base64_encoded_data)
         return decoded_bytes
 
+    def get_service_pod_name(self, suffix: str) -> str:
+        return f"{self.network_name}-{suffix}"
+
+    def get_service_service_name(self, suffix: str) -> str:
+        return f"{self.network_name}-{suffix}-service"
+
     def get_pod_name(self, tank_index: int, type: ServiceType) -> str:
         if type == ServiceType.LIGHTNING or type == ServiceType.CIRCUITBREAKER:
             return f"{self.network_name}-{POD_PREFIX}-ln-{tank_index:06d}"
         return f"{self.network_name}-{POD_PREFIX}-{tank_index:06d}"
+
+    def get_service_name(self, tank_index: int, type: ServiceType) -> str:
+        return f"{self.get_pod_name(tank_index, type)}-service"
 
     def get_pod(self, pod_name: str) -> V1Pod | None:
         try:
@@ -258,7 +265,7 @@ class KubernetesBackend(BackendInterface):
         bitcoin_network: str = "regtest",
     ):
         b_pod = self.get_pod(self.get_pod_name(b_index, ServiceType.BITCOIN))
-        b_service = self.get_service(self.get_service_name(b_index))
+        b_service = self.get_service(self.get_service_name(b_index, ServiceType.BITCOIN))
         subdir = "/" if bitcoin_network == "main" else f"{bitcoin_network}/"
         base_dir = f"/root/.bitcoin/{subdir}message_capture"
         cmd = f"ls {base_dir}"
@@ -351,7 +358,7 @@ class KubernetesBackend(BackendInterface):
         else:
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
-        peers = [self.get_service_name(dst_index) for dst_index in tank.init_peers]
+        peers = [self.get_service_name(dst_index, ServiceType.BITCOIN) for dst_index in tank.init_peers]
         bitcoind_options = tank.get_bitcoin_conf(peers)
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
@@ -444,7 +451,7 @@ class KubernetesBackend(BackendInterface):
                 continue
 
     def get_lnnode_hostname(self, index: int) -> str:
-        return f"lightning-{index}.{self.namespace}"
+        return f"{self.get_service_name(index, ServiceType.LIGHTNING)}.{self.namespace}"
 
     def create_lnd_container(
         self, tank, bitcoind_service_name, volume_mounts
@@ -529,10 +536,6 @@ class KubernetesBackend(BackendInterface):
                 volumes=volumes,
             ),
         )
-
-    def get_service_name(self, tank_index: int) -> str:
-        return f"bitcoind-{POD_PREFIX}-{tank_index:06d}"
-
     def get_tank_ipv4(self, index: int) -> str:
         pod_name = self.get_pod_name(index, ServiceType.BITCOIN)
         pod = self.get_pod(pod_name)
@@ -542,7 +545,7 @@ class KubernetesBackend(BackendInterface):
             return None
 
     def create_bitcoind_service(self, tank) -> client.V1Service:
-        service_name = self.get_service_name(tank.index)
+        service_name = self.get_service_name(tank.index, ServiceType.BITCOIN)
         self.log.debug(f"Creating bitcoind service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
@@ -578,7 +581,7 @@ class KubernetesBackend(BackendInterface):
         return service
 
     def create_lightning_service(self, tank) -> client.V1Service:
-        service_name = f"lightning-{tank.index}"
+        service_name = self.get_service_name(tank.index, ServiceType.LIGHTNING)
         self.log.debug(f"Creating lightning service {service_name} for tank {tank.index}")
         service = client.V1Service(
             api_version="v1",
@@ -728,7 +731,7 @@ class KubernetesBackend(BackendInterface):
             volumes.append(client.V1Volume(name=volume_name, empty_dir=client.V1EmptyDirVolumeSource()))
 
         service_container = client.V1Container(
-            name=obj["container_name_suffix"],
+            name=self.get_service_pod_name(obj["container_name_suffix"]),
             image=obj["image"],
             env=env,
             security_context=client.V1SecurityContext(
@@ -747,10 +750,10 @@ class KubernetesBackend(BackendInterface):
             api_version="v1",
             kind="Pod",
             metadata=client.V1ObjectMeta(
-                name=obj["container_name_suffix"],
+                name=self.get_service_pod_name(obj["container_name_suffix"]),
                 namespace=self.namespace,
                 labels={
-                    "app": obj["container_name_suffix"],
+                    "app": self.get_service_pod_name(obj["container_name_suffix"]),
                     "network": self.network_name,
                 },
             ),
@@ -766,14 +769,14 @@ class KubernetesBackend(BackendInterface):
             api_version="v1",
             kind="Service",
             metadata=client.V1ObjectMeta(
-                name=f'{obj["container_name_suffix"]}-service',
+                name=self.get_service_service_name(obj["container_name_suffix"]),
                 labels={
-                    "app": obj["container_name_suffix"],
+                    "app": self.get_service_pod_name(obj["container_name_suffix"]),
                     "network": self.network_name,
                 },
             ),
             spec=client.V1ServiceSpec(
-                selector={"app": obj["container_name_suffix"]},
+                selector={"app": self.get_service_pod_name(obj["container_name_suffix"])},
                 publish_not_ready_addresses=True,
                 ports=[
                     client.V1ServicePort(name="ssh", port=22, target_port=22),
@@ -786,7 +789,6 @@ class KubernetesBackend(BackendInterface):
 
     def write_service_config(self, source_path: str, service_name: str, destination_path: str):
         obj = services[service_name]
-        name = obj["container_name_suffix"]
         container_name = "sidecar"
         # Copy the archive from our local drive (Warnet RPC container/pod)
         # to the destination service's sidecar container via ssh
@@ -795,12 +797,12 @@ class KubernetesBackend(BackendInterface):
             "scp",
             "-o", "StrictHostKeyChecking=accept-new",
             source_path,
-            f"root@{name}-service.{self.namespace}:/arbitrary_filename.tar"])
+            f"root@{self.get_service_service_name(obj['container_name_suffix'])}.{self.namespace}:/arbitrary_filename.tar"])
         self.log.info(f"Finished copying tarball for {service_name}, unpacking...")
         # Unpack the archive
         stream(
             self.client.connect_get_namespaced_pod_exec,
-            name,
+            self.get_service_pod_name(obj["container_name_suffix"]),
             self.namespace,
             container=container_name,
             command=["/bin/sh", "-c", f"tar -xf /arbitrary_filename.tar -C {destination_path}"],
