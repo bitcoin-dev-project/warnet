@@ -10,7 +10,14 @@ jobs:
   ruff:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug info
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "PR Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "Resolved Ref: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && github.event.pull_request.head.sha || 'main' }}"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || 'main' }}
       - uses: chartboost/ruff-action@v1
   deploy:
     needs: [ruff]
