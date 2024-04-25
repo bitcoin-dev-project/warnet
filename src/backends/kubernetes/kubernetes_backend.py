@@ -14,7 +14,7 @@ from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.models.v1_service import V1Service
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
-from kubernetes.dynamic.exceptions import ResourceNotFoundError
+from kubernetes.dynamic.exceptions import ResourceNotFoundError, NotFoundError
 from kubernetes.stream import stream
 from warnet.services import services
 from warnet.status import RunningStatus
@@ -65,18 +65,32 @@ class KubernetesBackend(BackendInterface):
         """
 
         for tank in warnet.tanks:
-            self.client.delete_namespaced_pod(self.get_pod_name(tank.index, ServiceType.BITCOIN), self.namespace)
-            self.client.delete_namespaced_service(self.get_service_name(tank.index, ServiceType.BITCOIN), self.namespace)
+            self.client.delete_namespaced_pod(
+                self.get_pod_name(tank.index, ServiceType.BITCOIN), self.namespace
+            )
+            self.client.delete_namespaced_service(
+                self.get_service_name(tank.index, ServiceType.BITCOIN), self.namespace
+            )
             if tank.lnnode:
-                self.client.delete_namespaced_pod(self.get_pod_name(tank.index, ServiceType.LIGHTNING), self.namespace)
-                self.client.delete_namespaced_service(self.get_service_name(tank.index, ServiceType.LIGHTNING), self.namespace)
+                self.client.delete_namespaced_pod(
+                    self.get_pod_name(tank.index, ServiceType.LIGHTNING), self.namespace
+                )
+                self.client.delete_namespaced_service(
+                    self.get_service_name(tank.index, ServiceType.LIGHTNING), self.namespace
+                )
 
         self.remove_prometheus_service_monitors(warnet.tanks)
 
         for service_name in warnet.services:
             if "k8s" in services[service_name]["backends"]:
-                self.client.delete_namespaced_pod(self.get_service_pod_name(services[service_name]["container_name_suffix"]), self.namespace)
-                self.client.delete_namespaced_service(self.get_service_service_name(services[service_name]["container_name_suffix"]), self.namespace)
+                self.client.delete_namespaced_pod(
+                    self.get_service_pod_name(services[service_name]["container_name_suffix"]),
+                    self.namespace,
+                )
+                self.client.delete_namespaced_service(
+                    self.get_service_service_name(services[service_name]["container_name_suffix"]),
+                    self.namespace,
+                )
 
         return True
 
@@ -358,7 +372,9 @@ class KubernetesBackend(BackendInterface):
         else:
             container_image = f"{DOCKER_REGISTRY_CORE}:{tank.version}"
 
-        peers = [self.get_service_name(dst_index, ServiceType.BITCOIN) for dst_index in tank.init_peers]
+        peers = [
+            self.get_service_name(dst_index, ServiceType.BITCOIN) for dst_index in tank.init_peers
+        ]
         bitcoind_options = tank.get_bitcoin_conf(peers)
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
@@ -447,7 +463,7 @@ class KubernetesBackend(BackendInterface):
                     name=f"warnet-tank-{tank.index:06d}",
                     namespace=MAIN_NAMESPACE,
                 )
-            except ResourceNotFoundError:
+            except (ResourceNotFoundError, NotFoundError):
                 continue
 
     def get_lnnode_hostname(self, index: int) -> str:
@@ -536,6 +552,7 @@ class KubernetesBackend(BackendInterface):
                 volumes=volumes,
             ),
         )
+
     def get_tank_ipv4(self, index: int) -> str:
         pod_name = self.get_pod_name(index, ServiceType.BITCOIN)
         pod = self.get_pod(pod_name)
@@ -728,7 +745,9 @@ class KubernetesBackend(BackendInterface):
             volume_name, mount_path = vol.split(":")
             volume_name = volume_name.replace("/", "")
             volume_mounts.append(client.V1VolumeMount(name=volume_name, mount_path=mount_path))
-            volumes.append(client.V1Volume(name=volume_name, empty_dir=client.V1EmptyDirVolumeSource()))
+            volumes.append(
+                client.V1Volume(name=volume_name, empty_dir=client.V1EmptyDirVolumeSource())
+            )
 
         service_container = client.V1Container(
             name=self.get_service_pod_name(obj["container_name_suffix"]),
@@ -738,7 +757,7 @@ class KubernetesBackend(BackendInterface):
                 privileged=True,
                 capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
             ),
-            volume_mounts=volume_mounts
+            volume_mounts=volume_mounts,
         )
         sidecar_container = client.V1Container(
             name="sidecar",
@@ -780,8 +799,8 @@ class KubernetesBackend(BackendInterface):
                 publish_not_ready_addresses=True,
                 ports=[
                     client.V1ServicePort(name="ssh", port=22, target_port=22),
-                ]
-            )
+                ],
+            ),
         )
 
         self.client.create_namespaced_pod(namespace=self.namespace, body=service_pod)
@@ -792,12 +811,18 @@ class KubernetesBackend(BackendInterface):
         container_name = "sidecar"
         # Copy the archive from our local drive (Warnet RPC container/pod)
         # to the destination service's sidecar container via ssh
-        self.log.info(f"Copying local {source_path} to remote {destination_path} for {service_name}")
-        subprocess.run([
-            "scp",
-            "-o", "StrictHostKeyChecking=accept-new",
-            source_path,
-            f"root@{self.get_service_service_name(obj['container_name_suffix'])}.{self.namespace}:/arbitrary_filename.tar"])
+        self.log.info(
+            f"Copying local {source_path} to remote {destination_path} for {service_name}"
+        )
+        subprocess.run(
+            [
+                "scp",
+                "-o",
+                "StrictHostKeyChecking=accept-new",
+                source_path,
+                f"root@{self.get_service_service_name(obj['container_name_suffix'])}.{self.namespace}:/arbitrary_filename.tar",
+            ]
+        )
         self.log.info(f"Finished copying tarball for {service_name}, unpacking...")
         # Unpack the archive
         stream(
@@ -810,6 +835,6 @@ class KubernetesBackend(BackendInterface):
             stdin=False,
             stdout=True,
             tty=False,
-            _preload_content=False
+            _preload_content=False,
         )
         self.log.info(f"Finished unpacking config data for {service_name} to {destination_path}")
