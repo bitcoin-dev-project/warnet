@@ -14,7 +14,7 @@ from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.models.v1_service import V1Service
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
-from kubernetes.dynamic.exceptions import ResourceNotFoundError, NotFoundError
+from kubernetes.dynamic.exceptions import NotFoundError, ResourceNotFoundError
 from kubernetes.stream import stream
 from warnet.services import services
 from warnet.status import RunningStatus
