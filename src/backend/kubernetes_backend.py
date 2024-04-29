@@ -475,6 +475,11 @@ class KubernetesBackend:
         lightning_dns = self.get_lnnode_hostname(tank.index)
         args = tank.lnnode.get_conf(lightning_dns, bitcoind_rpc_host)
         self.log.debug(f"Creating lightning container for tank {tank.index} using {args=:}")
+        lightning_ready_probe = ""
+        if tank.lnnode.impl == "lnd":
+            lightning_ready_probe = "lncli --network=regtest getinfo"
+        elif tank.lnnode.impl == "cln":
+            lightning_ready_probe = "lightning-cli --network=regtest getinfo"
         lightning_container = client.V1Container(
             name=LN_CONTAINER_NAME,
             image=tank.lnnode.image,
@@ -485,12 +490,10 @@ class KubernetesBackend:
             readiness_probe=client.V1Probe(
                 failure_threshold=1,
                 success_threshold=3,
-                initial_delay_seconds=1,
+                initial_delay_seconds=10,
                 period_seconds=2,
                 timeout_seconds=2,
-                _exec=client.V1ExecAction(
-                    command=["/bin/sh", "-c", "lncli --network=regtest getinfo"]
-                ),
+                _exec=client.V1ExecAction(command=["/bin/sh", "-c", lightning_ready_probe]),
             ),
             security_context=client.V1SecurityContext(
                 privileged=True,

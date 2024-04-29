@@ -21,6 +21,10 @@ LND_CONFIG_BASE = " ".join(
     ]
 )
 
+CLN_CONFIG_BASE = " ".join(
+    ["--network=regtest", "--database-upgrade=true", "--bitcoin-retry-timeout=600"]
+)
+
 
 class LNNode:
     def __init__(self, warnet, tank, backend: KubernetesBackend, options):
@@ -61,6 +65,16 @@ class LNNode:
             conf += f" --externalhosts={ln_container_name}"
             conf += f" --tlsextradomain={ln_container_name}"
             conf += " " + self.ln_config
+            return conf
+        elif self.impl == "cln":
+            conf = CLN_CONFIG_BASE
+            conf += f" --alias={self.tank.index}"
+            # conf += f"- --addr=:{ self.port }"
+            conf += f" --grpc-port={self.rpc_port}"
+            conf += f" --bitcoin-rpcuser={ self.tank.rpc_user }"
+            conf += f" --bitcoin-rpcpassword={ self.tank.rpc_password }"
+            conf += f" --bitcoin-rpcconnect={tank_container_name}"
+            conf += f" --bitcoin-rpcport={ self.tank.rpc_port }"
             return conf
         return ""
 
