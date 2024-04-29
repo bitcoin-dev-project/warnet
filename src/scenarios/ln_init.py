@@ -117,13 +117,13 @@ class LNInit(WarnetTestFramework):
             self.log.info(f"Waiting for graph gossip sync, LN nodes remaining: {ln_nodes_gossip}")
             for index in ln_nodes_gossip:
                 lnnode = self.warnet.tanks[index].lnnode
-                my_edges = len(lnnode.lncli("describegraph")["edges"])
-                my_nodes = len(lnnode.lncli("describegraph")["nodes"])
-                if my_edges == len(chan_opens) and my_nodes == len(ln_nodes):
+                count_channels = len(lnnode.get_graph_channels())
+                count_graph_nodes = len(lnnode.get_graph_nodes())
+                if count_channels == len(chan_opens) and count_graph_nodes == len(ln_nodes):
                     ln_nodes_gossip.remove(index)
                 else:
                     self.log.info(
-                        f" node {index} not synced (channels: {my_edges}/{len(chan_opens)}, nodes: {my_nodes}/{len(ln_nodes)})"
+                        f" node {index} not synced (channels: {count_channels}/{len(chan_opens)}, nodes: {count_graph_nodes}/{len(ln_nodes)})"
                     )
             sleep(5)
 

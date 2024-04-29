@@ -103,6 +103,14 @@ class LNNode:
             return self.lncli("newaddr")["bech32"]
         raise Exception(f"Unsupported LN implementation: {self.impl}")
 
+    def get_pub_key(self):
+        res = self.lncli("getinfo")
+        if self.impl == "lnd":
+            return res["identity_pubkey"]
+        elif self.impl == "cln":
+            return res["id"]
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
+
     def getURI(self):
         res = self.lncli("getinfo")
         if self.impl == "lnd":
@@ -150,6 +158,41 @@ class LNNode:
             return ret
         else:
             raise Exception(ret)
+
+    def get_graph_nodes(self) -> list[str]:
+        if self.impl == "lnd":
+            return list(n["pub_key"] for n in self.lncli("describegraph")["nodes"])
+        elif self.impl == "cln":
+            return list(n["nodeid"] for n in self.lncli("listnodes")["nodes"])
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
+
+    def get_graph_channels(self) -> list[dict]:
+        if self.impl == "lnd":
+            edges = self.lncli("describegraph")["edges"]
+            return list(
+                map(
+                    lambda edge: {"node1_pub": edge["node1_pub"], "node2_pub": edge["node2_pub"]},
+                    edges,
+                )
+            )
+        elif self.impl == "cln":
+            channels = self.lncli("listchannels")["channels"]
+            # CLN lists channels twice, once for each direction. This deduplicates them.
+            channels = {chan["short_channel_id"]: chan for chan in channels}.values()
+            return list(
+                map(
+                    lambda edge: {"node1_pub": edge["source"], "node2_pub": edge["destination"]},
+                    channels,
+                )
+            )
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
+
+    def get_peers(self) -> list[str]:
+        if self.impl == "lnd":
+            return list(p["pub_key"] for p in self.lncli("listpeers")["peers"])
+        elif self.impl == "cln":
+            return list(p["id"] for p in self.lncli("listpeers")["peers"])
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def connect_to_tank(self, index):
         tank = self.warnet.tanks[index]
