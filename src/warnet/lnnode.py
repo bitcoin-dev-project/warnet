@@ -22,7 +22,12 @@ LND_CONFIG_BASE = " ".join(
 )
 
 CLN_CONFIG_BASE = " ".join(
-    ["--network=regtest", "--database-upgrade=true", "--bitcoin-retry-timeout=600"]
+    [
+        "--network=regtest",
+        "--database-upgrade=true",
+        "--bitcoin-retry-timeout=600",
+        "--bind-addr=0.0.0.0:9735",
+    ]
 )
 
 
@@ -69,49 +74,75 @@ class LNNode:
         elif self.impl == "cln":
             conf = CLN_CONFIG_BASE
             conf += f" --alias={self.tank.index}"
-            # conf += f"- --addr=:{ self.port }"
             conf += f" --grpc-port={self.rpc_port}"
-            conf += f" --bitcoin-rpcuser={ self.tank.rpc_user }"
-            conf += f" --bitcoin-rpcpassword={ self.tank.rpc_password }"
+            conf += f" --bitcoin-rpcuser={self.tank.rpc_user}"
+            conf += f" --bitcoin-rpcpassword={self.tank.rpc_password}"
             conf += f" --bitcoin-rpcconnect={tank_container_name}"
-            conf += f" --bitcoin-rpcport={ self.tank.rpc_port }"
+            conf += f" --bitcoin-rpcport={self.tank.rpc_port}"
+            conf += f" --announce-addr=dns:{ln_container_name}:9735"
             return conf
         return ""
 
     @exponential_backoff(max_retries=20, max_delay=300)
     @handle_json
     def lncli(self, cmd) -> dict:
-        cmd = f"lncli --network=regtest {cmd}"
+        cli = ""
+        if self.impl == "lnd":
+            cli = "lncli"
+        elif self.impl == "cln":
+            cli = "lightning-cli"
+        else:
+            raise Exception(f"Unsupported LN implementation: {self.impl}")
+        cmd = f"{cli} --network=regtest {cmd}"
         return self.backend.exec_run(self.tank.index, ServiceType.LIGHTNING, cmd)
 
     def getnewaddress(self):
-        res = self.lncli("newaddress p2wkh")
-        return res["address"]
+        if self.impl == "lnd":
+            return self.lncli("newaddress p2wkh")["address"]
+        elif self.impl == "cln":
+            return self.lncli("newaddr")["bech32"]
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def getURI(self):
         res = self.lncli("getinfo")
-        if len(res["uris"]) < 1:
-            return None
-        return res["uris"][0]
+        if self.impl == "lnd":
+            if len(res["uris"]) < 1:
+                return None
+            return res["uris"][0]
+        elif self.impl == "cln":
+            if len(res["address"]) < 1:
+                return None
+            return f'{res["id"]}@{res["address"][0]["address"]}:{res["address"][0]["port"]}'
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
 
-    def get_wallet_balance(self):
-        res = self.lncli("walletbalance")
-        return res
+    def get_wallet_balance(self) -> int:
+        if self.impl == "lnd":
+            res = self.lncli("walletbalance")["confirmed_balance"]
+            return res
+        elif self.impl == "cln":
+            res = self.lncli("listfunds")
+            return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     # returns the channel point in the form txid:output_index
     def open_channel_to_tank(self, index: int, policy: str) -> str:
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
-        txid = self.lncli(f"openchannel --node_key={pubkey} --connect={host} {policy}")[
-            "funding_txid"
-        ]
-        # Why doesn't LND return the output index as well?
-        # Do they charge by the RPC call or something?!
-        pending = self.lncli("pendingchannels")
-        for chan in pending["pending_open_channels"]:
-            if txid in chan["channel"]["channel_point"]:
-                return chan["channel"]["channel_point"]
-        raise Exception(f"Opened channel with txid {txid} not found in pending channels")
+        if self.impl == "lnd":
+            txid = self.lncli(f"openchannel --node_key={pubkey} --connect={host} {policy}")[
+                "funding_txid"
+            ]
+            # Why doesn't LND return the output index as well?
+            # Do they charge by the RPC call or something?!
+            pending = self.lncli("pendingchannels")
+            for chan in pending["pending_open_channels"]:
+                if txid in chan["channel"]["channel_point"]:
+                    return chan["channel"]["channel_point"]
+            raise Exception(f"Opened channel with txid {txid} not found in pending channels")
+        if self.impl == "cln":
+            res = self.lncli(f"fundchannel {pubkey} {policy}")
+            return res["channel_point"]
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def update_channel_policy(self, chan_point: str, policy: str) -> str:
         ret = self.lncli(f"updatechanpolicy --chan_point={chan_point} {policy}")
