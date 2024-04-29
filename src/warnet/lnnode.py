@@ -125,13 +125,13 @@ class LNNode:
         raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     # returns the channel point in the form txid:output_index
-    def open_channel_to_tank(self, index: int, policy: str) -> str:
+    def open_channel_to_tank(self, index: int, channel_open_data: str) -> str:
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
         if self.impl == "lnd":
-            txid = self.lncli(f"openchannel --node_key={pubkey} --connect={host} {policy}")[
-                "funding_txid"
-            ]
+            txid = self.lncli(
+                f"openchannel --node_key={pubkey} --connect={host} {channel_open_data}"
+            )["funding_txid"]
             # Why doesn't LND return the output index as well?
             # Do they charge by the RPC call or something?!
             pending = self.lncli("pendingchannels")
@@ -140,8 +140,8 @@ class LNNode:
                     return chan["channel"]["channel_point"]
             raise Exception(f"Opened channel with txid {txid} not found in pending channels")
         if self.impl == "cln":
-            res = self.lncli(f"fundchannel {pubkey} {policy}")
-            return res["channel_point"]
+            res = self.lncli(f"fundchannel id={pubkey} {channel_open_data}")
+            return f"{res['txid']}:{res['outnum']}"
         raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def update_channel_policy(self, chan_point: str, policy: str) -> str:
