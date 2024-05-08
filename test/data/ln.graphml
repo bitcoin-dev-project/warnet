@@ -64,7 +64,7 @@
     </edge>
     <edge id="8" source="3" target="2">
         <data key="channel_open">amount=100000 push_msat=50000000</data>
-        <data key="source_policy">--base_fee_msat=5500 --fee_rate_ppm=3 --time_lock_delta=40</data>
+        <data key="source_policy"> feebase=5500 feeppm=3</data>
     </edge>
   </graph>
 </graphml>

@@ -153,11 +153,15 @@ class LNNode:
         raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def update_channel_policy(self, chan_point: str, policy: str) -> str:
-        ret = self.lncli(f"updatechanpolicy --chan_point={chan_point} {policy}")
-        if len(ret["failed_updates"]) == 0:
-            return ret
-        else:
-            raise Exception(ret)
+        if self.impl == "lnd":
+            ret = self.lncli(f"updatechanpolicy --chan_point={chan_point} {policy}")
+            if len(ret["failed_updates"]) == 0:
+                return ret
+            else:
+                raise Exception(ret)
+        elif self.impl == "cln":
+            return self.lncli(f"setchannel {chan_point} {policy}")
+        raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def get_graph_nodes(self) -> list[str]:
         if self.impl == "lnd":
@@ -169,22 +173,52 @@ class LNNode:
     def get_graph_channels(self) -> list[dict]:
         if self.impl == "lnd":
             edges = self.lncli("describegraph")["edges"]
-            return list(
-                map(
-                    lambda edge: {"node1_pub": edge["node1_pub"], "node2_pub": edge["node2_pub"]},
-                    edges,
+            return [
+                LNChannel(
+                    node1_pub=edge["node1_pub"],
+                    node2_pub=edge["node2_pub"],
+                    capacity_msat=edge["capacity"],
+                    short_chan_id=lnd_to_cl_scid(edge["channel_id"]),
+                    node1_min_htlc=edge["node1_policy"]["min_htlc"],
+                    node2_min_htlc=edge["node2_policy"]["min_htlc"],
+                    node1_max_htlc=edge["node1_policy"]["max_htlc"],
+                    node2_max_htlc=edge["node2_policy"]["max_htlc"],
+                    node1_base_fee_msat=edge["node1_policy"]["fee_base_msat"],
+                    node2_base_fee_msat=edge["node2_policy"]["fee_base_msat"],
+                    node1_fee_rate_milli_msat=edge["node1_policy"]["fee_rate_milli_msat"],
+                    node2_fee_rate_milli_msat=edge["node2_policy"]["fee_rate_milli_msat"],
+                    node1_time_lock_delta=edge["node1_policy"]["time_lock_delta"],
+                    node2_time_lock_delta=edge["node2_policy"]["time_lock_delta"],
                 )
-            )
+                for edge in edges
+            ]
         elif self.impl == "cln":
-            channels = self.lncli("listchannels")["channels"]
-            # CLN lists channels twice, once for each direction. This deduplicates them.
-            channels = {chan["short_channel_id"]: chan for chan in channels}.values()
-            return list(
-                map(
-                    lambda edge: {"node1_pub": edge["source"], "node2_pub": edge["destination"]},
-                    channels,
+            cln_channels = self.lncli("listchannels")["channels"]
+            # CLN lists channels twice, once for each direction. This finds the unique channel ids.
+            short_channel_ids = {chan["short_channel_id"]: chan for chan in cln_channels}.keys()
+            channels: list[LNChannel] = []
+            for short_channel_id in short_channel_ids:
+                channel_1 = channels[short_channel_id][0]
+                channel_2 = channels[short_channel_id][1]
+
+                channels.append(
+                    LNChannel(
+                        node1_pub=channel_1["source"],
+                        node2_pub=channel_2["source"],
+                        capacity_msat=channel_1["amount_msat"],
+                        short_chan_id=channel_1["channel_id"],
+                        node1_min_htlc=channel_1["htlc_minimum_msat"],
+                        node2_min_htlc=channel_2["htlc_minimum_msat"],
+                        node1_max_htlc=channel_1["htlc_maximum_msat"],
+                        node2_max_htlc=channel_2["htlc_maximum_msat"],
+                        node1_base_fee_msat=channel_1["base_fee_millisatoshi"],
+                        node2_base_fee_msat=channel_2["base_fee_millisatoshi"],
+                        node1_fee_rate_milli_msat=channel_1["fee_per_millionth"],
+                        node2_fee_rate_milli_msat=channel_2["fee_per_millionth"],
+                    )
                 )
-            )
+
+            return channels
         raise Exception(f"Unsupported LN implementation: {self.impl}")
 
     def get_peers(self) -> list[str]:
@@ -243,3 +277,63 @@ class LNNode:
                 "cert": f"/simln/{cert_filename}",
             }
         )
+
+
+class LNChannel:
+    def __init__(
+        self,
+        node1_pub: str,
+        node2_pub: str,
+        capacity_msat: int = 0,
+        short_chan_id: str = "",
+        node1_min_htlc: int = 0,
+        node2_min_htlc: int = 0,
+        node1_max_htlc: int = 0,
+        node2_max_htlc: int = 0,
+        node1_base_fee_msat: int = 0,
+        node2_base_fee_msat: int = 0,
+        node1_fee_rate_milli_msat: int = 0,
+        node2_fee_rate_milli_msat: int = 0,
+        node1_time_lock_delta: int = 0,
+        node2_time_lock_delta: int = 0,
+    ) -> None:
+        # Ensure that the node with the lower pubkey is node1
+        if node1_pub > node2_pub:
+            node1_pub, node2_pub = node2_pub, node1_pub
+            node1_min_htlc, node2_min_htlc = node2_min_htlc, node1_min_htlc
+            node1_max_htlc, node2_max_htlc = node2_max_htlc, node1_max_htlc
+            node1_base_fee_msat, node2_base_fee_msat = node2_base_fee_msat, node1_base_fee_msat
+            node1_fee_rate_milli_msat, node2_fee_rate_milli_msat = (
+                node2_fee_rate_milli_msat,
+                node1_fee_rate_milli_msat,
+            )
+            node1_time_lock_delta, node2_time_lock_delta = (
+                node2_time_lock_delta,
+                node1_time_lock_delta,
+            )
+        self.node1_pub = node1_pub
+        self.node2_pub = node2_pub
+        self.capacity_msat = capacity_msat
+        self.short_chan_id = short_chan_id
+        self.node1_min_htlc = node1_min_htlc
+        self.node2_min_htlc = node2_min_htlc
+        self.node1_max_htlc = node1_max_htlc
+        self.node2_max_htlc = node2_max_htlc
+        self.node1_base_fee_msat = node1_base_fee_msat
+        self.node2_base_fee_msat = node2_base_fee_msat
+        self.node1_fee_rate_milli_msat = node1_fee_rate_milli_msat
+        self.node2_fee_rate_milli_msat = node2_fee_rate_milli_msat
+        self.node1_time_lock_delta = node1_time_lock_delta
+        self.node2_time_lock_delta = node2_time_lock_delta
+
+
+def lnd_to_cl_scid(s) -> str:
+    block = s >> 40
+    tx = s >> 16 & 0xFFFFFF
+    output = s & 0xFFFF
+    return f"{block}x{tx}x{output}"
+
+
+def cl_to_lnd_scid(s) -> int:
+    s = [int(i) for i in s.split("x")]
+    return (s[0] << 40) | (s[1] << 16) | s[2]
