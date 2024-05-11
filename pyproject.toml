@@ -38,7 +38,10 @@ warcli = "cli.main:cli"
 where = ["src"]
 
 [tool.ruff]
-extend-exclude = ["src/test_framework/*.py"]
+extend-exclude = [
+    "src/test_framework/*.py",
+    "src/scenarios/*"
+]
 line-length = 100
 indent-width = 4
 [tool.ruff.lint]
