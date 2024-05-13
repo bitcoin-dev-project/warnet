@@ -37,9 +37,6 @@ class WarnetTestFramework(BitcoinTestFramework):
     def run_test(self):
         pass
 
-    def sync_all(self):
-        pass
-
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
         self.shutdown()
