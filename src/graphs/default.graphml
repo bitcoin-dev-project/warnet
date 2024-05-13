@@ -65,16 +65,17 @@
         <data key="bitcoin_config">-uacomment=w11</data>
     </node>
     <!-- connect the nodes in a ring to start -->
-    <edge id="1" source="0" target="1"></edge>
-    <edge id="2" source="1" target="2"></edge>
-    <edge id="3" source="2" target="3"></edge>
-    <edge id="4" source="3" target="4"></edge>
-    <edge id="5" source="4" target="5"></edge>
-    <edge id="6" source="5" target="6"></edge>
-    <edge id="7" source="6" target="7"></edge>
-    <edge id="8" source="7" target="8"></edge>
-    <edge id="9" source="8" target="9"></edge>
-    <edge id="10" source="9" target="10"></edge>
-    <edge id="11" source="10" target="0"></edge>
+    <edge id="0" source="0" target="1"></edge>
+    <edge id="1" source="1" target="2"></edge>
+    <edge id="2" source="2" target="3"></edge>
+    <edge id="3" source="3" target="4"></edge>
+    <edge id="4" source="4" target="5"></edge>
+    <edge id="5" source="5" target="6"></edge>
+    <edge id="6" source="6" target="7"></edge>
+    <edge id="7" source="7" target="8"></edge>
+    <edge id="8" source="8" target="9"></edge>
+    <edge id="9" source="9" target="10"></edge>
+    <edge id="10" source="10" target="11"></edge>
+    <edge id="11" source="11" target="0"></edge>
   </graph>
 </graphml>
