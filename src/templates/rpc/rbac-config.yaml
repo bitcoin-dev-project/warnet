@@ -8,7 +8,7 @@ rules:
   resources: [pods]
   verbs: [get, list, create, update, patch, delete]
 - apiGroups: [""]
-  resources: [services]
+  resources: [services, endpoints]
   verbs: [get, list, create, update, patch, delete]
 - apiGroups: [""]
   resources: [pods/exec]
