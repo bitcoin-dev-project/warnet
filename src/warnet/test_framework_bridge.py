@@ -1,5 +1,6 @@
 import argparse
 import configparser
+import ipaddress
 import logging
 import os
 import pathlib
@@ -7,8 +8,8 @@ import random
 import signal
 import sys
 import tempfile
-import time
 
+from scenarios.utils import get_service_ip
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -262,6 +263,12 @@ class WarnetTestFramework(BitcoinTestFramework):
             dest="backend",
             help="Designate which warnet backend this should run on",
         )
+        parser.add_argument(
+            "--v2transport",
+            dest="v2transport",
+            default=False,
+            action="store_true",
+            help="use BIP324 v2 connections between all nodes by default")
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument
@@ -307,9 +314,65 @@ class WarnetTestFramework(BitcoinTestFramework):
     def connect_nodes(self, a, b, *, peer_advertises_v2=None, wait_for_connect: bool = True):
         """
         Kwargs:
-        wait_for_connect: if True, block until the nodes are verified as connected. You might
-            want to disable this when using -stopatheight with one of the connected nodes,
-            since there will be a race between the actual connection and performing
-            the assertions before one node shuts down.
+            wait_for_connect: if True, block until the nodes are verified as connected. You might
+                want to disable this when using -stopatheight with one of the connected nodes,
+                since there will be a race between the actual connection and performing
+                the assertions before one node shuts down.
         """
-        self.log.info(f"test_framework_bridge - connect_nodes - {self.chain}: not implemented")
+        from_connection = self.nodes[a]
+        to_connection = self.nodes[b]
+
+        for network_info in to_connection.getnetworkinfo()["localaddresses"]:
+            to_address = network_info["address"]
+            local_ip = ipaddress.ip_address("0.0.0.0")
+            to_ip = ipaddress.ip_address(to_address)
+            if to_ip.version == 4 and to_ip is not local_ip:
+                to_ip_port = to_address + ":" + str(network_info["port"])
+
+        for network_info in from_connection.getnetworkinfo()["localaddresses"]:
+            from_address = network_info["address"]
+            local_ip = ipaddress.ip_address("0.0.0.0")
+            from_ip = ipaddress.ip_address(from_address)
+            if from_ip.version == 4 and from_ip is not local_ip:
+                from_ip_port = from_address + ":" + str(network_info["port"])
+
+        if peer_advertises_v2 is None:
+            peer_advertises_v2 = self.options.v2transport
+
+        if peer_advertises_v2:
+            from_connection.addnode(node=to_ip_port, command="onetry", v2transport=True)
+        else:
+            # skip the optional third argument (default false) for
+            # compatibility with older clients
+            from_connection.addnode(to_ip_port, "onetry")
+
+        if not wait_for_connect:
+            return
+
+        def get_peer_ip(peer):
+            try:  # we encounter a regular ip address
+                return ipaddress.ip_address(peer['addr'].split(':')[0])
+            except ValueError:  # or we encounter a service name
+                return get_service_ip(peer['addr'])[1]
+
+        # poll until version handshake complete to avoid race conditions
+        # with transaction relaying
+        # See comments in net_processing:
+        # * Must have a version message before anything else
+        # * Must have a verack message before anything else
+        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer['version'] != 0
+                                    for peer in from_connection.getpeerinfo()))
+        self.wait_until(lambda: any(str(get_peer_ip(peer)) + ":18444" == from_ip_port and peer['version'] != 0
+                                    for peer in to_connection.getpeerinfo()))
+        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer['bytesrecv_per_msg'].pop('verack', 0) >= 21
+                                    for peer in from_connection.getpeerinfo()))
+        self.wait_until(lambda: any(str(get_peer_ip(peer)) + ":18444" == from_ip_port
+                                    and peer['bytesrecv_per_msg'].pop('verack', 0) >= 21
+                                    for peer in to_connection.getpeerinfo()))
+        # The message bytes are counted before processing the message, so make
+        # sure it was fully processed by waiting for a ping.
+        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                                    for peer in from_connection.getpeerinfo()))
+        self.wait_until(lambda: any(str(get_peer_ip(peer)) + ":18444" == from_ip_port
+                                    and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                                    for peer in to_connection.getpeerinfo()))
