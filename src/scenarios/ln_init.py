@@ -35,7 +35,7 @@ class LNInit(WarnetTestFramework):
         # 298 block base
         self.generatetoaddress(self.nodes[0], 297, miner_addr)
         # divvy up the goods
-        split = miner.getbalance() // len(recv_addrs)
+        split = (miner.getbalance() - 1) // len(recv_addrs)
         sends = {}
         for addr in recv_addrs:
             sends[addr] = split
