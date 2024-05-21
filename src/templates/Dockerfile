@@ -48,8 +48,8 @@ RUN set -ex \
     && make install \
     && strip ${BITCOIN_PREFIX}/bin/bitcoin-cli \
     && strip ${BITCOIN_PREFIX}/bin/bitcoind \
-    && strip ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.a \
-    && strip ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.so.0.0.0 \
+    && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.a \
+    && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.so.0.0.0 \
     && rm ${BITCOIN_PREFIX}/bin/bitcoin-tx \
     && rm ${BITCOIN_PREFIX}/bin/bitcoin-wallet \
     && rm ${BITCOIN_PREFIX}/bin/bitcoin-util
