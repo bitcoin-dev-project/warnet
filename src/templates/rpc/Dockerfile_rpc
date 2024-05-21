@@ -11,7 +11,8 @@ WORKDIR /root/warnet
 
 # Copy the source directory contents into the container
 COPY . /root/warnet
-RUN pip install .
+RUN pip install uv
+RUN uv pip install --system .
 
 # Make port 9276 available to the world outside this container
 # Change the port if your server is running on a different port

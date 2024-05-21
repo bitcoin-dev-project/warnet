@@ -1,0 +1,17 @@
+name: Install
+
+runs:
+  using: "composite"
+  steps:
+    - uses: extractions/setup-just@v1
+    - uses: actions/download-artifact@v4
+      with:
+        name: image-tags-${{ github.sha }}
+    - uses: medyagh/setup-minikube@master
+    - run: |
+        tagname=$(cat tagname.txt)
+        echo "Using tagname: $tagname"
+        sudo pip install uv
+        sudo uv pip install --system -e .
+        sed -i "s|bitcoindevproject/warnet-rpc:dev|$tagname|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+      shell: bash
