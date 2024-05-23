@@ -587,6 +587,9 @@ class KubernetesBackend(BackendInterface):
                         port=tank.zmqtxport, target_port=tank.zmqtxport, name="zmqtx"
                     ),
                     client.V1ServicePort(
+                        port=tank.zmqpubsequenceport, target_port=tank.zmqpubsequenceport, name="zmqpubsequence"
+                    ),
+                    client.V1ServicePort(
                         port=PROMETHEUS_METRICS_PORT,
                         target_port=PROMETHEUS_METRICS_PORT,
                         name="prometheus-metrics",
