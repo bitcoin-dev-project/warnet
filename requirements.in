@@ -1,0 +1,14 @@
+click
+docker
+flask
+Flask-JSONRPC
+jsonschema
+jsonrpcserver
+jsonrpcclient
+kubernetes
+networkx
+numpy
+requests<2.30
+rich
+tabulate
+PyYAML
