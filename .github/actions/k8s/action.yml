@@ -1,0 +1,47 @@
+name: setup-k8s
+
+runs:
+  using: "composite"
+  steps:
+    - uses: medyagh/setup-minikube@master
+      with:
+        mount-path: ${{ github.workspace }}:/mnt/src
+    - uses: actions/download-artifact@v4
+      with:
+        name: warnet
+        path: /tmp
+    - run: |
+        echo loading the image directly into minikube docker
+        eval $(minikube -p minikube docker-env)
+        docker load --input /tmp/warnet.tar
+        docker image ls -a
+
+        echo Installing warnet python package for cli
+        pip install --upgrade pip
+        pip install -e .
+
+        echo patching k8s configs to use local image
+        echo Patching warnet-rpc-statefulset-dev to use local registry
+        sed -i "s|imagePullPolicy: Always|imagePullPolicy: Never|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        sed -i "s|bitcoindevproject/warnet-rpc:dev|local/warnet-rpc:ci|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        cat src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+
+        echo Setting up k8s
+        kubectl apply -f src/templates/rpc/namespace.yaml
+        kubectl apply -f src/templates/rpc/rbac-config.yaml
+        kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+        kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        kubectl config set-context --current --namespace=warnet
+
+        echo sleeping for 30s to give k8s time to boot
+        sleep 30
+        kubectl describe pod rpc-0
+        kubectl logs rpc-0
+
+        echo Waiting for rpc-0 to come online
+        until kubectl get pod rpc-0 --namespace=warnet; do
+           echo "Waiting for server to find pod rpc-0..."
+           sleep 4
+        done
+        kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+      shell: bash
