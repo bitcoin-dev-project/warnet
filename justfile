@@ -33,6 +33,7 @@ start:
        sleep 4
     done
 
+    echo "⏲️ This could take a minute or so."
     kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
 
     echo Done...
