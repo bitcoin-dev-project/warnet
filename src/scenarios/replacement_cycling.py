@@ -442,6 +442,14 @@ class ReplacementCyclingTest(WarnetTestFramework):
 
         # Bob can repeat this replacement cycling trick until an inbound HTLC of Alice expires and double-spend her routed HTLCs.
 
+        # ... but it gets mined immediately? - Greg
+        self.generate(alice, 1)
+        self.sync_all()
+
+        assert bob_preimage_txid_2 not in alice.getrawmempool()
+        assert bob_preimage_txid_2 not in bob.getrawmempool()
+
+
     def run_test(self):
         self.generatetoaddress(self.nodes[0], nblocks=101,
                                address="bcrt1p9yfmy5h72durp7zrhlw9lf7jpwjgvwdg0jr0lqmmjtgg83266lqsekaqka")
