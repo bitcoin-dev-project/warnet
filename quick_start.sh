@@ -1,6 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+
+is_cygwin_etal() {
+    uname -s | grep -qE "CYGWIN|MINGW|MSYS"
+}
+is_wsl() {
+    grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null
+}
+if is_cygwin_etal || is_wsl; then
+    echo "Quick start does not support Windows"
+    exit 1
+fi
+
+
 # Colors and styles
 RESET='\033[0m'
 BOLD='\033[1m'
@@ -69,8 +82,8 @@ docker_path=$(command -v docker || true)
 if [ -n "$docker_path" ]; then
     print_partial_message " ⭐️ Found " "docker" ": $docker_path" "$BOLD"
 else
-    print_partial_message " 💥 Could not find " "docker" ". Please follow this link to install it..." "$BOLD"
-    print_message "" "   https://minikube.sigs.k8s.io/docs/drivers/docker/" "$BOLD"
+    print_partial_message " 💥 Could not find " "docker" ". Please follow this link to install Docker Engine..." "$BOLD"
+    print_message "" "   https://docs.docker.com/engine/install/" "$BOLD"
     exit 127
 fi
 
@@ -128,9 +141,16 @@ print_message "" "" ""
 print_message "" "    Let's try to spin up a python virtual environment..." ""
 print_message "" "" ""
 
-python3 -m venv .venv
+if [ -d ".venv" ]; then
+    print_message "" "    It looks like a virtual environment already exists!" ""
+else
+    print_message "" "    Creating a new virtual environment..." ""
+    python3 -m venv .venv
+fi
+
 source .venv/bin/activate
 
+print_message "" "" ""
 print_partial_message " ⭐️ " "venv" ": The python virtual environment looks good" "$BOLD"
 print_message "" "" ""
 print_message "" "    Let's install warnet into that virtual environment..." ""
@@ -156,4 +176,4 @@ done
 print_message "" "🥳" ""
 print_message "" "Run the following command to enter into the python virtual environment..." ""
 print_message "" "    source .venv/bin/activate" "$BOLD"
-print_partial_message "   After that, you can run " "warcli" " to start running Warnet commands." "$BOLD"
+print_partial_message "   After that, you can run " "warcli help" " to start running Warnet commands." "$BOLD"
