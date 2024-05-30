@@ -262,6 +262,12 @@ class KubernetesBackend:
         self.log.debug(f"Running lncli {cmd=:} on {tank.index=:}")
         return self.exec_run(tank.index, ServiceType.LIGHTNING, cmd)
 
+    def ln_pub_key(self, tank) -> str:
+        if tank.lnnode is None:
+            raise Exception("No LN node configured for tank")
+        self.log.debug(f"Getting pub key for tank {tank.index}")
+        return tank.lnnode.get_pub_key()
+
     def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
