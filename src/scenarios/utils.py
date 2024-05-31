@@ -9,14 +9,13 @@ def ensure_miner(node):
     return node.get_wallet_rpc("miner")
 
 
-def get_service_ip(service_name: str, namespace: str = "warnet") -> (IPv4Address | IPv6Address,
-                                                                     IPv4Address | IPv6Address):
+def get_service_ip(service_name: str) -> (IPv4Address | IPv6Address, IPv4Address | IPv6Address):
     """Given a service name and namespace, returns the service's external ip and internal ip"""
     # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Endpoints.md
     config.load_incluster_config()
     v1 = client.CoreV1Api()
-    service = v1.read_namespaced_service(name=service_name, namespace=namespace)
-    endpoints = v1.read_namespaced_endpoints(name=service_name, namespace=namespace)
+    service = v1.read_namespaced_service(name=service_name, namespace="warnet")
+    endpoints = v1.read_namespaced_endpoints(name=service_name, namespace="warnet")
 
     try:
         initial_subset = endpoints.subsets[0]

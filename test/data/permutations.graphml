@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="image" for="node" attr.name="image" attr.type="string" />
+  <key id="collect_logs" for="node" attr.name="collect_logs" attr.type="boolean" />
+  <key id="exporter" for="node" attr.name="exporter" attr.type="boolean" />
+  <key id="build_args" for="node" attr.name="build_args" attr.type="string" />
+  <key id="tc_netem" for="node" attr.name="tc_netem" attr.type="string" />
+  <key id="bitcoin_config" for="node" attr.name="bitcoin_config" attr.type="string" />
+  <key id="version" for="node" attr.name="version" attr.type="string" />
+  <graph edgedefault="directed">
+    <node id="0">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="1">
+      <data key="image">bitcoindevproject/bitcoin:26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="2">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="3">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="4">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="5">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="6">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="7">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <edge source="0" target="2" id="0" />
+    <edge source="1" target="2" id="0" />
+    <edge source="1" target="3" id="0" />
+    <edge source="2" target="3" id="0" />
+    <edge source="2" target="4" id="0" />
+    <edge source="3" target="5" id="0" />
+    <edge source="5" target="4" id="0" />
+    <edge source="5" target="6" id="0" />
+    <edge source="6" target="7" id="0" />
+  </graph>
+</graphml>

@@ -43,7 +43,7 @@ jobs:
     strategy:
       matrix:
         backend: [compose, k8s]
-        test: [scenarios_test.py, rpc_test.py, graph_test.py, ln_test.py]
+        test: [scenarios_test.py, rpc_test.py, graph_test.py, ln_test.py, get_service_ip_test.py]
     steps:
       - uses: actions/checkout@v4
       - if: matrix.backend == 'compose'
