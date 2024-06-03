@@ -1,17 +1,25 @@
 # Use an official Python runtime as the base image
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install procps, which includes pgrep
 RUN apt-get update && \
     apt-get install -y procps openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
+# Install `uv` package installer (https://github.com/astral-sh/uv)
+RUN pip install uv
+
 # Set the working directory in the container
 WORKDIR /root/warnet
 
+# Get better caching by installing before copying code
+COPY requirements.txt .
+RUN uv pip install --system --no-cache -r requirements.txt
+
 # Copy the source directory contents into the container
 COPY . /root/warnet
-RUN pip install .
+# Install Warnet scripts
+RUN uv pip install --system .
 
 # Make port 9276 available to the world outside this container
 # Change the port if your server is running on a different port

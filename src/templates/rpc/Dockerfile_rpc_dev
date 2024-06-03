@@ -1,10 +1,13 @@
 # Use an official Python runtime as the base image
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install procps, which includes pgrep
 RUN apt-get update && \
     apt-get install -y procps openssh-client && \
     rm -rf /var/lib/apt/lists/*
+
+# Install `uv` package installer (https://github.com/astral-sh/uv)
+RUN pip install uv
 
 # Set the working directory in the container
 WORKDIR /root/warnet
