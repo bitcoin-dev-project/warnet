@@ -21,6 +21,10 @@ start:
 
     minikube start --mount --mount-string="$PWD:/mnt/src"
 
+    # Build image in local registry and load into minikube
+    docker build -t warnet/dev -f src/templates/rpc/Dockerfile_rpc_dev . --load
+    minikube image load warnet/dev
+
     # Setup k8s
     kubectl apply -f src/templates/rpc/namespace.yaml
     kubectl apply -f src/templates/rpc/rbac-config.yaml
@@ -49,6 +53,7 @@ stop:
 
 # Setup and start the RPC in dev mode with Docker Desktop
 startd:
+    docker build -t warnet/dev -f src/templates/rpc/Dockerfile_rpc_dev . --load
     kubectl apply -f src/templates/rpc/namespace.yaml
     kubectl apply -f src/templates/rpc/rbac-config.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml

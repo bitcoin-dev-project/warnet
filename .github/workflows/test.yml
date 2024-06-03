@@ -27,7 +27,7 @@ jobs:
         with:
           file: src/templates/rpc/Dockerfile_rpc
           context: .
-          tags: local/warnet-rpc:ci
+          tags: warnet/dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
           outputs: type=docker,dest=/tmp/warnet.tar
