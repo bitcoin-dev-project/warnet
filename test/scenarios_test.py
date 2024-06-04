@@ -14,7 +14,7 @@ base.wait_for_all_tanks_status(target="running")
 
 # Use rpc instead of warcli so we get raw JSON object
 scenarios = base.rpc("scenarios_available")
-assert len(scenarios) == 4
+assert len(scenarios) == 5
 
 # Start scenario
 base.warcli("scenarios run miner_std --allnodes --interval=1")
