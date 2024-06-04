@@ -1,0 +1,8 @@
+# addrman-observer base configuration file
+
+# path to the location of the static www files
+www_path = "./www"
+
+# webserver listen address
+address = "0.0.0.0:3882"
+

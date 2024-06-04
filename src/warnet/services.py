@@ -1,4 +1,5 @@
 FO_CONF_NAME = "fork_observer_config.toml"
+AO_CONF_NAME = "addrman_observer_config.toml"
 GRAFANA_PROVISIONING = "grafana-provisioning"
 PROM_CONF_NAME = "prometheus.yml"
 
@@ -32,6 +33,14 @@ services = {
         "warnet_port": "23001",
         "container_port": "2323",
         "config_files": [f"{FO_CONF_NAME}:/app/config.toml"],
+    },
+    "addrmanobserver": {
+        "backends": ["compose"],
+        "image": "b10c/addrman-observer:latest",
+        "container_name_suffix": "addrman-observer",
+        "warnet_port": "23005",
+        "container_port": "3882",
+        "config_files": [f"{AO_CONF_NAME}:/app/config.toml"],
     },
     "grafana": {
         "backends": ["compose"],
