@@ -75,7 +75,7 @@ if base.backend == "compose":
     assert ao_res.status_code == 200
     addrman = ao_res.json()
     if "new" in addrman and "tried" in addrman:
-        print("forkobserver OK")
+        print("addrmanobserver OK")
     else:
         raise Exception("addrmanobserver not OK")
 
