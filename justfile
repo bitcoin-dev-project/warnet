@@ -15,11 +15,21 @@ start:
     #!/usr/bin/env bash
     set -euxo pipefail
 
-    if ! minikube delete; then
-        echo "Detected a fresh minikube environment."
-    fi
+    # Function to check if minikube is running
+    check_minikube() {
+        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --mount --mount-string="$PWD:/mnt/src"
+    }
 
-    minikube start --mount --mount-string="$PWD:/mnt/src"
+    # Function to check if warnet-rpc container is already running
+    check_warnet_rpc() {
+        if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
+            echo "warnet-rpc already running in minikube"
+            exit 1
+        fi
+    }
+
+    # Check minikube status
+    check_minikube
 
     # Build image in local registry and load into minikube
     docker build -t warnet/dev -f src/templates/rpc/Dockerfile_rpc_dev . --load
@@ -31,6 +41,9 @@ start:
     kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
     kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
     kubectl config set-context --current --namespace=warnet
+
+    # Check for warnet-rpc container
+    check_warnet_rpc
 
     until kubectl get pod rpc-0 --namespace=warnet; do
        echo "Waiting for server to find pod rpc-0..."
@@ -50,6 +63,8 @@ stop:
     kubectl delete namespace warnet
     kubectl delete namespace warnet-logging
     kubectl config set-context --current --namespace=default
+
+    minikube image rm warnet/dev
 
 # Setup and start the RPC in dev mode with Docker Desktop
 startd:
