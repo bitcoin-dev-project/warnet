@@ -20,7 +20,7 @@
         <data key="version">27.0</data>
         <data key="bitcoin_config">-uacomment=w0</data>
         <data key="ln">lnd</data>
-        <data key="ln_image">lightninglabs/lnd:v0.15.5-beta</data>
+        <data key="ln_image">lightninglabs/lnd:v0.17.5-beta</data>
         <data key="collect_logs">true</data>
     </node>
     <node id="1">
