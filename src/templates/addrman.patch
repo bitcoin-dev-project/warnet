@@ -1,17 +1,51 @@
 diff --git a/src/netgroup.cpp b/src/netgroup.cpp
-index 0ae229b3f3..a861a38852 100644
+index 0ae229b3f3..cc438c2f11 100644
 --- a/src/netgroup.cpp
 +++ b/src/netgroup.cpp
-@@ -43,11 +43,7 @@ std::vector<unsigned char> NetGroupManager::GetGroup(const CNetAddr& address) co
-     } else if (!address.IsRoutable()) {
-         // all other unroutable addresses belong to the same group
-     } else if (address.HasLinkedIPv4()) {
--        // IPv4 addresses (and mapped IPv4 addresses) use /16 groups
--        uint32_t ipv4 = address.GetLinkedIPv4();
--        vchRet.push_back((ipv4 >> 24) & 0xFF);
--        vchRet.push_back((ipv4 >> 16) & 0xFF);
--        return vchRet;
-+        nBits = 32;
+@@ -47,6 +47,8 @@ std::vector<unsigned char> NetGroupManager::GetGroup(const CNetAddr& address) co
+         uint32_t ipv4 = address.GetLinkedIPv4();
+         vchRet.push_back((ipv4 >> 24) & 0xFF);
+         vchRet.push_back((ipv4 >> 16) & 0xFF);
++        vchRet.push_back((ipv4 >> 8) & 0xFF);
++        vchRet.push_back(ipv4 & 0xFF);
+         return vchRet;
      } else if (address.IsTor() || address.IsI2P()) {
          nBits = 4;
-     } else if (address.IsCJDNS()) {
+diff --git a/src/test/addrman_tests.cpp b/src/test/addrman_tests.cpp
+index 9668a85484..2fe70a538f 100644
+--- a/src/test/addrman_tests.cpp
++++ b/src/test/addrman_tests.cpp
+@@ -499,6 +499,33 @@ BOOST_AUTO_TEST_CASE(caddrinfo_get_tried_bucket_legacy)
+     BOOST_CHECK_EQUAL(buckets.size(), 160U);
+ }
+
++// run only this test!
++// test_bitcoin --run_test=addrman_tests/warnet_patch
++BOOST_AUTO_TEST_CASE(warnet_patch)
++{
++    uint256 nKey1 = (HashWriter{} << 1).GetHash();
++
++    // One peer gives us all test addrs
++    CNetAddr source = ResolveIP("100.21.32.45");
++
++    // Addrs have common /8 /16 and /24
++    CAddress addr1 = CAddress(ResolveService("100.20.30.40", 18444), NODE_NONE);
++    CAddress addr2 = CAddress(ResolveService("100.21.30.40", 18444), NODE_NONE);
++    CAddress addr3 = CAddress(ResolveService("100.20.31.40", 18444), NODE_NONE);
++    CAddress addr4 = CAddress(ResolveService("100.20.30.41", 18444), NODE_NONE);
++
++    AddrInfo info1 = AddrInfo(addr1, source);
++    AddrInfo info2 = AddrInfo(addr2, source);
++    AddrInfo info3 = AddrInfo(addr3, source);
++    AddrInfo info4 = AddrInfo(addr4, source);
++
++    // All addrs are in different buckets
++    BOOST_CHECK_EQUAL(info1.GetNewBucket(nKey1, EMPTY_NETGROUPMAN), 533);
++    BOOST_CHECK_EQUAL(info2.GetNewBucket(nKey1, EMPTY_NETGROUPMAN), 20);
++    BOOST_CHECK_EQUAL(info3.GetNewBucket(nKey1, EMPTY_NETGROUPMAN), 143);
++    BOOST_CHECK_EQUAL(info4.GetNewBucket(nKey1, EMPTY_NETGROUPMAN), 291);
++}
++
+ BOOST_AUTO_TEST_CASE(caddrinfo_get_new_bucket_legacy)
+ {
+     CAddress addr1 = CAddress(ResolveService("250.1.2.1", 8333), NODE_NONE);
