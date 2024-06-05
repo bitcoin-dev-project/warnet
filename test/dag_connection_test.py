@@ -6,7 +6,7 @@ from pathlib import Path
 
 from test_base import TestBase
 
-graph_file_path = Path(os.path.dirname(__file__)) / "data" / "permutations.graphml"
+graph_file_path = Path(os.path.dirname(__file__)) / "data" / "eight_unconnected.graphml"
 
 base = TestBase()
 
@@ -17,18 +17,20 @@ if base.backend == "k8s":
     base.wait_for_all_edges()
 
     # Start scenario
-    base.warcli(f"scenarios run get_service_ip --network_name={base.network_name}")
+    base.warcli(f"scenarios run connect_dag --network_name={base.network_name}")
 
     counter = 0
+    seconds = 180
     while (len(base.rpc("scenarios_list_running")) == 1
            and base.rpc("scenarios_list_running")[0]["active"]):
         time.sleep(1)
         counter += 1
-        if counter > 30:
+        if counter > seconds:
             pid = base.rpc("scenarios_list_running")[0]['pid']
             base.warcli(f"scenarios stop {pid}", False)
-            assert counter < 30
+            print(f"{os.path.basename(__file__)} more than {seconds} seconds")
+            assert counter < seconds
 else:
-    print(f"get_service_ip_test does not test {base.backend}")
-    
+    print(f"{os.path.basename(__file__)} does not test {base.backend}")
+
 base.stop_server()
