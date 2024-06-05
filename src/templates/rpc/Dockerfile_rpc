@@ -26,4 +26,4 @@ RUN uv pip install --system .
 EXPOSE 9276
 
 # Run server.py when the container launches
-CMD ["warnet", "--backend=k8s"]
+CMD ["warnet"]

@@ -154,4 +154,6 @@ def export(network: str, activity: str, exclude: str):
     Returns True on success.
     """
     exclude = json.loads(exclude)
-    print(rpc_call("network_export", {"network": network, "activity": activity, "exclude": exclude}))
+    print(
+        rpc_call("network_export", {"network": network, "activity": activity, "exclude": exclude})
+    )

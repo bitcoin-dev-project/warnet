@@ -4,8 +4,8 @@ import json
 import os
 from pathlib import Path
 
-from backends import ServiceType
 from test_base import TestBase
+from warnet.services import ServiceType
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ln.graphml"
 
@@ -50,6 +50,8 @@ print("\nPaying invoice from node 0...")
 print(base.warcli(f"lncli 0 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
+
+
 def check_invoices():
     invs = json.loads(base.warcli("lncli 2 listinvoices"))["invoices"]
     if len(invs) > 0 and invs[0]["state"] == "SETTLED":
@@ -57,6 +59,8 @@ def check_invoices():
         return True
     else:
         return False
+
+
 base.wait_for_predicate(check_invoices)
 
 print("\nEnsuring channel-level channel policy settings: source")
@@ -74,6 +78,8 @@ print("\nPaying invoice from node 2...")
 print(base.warcli(f"lncli 2 payinvoice -f {inv}"))
 
 print("Waiting for payment success")
+
+
 def check_invoices(index):
     invs = json.loads(base.warcli(f"lncli {index} listinvoices"))["invoices"]
     settled = 0
@@ -81,6 +87,8 @@ def check_invoices(index):
         if inv["state"] == "SETTLED":
             settled += 1
     return settled
+
+
 base.wait_for_predicate(lambda: check_invoices(0) == 1)
 
 print("\nEnsuring channel-level channel policy settings: target")
@@ -88,12 +96,7 @@ payment = json.loads(base.warcli("lncli 2 listpayments"))["payments"][0]
 assert payment["fee_msat"] == "2213"
 
 print("\nEngaging simln")
-activity = [{
-  "source": "ln-0",
-  "destination": node2pub,
-  "interval_secs": 1,
-  "amount_msat": 2000
-}]
+activity = [{"source": "ln-0", "destination": node2pub, "interval_secs": 1, "amount_msat": 2000}]
 base.warcli(f"network export --exclude=[1] --activity={json.dumps(activity).replace(' ', '')}")
 base.wait_for_predicate(lambda: check_invoices(2) > 1)
 assert check_invoices(0) == 1

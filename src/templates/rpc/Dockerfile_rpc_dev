@@ -29,4 +29,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]
 
 # Default command
-CMD ["warnet", "--backend=k8s", "--dev"]
+CMD ["warnet", "--dev"]

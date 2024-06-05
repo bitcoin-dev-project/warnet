@@ -1,25 +1,29 @@
 import io
 import tarfile
 
-from backends import BackendInterface, ServiceType
+from backend.kubernetes_backend import KubernetesBackend
+from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
 from .status import RunningStatus
 
-LND_CONFIG_BASE = " ".join([
-    "--noseedbackup",
-    "--norest",
-    "--debuglevel=debug",
-    "--accept-keysend",
-    "--bitcoin.active",
-    "--bitcoin.regtest",
-    "--bitcoin.node=bitcoind",
-    "--maxpendingchannels=64",
-    "--trickledelay=1"
-])
+LND_CONFIG_BASE = " ".join(
+    [
+        "--noseedbackup",
+        "--norest",
+        "--debuglevel=debug",
+        "--accept-keysend",
+        "--bitcoin.active",
+        "--bitcoin.regtest",
+        "--bitcoin.node=bitcoind",
+        "--maxpendingchannels=64",
+        "--trickledelay=1",
+    ]
+)
+
 
 class LNNode:
-    def __init__(self, warnet, tank, backend: BackendInterface, options):
+    def __init__(self, warnet, tank, backend: KubernetesBackend, options):
         self.warnet = warnet
         self.tank = tank
         self.backend = backend
@@ -48,7 +52,9 @@ class LNNode:
             conf += f" --bitcoind.rpcuser={self.tank.rpc_user}"
             conf += f" --bitcoind.rpcpass={self.tank.rpc_password}"
             conf += f" --bitcoind.rpchost={tank_container_name}:{self.tank.rpc_port}"
-            conf += f" --bitcoind.zmqpubrawblock=tcp://{tank_container_name}:{self.tank.zmqblockport}"
+            conf += (
+                f" --bitcoind.zmqpubrawblock=tcp://{tank_container_name}:{self.tank.zmqblockport}"
+            )
             conf += f" --bitcoind.zmqpubrawtx=tcp://{tank_container_name}:{self.tank.zmqtxport}"
             conf += f" --rpclisten=0.0.0.0:{self.rpc_port}"
             conf += f" --alias={self.tank.index}"
@@ -82,7 +88,9 @@ class LNNode:
     def open_channel_to_tank(self, index: int, policy: str) -> str:
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
-        txid = self.lncli(f"openchannel --node_key={pubkey} --connect={host} {policy}")["funding_txid"]
+        txid = self.lncli(f"openchannel --node_key={pubkey} --connect={host} {policy}")[
+            "funding_txid"
+        ]
         # Why doesn't LND return the output index as well?
         # Do they charge by the RPC call or something?!
         pending = self.lncli("pendingchannels")
@@ -123,11 +131,7 @@ class LNNode:
             ServiceType.LIGHTNING,
             "/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon",
         )
-        cert = self.backend.get_file(
-            self.tank.index,
-            ServiceType.LIGHTNING,
-            "/root/.lnd/tls.cert"
-        )
+        cert = self.backend.get_file(self.tank.index, ServiceType.LIGHTNING, "/root/.lnd/tls.cert")
         name = f"ln-{self.tank.index}"
         macaroon_filename = f"{name}_admin.macaroon"
         cert_filename = f"{name}_tls.cert"
