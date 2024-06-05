@@ -10,7 +10,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
   <key id="version" for="node" attr.name="version" attr.type="string" />
   <graph edgedefault="directed">
     <node id="0">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -26,7 +26,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="collect_logs">False</data>
     </node>
     <node id="2">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -34,7 +34,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="collect_logs">False</data>
     </node>
     <node id="3">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -42,7 +42,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="collect_logs">False</data>
     </node>
     <node id="4">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -50,7 +50,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="collect_logs">False</data>
     </node>
     <node id="5">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -58,7 +58,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="collect_logs">False</data>
     </node>
     <node id="6">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -66,7 +66,7 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="collect_logs">False</data>
     </node>
     <node id="7">
-      <data key="version">26.0</data>
+      <data key="version">27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />

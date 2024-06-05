@@ -27,6 +27,7 @@ SUPPORTED_TAGS = [
     "24.2",
     "23.2",
     "22.2",
+    "27.0"
 ]
 DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [
