@@ -1,6 +1,7 @@
 import click
-from cli.rpc import rpc_call
 from rich import print
+
+from .rpc import rpc_call
 
 
 @click.group(name="debug")

@@ -4,16 +4,15 @@ Tanks are containerized bitcoind nodes
 
 import logging
 
-from backends import ServiceType
+from warnet.backends import ServiceType
 from warnet.lnnode import LNNode
+from warnet.status import RunningStatus
 from warnet.utils import (
     SUPPORTED_TAGS,
     exponential_backoff,
     generate_ipv4_addr,
     sanitize_tc_netem_command,
 )
-
-from .status import RunningStatus
 
 CONTAINER_PREFIX_PROMETHEUS = "prometheus_exporter"
 

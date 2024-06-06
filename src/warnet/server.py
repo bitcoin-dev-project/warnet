@@ -19,17 +19,18 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-import scenarios
-from backends import ServiceType
+import warnet.scenarios as scenarios
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
-from warnet.utils import gen_config_dir
-from warnet.warnet import Warnet
+
+from .backends import ServiceType
+from .utils import gen_config_dir
+from .warnet import Warnet
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
-LOGGING_CONFIG_PATH = Path("src/logging_config/config.json")
+LOGGING_CONFIG_PATH = Path("src/warnet/logging_config/config.json")
 
 
 class Server:
@@ -316,12 +317,21 @@ class Server:
         """
         List available scenarios in the Warnet Test Framework
         """
+        import importlib
         try:
             scenario_list = []
+            print(f"scenarios.__path__: {scenarios.__path__}")
             for s in pkgutil.iter_modules(scenarios.__path__):
-                m = pkgutil.resolve_name(f"scenarios.{s.name}")
-                if hasattr(m, "cli_help"):
-                    scenario_list.append((s.name, m.cli_help()))
+                print(f"Found {s.name}")
+                module_name = f"warnet.scenarios.{s.name}"
+                try:
+                    m = importlib.import_module(module_name)
+                    print(f"Imported module: {module_name}")
+                    if hasattr(m, "cli_help"):
+                        scenario_list.append((s.name, m.cli_help()))
+                except ModuleNotFoundError as e:
+                    print(f"Module not found: {module_name}, error: {e}")
+                    raise
             return scenario_list
         except Exception as e:
             msg = f"Error listing scenarios: {e}"

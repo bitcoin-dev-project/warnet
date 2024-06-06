@@ -18,19 +18,19 @@ ser_*, deser_*: functions that handle serialization/deserialization.
 Classes use __slots__ to ensure extraneous attributes aren't accidentally added
 by tests, compromising their intended effect.
 """
-from base64 import b32decode, b32encode
 import copy
 import hashlib
-from io import BytesIO
 import math
 import random
 import socket
 import struct
 import time
 import unittest
+from base64 import b32decode, b32encode
+from io import BytesIO
 
-from test_framework.siphash import siphash256
-from test_framework.util import assert_equal
+from .siphash import siphash256
+from .util import assert_equal
 
 MAX_LOCATOR_SZ = 101
 MAX_BLOCK_WEIGHT = 4000000

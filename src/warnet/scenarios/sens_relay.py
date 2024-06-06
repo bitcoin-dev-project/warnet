@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
+
+from .utils import ensure_miner
 
 
 def cli_help():

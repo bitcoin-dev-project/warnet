@@ -2,9 +2,10 @@
 
 from time import sleep
 
-from scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 from warnet.utils import channel_match
+
+from .utils import ensure_miner
 
 
 def cli_help():

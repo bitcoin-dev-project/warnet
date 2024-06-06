@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import cast
 
 import yaml
-from backends import BackendInterface, ServiceType
-from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiValueError
 from kubernetes.client.models.v1_pod import V1Pod
@@ -17,6 +15,8 @@ from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.dynamic.exceptions import NotFoundError, ResourceNotFoundError
 from kubernetes.stream import stream
+from warnet.backends import BackendInterface, ServiceType
+from warnet.cli.image import build_image
 from warnet.services import services
 from warnet.status import RunningStatus
 from warnet.tank import Tank

@@ -10,11 +10,12 @@ from pathlib import Path
 
 import networkx
 import yaml
-from backends import ComposeBackend, KubernetesBackend
-from templates import TEMPLATES
-from warnet.services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
-from warnet.tank import Tank
-from warnet.utils import gen_config_dir, load_schema, validate_graph_schema
+
+from .backends import ComposeBackend, KubernetesBackend
+from .services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
+from .tank import Tank
+from .templates import TEMPLATES
+from .utils import gen_config_dir, load_schema, validate_graph_schema
 
 logger = logging.getLogger("warnet")
 

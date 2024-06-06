@@ -4,9 +4,6 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Helpful routines for regression testing."""
 
-from base64 import b64encode
-from decimal import Decimal, ROUND_DOWN
-from subprocess import CalledProcessError
 import hashlib
 import inspect
 import json
@@ -17,10 +14,13 @@ import random
 import re
 import sys
 import time
+from base64 import b64encode
+from decimal import ROUND_DOWN, Decimal
+from subprocess import CalledProcessError
+from typing import Callable, Optional, Tuple
 
 from . import coverage
 from .authproxy import AuthServiceProxy, JSONRPCException
-from typing import Callable, Optional, Tuple
 
 logger = logging.getLogger("TestFramework.utils")
 
@@ -507,7 +507,7 @@ def find_output(node, txid, amount, *, blockhash=None):
 # total serialized size of the txouts is about 66k vbytes.
 def gen_return_txouts():
     from .messages import CTxOut
-    from .script import CScript, OP_RETURN
+    from .script import OP_RETURN, CScript
     txouts = [CTxOut(nValue=0, scriptPubKey=CScript([OP_RETURN, b'\x01'*67437]))]
     assert_equal(sum([len(txout.serialize()) for txout in txouts]), 67456)
     return txouts

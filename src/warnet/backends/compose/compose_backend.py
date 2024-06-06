@@ -8,9 +8,9 @@ from typing import cast
 
 import docker
 import yaml
-from backends import BackendInterface, ServiceType
-from cli.image import build_image
 from docker.models.containers import Container
+from warnet.backends import BackendInterface, ServiceType
+from warnet.cli.image import build_image
 from warnet.services import services
 from warnet.status import RunningStatus
 from warnet.tank import Tank

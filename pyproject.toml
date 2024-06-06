@@ -13,7 +13,7 @@ dynamic = ["dependencies"]
 
 [project.scripts]
 warnet = "warnet.server:run_server"
-warcli = "cli.main:cli"
+warcli = "warnet.cli.main:cli"
 
 [project.urls]
 Homepage = "https://warnet.dev"
