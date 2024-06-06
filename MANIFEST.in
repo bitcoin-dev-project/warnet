@@ -7,3 +7,4 @@ include src/templates/isroutable.patch
 graft src/templates/k8s
 graft src/templates/rpc
 graft src/templates/grafana-provisioning
+graft src/logging_config
