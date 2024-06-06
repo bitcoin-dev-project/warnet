@@ -89,7 +89,7 @@ class Tank:
         if "ln" in node:
             options = {
                 "impl": node["ln"],
-                "ln_image": node.get("ln_image", "lightninglabs/lnd:v0.17.0-beta"),
+                "ln_image": node.get("ln_image", "lightninglabs/lnd:v0.18.0-beta"),
                 "cb_image": node.get("ln_cb_image", None),
                 "ln_config": node.get("ln_config", "")
             }
