@@ -1,5 +1,7 @@
 import argparse
 import base64
+import importlib
+import importlib.resources as pkg_resources
 import io
 import json
 import logging
@@ -17,7 +19,6 @@ import threading
 import time
 import traceback
 from datetime import datetime
-from pathlib import Path
 
 import warnet.scenarios as scenarios
 from flask import Flask, jsonify, request
@@ -30,7 +31,6 @@ from .warnet import Warnet
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
-LOGGING_CONFIG_PATH = Path("src/warnet/logging_config/config.json")
 
 
 class Server:
@@ -99,7 +99,7 @@ class Server:
     def setup_logging(self):
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
 
-        with open(LOGGING_CONFIG_PATH) as f:
+        with pkg_resources.open_text('warnet.logging_config', 'config.json') as f:
             logging_config = json.load(f)
 
         # Update log file path
@@ -322,11 +322,9 @@ class Server:
             scenario_list = []
             print(f"scenarios.__path__: {scenarios.__path__}")
             for s in pkgutil.iter_modules(scenarios.__path__):
-                print(f"Found {s.name}")
                 module_name = f"warnet.scenarios.{s.name}"
                 try:
                     m = importlib.import_module(module_name)
-                    print(f"Imported module: {module_name}")
                     if hasattr(m, "cli_help"):
                         scenario_list.append((s.name, m.cli_help()))
                 except ModuleNotFoundError as e:
@@ -396,51 +394,55 @@ class Server:
     def scenarios_run(
         self, scenario: str, additional_args: list[str], network: str = "warnet"
     ) -> str:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
+        # Use importlib.resources to get the scenario path
+        scenario_package = 'warnet.scenarios'
+        scenario_filename = f"{scenario}.py"
 
-        if not os.path.exists(scenario_path):
-            raise ServerError(f"Scenario {scenario} not found at {scenario_path}.")
+        # Ensure the scenario file exists within the package
+        with importlib.resources.path(scenario_package, scenario_filename) as scenario_path:
+            scenario_path = str(scenario_path)  # Convert Path object to string
 
-        try:
-            run_cmd = (
-                [sys.executable, scenario_path]
-                + additional_args
-                + [f"--network={network}", f"--backend={self.backend}"]
-            )
-            self.logger.debug(f"Running {run_cmd}")
+            if not os.path.exists(scenario_path):
+                raise ServerError(f"Scenario {scenario} not found at {scenario_path}.")
+            try:
+                run_cmd = (
+                    [sys.executable, scenario_path]
+                    + additional_args
+                    + [f"--network={network}", f"--backend={self.backend}"]
+                )
+                self.logger.debug(f"Running {run_cmd}")
 
-            proc = subprocess.Popen(
-                run_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
+                proc = subprocess.Popen(
+                    run_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
-            def proc_logger():
-                while not proc.stdout:
-                    time.sleep(0.1)
-                for line in proc.stdout:
-                    self.logger.info(line.decode().rstrip())
+                def proc_logger():
+                    while not proc.stdout:
+                        time.sleep(0.1)
+                    for line in proc.stdout:
+                        self.logger.info(line.decode().rstrip())
 
-            t = threading.Thread(target=lambda: proc_logger())
-            t.daemon = True
-            t.start()
+                t = threading.Thread(target=lambda: proc_logger())
+                t.daemon = True
+                t.start()
 
-            self.running_scenarios.append(
-                {
-                    "pid": proc.pid,
-                    "cmd": f"{scenario} {' '.join(additional_args)}",
-                    "proc": proc,
-                    "network": network,
-                }
-            )
+                self.running_scenarios.append(
+                    {
+                        "pid": proc.pid,
+                        "cmd": f"{scenario} {' '.join(additional_args)}",
+                        "proc": proc,
+                        "network": network,
+                    }
+                )
 
-            return f"Running scenario {scenario} with PID {proc.pid} in the background..."
+                return f"Running scenario {scenario} with PID {proc.pid} in the background..."
 
-        except Exception as e:
-            msg = f"Error running scenario: {e}"
-            self.logger.error(msg)
-            raise ServerError(message=msg) from e
+            except Exception as e:
+                msg = f"Error running scenario: {e}"
+                self.logger.error(msg)
+                raise ServerError(message=msg) from e
 
     def scenarios_stop(self, pid: int) -> str:
         matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]

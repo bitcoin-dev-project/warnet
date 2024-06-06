@@ -2,9 +2,8 @@
 
 from time import sleep
 
+from warnet.scenarios.utils import get_service_ip
 from warnet.test_framework_bridge import WarnetTestFramework
-
-from .utils import get_service_ip
 
 
 def cli_help():
