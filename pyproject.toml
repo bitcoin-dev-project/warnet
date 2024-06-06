@@ -1,9 +1,6 @@
-[build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "warnet"
+version = "0.0.1"
 description = "Monitor and analyze the emergent behaviours of bitcoin networks"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,11 +9,25 @@ license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dynamic = ["version", "dependencies"]
+dynamic = ["dependencies"]
 
 [project.scripts]
 warnet = "warnet.server:run_server"
 warcli = "cli.main:cli"
+
+[project.urls]
+Homepage = "https://warnet.dev"
+GitHub = "https://github.com/bitcoindevproject/warnet"
+
+[project.optional-dependencies]
+build = [
+  "twine",
+  "build",
+]
+
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
