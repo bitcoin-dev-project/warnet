@@ -110,6 +110,20 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
+    def get_tank_dns_addr(self, index: int) -> str:
+        """
+        Get the dns address of the tank (consistent with `getpeerinfo`'s addr field)
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
+    def get_tank_ip_addr(self, index: int) -> str:
+        """
+        Get the ip address of the tank (consistent with `getpeerinfo`'s addr field)
+        """
+        raise NotImplementedError("This method should be overridden by child class")
+
+    @abstractmethod
     def get_lnnode_hostname(self, index: int) -> str:
         """
         Get the hostname assigned to a lnnode attached to a tank from the backend

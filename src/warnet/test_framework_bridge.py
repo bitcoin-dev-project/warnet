@@ -1,5 +1,6 @@
 import argparse
 import configparser
+import ipaddress
 import logging
 import os
 import pathlib
@@ -261,6 +262,12 @@ class WarnetTestFramework(BitcoinTestFramework):
             dest="backend",
             help="Designate which warnet backend this should run on",
         )
+        parser.add_argument(
+            "--v2transport",
+            dest="v2transport",
+            default=False,
+            action="store_true",
+            help="use BIP324 v2 connections between all nodes by default")
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument
@@ -302,3 +309,61 @@ class WarnetTestFramework(BitcoinTestFramework):
                 self.options.descriptors = None
 
         PortSeed.n = self.options.port_seed
+
+    def connect_nodes(self, a, b, *, peer_advertises_v2=None, wait_for_connect: bool = True):
+        """
+        Kwargs:
+            wait_for_connect: if True, block until the nodes are verified as connected. You might
+                want to disable this when using -stopatheight with one of the connected nodes,
+                since there will be a race between the actual connection and performing
+                the assertions before one node shuts down.
+        """
+        from_connection = self.nodes[a]
+        to_connection = self.nodes[b]
+
+        to_ip_port = self.warnet.tanks[b].get_dns_addr()
+        from_ip_port = self.warnet.tanks[a].get_ip_addr()
+
+        if peer_advertises_v2 is None:
+            peer_advertises_v2 = self.options.v2transport
+
+        if peer_advertises_v2:
+            from_connection.addnode(node=to_ip_port, command="onetry", v2transport=True)
+        else:
+            # skip the optional third argument (default false) for
+            # compatibility with older clients
+            from_connection.addnode(to_ip_port, "onetry")
+
+        if not wait_for_connect:
+            return
+
+        def get_peer_ip(peer):
+            try:  # we encounter a regular ip address
+                ip_addr = str(ipaddress.ip_address(peer['addr'].split(':')[0]))
+                return ip_addr
+            except ValueError:  # or we encounter a service name
+                tank_index = int(peer['addr'].split('-')[2])  # NETWORK-tank-INDEX-service
+                ip_addr = self.warnet.tanks[tank_index].get_ip_addr()
+                return ip_addr
+
+        # poll until version handshake complete to avoid race conditions
+        # with transaction relaying
+        # See comments in net_processing:
+        # * Must have a version message before anything else
+        # * Must have a verack message before anything else
+        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer['version'] != 0
+                                    for peer in from_connection.getpeerinfo()))
+        self.wait_until(lambda: any(get_peer_ip(peer) == from_ip_port and peer['version'] != 0
+                                    for peer in to_connection.getpeerinfo()))
+        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer['bytesrecv_per_msg'].pop('verack', 0) >= 21
+                                    for peer in from_connection.getpeerinfo()))
+        self.wait_until(lambda: any(get_peer_ip(peer) == from_ip_port
+                                    and peer['bytesrecv_per_msg'].pop('verack', 0) >= 21
+                                    for peer in to_connection.getpeerinfo()))
+        # The message bytes are counted before processing the message, so make
+        # sure it was fully processed by waiting for a ping.
+        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                                    for peer in from_connection.getpeerinfo()))
+        self.wait_until(lambda: any(get_peer_ip(peer) == from_ip_port
+                                    and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                                    for peer in to_connection.getpeerinfo()))

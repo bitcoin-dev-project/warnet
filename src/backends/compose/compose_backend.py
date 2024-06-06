@@ -184,6 +184,12 @@ class ComposeBackend(BackendInterface):
         else:
             return None
 
+    def get_tank_ip_addr(self, index: int) -> str:
+        self.get_tank_ipv4(index)
+
+    def get_tank_dns_addr(self, index: int) -> str:
+        self.get_tank_ip_addr(index)
+
     def get_messages(self, a_index: int, b_index: int, bitcoin_network: str = "regtest"):
         # Find the ip of peer B
         b_ipv4 = self.get_tank_ipv4(b_index)
