@@ -262,6 +262,12 @@ class WarnetTestFramework(BitcoinTestFramework):
             dest="backend",
             help="Designate which warnet backend this should run on",
         )
+        parser.add_argument(
+            "--v2transport",
+            dest="v2transport",
+            default=False,
+            action="store_true",
+            help="use BIP324 v2 connections between all nodes by default")
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument

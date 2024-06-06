@@ -143,6 +143,7 @@ class Tank:
     def get_ip_addr(self) -> str:
         ip_addr = self.warnet.container_interface.get_tank_ip_addr(self.index)
         return ip_addr
+
     def get_bitcoin_conf(self, nodes: list[str]) -> str:
         conf = CONFIG_BASE
         conf += f" -rpcuser={self.rpc_user}"

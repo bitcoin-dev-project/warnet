@@ -27,25 +27,27 @@ class ConnectDag(WarnetTestFramework):
         while not self.warnet.network_connected():
             sleep(1)
 
-        # All permutations of directed acyclic graph with zero, one, or two inputs/outputs
+        # All permutations of a directed acyclic graph with zero, one, or two inputs/outputs
         #
-        # | Node | In | Out | Con In | Con Out |
-        # |------+----+-----+--------+---------|
-        # | A  0 |  0 |   1 | -      | C       |
-        # | B  1 |  0 |   2 | -      | C, D    |
-        # | C  2 |  2 |   2 | A, B   | D, E    |
-        # | D  3 |  2 |   1 | B, C   | F       |
-        # | E  4 |  2 |   0 | C, F   | -       |
-        # | F  5 |  1 |   2 | D      | E, G    |
-        # | G  6 |  1 |   1 | F      | H       |
-        # | H  7 |  1 |   0 | G      | -       |
+        # │ Node │ In │ Out │ Con In │ Con Out │
+        # ├──────┼────┼─────┼────────┼─────────┤
+        # │  A   │  0 │   1 │ ─      │ C       │
+        # │  B   │  0 │   2 │ ─      │ C, D    │
+        # │  C   │  2 │   2 │ A, B   │ D, E    │
+        # │  D   │  2 │   1 │ B, C   │ F       │
+        # │  E   │  2 │   0 │ C, F   │ ─       │
+        # │  F   │  1 │   2 │ D      │ E, G    │
+        # │  G   │  1 │   1 │ F      │ H       │
+        # │  H   │  1 │   0 │ G      │ ─       │
         #
-        #          ╭──────> E                       ╭──────> 4
-        #          │        ∧                       │        ∧
-        #  A ─> C ─┤        │               0 ─> 2 ─┤        │
-        #       ∧  ╰─> D ─> F ─> G ─> H          ∧  ╰─> 3 ─> 5 ─> 6 ─> 7
-        #       │      ∧                         │      ∧
-        #  B ───┴──────╯                    1 ───┴──────╯
+        #           Node Graph                 Corresponding Indices
+        #  ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈    ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+        #          ╭──────> E                      ╭──────> 4
+        #          │        ∧                      │        ∧
+        #  A ─> C ─┤        │              0 ─> 2 ─┤        │
+        #       ∧  ╰─> D ─> F ─> G ─> H         ∧  ╰─> 3 ─> 5 ─> 6 ─> 7
+        #       │      ∧                        │      ∧
+        #  B ───┴──────╯                   1 ───┴──────╯
 
         self.connect_nodes(0, 2)
         self.connect_nodes(1, 2)
