@@ -22,15 +22,15 @@ runs:
 
         echo patching k8s configs to use local image
         echo Patching warnet-rpc-statefulset-dev to use local registry
-        sed -i "s|imagePullPolicy: Always|imagePullPolicy: Never|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-        sed -i "s|bitcoindevproject/warnet-rpc:dev|local/warnet-rpc:ci|g" src/templates/rpc/warnet-rpc-statefulset-dev.yaml
-        cat src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        sed -i "s|imagePullPolicy: Always|imagePullPolicy: Never|g" src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        sed -i "s|bitcoindevproject/warnet-rpc:dev|local/warnet-rpc:ci|g" src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        cat src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
 
         echo Setting up k8s
-        kubectl apply -f src/templates/rpc/namespace.yaml
-        kubectl apply -f src/templates/rpc/rbac-config.yaml
-        kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
-        kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+        kubectl apply -f src/warnet/templates/rpc/namespace.yaml
+        kubectl apply -f src/warnet/templates/rpc/rbac-config.yaml
+        kubectl apply -f src/warnet/templates/rpc/warnet-rpc-service.yaml
+        kubectl apply -f src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
         kubectl config set-context --current --namespace=warnet
 
         echo sleeping for 30s to give k8s time to boot

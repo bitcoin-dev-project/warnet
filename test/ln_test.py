@@ -4,8 +4,8 @@ import json
 import os
 from pathlib import Path
 
-from backends import ServiceType
 from test_base import TestBase
+from warnet.backends import ServiceType
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ln.graphml"
 

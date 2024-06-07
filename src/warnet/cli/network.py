@@ -6,9 +6,9 @@ import json
 from rich import print
 from rich.console import Console
 from rich.table import Table
-from cli.rpc import rpc_call  # noqa: I001
+from .rpc import rpc_call  # noqa: I001
 
-from graphs import GRAPHS  # noqa: I001
+from warnet.graphs import GRAPHS  # noqa: I001
 
 DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
 

@@ -1,7 +1,7 @@
 import io
 import tarfile
 
-from backends import BackendInterface, ServiceType
+from warnet.backends import BackendInterface, ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
 from .status import RunningStatus

@@ -4,3 +4,5 @@ __pycache__
 warnet.egg-info
 .python-version
 .env
+dist/
+build/

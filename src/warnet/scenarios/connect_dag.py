@@ -80,35 +80,35 @@ class ConnectDag(WarnetTestFramework):
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[3].get_dns_addr() for d in
                    one_peers), f"Could not find {self.options.network_name}-tank-000003-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[0].get_ip_addr() for d in
-                   two_peers), f"Could not find Tank 0's ip addr"
+                   two_peers), "Could not find Tank 0's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[1].get_ip_addr() for d in
-                   two_peers), f"Could not find Tank 1's ip addr"
+                   two_peers), "Could not find Tank 1's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[3].get_dns_addr() for d in
                    two_peers), f"Could not find {self.options.network_name}-tank-000003-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[4].get_dns_addr() for d in
                    two_peers), f"Could not find {self.options.network_name}-tank-000004-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[1].get_ip_addr() for d in
-                   three_peers), f"Could not find Tank 1's ip addr"
+                   three_peers), "Could not find Tank 1's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[2].get_ip_addr() for d in
-                   three_peers), f"Could not find Tank 2's ip addr"
+                   three_peers), "Could not find Tank 2's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[5].get_dns_addr() for d in
                    three_peers), f"Could not find {self.options.network_name}-tank-000005-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[2].get_ip_addr() for d in
-                   four_peers), f"Could not find Tank 2's ip addr"
+                   four_peers), "Could not find Tank 2's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[5].get_ip_addr() for d in
-                   four_peers), f"Could not find Tank 5's ip addr"
+                   four_peers), "Could not find Tank 5's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[3].get_ip_addr() for d in
-                   five_peers), f"Could not find Tank 3's ip addr"
+                   five_peers), "Could not find Tank 3's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[4].get_dns_addr() for d in
                    five_peers), f"Could not find {self.options.network_name}-tank-000004-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[6].get_dns_addr() for d in
                    five_peers), f"Could not find {self.options.network_name}-tank-000006-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[5].get_ip_addr() for d in
-                   six_peers), f"Could not find Tank 5's ip addr"
+                   six_peers), "Could not find Tank 5's ip addr"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[7].get_dns_addr() for d in
                    six_peers), f"Could not find {self.options.network_name}-tank-000007-service"
         assert any(d.get("addr").split(":")[0] == self.warnet.tanks[6].get_ip_addr() for d in
-                   seven_peers), f"Could not find Tank 6's ip addr"
+                   seven_peers), "Could not find Tank 6's ip addr"
 
         self.log.info(f"Successfully ran the {os.path.basename(__file__)} scenario.")
 

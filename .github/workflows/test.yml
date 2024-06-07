@@ -25,7 +25,7 @@ jobs:
       - name: Build and export
         uses: docker/build-push-action@v5
         with:
-          file: src/templates/rpc/Dockerfile_rpc
+          file: src/warnet/templates/rpc/Dockerfile_rpc
           context: .
           tags: local/warnet-rpc:ci
           cache-from: type=gha
