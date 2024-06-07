@@ -109,7 +109,7 @@ class ComposeBackend(BackendInterface):
             case _:
                 raise Exception("Unsupported service type")
 
-    def get_container(self, tank_index: int, service: ServiceType) -> Container:
+    def get_container(self, tank_index: int, service: ServiceType) -> Container | None:
         container_name = self.get_container_name(tank_index, service)
         if len(self.client.containers.list(filters={"name": container_name})) == 0:
             return None
@@ -177,18 +177,18 @@ class ComposeBackend(BackendInterface):
         out = out[: stat["size"]]
         return out
 
-    def get_tank_ipv4(self, index: int) -> str:
+    def get_tank_ipv4(self, index: int) -> str | None:
         c = self.get_container(index, ServiceType.BITCOIN)
         if c:
             return self.get_ipv4_address(c)
         else:
             return None
 
-    def get_tank_ip_addr(self, index: int) -> str:
-        self.get_tank_ipv4(index)
+    def get_tank_ip_addr(self, index: int) -> str | None:
+        return self.get_tank_ipv4(index)
 
-    def get_tank_dns_addr(self, index: int) -> str:
-        self.get_tank_ip_addr(index)
+    def get_tank_dns_addr(self, index: int) -> str | None:
+        return self.get_tank_ip_addr(index)
 
     def get_messages(self, a_index: int, b_index: int, bitcoin_network: str = "regtest"):
         # Find the ip of peer B

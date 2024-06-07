@@ -554,7 +554,7 @@ class KubernetesBackend(BackendInterface):
             ),
         )
 
-    def get_tank_ipv4(self, index: int) -> str:
+    def get_tank_ipv4(self, index: int) -> str | None:
         pod_name = self.get_pod_name(index, ServiceType.BITCOIN)
         pod = self.get_pod(pod_name)
         if pod:

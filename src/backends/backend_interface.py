@@ -103,21 +103,21 @@ class BackendInterface(ABC):
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_tank_ipv4(self, index: int) -> str:
+    def get_tank_ipv4(self, index: int) -> str | None:
         """
         Get the ipv4 address assigned to a bitcoind tank from the backend
         """
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_tank_dns_addr(self, index: int) -> str:
+    def get_tank_dns_addr(self, index: int) -> str | None:
         """
         Get the dns address of the tank (consistent with `getpeerinfo`'s addr field)
         """
         raise NotImplementedError("This method should be overridden by child class")
 
     @abstractmethod
-    def get_tank_ip_addr(self, index: int) -> str:
+    def get_tank_ip_addr(self, index: int) -> str | None:
         """
         Get the ip address of the tank (consistent with `getpeerinfo`'s addr field)
         """
