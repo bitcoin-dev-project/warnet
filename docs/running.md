@@ -4,18 +4,223 @@ Warnet runs a server which can be used to manage multiple networks. On docker
 this runs locally, but on Kubernetes this runs as a `statefulSet` in the
 cluster.
 
-If the `$XDG_STATE_HOME` environment variable is set, the server will log to
-a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet/warnet.log`.
+## Starting Kubernetes
 
-## Kubernetes
+Before proceeding, ensure that you have started your Kubernetes cluster using Minikube (`minikube start`) or any equivalent setup.
 
-Deploy the resources in `src/templates/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
+## Using Justfile
 
-This can be done with from inside the `src/templates/` directory by running:
+The `justfile` in this project defines various tasks for managing the Kubernetes deployment workflow. Using this option requires that you have a local installation of [just](https://github.com/casey/just). So go ahead and install it if you do not have it already installed on your machine.
 
-```bash
-kubectl apply -f '*.yaml'
-```
+Follow the usage example below to run a task from the `justfile`.
+
+`just start` - setup and start the RPC with minikube
+
+<details>
+    <summary>start details</summary>
+
+    ```
+    # Mount local source dir
+    minikube mount $PWD:/mnt/src > /tmp/minikube_mount.log 2>&1 &
+
+    # Capture the PID of the minikube mount command
+    MINIKUBE_MOUNT_PID=$!
+
+    # Save the PID to a file for later use
+    echo $MINIKUBE_MOUNT_PID > /tmp/minikube_mount.pid
+
+    # Setup k8s
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-statefulset.yaml
+    kubectl config set-context --current --namespace=warnet
+
+    echo waiting for rpc to come online
+    sleep 2
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
+    echo Done...
+    ```
+
+</details>
+
+`just stop` - stop the RPC in dev mode with minikube
+
+<details>
+    <summary>stop details</summary>
+
+    ```
+    kubectl delete namespace warnet
+    kubectl delete namespace warnet-logging
+    kubectl config set-context --current --namespace=default
+
+    # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
+    if [ -f /tmp/minikube_mount.pid ]; then
+    MINIKUBE_MOUNT_PID=$(cat /tmp/minikube_mount.pid)
+    # Stop the background job using its PID
+    kill -SIGINT $MINIKUBE_MOUNT_PID
+    # Optionally, remove the PID file
+    rm /tmp/minikube_mount.pid
+    else
+        echo "PID file not found. Minikube mount process may not have been started."
+    fi
+    ```
+
+</details>
+
+`just startd` - setup and start the RPC in dev mode with Docker Desktop
+
+<details>
+    <summary>startd details</summary>
+
+    ```
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+    sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+    kubectl config set-context --current --namespace=warnet
+
+    echo waiting for rpc to come online
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
+    echo Done...
+    ```
+
+</details>
+
+`just stopd` - stop the RPC in dev mode with Docker Desktop
+
+<details>
+    <summary>stopd details</summary>
+
+    ```
+    # Delete all resources
+    kubectl delete namespace warnet
+    kubectl delete namespace warnet-logging
+    kubectl config set-context --current --namespace=default
+
+    echo Done...
+    ```
+
+</details>
+
+`just p` - forwards port from local into the cluster
+
+<details>
+    <summary>port forward details</summary>
+
+    ```
+    kubectl port-forward svc/rpc 9276:9276
+    ```
+
+</details>
+
+### Setup and Start RPC in Development Mode with Minikube
+
+The commands below sets up and starts the RPC service in development mode using Minikube.
+
+<details>
+    <summary>Detailed steps</summary>
+
+    ```
+    # Mounts the local source directory to the Minikube virtual machine, allowing the RPC service to access code and files from the local development environment.
+    minikube mount $PWD:/mnt/src > /tmp/minikube_mount.log 2>&1 &
+
+    # Capture the PID of the minikube mount command
+    MINIKUBE_MOUNT_PID=$!
+
+    # Save the PID to a file for later use
+    echo $MINIKUBE_MOUNT_PID > /tmp/minikube_mount.pid
+
+    # Setup k8s
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    kubectl config set-context --current --namespace=warnet
+
+    # Wait for the RPC pod to become ready, ensuring that the service is fully operational before proceeding.
+    sleep 2
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
+    ```
+</details>
+
+
+### Stop RPC in Development Mode with Minikube
+
+Follow the steps below to stop the RPC service running in development mode using Minikube.
+
+<details>
+    <summary>Detailed steps</summary>
+
+    ```
+    # Deletes the Kubernetes namespaces 'warnet' and 'warnet-logging', which contain the resources associated with the RPC service and its logging, respectively.
+    kubectl delete namespace warnet
+    kubectl delete namespace warnet-logging
+
+    # Sets the current Kubernetes context to the default namespace, ensuring that subsequent Kubernetes commands operate within this namespace.
+    kubectl config set-context --current --namespace=default
+
+    # Fetch job ID of `minikube mount $PWD:/mnt/src` from saved PID file
+    if [ -f /tmp/minikube_mount.pid ]; then
+        MINIKUBE_MOUNT_PID=$(cat /tmp/minikube_mount.pid)
+        # Stop the background job using its PID
+        kill -SIGINT $MINIKUBE_MOUNT_PID
+        # Optionally, removes the PID file
+        rm /tmp/minikube_mount.pid
+    else
+        echo "PID file not found. Minikube mount process may not have been started."
+    fi
+
+    ```
+</details>
+
+### Setup and Start RPC in Development Mode with Docker Desktop
+
+Follow the steps below to setup and start the RPC service in development mode using Docker Desktop.
+
+<details>
+    <summary>Detailed steps</summary>
+
+    ```
+    # Apply Kubernetes manifests for the RPC service, including namespace, RBAC configuration, and servce definition.
+    kubectl apply -f src/templates/rpc/namespace.yaml
+    kubectl apply -f src/templates/rpc/rbac-config.yaml
+    kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+
+    #Applies the StatefulSet manifest for the RPC service, substituting the local source directory path ($PWD) in the manifest using sed command.
+    sed 's?/mnt/src?'`PWD`'?g' src/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+
+    # Sets the current Kubernetes context to the 'waarnet' namespace, ensuring that subsequent Kubernetes command operate within this namespace
+    kubectl config set-context --current --namespace=warnet
+
+    # Waits for the RPC service to become ready within a timeout period of 2 minutes
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+
+    ```
+</details>
+
+### Stop RPC in Development Mode with Docker Desktop
+
+The steps below stops the RPC service running in development mode with Docker Desktop.
+
+<details>
+    <summary>Detailed steps</summary>
+
+    ```
+    # Deletes the 'warnet' and 'warnet-logging' namespaces, which contain resources related to the RPC service and logging.
+    kubectl delete namespace warnet
+    kubectl delete namespace warnet-logging
+
+    # Sets the current Kubernetes context to the 'default' namespace.
+    kubectl config set-context --current --namespace=default
+
+    ```
+</details>
+
+### Port Forwarding
 
 Once the RPC server comes up we need to forward the RPC port from the cluster.
 This can be done with:
@@ -33,20 +238,6 @@ This can be done using:
 
 ```bash
 kubectl delete statefulset
-```
-
-### Install logging infrastructure
-
-First make sure you have `helm` installed, then simply run the following script:
-
-```bash
-./src/templates/k8s/install_logging.sh
-```
-
-To forward port to view Grafana dashbaord:
-
-```bash
-./src/templates/k8s/connect_logging.sh
 ```
 
 ## Compose
