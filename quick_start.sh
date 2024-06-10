@@ -96,6 +96,14 @@ else
     exit 1
 fi
 
+helm_path=$(command -v helm || true)
+if [ -n "$helm_path" ]; then
+    print_partial_message " ⭐️ Found " "helm" ": $helm_path" "$BOLD"
+else
+    print_partial_message " 💥 Could not find " "helm" ". Please follow this link to install it..." "$BOLD"
+    print_message "" "   https://helm.sh/docs/intro/install/" "$BOLD"
+    exit 127
+fi
 
 just_path=$(command -v just || true)
 if [ -n "$just_path" ]; then
