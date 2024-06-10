@@ -41,9 +41,8 @@ def run_anticycle(node: TestNode, logging):
     socket = context.socket(zmq.SUB)
 
     # Connect to the publisher's socket
-    external, internal = get_service_ip("warnet-tank-000000-service")
     port = "28334"  # specify the port you want to listen on
-    socket.connect(f"tcp://{external}:{port}")
+    socket.connect(f"tcp://warnet-tank-000000-service:{port}")
 
     # Subscribe to all messages
     # You can specify a prefix filter here to receive specific messages
