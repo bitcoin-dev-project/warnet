@@ -173,7 +173,7 @@ sleep 1
 while warcli network connected | grep -q "False"; do
     sleep 2
 done
-print_message "" "    🥳" ""
-print_message "" "    Run the following command to enter into the python virtual environment..." ""
+print_message "" "🥳" ""
+print_message "" "Run the following command to enter into the python virtual environment..." ""
 print_message "" "    source .venv/bin/activate" "$BOLD"
 print_partial_message "   After that, you can run " "warcli help" " to start running Warnet commands." "$BOLD"
