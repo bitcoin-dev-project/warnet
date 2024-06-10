@@ -1,25 +1,17 @@
 # Original: https://github.com/instagibbs/anticycle/blob/b5db30ec887ab0bc666bf0a94ff5b1fc17404ba8/anticycle.py#L1
 from decimal import Decimal
 from collections import defaultdict
-import json
-import logging
-import os
-import requests
-from requests.auth import HTTPBasicAuth
 import struct
-import sys
 import zmq
 
 from test_framework.test_node import TestNode
 from warnet.test_framework_bridge import WarnetTestFramework
 
-from test_framework.authproxy import JSONRPCException
-
 num_MB = 40
 
 # How many times a utxo has to go from Top->Bottom to be
 # have its spending tx cached(if otherwise empty)
-# Increasing this value reducs false positive rates
+# Increasing this value reduces false positive rates
 # and reduces memory usage accordingly.
 CYCLE_THRESH = 1
 
