@@ -57,6 +57,7 @@ class Tank:
         self.rpc_password = "2themoon"
         self.zmqblockport = 28332
         self.zmqtxport = 28333
+        self.zmqpubsequenceport = 28334
         self._suffix = None
         self._ipv4 = None
         self._exporter_name = None
@@ -155,6 +156,7 @@ class Tank:
         conf += f" -rpcport={self.rpc_port}"
         conf += f" -zmqpubrawblock=tcp://0.0.0.0:{self.zmqblockport}"
         conf += f" -zmqpubrawtx=tcp://0.0.0.0:{self.zmqtxport}"
+        conf += f" -zmqpubsequence=tcp://0.0.0.0:{self.zmqpubsequenceport}"
         conf += " " + self.bitcoin_config
         for node in nodes:
             conf += f" -addnode={node}"
