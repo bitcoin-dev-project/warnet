@@ -501,7 +501,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
                                                    maxfeerate=0)
 
         self.log.info(f"@{last_blockheight} {bob_parent_txid_2[0:7]} Parent Txn 2 "
-                      f"- Broadcased by: Bob")
+                      f"- Broadcasted by: Bob")
 
         self.sync_all()
 
@@ -542,7 +542,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
         assert bob_preimage_txid_2 not in bob.getrawmempool()
 
     def run_test(self):
-        address = "bcrt1p9yfmy5h72durp7zrhlw9lf7jpwjgvwdg0jr0lqmmjtgg83266lqsekaqka"
+        address = "bcrt1p9yfmy5h72durp7zrhlw9lf7jpwjgvwdg0jr0lqmmjtgg83266lqsekaqka"    # noqa
 
         self.generatetoaddress(self.nodes[0], nblocks=101,
                                address=address)
