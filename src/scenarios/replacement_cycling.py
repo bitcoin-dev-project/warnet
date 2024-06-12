@@ -497,7 +497,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
                       f"- Funded by: [{ab_commitment_txid[0:7]} Commitment Txn]")
 
         bob_parent_txid_2 = bob.sendrawtransaction(hexstring=bob_parent_tx_2.serialize().hex(),
-                                                    maxfeerate=0)
+                                                   maxfeerate=0)
 
         self.log.info(f"@{last_blockheight} {bob_parent_txid_2[0:7]} Parent Txn 2 "
                       f"- Broadcased by: Bob")
@@ -505,7 +505,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
         self.sync_all()
 
         bob_child_txid_2 = bob.sendrawtransaction(hexstring=bob_child_tx_2.serialize().hex(),
-                                                   maxfeerate=0)
+                                                  maxfeerate=0)
 
         self.log.info(f"@{last_blockheight} {bob_child_txid_2[0:7]} Child Txn 2 "
                       f"- Broadcasted by: Bob")
