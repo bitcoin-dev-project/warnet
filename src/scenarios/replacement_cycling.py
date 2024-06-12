@@ -492,8 +492,9 @@ class ReplacementCyclingTest(WarnetTestFramework):
                       f"- Created by: Bob - uses Coin_3")
         self.log.info(f"@{last_blockheight} {bob_child_tx_2.hash[0:7]} Child Txn 2 "
                       f"- Created by: Bob - uses Coin_3")
-        self.log.info(f"@{last_blockheight} {bob_preimage_tx_2} Preimage Txn 2 - Created by: Bob")
-        self.log.info(f"@{last_blockheight} {bob_preimage_tx_2} Preimage Txn 2 "
+        self.log.info(f"@{last_blockheight} {bob_preimage_tx_2.hash[0:7]} Preimage Txn 2 "
+                      f"- Created by: Bob")
+        self.log.info(f"@{last_blockheight} {bob_preimage_tx_2.hash[0:7]} Preimage Txn 2 "
                       f"- Funded by: [{ab_commitment_txid[0:7]} Commitment Txn]")
 
         bob_parent_txid_2 = bob.sendrawtransaction(hexstring=bob_parent_tx_2.serialize().hex(),
