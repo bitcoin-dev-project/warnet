@@ -514,10 +514,13 @@ class Server:
             self.warnets[network] = Warnet.from_graph_file(
                 graph_file, config_dir, network, self.backend
             )
+            wn = self.get_warnet(network)
+            if wn.backend == "compose" and wn.network_name in [n.name for n in wn.container_interface.client.networks.list()]:
+                raise Exception(f"There is already a network named \"{wn.network_name}\" running on this docker host.\n\nYou can remove it with `docker network rm {wn.network_name}` if it is unused")
             t = threading.Thread(target=lambda: thread_start(self, network))
             t.daemon = True
             t.start()
-            return self.warnets[network]._warnet_dict_representation()
+            return wn._warnet_dict_representation()
         except Exception as e:
             msg = f"Error bring up warnet: {e}"
             self.logger.error(msg)
