@@ -1,4 +1,7 @@
-# Original: https://github.com/instagibbs/anticycle/blob/b5db30ec887ab0bc666bf0a94ff5b1fc17404ba8/anticycle.py#L1
+#!/usr/bin/env python3
+#
+# Original: https://github.com/instagibbs/anticycle/blob/b5db30ec887ab0bc666bf0a94ff5b1fc17404ba8/anticycle.py#L1    # noqa
+
 from decimal import Decimal
 from collections import defaultdict
 import struct
@@ -9,7 +12,7 @@ from warnet.test_framework_bridge import WarnetTestFramework
 
 num_MB = 40
 
-# How many times a utxo has to go from Top->Bottom to be
+# How many times a utxo has to go from Top->Bottom to
 # have its spending tx cached(if otherwise empty)
 # Increasing this value reduces false positive rates
 # and reduces memory usage accordingly.
@@ -21,9 +24,9 @@ def cli_help():
 
 
 def run_anticycle(node: TestNode, logging):
-    '''
+    """
     Best effort mempool syncing to detect replacement cycling attacks
-    '''
+    """
 
     logging.info(" - anticycle - Starting anticycle")
 
@@ -59,7 +62,7 @@ def run_anticycle(node: TestNode, logging):
     # txid -> serialize_tx
     # This cache is for everything above "top block"
     # that we hear about. This cache is required only
-    # because the R(emove) notification stream doesn't
+    # because the R (Remove) notification stream doesn't
     # give full transactions. We need them to compute
     # top->bottom utxo changes.
     dummy_cache = {}
@@ -91,14 +94,13 @@ def run_anticycle(node: TestNode, logging):
     # assume anything we see can be mined.
     # Fix this post-cluster mempool with "next block"
     # chunk feerate checks.
-    MINRATE = 0.00001000
-
+    minrate: float = 0.00001000
 
     # "Top block" is considered next three blocks
     try:
         topblock_rate_btc_kvb = node.estimatesmartfee(3)["feerate"]
     except KeyError:
-        topblock_rate_btc_kvb = MINRATE
+        topblock_rate_btc_kvb = minrate
 
     try:
         while True:
@@ -110,8 +112,11 @@ def run_anticycle(node: TestNode, logging):
 
             if received_seq % 100 == 0:
                 logging.info(
-                    f" - anticycle - Transactions cached: {len(cycled_tx_cache)}, bytes cached: {cycled_tx_cache_size / 1000000}/{num_MB}MB, topblock rate: {topblock_rate_btc_kvb}")
-                logging.info(f" - anticycle - Dummy cache: {len(dummy_cache)}, {dummy_cache_size / 1000000}/{num_MB}MB")
+                    f" - anticycle - Transactions cached: {len(cycled_tx_cache)}, bytes cached: "
+                    f"{cycled_tx_cache_size / 1000000}/{num_MB}MB, "
+                    f"topblock rate: {topblock_rate_btc_kvb}")
+                logging.info(f" - anticycle - Dummy cache: {len(dummy_cache)}, "
+                             f"{dummy_cache_size / 1000000}/{num_MB}MB")
 
             if label == "A":
                 logging.info(f" - anticycle - Tx {txid} added")
@@ -141,56 +146,71 @@ def run_anticycle(node: TestNode, logging):
                     dummy_cache[txid] = raw_tx
                     dummy_cache_size += len(raw_tx["hex"]) / 2
 
-                    add_tx_prevouts = [(tx_input['txid'], tx_input['vout']) for tx_input in raw_tx["vin"]]
-                    logging.info(f" - anticycle - prevouts being spent by new tx: {add_tx_prevouts}")
+                    add_tx_prevouts = [(tx_input['txid'], tx_input['vout'])
+                                       for tx_input in raw_tx["vin"]]
+                    logging.info(f" - anticycle - prevouts being spent by new tx: "
+                                 f"{add_tx_prevouts}")
 
-                    logging.info(f" - anticycle - prevouts from removed transactions: {utxos_being_doublespent}")
+                    logging.info(f" - anticycle - prevouts from removed transactions: "
+                                 f"{utxos_being_doublespent}")
 
                     for prevout in add_tx_prevouts:
                         if prevout not in utxos_being_doublespent:
                             logging.info(f" - anticycle - {prevout} went from unspent to spent")
                             # Bottom->Top, clear cached transaction if any
                             if prevout in utxo_cache:
-                                logging.info(f"Deleting cache entry for {(tx_input['txid'], tx_input['vout'])}")
+                                logging.info(f" - anticycle - Deleting cache entry for "
+                                             f"{(tx_input['txid'], tx_input['vout'])}")
                                 cycled_tx_cache_size -= len(cycled_tx_cache[utxo_cache[prevout]])
                                 del cycled_tx_cache[utxo_cache[prevout]]
                                 del utxo_cache[prevout]
                         else:
                             logging.info(f" - anticycle - {prevout} went from spent to spent")
                             # Top->Top, cache if entry is empty
-                            if prevout not in utxo_cache and utxo_cycled_count[prevout] >= CYCLE_THRESH:
+                            if (prevout not in utxo_cache
+                                    and utxo_cycled_count[prevout] >= CYCLE_THRESH):
                                 # Get replaced txid and full tx from dummy_cache
                                 removed_txid = utxos_being_doublespent[prevout]
                                 removed_tx = dummy_cache[removed_txid]
-                                removed_prevouts = [(tx_input['txid'], tx_input['vout']) for tx_input in raw_tx["vin"]]
-                                can_cache = all(prevout not in cycled_input_set for prevout in removed_prevouts)
+                                removed_prevouts = [(tx_input['txid'], tx_input['vout'])
+                                                    for tx_input in raw_tx["vin"]]
+                                can_cache = all(prevout not in cycled_input_set
+                                                for prevout in removed_prevouts)
                                 if can_cache:
-                                    logging.info(f"{prevout} has been RBF'd, caching {removed_txid}")
+                                    logging.info(f" - anticycle - {prevout} has been RBF'd, "
+                                                 f"caching {removed_txid}")
                                     utxo_cache[prevout] = removed_txid
                                     cycled_tx_cache[removed_txid] = removed_tx
-                                    cycled_tx_cache_size += len(cycled_tx_cache[utxo_cache[prevout]]["hex"]) / 2
+                                    hex_len = len(cycled_tx_cache[utxo_cache[prevout]]["hex"]) / 2
+                                    cycled_tx_cache_size += hex_len
                                     for removed_prevout in removed_prevouts:
                                         cycled_input_set.add(removed_prevout)
                                 else:
-                                    logging.info(f"{removed_txid} is not being cached due to conflicts in input cache")
-                            del utxos_being_doublespent[prevout]  # delete to detect remaining Top->Bottom later
+                                    logging.info(f"{removed_txid} is not being cached due to "
+                                                 f"conflicts in input cache")
+                            # delete to detect remaining Top->Bottom later
+                            del utxos_being_doublespent[prevout]
 
                     # Handle Top->Bottom: There are top block spends now unspent!
                     if len(utxos_being_doublespent) > 0:
-                        logging.info(f" - anticycle - {len(utxos_being_doublespent)} utxos going spent to unspent")
+                        logging.info(f" - anticycle - {len(utxos_being_doublespent)} "
+                                     f"utxos going spent to unspent")
                         # things were double-spent and not removed with top block
                         for unspent_prevout, _ in utxos_being_doublespent.items():
                             # Count it first
                             utxo_cycled_count[unspent_prevout] += 1
                             logging.info(
-                                f"{unspent_prevout} has been cycled {utxo_cycled_count[unspent_prevout]} times")
+                                f" - anticycle - {unspent_prevout} has been cycled "
+                                f"{utxo_cycled_count[unspent_prevout]} times")
 
                             # If we have something cached, it might be free to re-enter now
-                            if unspent_prevout in utxo_cache and utxo_cache[unspent_prevout] in cycled_tx_cache:
+                            if (unspent_prevout in utxo_cache
+                                    and utxo_cache[unspent_prevout] in cycled_tx_cache):
                                 raw_tx = cycled_tx_cache[utxo_cache[unspent_prevout]]["hex"]
                                 send_ret = node.sendrawtransaction(raw_tx)
                                 if send_ret:
-                                    logging.info(f" - anticycle - Successfully resubmitted {send_ret}")
+                                    logging.info(f" - anticycle - Successfully resubmitted "
+                                                 f"{send_ret}")
                                     logging.info(f" - anticycle - rawhex: {raw_tx}")
 
                 # We processed the double-spends, clear
@@ -198,22 +218,26 @@ def run_anticycle(node: TestNode, logging):
 
             elif label == "R":
                 logging.info(f" - anticycle - Tx {txid} removed")
-                # This tx is removed, perhaps replaced, next "A" message should be the tx replacing it(conflict_tx)
+                # This tx is removed, perhaps replaced, next "A" message should be the tx replacing
+                # it(conflict_tx)
 
                 # If this tx is in the tx_cache, that implies it was top block
                 # we need to see which utxos being non-top block once we see
                 # the next "A"
-                # N.B. I am not sure at all the next "A" is actually a double-spend, that should be checked!
+                # N.B. I am not sure at all the next "A" is actually a double-spend, that should be
+                # checked!
                 # I'm going off of functional tests.
                 if txid in dummy_cache:
                     for tx_input in dummy_cache[txid]["vin"]:
                         utxos_being_doublespent[(tx_input["txid"], tx_input["vout"])] = txid
 
             elif label == "C" or label == "D":
-                #logging.info(f"Block tip changed")
-                # FIXME do something smarter, for now we just hope this isn't hit on short timeframes
+                # logging.info(f"Block tip changed")
+                # FIXME do something smarter, for now we just hope this isn't hit on short
+                #  timeframes
                 # Defender will have to resubmit enough again to be protected for the new period
-                if cycled_tx_cache_size > tx_cache_max_byte_size or dummy_cache_size >= tx_cache_max_byte_size:
+                if (cycled_tx_cache_size > tx_cache_max_byte_size
+                        or dummy_cache_size >= tx_cache_max_byte_size):
                     logging.info(f"wiping state")
                     dummy_cache.clear()
                     dummy_cache_size = 0
@@ -225,7 +249,7 @@ def run_anticycle(node: TestNode, logging):
                 try:
                     topblock_rate_btc_kvb = node.estimatesmartfee(3)["feerate"]
                 except KeyError:
-                    topblock_rate_btc_kvb = MINRATE
+                    topblock_rate_btc_kvb = minrate
     except KeyboardInterrupt:
         logging.info(" - anticycle - Program interrupted by user")
     finally:
