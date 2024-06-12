@@ -286,7 +286,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
 
         hashlock = hash160(b'a' * 32)
 
-        n_locktime = last_blockheight + 20
+        alice_timeout_height = last_blockheight + 20
 
         (ab_commitment_tx,
          alice_timeout_tx,
@@ -297,7 +297,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
                                               49.99998 * COIN,
                                               funding_redeemscript,
                                               2,
-                                              n_locktime,
+                                              alice_timeout_height,
                                               hashlock,
                                               0x1,
                                               bob_parent_tx)
@@ -311,7 +311,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
                       f"- Funded by: [{ab_commitment_tx.hash[0:7]} Commitment Txn]")
         self.log.info(f"@{last_blockheight} {alice_timeout_tx.hash[0:7]} Alice Timeout Txn "
                       f"- Signed by: Alice & Bob "
-                      f"- After nLockTime ({n_locktime}), Alice can claim")
+                      f"- After nLockTime ({alice_timeout_height}), Alice can claim")
         self.log.info(f"@{last_blockheight} {bob_preimage_tx.hash[0:7]} Bob Preimage Txn "
                       f"- Funded by: [{ab_commitment_tx.hash[0:7]} Commitment Txn, "
                       f"{bob_parent_tx.hash[0:7]} Parent Txn]")
@@ -464,7 +464,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
         # nSequence.
         (_, alice_timeout_tx_2, _) = create_chan_state(ab_funding_txid, 0, alice_seckey, bob_seckey,
                                                        49.99998 * COIN, funding_redeemscript, 2,
-                                                       last_blockheight + 20, hashlock, 0x2,
+                                                       alice_timeout_height, hashlock, 0x2,
                                                        bob_parent_tx)
 
         self.log.info(f"@{last_blockheight} {alice_timeout_tx_2.hash[0:7]} Timeout Txn 2 "
