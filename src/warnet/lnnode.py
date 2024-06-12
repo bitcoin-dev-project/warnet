@@ -179,16 +179,32 @@ class LNNode:
                     node2_pub=edge["node2_pub"],
                     capacity_msat=edge["capacity"],
                     short_chan_id=lnd_to_cl_scid(edge["channel_id"]),
-                    node1_min_htlc=edge["node1_policy"]["min_htlc"],
-                    node2_min_htlc=edge["node2_policy"]["min_htlc"],
-                    node1_max_htlc=edge["node1_policy"]["max_htlc"],
-                    node2_max_htlc=edge["node2_policy"]["max_htlc"],
-                    node1_base_fee_msat=edge["node1_policy"]["fee_base_msat"],
-                    node2_base_fee_msat=edge["node2_policy"]["fee_base_msat"],
-                    node1_fee_rate_milli_msat=edge["node1_policy"]["fee_rate_milli_msat"],
-                    node2_fee_rate_milli_msat=edge["node2_policy"]["fee_rate_milli_msat"],
-                    node1_time_lock_delta=edge["node1_policy"]["time_lock_delta"],
-                    node2_time_lock_delta=edge["node2_policy"]["time_lock_delta"],
+                    node1_min_htlc=edge["node1_policy"]["min_htlc"] if edge["node1_policy"] else 0,
+                    node2_min_htlc=edge["node2_policy"]["min_htlc"] if edge["node2_policy"] else 0,
+                    node1_max_htlc=edge["node1_policy"]["max_htlc_msat"]
+                    if edge["node1_policy"]
+                    else 0,
+                    node2_max_htlc=edge["node2_policy"]["max_htlc_msat"]
+                    if edge["node2_policy"]
+                    else 0,
+                    node1_base_fee_msat=edge["node1_policy"]["fee_base_msat"]
+                    if edge["node1_policy"]
+                    else 0,
+                    node2_base_fee_msat=edge["node2_policy"]["fee_base_msat"]
+                    if edge["node2_policy"]
+                    else 0,
+                    node1_fee_rate_milli_msat=edge["node1_policy"]["fee_rate_milli_msat"]
+                    if edge["node1_policy"]
+                    else 0,
+                    node2_fee_rate_milli_msat=edge["node2_policy"]["fee_rate_milli_msat"]
+                    if edge["node2_policy"]
+                    else 0,
+                    node1_time_lock_delta=edge["node1_policy"]["time_lock_delta"]
+                    if edge["node1_policy"]
+                    else 0,
+                    node2_time_lock_delta=edge["node2_policy"]["time_lock_delta"]
+                    if edge["node2_policy"]
+                    else 0,
                 )
                 for edge in edges
             ]
@@ -327,7 +343,8 @@ class LNChannel:
         self.node2_time_lock_delta = node2_time_lock_delta
 
 
-def lnd_to_cl_scid(s) -> str:
+def lnd_to_cl_scid(id) -> str:
+    s = int(id, 10)
     block = s >> 40
     tx = s >> 16 & 0xFFFFFF
     output = s & 0xFFFF

@@ -83,5 +83,4 @@ with open(json_file_path) as file:
                 + "Expected:\n"
                 + json.dumps(expected_chan, indent=2)
             )
-
 base.stop_server()
