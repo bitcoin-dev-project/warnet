@@ -256,7 +256,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
 
         assert ab_funding_txid in alice.getrawmempool()
         assert ab_funding_txid in bob.getrawmempool()
-        alice.log.info(f" @{last_blockheight} {ab_funding_txid[0:7]} Funding Txn "
+        alice.log.info(f"@{last_blockheight} {ab_funding_txid[0:7]} Funding Txn "
                        "- Seen in the mempool")
 
         # We mine one block the Alice - Bob channel is opened.
@@ -268,7 +268,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
         block = alice.getblock(last_blockhash)
         last_blockheight = block['height']
 
-        self.log.info(f" @{last_blockheight} {ab_funding_txid[0:7]} Funding Txn - Mined")
+        self.log.info(f"@{last_blockheight} {ab_funding_txid[0:7]} Funding Txn - Mined")
 
         funding_redeemscript = get_funding_redeemscript(alice_seckey.get_pubkey(),
                                                         bob_seckey.get_pubkey())
@@ -456,7 +456,7 @@ class ReplacementCyclingTest(WarnetTestFramework):
         assert_equal(len(alice.getrawmempool()), 0)
         assert_equal(len(bob.getrawmempool()), 0)
 
-        self.log.info(f" @{last_blockheight} {bob_replacement_parent_txid[0:7]} "
+        self.log.info(f"@{last_blockheight} {bob_replacement_parent_txid[0:7]} "
                       f"Replacement Parent Txn - Mined")
 
         # Alice can re-broadcast her HTLC-timeout as the offered output has not been claimed
