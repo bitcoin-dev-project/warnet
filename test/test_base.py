@@ -48,16 +48,7 @@ class TestBase:
             print("\nStopping server")
             self.warcli("stop", False)
         except Exception as e:
-            # Remove the temporary docker network when we quit.
-            # If the warnet server exited prematurely then docker-compose down
-            # likely did not succeed or was never executed.
             print(f"Error stopping server: {e}")
-            print("Attempting to cleanup docker network")
-            try:
-                wn = Warnet.from_network(self.network_name)
-                wn.warnet_down()
-            except Exception as e:
-                print(f"Exception thrown cleaning up server, perhaps network never existed?\n{e}")
         finally:
             self.stop_threads.set()
             self.server.terminate()

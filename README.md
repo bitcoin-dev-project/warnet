@@ -11,7 +11,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 * Data from nodes can be collected and searched including log files and p2p messages.
 * Performance data from containers can be monitored and visualized.
 * Lightning Network nodes can be deployed and operated.
-* Small networks can be deployed locally with Docker Compose, larger networks can be deployed remotely with Kubernetes
+* Networks can be deployed using Kubernetes, e.g. via MiniKube (small network graphs) or a managed cluster for larger network graphs.
 
 ## Documentation
 

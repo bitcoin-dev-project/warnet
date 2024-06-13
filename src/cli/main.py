@@ -1,5 +1,4 @@
 import click
-from cli.debug import debug
 from cli.graph import graph
 from cli.image import image
 from cli.network import network
@@ -14,7 +13,6 @@ def cli():
     pass
 
 
-cli.add_command(debug)
 cli.add_command(graph)
 cli.add_command(image)
 cli.add_command(network)
