@@ -541,6 +541,8 @@ class ReplacementCyclingTest(WarnetTestFramework):
         assert bob_preimage_txid_2 not in alice.getrawmempool()
         assert bob_preimage_txid_2 not in bob.getrawmempool()
 
+        self.log.info(f"@{last_blockheight} Raw_mempool: {alice.getrawmempool()}")
+
     def run_test(self):
         address = "bcrt1p9yfmy5h72durp7zrhlw9lf7jpwjgvwdg0jr0lqmmjtgg83266lqsekaqka"    # noqa
 
