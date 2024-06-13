@@ -242,6 +242,8 @@ class ReplacementCyclingTest(WarnetTestFramework):
         ab_funding_tx = generate_funding_chan(wallet, coin_1, alice_seckey.get_pubkey(),
                                               bob_seckey.get_pubkey())
 
+        self.log.info(f"@{last_blockheight} {ab_funding_tx.hash[0:7]} Funding Txn "
+                      f"- Funded by: [{coin_1['txid'][0:7]} Coin 1]")
         alice.log.info(f"@{last_blockheight} {ab_funding_tx.hash[0:7]} Funding Txn "
                        "- Signed by: Alice & Bob "
                        "- Alice/Bob 2/2 multisig")
@@ -280,6 +282,8 @@ class ReplacementCyclingTest(WarnetTestFramework):
 
         (bob_parent_tx, bob_child_tx) = generate_parent_child_tx(wallet, coin_2, 1)
 
+        self.log.info(f"@{last_blockheight} {bob_parent_tx.hash[0:7]} Parent Txn "
+                      f"- Funded by: [{coin_2['txid'][0:7]} Coin_2]")
         self.log.info(f"@{last_blockheight} {bob_parent_tx.hash[0:7]} Parent Txn - Created by: Bob")
         self.log.info(f"@{last_blockheight} {bob_parent_tx.hash[0:7]} Parent Txn - Signed by: Bob")
         self.log.info(f"@{last_blockheight} {bob_child_tx.hash[0:7]} Child Txn - Created by: Bob")
@@ -410,11 +414,11 @@ class ReplacementCyclingTest(WarnetTestFramework):
         (bob_replacement_parent_tx, bob_child_tx) = generate_parent_child_tx(wallet, coin_2, 10)
 
         self.log.info(f"@{last_blockheight} {bob_replacement_parent_tx.hash[0:7]} "
-                      f"Replacement Parent Txn "
-                      f"- Created by: Bob - Has a higher fee")
+                      f"Replacement Parent Txn - Funded by: [{coin_2['txid'][0:7]} Coin_2]")
         self.log.info(f"@{last_blockheight} {bob_replacement_parent_tx.hash[0:7]} "
-                      f"Replacement Parent Txn "
-                      f"- Signed by: Bob")
+                      f"Replacement Parent Txn - Created by: Bob - Has a higher fee")
+        self.log.info(f"@{last_blockheight} {bob_replacement_parent_tx.hash[0:7]} "
+                      f"Replacement Parent Txn - Signed by: Bob")
         self.log.info(f"@{last_blockheight} {bob_child_tx.hash[0:7]} Child Txn - Created by: Bob")
 
         bob_replacement_parent_txid = bob.sendrawtransaction(
@@ -488,10 +492,12 @@ class ReplacementCyclingTest(WarnetTestFramework):
         bob_preimage_tx_2 = generate_preimage_tx(49.9998 * COIN, 4, alice_seckey, bob_seckey,
                                                  hashlock, ab_commitment_tx, bob_parent_tx_2)
 
+        self.log.info(f"@{last_blockheight} {bob_parent_tx_2.hash[0:7]} "
+                      f"Parent Txn 2 - Funded by: [{coin_3['txid'][0:7]} Coin_3]")
         self.log.info(f"@{last_blockheight} {bob_parent_tx_2.hash[0:7]} Parent Txn 2 "
-                      f"- Created by: Bob - uses Coin_3")
+                      f"- Created by: Bob")
         self.log.info(f"@{last_blockheight} {bob_child_tx_2.hash[0:7]} Child Txn 2 "
-                      f"- Created by: Bob - uses Coin_3")
+                      f"- Created by: Bob")
         self.log.info(f"@{last_blockheight} {bob_preimage_tx_2.hash[0:7]} Preimage Txn 2 "
                       f"- Created by: Bob")
         self.log.info(f"@{last_blockheight} {bob_preimage_tx_2.hash[0:7]} Preimage Txn 2 "
