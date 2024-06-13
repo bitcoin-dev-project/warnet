@@ -46,52 +46,43 @@ def run_anticycle(node: TestNode, logging):
     logging.info(f" - anticycle - Listening for messages on port {port}...")
 
     # txid -> serialized_tx
-    # Cache for full transactions of which
-    # we believe are being replacement cycled.
+    # Cache for full transactions of which we believe are being replacement cycled.
     cycled_tx_cache = {}
     cycled_tx_cache_size = 0
 
     # utxo
-    # The complete set of inputs that are spent
-    # by protected transactions. This ensures
-    # that every cached tx in cycled_tx_cache
-    # can be independently spent, costing the attacker
-    # a full "top block" slot each on inclusion.
+    # The complete set of inputs that are spent by protected transactions.
+    # This ensures that every cached tx in `cycled_tx_cache` can be independently spent, costing the
+    # attacker a full "top block" slot each on inclusion.
     cycled_input_set = set([])
 
     # txid -> serialize_tx
-    # This cache is for everything above "top block"
-    # that we hear about. This cache is required only
-    # because the R (Remove) notification stream doesn't
-    # give full transactions. We need them to compute
-    # top->bottom utxo changes.
+    # This cache is for everything above "top block" that we hear about. This cache is required only
+    # because the R (Remove) notification stream doesn't give full transactions. We need them to
+    # compute top->bottom utxo changes.
     dummy_cache = {}
     dummy_cache_size = 0
 
     # utxo -> int
-    # How many times in this epoch has the specific utxo
-    # gone from next block to non-next block?
+    # How many times in this epoch has the specific utxo gone from next block to non-next block?
     utxo_cycled_count = defaultdict(int)
 
     # utxo -> txid
-    # Assign txids of protected transactions to utxos that
-    # appear to be replacement cycled. The full tx is
-    # fetched from cycled_tx_cache.
+    # Assign txids of protected transactions to utxos that appear to be replacement cycled. The full
+    # tx is fetched from cycled_tx_cache.
     utxo_cache = {}
 
     # Simple anti-DoS max
     tx_cache_max_byte_size = num_MB * 1000 * 1000
 
-    # These are populated by "R" events and cleared in
-    # subsequent "A" events. These are to track
+    # These are populated by "R" events and cleared in subsequent "A" events. These are to track
     # top->bottom transitions
     # utxo -> removed tx's txid
     utxos_being_doublespent = {}
 
     logging.info("Getting Top Block fee")
 
-    # If we can't estimate blocks in a scenario, we just
-    # assume anything we see can be mined.
+    # If we can't estimate blocks in a scenario, we just assume anything we see can be mined.
     # Fix this post-cluster mempool with "next block"
     # chunk feerate checks.
     minrate: float = 0.00001000
@@ -127,8 +118,7 @@ def run_anticycle(node: TestNode, logging):
                     continue
                 # We are allowing "packages" of ancestors.
                 # What we really want is the mempool entry's chunk feerate.
-                # And we actually don't want to track in-mempool utxos, only
-                # confirmed.
+                # And we actually don't want to track in-mempool utxos, only confirmed.
                 tx_rate_btc_kvb = Decimal(entry['fees']['ancestor']) / entry['ancestorsize'] * 1000
                 new_top_block = tx_rate_btc_kvb >= topblock_rate_btc_kvb
                 if new_top_block:
@@ -150,7 +140,6 @@ def run_anticycle(node: TestNode, logging):
                                        for tx_input in raw_tx["vin"]]
                     logging.info(f" - anticycle - prevouts being spent by new tx: "
                                  f"{add_tx_prevouts}")
-
                     logging.info(f" - anticycle - prevouts from removed transactions: "
                                  f"{utxos_being_doublespent}")
 
@@ -219,11 +208,10 @@ def run_anticycle(node: TestNode, logging):
             elif label == "R":
                 logging.info(f" - anticycle - Tx {txid} removed")
                 # This tx is removed, perhaps replaced, next "A" message should be the tx replacing
-                # it(conflict_tx)
+                # it (conflict_tx)
 
-                # If this tx is in the tx_cache, that implies it was top block
-                # we need to see which utxos being non-top block once we see
-                # the next "A"
+                # If this tx is in the tx_cache, that implies it was top block we need to see which
+                # utxos being non-top block once we see the next "A"
                 # N.B. I am not sure at all the next "A" is actually a double-spend, that should be
                 # checked!
                 # I'm going off of functional tests.
