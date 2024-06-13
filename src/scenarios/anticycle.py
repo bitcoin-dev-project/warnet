@@ -33,17 +33,17 @@ def run_anticycle(node: TestNode, logging):
     context = zmq.Context()
 
     # Create a socket of type SUBSCRIBE
-    socket = context.socket(zmq.SUB)
+    zmq_socket = context.socket(zmq.SUB)
 
     # Connect to the publisher's socket
-    port = "28334"  # specify the port you want to listen on
-    socket.connect(f"tcp://warnet-tank-000000-service:{port}")
+    zmq_port = "28334"
+    zmq_socket.connect(f"tcp://warnet-tank-000000-service:{zmq_port}")
 
     # Subscribe to all messages
     # You can specify a prefix filter here to receive specific messages
-    socket.setsockopt_string(zmq.SUBSCRIBE, '')
+    zmq_socket.setsockopt_string(zmq.SUBSCRIBE, '')
 
-    logging.info(f" - anticycle - Listening for messages on port {port}...")
+    logging.info(f" - anticycle - Listening for messages on port {zmq_port}...")
 
     # txid -> serialized_tx
     # Cache for full transactions of which we believe are being replacement cycled.
@@ -96,7 +96,7 @@ def run_anticycle(node: TestNode, logging):
     try:
         while True:
             # Receive a message
-            topic, body, sequence = socket.recv_multipart()
+            topic, body, sequence = zmq_socket.recv_multipart()
             received_seq = struct.unpack('<I', sequence)[-1]
             txid = body[:32].hex()
             label = chr(body[32])
@@ -242,7 +242,7 @@ def run_anticycle(node: TestNode, logging):
         logging.info(" - anticycle - Program interrupted by user")
     finally:
         # Clean up on exit
-        socket.close()
+        zmq_socket.close()
         context.term()
 
 
