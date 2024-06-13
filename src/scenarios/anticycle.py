@@ -73,7 +73,7 @@ def run_anticycle(node: TestNode, logging):
     utxo_cache = {}
 
     # Simple anti-DoS max
-    tx_cache_max_byte_size = num_MB * 1000 * 1000
+    tx_cache_max_byte_size = num_MB * 1_000 * 1_000
 
     # These are populated by "R" events and cleared in subsequent "A" events. These are to track
     # top->bottom transitions
@@ -85,7 +85,7 @@ def run_anticycle(node: TestNode, logging):
     # If we can't estimate blocks in a scenario, we just assume anything we see can be mined.
     # Fix this post-cluster mempool with "next block"
     # chunk feerate checks.
-    minrate: float = 0.00001000
+    minrate: float = 0.000_010_00
 
     # "Top block" is considered next three blocks
     try:
