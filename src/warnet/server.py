@@ -8,7 +8,6 @@ import os
 import pkgutil
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 import tarfile
@@ -165,8 +164,6 @@ class Server:
         # Debug
         self.jsonrpc.register(self.generate_deployment)
         self.jsonrpc.register(self.exec_run)
-        # Server
-        self.jsonrpc.register(self.server_stop)
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
@@ -578,15 +575,6 @@ class Server:
             msg = f"Error generating deployment file: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
-
-    def server_stop(self) -> None:
-        """
-        Stop warnet.
-        """
-        pid = os.getpid()
-        self.logger.info("Gracefully shutting down server...")
-        # in debug mode Flask likes to recieve ctrl+c to shutdown gracefully
-        os.kill(pid, signal.SIGINT)
 
     def logs_grep(self, pattern: str, network: str = "warnet") -> str:
         """

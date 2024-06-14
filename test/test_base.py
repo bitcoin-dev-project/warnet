@@ -15,15 +15,11 @@ class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
         self.tmpdir = Path(mkdtemp(prefix="warnet-test-"))
-
         os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
-
         self.logfilepath = self.tmpdir / "warnet" / "warnet.log"
 
         # Use the same dir name for the warnet network name
-        # but sanitize hyphens which make docker frown :-(
-        self.network_name = self.tmpdir.name.replace("-", "")
-        # also replace underscores which throws off k8s
+        # replacing underscores which throws off k8s
         self.network_name = self.tmpdir.name.replace("_", "")
 
         self.server = None
@@ -44,11 +40,8 @@ class TestBase:
             if self.network:
                 self.warcli("network down")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
-
-            print("\nStopping server")
-            self.warcli("stop", False)
         except Exception as e:
-            print(f"Error stopping server: {e}")
+            print(f"Error bringing network down: {e}")
         finally:
             self.stop_threads.set()
             self.server.terminate()
