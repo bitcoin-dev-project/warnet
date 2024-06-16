@@ -449,6 +449,8 @@ class ReplacementCyclingTest(WarnetTestFramework):
         block = alice.getblock(last_blockhash)
         last_blockheight = block['height']
 
+        self.sync_all()
+
         self.log.info(f"@{last_blockheight} - Mined blocks")
 
         assert_equal(len(alice.getrawmempool()), 0)
