@@ -68,8 +68,7 @@ base.wait_for_predicate(check_invoices)
 print("\nEnsuring channel-level channel policy settings: source")
 payment = json.loads(base.warcli("lncli 0 listpayments"))["payments"][0]
 print(payment)
-assert payment["fee_msat"] == "1002"
-# assert payment["fee_msat"] == "5506"
+assert payment["fee_msat"] == "5506"
 
 print("\nEnsuring circuit breaker tracked payment")
 assert len(get_cb_forwards(1)["forwards"]) == 1
@@ -98,8 +97,7 @@ base.wait_for_predicate(lambda: check_invoices(0) == 1)
 print("\nEnsuring channel-level channel policy settings: target")
 payment = json.loads(base.warcli("lncli 2 listpayments"))["payments"][0]
 print(payment)
-# assert payment["fee_msat"] == "2213"
-assert payment["fee_msat"] == "1001"
+assert payment["fee_msat"] == "2213"
 
 print("\nEngaging simln")
 activity = [{"source": "ln-0", "destination": node2pub, "interval_secs": 1, "amount_msat": 2000}]

@@ -214,15 +214,19 @@ class LNNode:
             short_channel_ids = {chan["short_channel_id"]: chan for chan in cln_channels}.keys()
             channels: list[LNChannel] = []
             for short_channel_id in short_channel_ids:
-                channel_1 = channels[short_channel_id][0]
-                channel_2 = channels[short_channel_id][1]
+                channel_1 = [
+                    chans for chans in cln_channels if chans["short_channel_id"] == short_channel_id
+                ][0]
+                channel_2 = [
+                    chans for chans in cln_channels if chans["short_channel_id"] == short_channel_id
+                ][1]
 
                 channels.append(
                     LNChannel(
                         node1_pub=channel_1["source"],
                         node2_pub=channel_2["source"],
                         capacity_msat=channel_1["amount_msat"],
-                        short_chan_id=channel_1["channel_id"],
+                        short_chan_id=channel_1["short_channel_id"],
                         node1_min_htlc=channel_1["htlc_minimum_msat"],
                         node2_min_htlc=channel_2["htlc_minimum_msat"],
                         node1_max_htlc=channel_1["htlc_maximum_msat"],

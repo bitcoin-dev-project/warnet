@@ -142,8 +142,8 @@ class LNInit(WarnetTestFramework):
             score = 0
             for tank_index, me in enumerate(ln_nodes):
                 you = (tank_index + 1) % len(ln_nodes)
-                my_channels = self.warnet.tanks[me].lnnode.lncli("describegraph")["edges"]
-                your_channels = self.warnet.tanks[you].lnnode.lncli("describegraph")["edges"]
+                my_channels = self.warnet.tanks[me].lnnode.get_graph_channels()
+                your_channels = self.warnet.tanks[you].lnnode.get_graph_channels()
                 match = True
                 for chan_index, my_chan in enumerate(my_channels):
                     your_chan = your_channels[chan_index]
