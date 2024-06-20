@@ -11,9 +11,10 @@ Install [`kubectl`](https://kubernetes.io/docs/setup/) (or equivalent) and
 configure your cluster. This can be done locally with `minikube` or using a
 managed cluster.
 
-### Docker
+#### Docker engine with minikube
 
-Install docker engine and its `compose` plugin for your system: https://docs.docker.com/engine/install/
+If using Minikube to run a smaller-sized local cluster, you will require docker engine.
+To install docker engine and its `compose` plugin for your system, see: https://docs.docker.com/engine/install/
 
 e.g. For Ubuntu:
 
@@ -36,7 +37,7 @@ echo \
 sudo apt-get update
 
 # Install the docker packages and docker compose plugin
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 ```
 
 #### Using Docker

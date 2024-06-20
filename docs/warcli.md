@@ -79,21 +79,10 @@ options:
 Stop warnet.
 
 
-## Debug
-
-### `warcli debug generate-compose`
-Generate the docker-compose file for a given \<graph_file> and [network] and return it.
-
-options:
-| name       | type   | required   | default   |
-|------------|--------|------------|-----------|
-| graph_file | String | yes        |           |
-| network    | String |            | "warnet"  |
-
 ## Graph
 
 ### `warcli graph create`
-Create a cycle graph with \<n> nodes, and additionally include 7 extra random outbounds per node.
+Create a cycle graph with \<number> nodes, and include 7 extra random outbounds per node.
     Returns XML file as string with or without --outfile option
 
 options:
@@ -101,7 +90,7 @@ options:
 |--------------|--------|------------|-----------|
 | number       | Int    | yes        |           |
 | outfile      | Path   |            |           |
-| version      | String |            | "26.0"    |
+| version      | String |            | "27.0"    |
 | bitcoin_conf | Path   |            |           |
 | random       | Bool   |            | False     |
 
@@ -112,10 +101,12 @@ Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
     Returns XML file as string with or without --outfile option.
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| infile  | Path   | yes        |           |
-| outfile | Path   |            |           |
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| infile   | Path   | yes        |           |
+| outfile  | Path   |            |           |
+| cb       | String |            |           |
+| ln_image | String |            |           |
 
 ### `warcli graph validate`
 Validate a \<graph file> against the schema.
@@ -161,12 +152,17 @@ options:
 | network | String |            | "warnet"  |
 
 ### `warcli network export`
-Export all [network] data for sim-ln to subdirectory
+Export all [network] data for a "simln" service running in a container
+    on the network. Optionally add JSON string [activity] to simln config.
+    Optionally provide a list of tank indexes to [exclude].
+    Returns True on success.
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| network | String |            | "warnet"  |
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| network  | String |            | "warnet"  |
+| activity | String |            |           |
+| exclude  | String |            | "[]"      |
 
 ### `warcli network info`
 Get info about a warnet named [network]

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import networkx
 import yaml
-from backends import ComposeBackend, KubernetesBackend
+from backend.kubernetes_backend import KubernetesBackend
 from templates import TEMPLATES
 from warnet.services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
 from warnet.tank import Tank
@@ -20,14 +20,10 @@ logger = logging.getLogger("warnet")
 
 
 class Warnet:
-    def __init__(self, config_dir, backend, network_name: str):
+    def __init__(self, config_dir, network_name: str):
         self.config_dir: Path = config_dir
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.container_interface = (
-            ComposeBackend(config_dir, network_name)
-            if backend == "compose"
-            else KubernetesBackend(config_dir, network_name)
-        )
+        self.container_interface = KubernetesBackend(config_dir, network_name)
         self.bitcoin_network: str = "regtest"
         self.network_name: str = "warnet"
         self.subnet: str = "100.0.0.0/8"
@@ -35,7 +31,6 @@ class Warnet:
         self.graph_name = "graph.graphml"
         self.tanks: list[Tank] = []
         self.deployment_file: Path | None = None
-        self.backend = backend
         self.graph_schema = load_schema()
         self.services = []
 
@@ -73,7 +68,13 @@ class Warnet:
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
         for tank in self.tanks:
-            tank_data = [tank.index, tank.version if tank.version else tank.image, tank.ipv4, tank.bitcoin_config, tank.netem]
+            tank_data = [
+                tank.index,
+                tank.version if tank.version else tank.image,
+                tank.ipv4,
+                tank.bitcoin_config,
+                tank.netem,
+            ]
             if has_ln:
                 tank_data.extend(
                     [
@@ -98,16 +99,17 @@ class Warnet:
         base64_graph: str,
         config_dir: Path,
         network: str = "warnet",
-        backend: str = "compose",
     ):
-        self = cls(config_dir, backend, network)
+        self = cls(config_dir, network)
         destination = self.config_dir / self.graph_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         graph_file = base64.b64decode(base64_graph)
         with open(destination, "wb") as f:
             f.write(graph_file)
         self.network_name = network
-        self.graph = networkx.parse_graphml(graph_file.decode("utf-8"), node_type=int, force_multigraph=True)
+        self.graph = networkx.parse_graphml(
+            graph_file.decode("utf-8"), node_type=int, force_multigraph=True
+        )
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
         if "services" in self.graph.graph:
@@ -116,8 +118,8 @@ class Warnet:
         return self
 
     @classmethod
-    def from_graph(cls, graph, backend="compose", network="warnet"):
-        self = cls(Path(), backend, network)
+    def from_graph(cls, graph, network="warnet"):
+        self = cls(Path(), network)
         self.graph = graph
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
@@ -127,12 +129,14 @@ class Warnet:
         return self
 
     @classmethod
-    def from_network(cls, network_name, backend="compose"):
+    def from_network(cls, network_name):
         config_dir = gen_config_dir(network_name)
-        self = cls(config_dir, backend, network_name)
+        self = cls(config_dir, network_name)
         self.network_name = network_name
         # Get network graph edges from graph file (required for network restarts)
-        self.graph = networkx.read_graphml(Path(self.config_dir / self.graph_name), node_type=int, force_multigraph=True)
+        self.graph = networkx.read_graphml(
+            Path(self.config_dir / self.graph_name), node_type=int, force_multigraph=True
+        )
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
         if "services" in self.graph.graph:
@@ -207,7 +211,7 @@ class Warnet:
                 """
                 )
         logger.info(f"Wrote file: {dst}")
-        
+
     def write_addrman_observer_config(self):
         src = TEMPLATES / AO_CONF_NAME
         dst = self.config_dir / AO_CONF_NAME

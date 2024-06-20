@@ -1,6 +1,5 @@
 import atexit
 import os
-import sys
 import threading
 from pathlib import Path
 from subprocess import PIPE, STDOUT, Popen, run
@@ -16,15 +15,11 @@ class TestBase:
     def __init__(self):
         # Warnet server stdout gets logged here
         self.tmpdir = Path(mkdtemp(prefix="warnet-test-"))
-
         os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
-
         self.logfilepath = self.tmpdir / "warnet" / "warnet.log"
 
         # Use the same dir name for the warnet network name
-        # but sanitize hyphens which make docker frown :-(
-        self.network_name = self.tmpdir.name.replace("-", "")
-        # also replace underscores which throws off k8s
+        # replacing underscores which throws off k8s
         self.network_name = self.tmpdir.name.replace("_", "")
 
         self.server = None
@@ -33,16 +28,6 @@ class TestBase:
         self.network = True
 
         atexit.register(self.cleanup)
-
-        # Default backend
-        self.backend = "compose"
-        # CLI arg overrides env
-        if len(sys.argv) > 1:
-            self.backend = sys.argv[1]
-
-        if self.backend not in ["compose", "k8s"]:
-            print(f"Invalid backend {self.backend}")
-            sys.exit(1)
 
         print("\nWarnet test base started")
 
@@ -55,20 +40,8 @@ class TestBase:
             if self.network:
                 self.warcli("network down")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
-
-            print("\nStopping server")
-            self.warcli("stop", False)
         except Exception as e:
-            # Remove the temporary docker network when we quit.
-            # If the warnet server exited prematurely then docker-compose down
-            # likely did not succeed or was never executed.
-            print(f"Error stopping server: {e}")
-            print("Attempting to cleanup docker network")
-            try:
-                wn = Warnet.from_network(self.network_name)
-                wn.warnet_down()
-            except Exception as e:
-                print(f"Exception thrown cleaning up server, perhaps network never existed?\n{e}")
+            print(f"Error bringing network down: {e}")
         finally:
             self.stop_threads.set()
             self.server.terminate()
@@ -111,26 +84,15 @@ class TestBase:
         # TODO: check for conflicting warnet process
         #       maybe also ensure that no conflicting docker networks exist
 
-        if self.backend == "k8s":
-            # For kubernetes we assume the server is started outside test base
-            # but we can still read its log output
-            self.server = Popen(
-                ["kubectl", "logs", "-f", "rpc-0"],
-                stdout=PIPE,
-                stderr=STDOUT,
-                bufsize=1,
-                universal_newlines=True,
-            )
-        else:
-            print(f"\nStarting Warnet server, logging to: {self.logfilepath}")
-
-            self.server = Popen(
-                ["warnet", "--backend", self.backend],
-                stdout=PIPE,
-                stderr=STDOUT,
-                bufsize=1,
-                universal_newlines=True,
-            )
+        # For kubernetes we assume the server is started outside test base
+        # but we can still read its log output
+        self.server = Popen(
+            ["kubectl", "logs", "-f", "rpc-0"],
+            stdout=PIPE,
+            stderr=STDOUT,
+            bufsize=1,
+            universal_newlines=True,
+        )
 
         # Create a thread to read the output
         self.server_thread = threading.Thread(

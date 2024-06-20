@@ -51,7 +51,9 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
         json_graph = json.loads(f.read())
 
     # Start with a connected L1 graph with the right amount of tanks
-    graph = create_cycle_graph(len(json_graph["nodes"]), version=DEFAULT_TAG, bitcoin_conf=None, random_version=False)
+    graph = create_cycle_graph(
+        len(json_graph["nodes"]), version=DEFAULT_TAG, bitcoin_conf=None, random_version=False
+    )
 
     # Initialize all the tanks with basic LN node configurations
     for index, n in enumerate(graph.nodes()):
@@ -74,7 +76,7 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
 
     # Insert LN channels
     # Ensure channels are in order by channel ID like lnd describegraph output
-    sorted_edges = sorted(json_graph["edges"], key=lambda chan: int(chan['channel_id']))
+    sorted_edges = sorted(json_graph["edges"], key=lambda chan: int(chan["channel_id"]))
     for ln_index, channel in enumerate(sorted_edges):
         src = ln_ids[channel["node1_pub"]]
         tgt = ln_ids[channel["node2_pub"]]
@@ -99,10 +101,11 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
         graph.add_edge(
             src,
             tgt,
-            key = ln_index+L1_edges,
-            channel_open = openp,
-            source_policy = srcp,
-            target_policy = tgtp)
+            key=ln_index + L1_edges,
+            channel_open=openp,
+            source_policy=srcp,
+            target_policy=tgtp,
+        )
 
     if outfile:
         file_path = Path(outfile)

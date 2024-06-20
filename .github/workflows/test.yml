@@ -27,7 +27,7 @@ jobs:
         with:
           file: src/templates/rpc/Dockerfile_rpc
           context: .
-          tags: local/warnet-rpc:ci
+          tags: warnet/dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
           outputs: type=docker,dest=/tmp/warnet.tar
@@ -42,23 +42,59 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        backend: [compose, k8s]
         test: [scenarios_test.py, rpc_test.py, graph_test.py, ln_test.py, dag_connection_test.py]
     steps:
       - uses: actions/checkout@v4
-      - if: matrix.backend == 'compose'
-        uses: ./.github/actions/compose
-      - if: matrix.backend == 'k8s'
-        uses: ./.github/actions/k8s
-      - if: matrix.backend == 'k8s'
-        run: |
+      - uses: hynek/setup-cached-uv@v1
+      - uses: medyagh/setup-minikube@master
+        with:
+          mount-path: ${{ github.workspace }}:/mnt/src
+      - uses: actions/download-artifact@v4
+        with:
+          name: warnet
+          path: /tmp
+      - run: |
+          echo loading the image directly into minikube docker
+          eval $(minikube -p minikube docker-env)
+          docker load --input /tmp/warnet.tar
+          docker image ls -a
+
+          echo Installing warnet python package for cli
+          uv venv
+          uv pip install -e .
+
+          echo "Contents of warnet-rpc-statefulset-dev.yaml being used:"
+          cat src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+
+          echo Setting up k8s
+          kubectl apply -f src/templates/rpc/namespace.yaml
+          kubectl apply -f src/templates/rpc/rbac-config.yaml
+          kubectl apply -f src/templates/rpc/warnet-rpc-service.yaml
+          kubectl apply -f src/templates/rpc/warnet-rpc-statefulset-dev.yaml
+          kubectl config set-context --current --namespace=warnet
+
+          echo sleeping for 30s to give k8s time to boot
+          sleep 30
+          kubectl describe pod rpc-0
+          kubectl logs rpc-0
+
+          echo Waiting for rpc-0 to come online
+          until kubectl get pod rpc-0 --namespace=warnet; do
+             echo "Waiting for server to find pod rpc-0..."
+             sleep 4
+          done
+          kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+        shell: bash
+      - run: |
           kubectl port-forward svc/rpc 9276:9276 &
       - name: Run tests
-        run: ./test/${{matrix.test}} ${{matrix.backend}}
-  build-test:
-    needs: [build-image]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/compose
-      - run: ./test/build_branch_test.py compose
+        run: |
+          source .venv/bin/activate
+          ./test/${{matrix.test}}
+  # build-test:
+  #   needs: [build-image]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/compose
+  #     - run: ./test/build_branch_test.py compose

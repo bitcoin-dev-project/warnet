@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
       - name: warnet-rpc
-        imagePullPolicy: Always
-        image: bitcoindevproject/warnet-rpc:dev
+        imagePullPolicy: Never
+        image: warnet/dev
         ports:
         - containerPort: 9276
         volumeMounts:

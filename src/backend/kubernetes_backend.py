@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import cast
 
 import yaml
-from backends import BackendInterface, ServiceType
 from cli.image import build_image
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiValueError
@@ -17,7 +16,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.dynamic.exceptions import NotFoundError, ResourceNotFoundError
 from kubernetes.stream import stream
-from warnet.services import services
+from warnet.services import ServiceType, services
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import parse_raw_messages
@@ -37,9 +36,8 @@ LND_MOUNT_PATH = "/root/.lnd"
 logger = logging.getLogger("KubernetesBackend")
 
 
-class KubernetesBackend(BackendInterface):
+class KubernetesBackend:
     def __init__(self, config_dir: Path, network_name: str, logs_pod="fluentd") -> None:
-        super().__init__(config_dir)
         # assumes the warnet rpc server is always
         # running inside a k8s cluster as a statefulset
         config.load_incluster_config()
@@ -61,7 +59,7 @@ class KubernetesBackend(BackendInterface):
 
     def down(self, warnet) -> bool:
         """
-        Bring an exsiting network down.
+        Bring an existing network down.
             e.g. `k delete -f warnet-tanks.yaml`
         """
 
@@ -83,15 +81,14 @@ class KubernetesBackend(BackendInterface):
         self.remove_prometheus_service_monitors(warnet.tanks)
 
         for service_name in warnet.services:
-            if "k8s" in services[service_name]["backends"]:
-                self.client.delete_namespaced_pod(
-                    self.get_service_pod_name(services[service_name]["container_name_suffix"]),
-                    self.namespace,
-                )
-                self.client.delete_namespaced_service(
-                    self.get_service_service_name(services[service_name]["container_name_suffix"]),
-                    self.namespace,
-                )
+            self.client.delete_namespaced_pod(
+                self.get_service_pod_name(services[service_name]["container_name_suffix"]),
+                self.namespace,
+            )
+            self.client.delete_namespaced_service(
+                self.get_service_service_name(services[service_name]["container_name_suffix"]),
+                self.namespace,
+            )
 
         return True
 
@@ -727,8 +724,7 @@ class KubernetesBackend(BackendInterface):
             self.apply_prometheus_service_monitors(warnet.tanks)
 
         for service_name in warnet.services:
-            if "k8s" in services[service_name]["backends"]:
-                self.service_from_json(services[service_name])
+            self.service_from_json(services[service_name])
 
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,

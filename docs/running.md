@@ -43,15 +43,15 @@ First make sure you have `helm` installed, then simply run the following script:
 ./src/templates/k8s/install_logging.sh
 ```
 
-To forward port to view Grafana dashbaord:
+To forward port to view Grafana dashboard:
 
 ```bash
 ./src/templates/k8s/connect_logging.sh
 ```
 
-## Compose
+## Kubernetes (e.g. minikube)
 
-To start the server in the foreground simply run:
+To start the server run:
 
 ```bash
 warnet

@@ -8,7 +8,6 @@ import os
 import pkgutil
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 import tarfile
@@ -20,10 +19,10 @@ from datetime import datetime
 from pathlib import Path
 
 import scenarios
-from backends import ServiceType
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
+from warnet.services import ServiceType
 from warnet.utils import gen_config_dir
 from warnet.warnet import Warnet
 
@@ -33,8 +32,7 @@ LOGGING_CONFIG_PATH = Path("src/logging_config/config.json")
 
 
 class Server:
-    def __init__(self, backend):
-        self.backend = backend
+    def __init__(self):
         system = os.name
         if system == "nt" or platform.system() == "Windows":
             self.basedir = os.path.join(os.path.expanduser("~"), "warnet")
@@ -166,8 +164,6 @@ class Server:
         # Debug
         self.jsonrpc.register(self.generate_deployment)
         self.jsonrpc.register(self.exec_run)
-        # Server
-        self.jsonrpc.register(self.server_stop)
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
@@ -179,7 +175,7 @@ class Server:
         """
         if network in self.warnets:
             return self.warnets[network]
-        wn = Warnet.from_network(network, self.backend)
+        wn = Warnet.from_network(network)
         if isinstance(wn, Warnet):
             self.warnets[network] = wn
             return wn
@@ -215,7 +211,7 @@ class Server:
         """
         Fetch the Bitcoin Core debug log from <node>
         """
-        wn = Warnet.from_network(network, self.backend)
+        wn = Warnet.from_network(network)
         try:
             return wn.container_interface.get_bitcoin_debug_log(wn.tanks[node].index)
         except Exception as e:
@@ -288,7 +284,7 @@ class Server:
             # tank LN nodes add their credentials to tar archive
             wn.export(config, tar_file, exclude=exclude)
             # write config file
-            config_bytes = json.dumps(config).encode('utf-8')
+            config_bytes = json.dumps(config).encode("utf-8")
             config_stream = io.BytesIO(config_bytes)
             tarinfo = tarfile.TarInfo(name="sim.json")
             tarinfo.size = len(config_bytes)
@@ -300,16 +296,8 @@ class Server:
             tar_buffer.seek(0)
             output.write(tar_buffer.read())
 
-        if self.backend == "compose":
-            # Extract the archive into a subdirectory that is already
-            # shared with the simln container as a volume
-            subprocess.run(["tar", "-xf", source_file, "-C", wn.config_dir / 'simln'])
-            # Force quick restart of the container instead of waiting
-            # for the exponential backoff to come around
-            wn.container_interface.restart_service_container("simln")
-        if self.backend == "k8s":
-            # Copy the archive to the "emptydir" volume in the simln pod
-            wn.container_interface.write_service_config(source_file, "simln", "/simln/")
+        # Copy the archive to the "emptydir" volume in the simln pod
+        wn.container_interface.write_service_config(source_file, "simln", "/simln/")
         return True
 
     def scenarios_available(self) -> list[tuple]:
@@ -344,11 +332,7 @@ class Server:
             raise ServerError(f"Scenario not found at {scenario_path}.")
 
         try:
-            run_cmd = (
-                [sys.executable, scenario_path]
-                + additional_args
-                + [f"--network={network}", f"--backend={self.backend}"]
-            )
+            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(
@@ -393,11 +377,7 @@ class Server:
             raise ServerError(f"Scenario {scenario} not found at {scenario_path}.")
 
         try:
-            run_cmd = (
-                [sys.executable, scenario_path]
-                + additional_args
-                + [f"--network={network}", f"--backend={self.backend}"]
-            )
+            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(
@@ -457,7 +437,6 @@ class Server:
         return running
 
     def network_up(self, network: str = "warnet") -> str:
-
         def thread_start(server: Server, network):
             try:
                 wn = server.get_warnet(network)
@@ -512,7 +491,9 @@ class Server:
 
         try:
             self.warnets[network] = Warnet.from_graph_file(
-                graph_file, config_dir, network, self.backend
+                graph_file,
+                config_dir,
+                network,
             )
             t = threading.Thread(target=lambda: thread_start(self, network))
             t.daemon = True
@@ -595,15 +576,6 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def server_stop(self) -> None:
-        """
-        Stop warnet.
-        """
-        pid = os.getpid()
-        self.logger.info("Gracefully shutting down server...")
-        # in debug mode Flask likes to recieve ctrl+c to shutdown gracefully
-        os.kill(pid, signal.SIGINT)
-
     def logs_grep(self, pattern: str, network: str = "warnet") -> str:
         """
         Grep the logs from the fluentd container for a regex pattern
@@ -628,25 +600,11 @@ class Server:
 def run_server():
     parser = argparse.ArgumentParser(description="Run the server")
     parser.add_argument(
-        "--backend",
-        type=str,
-        default="compose",
-        choices=["compose", "k8s"],
-        help="Specify the backend to use",
-    )
-    parser.add_argument(
         "--dev", action="store_true", help="Run in development mode with debug enabled"
     )
-
     args = parser.parse_args()
-
-    if args.backend not in ["compose", "k8s"]:
-        print(f"Invalid backend {args.backend}")
-        sys.exit(1)
-
     debug_mode = args.dev
-    server = Server(args.backend)
-
+    server = Server()
     server.app.run(host="0.0.0.0", port=WARNET_SERVER_PORT, debug=debug_mode)
 
 
