@@ -192,6 +192,9 @@ class Warnet:
         if "prometheus" in self.services:
             self.write_prometheus_config()
 
+    def cp_file(self, container_name: str, file_path: str):
+        return self.container_interface.get_file(container_name, file_path)
+
     def write_fork_observer_config(self):
         src = TEMPLATES / FO_CONF_NAME
         dst = self.config_dir / FO_CONF_NAME
