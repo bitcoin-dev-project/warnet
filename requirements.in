@@ -12,3 +12,4 @@ requests<2.30
 rich
 tabulate
 PyYAML
+pyzmq
