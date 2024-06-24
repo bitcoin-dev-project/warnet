@@ -337,8 +337,15 @@ class WarnetTestFramework(BitcoinTestFramework):
             try:  # we encounter a regular ip address
                 ip_addr = str(ipaddress.ip_address(peer['addr'].split(':')[0]))
                 return ip_addr
-            except ValueError:  # or we encounter a service name
-                tank_index = int(peer['addr'].split('-')[2])  # NETWORK-tank-INDEX-service
+            except ValueError as err:  # or we encounter a service name
+                try:
+                    # NETWORK-tank-TANK_INDEX-service
+                    # NETWORK-test-TEST-tank-TANK_INDEX-service
+                    tank_index = int(peer['addr'].split('-')[-2])
+                except (ValueError, IndexError) as inner_err:
+                    raise ValueError("could not derive tank index from service name: {} {}"
+                                     .format(peer['addr'], inner_err)) from err
+
                 ip_addr = self.warnet.tanks[tank_index].get_ip_addr()
                 return ip_addr
 
