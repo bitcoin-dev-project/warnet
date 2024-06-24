@@ -6,7 +6,7 @@ from pathlib import Path
 
 from test_base import TestBase
 
-graph_file_path = Path(os.path.dirname(__file__)) / "data" / "eight_unconnected.graphml"
+graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected.graphml"
 
 base = TestBase()
 

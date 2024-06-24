@@ -58,6 +58,12 @@ class ConnectDag(WarnetTestFramework):
         self.connect_nodes(5, 4)
         self.connect_nodes(5, 6)
         self.connect_nodes(6, 7)
+
+        # Nodes 8 & 9 shall come pre-connected. Attempt to connect them anyway to test the handling
+        # of dns node addresses
+        self.connect_nodes(8, 9)
+        self.connect_nodes(9, 8)
+
         self.sync_all()
 
         zero_peers = self.nodes[0].getpeerinfo()
