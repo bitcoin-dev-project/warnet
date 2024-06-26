@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+from enum import Enum, auto, unique
 from time import sleep
 
 from warnet.test_framework_bridge import WarnetTestFramework
@@ -10,10 +11,16 @@ def cli_help():
     return "Connect a complete DAG from a set of unconnected nodes"
 
 
+@unique
+class ConnectionType(Enum):
+    IP = auto()
+    DNS = auto()
+
+
 class ConnectDag(WarnetTestFramework):
     def set_test_params(self):
         # This is just a minimum
-        self.num_nodes = 8
+        self.num_nodes = 10
 
     def add_options(self, parser):
         parser.add_argument(
@@ -74,49 +81,49 @@ class ConnectDag(WarnetTestFramework):
         five_peers = self.nodes[5].getpeerinfo()
         six_peers = self.nodes[6].getpeerinfo()
         seven_peers = self.nodes[7].getpeerinfo()
+        eight_peers = self.nodes[8].getpeerinfo()
+        nine_peers = self.nodes[9].getpeerinfo()
 
         for tank in self.warnet.tanks:
             self.log.info(f"Tank {tank.index}: {tank.warnet.tanks[tank.index].get_dns_addr()} pod:"
                           f" {tank.warnet.tanks[tank.index].get_ip_addr()}")
 
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[2].get_dns_addr() for d in
-                   zero_peers), f"Could not find {self.options.network_name}-tank-000002-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[2].get_dns_addr() for d in
-                   one_peers), f"Could not find {self.options.network_name}-tank-000002-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[3].get_dns_addr() for d in
-                   one_peers), f"Could not find {self.options.network_name}-tank-000003-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[0].get_ip_addr() for d in
-                   two_peers), f"Could not find Tank 0's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[1].get_ip_addr() for d in
-                   two_peers), f"Could not find Tank 1's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[3].get_dns_addr() for d in
-                   two_peers), f"Could not find {self.options.network_name}-tank-000003-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[4].get_dns_addr() for d in
-                   two_peers), f"Could not find {self.options.network_name}-tank-000004-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[1].get_ip_addr() for d in
-                   three_peers), f"Could not find Tank 1's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[2].get_ip_addr() for d in
-                   three_peers), f"Could not find Tank 2's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[5].get_dns_addr() for d in
-                   three_peers), f"Could not find {self.options.network_name}-tank-000005-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[2].get_ip_addr() for d in
-                   four_peers), f"Could not find Tank 2's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[5].get_ip_addr() for d in
-                   four_peers), f"Could not find Tank 5's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[3].get_ip_addr() for d in
-                   five_peers), f"Could not find Tank 3's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[4].get_dns_addr() for d in
-                   five_peers), f"Could not find {self.options.network_name}-tank-000004-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[6].get_dns_addr() for d in
-                   five_peers), f"Could not find {self.options.network_name}-tank-000006-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[5].get_ip_addr() for d in
-                   six_peers), f"Could not find Tank 5's ip addr"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[7].get_dns_addr() for d in
-                   six_peers), f"Could not find {self.options.network_name}-tank-000007-service"
-        assert any(d.get("addr").split(":")[0] == self.warnet.tanks[6].get_ip_addr() for d in
-                   seven_peers), f"Could not find Tank 6's ip addr"
+        self.assert_connection(zero_peers, 2, ConnectionType.DNS)
+        self.assert_connection(one_peers, 2, ConnectionType.DNS)
+        self.assert_connection(one_peers, 3, ConnectionType.DNS)
+        self.assert_connection(two_peers, 0, ConnectionType.IP)
+        self.assert_connection(two_peers, 1, ConnectionType.IP)
+        self.assert_connection(two_peers, 3, ConnectionType.DNS)
+        self.assert_connection(two_peers, 4, ConnectionType.DNS)
+        self.assert_connection(three_peers, 1, ConnectionType.IP)
+        self.assert_connection(three_peers, 2, ConnectionType.IP)
+        self.assert_connection(three_peers, 5, ConnectionType.DNS)
+        self.assert_connection(four_peers, 2, ConnectionType.IP)
+        self.assert_connection(four_peers, 5, ConnectionType.IP)
+        self.assert_connection(five_peers, 3, ConnectionType.IP)
+        self.assert_connection(five_peers, 4, ConnectionType.DNS)
+        self.assert_connection(five_peers, 6, ConnectionType.DNS)
+        self.assert_connection(six_peers, 5, ConnectionType.IP)
+        self.assert_connection(six_peers, 7, ConnectionType.DNS)
+        self.assert_connection(seven_peers, 6, ConnectionType.IP)
+        # Check the pre-connected nodes
+        self.assert_connection(eight_peers, 9, ConnectionType.DNS)
+        self.assert_connection(nine_peers, 8, ConnectionType.IP)
 
         self.log.info(f"Successfully ran the {os.path.basename(__file__)} scenario.")
+
+    def assert_connection(self, connector, connectee_index, connection_type: ConnectionType):
+        if connection_type == ConnectionType.DNS:
+            assert any(d.get("addr") ==
+                       self.warnet.tanks[connectee_index].get_dns_addr() for d in connector), \
+                (f"Could not find {self.options.network_name}-"
+                 f"tank-00000{connectee_index}-service")
+        elif connection_type == ConnectionType.IP:
+            assert any(d.get("addr").split(":")[0] ==
+                       self.warnet.tanks[connectee_index].get_ip_addr() for d in connector), \
+                f"Could not find Tank {connectee_index}'s ip addr"
+        else:
+            raise ValueError("ConnectionType must be of type DNS or IP")
 
 
 if __name__ == "__main__":
