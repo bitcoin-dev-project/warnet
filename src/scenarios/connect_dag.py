@@ -116,8 +116,7 @@ class ConnectDag(WarnetTestFramework):
         if connection_type == ConnectionType.DNS:
             assert any(d.get("addr") ==
                        self.warnet.tanks[connectee_index].get_dns_addr() for d in connector), \
-                (f"Could not find {self.options.network_name}-"
-                 f"tank-00000{connectee_index}-service")
+                f"Could not find {self.options.network_name}-tank-00000{connectee_index}-service"
         elif connection_type == ConnectionType.IP:
             assert any(d.get("addr").split(":")[0] ==
                        self.warnet.tanks[connectee_index].get_ip_addr() for d in connector), \
