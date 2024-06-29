@@ -16,7 +16,7 @@ base.wait_for_all_tanks_status(target="running")
 base.wait_for_all_edges()
 
 # Start scenario
-base.warcli("scenarios run connect_dag")
+base.warcli("scenarios run-file test/framework_tests/connect_dag.py")
 
 counter = 0
 seconds = 180
