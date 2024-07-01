@@ -262,6 +262,12 @@ class KubernetesBackend:
         self.log.debug(f"Running lncli {cmd=:} on {tank.index=:}")
         return self.exec_run(tank.index, ServiceType.LIGHTNING, cmd)
 
+    def ln_pub_key(self, tank) -> str:
+        if tank.lnnode is None:
+            raise Exception("No LN node configured for tank")
+        self.log.debug(f"Getting pub key for tank {tank.index}")
+        return tank.lnnode.get_pub_key()
+
     def get_bitcoin_cli(self, tank: Tank, method: str, params=None):
         if params:
             cmd = f"bitcoin-cli -regtest -rpcuser={tank.rpc_user} -rpcport={tank.rpc_port} -rpcpassword={tank.rpc_password} {method} {' '.join(map(str, params))}"
@@ -420,9 +426,7 @@ class KubernetesBackend:
         logging_crd_name = "servicemonitors.monitoring.coreos.com"
         api = client.ApiextensionsV1Api()
         crds = api.list_custom_resource_definition()
-        if any(crd.metadata.name == logging_crd_name for crd in crds.items):
-            return True
-        return False
+        return bool(any(crd.metadata.name == logging_crd_name for crd in crds.items))
 
     def apply_prometheus_service_monitors(self, tanks):
         for tank in tanks:
@@ -475,6 +479,11 @@ class KubernetesBackend:
         lightning_dns = self.get_lnnode_hostname(tank.index)
         args = tank.lnnode.get_conf(lightning_dns, bitcoind_rpc_host)
         self.log.debug(f"Creating lightning container for tank {tank.index} using {args=:}")
+        lightning_ready_probe = ""
+        if tank.lnnode.impl == "lnd":
+            lightning_ready_probe = "lncli --network=regtest getinfo"
+        elif tank.lnnode.impl == "cln":
+            lightning_ready_probe = "lightning-cli --network=regtest getinfo"
         lightning_container = client.V1Container(
             name=LN_CONTAINER_NAME,
             image=tank.lnnode.image,
@@ -485,12 +494,10 @@ class KubernetesBackend:
             readiness_probe=client.V1Probe(
                 failure_threshold=1,
                 success_threshold=3,
-                initial_delay_seconds=1,
+                initial_delay_seconds=10,
                 period_seconds=2,
                 timeout_seconds=2,
-                _exec=client.V1ExecAction(
-                    command=["/bin/sh", "-c", "lncli --network=regtest getinfo"]
-                ),
+                _exec=client.V1ExecAction(command=["/bin/sh", "-c", lightning_ready_probe]),
             ),
             security_context=client.V1SecurityContext(
                 privileged=True,
@@ -571,7 +578,9 @@ class KubernetesBackend:
     def get_tank_ip_addr(self, index: int) -> str | None:
         service_name = self.get_service_name(index, ServiceType.BITCOIN)
         try:
-            endpoints = self.client.read_namespaced_endpoints(name=service_name, namespace=self.namespace)
+            endpoints = self.client.read_namespaced_endpoints(
+                name=service_name, namespace=self.namespace
+            )
         except ApiValueError as e:
             self.log.info(f"ip addr request for {service_name} raised {str(e)}")
             return None
