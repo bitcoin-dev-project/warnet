@@ -426,9 +426,7 @@ class KubernetesBackend:
         logging_crd_name = "servicemonitors.monitoring.coreos.com"
         api = client.ApiextensionsV1Api()
         crds = api.list_custom_resource_definition()
-        if any(crd.metadata.name == logging_crd_name for crd in crds.items):
-            return True
-        return False
+        return bool(any(crd.metadata.name == logging_crd_name for crd in crds.items))
 
     def apply_prometheus_service_monitors(self, tanks):
         for tank in tanks:
@@ -580,7 +578,9 @@ class KubernetesBackend:
     def get_tank_ip_addr(self, index: int) -> str | None:
         service_name = self.get_service_name(index, ServiceType.BITCOIN)
         try:
-            endpoints = self.client.read_namespaced_endpoints(name=service_name, namespace=self.namespace)
+            endpoints = self.client.read_namespaced_endpoints(
+                name=service_name, namespace=self.namespace
+            )
         except ApiValueError as e:
             self.log.info(f"ip addr request for {service_name} raised {str(e)}")
             return None

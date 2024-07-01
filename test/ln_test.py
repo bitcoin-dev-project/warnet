@@ -27,7 +27,10 @@ base.wait_for_all_edges()
 
 print("\nRunning LN Init scenario")
 base.warcli("rpc 0 getblockcount")
-base.warcli("scenarios run ln_init")
+return_code = base.warcli("scenarios run ln_init")
+print("the return code is")
+print(return_code)
+
 base.wait_for_all_scenarios()
 
 
@@ -101,7 +104,7 @@ assert payment["fee_msat"] == "2213"
 
 print("\nEngaging simln")
 activity = [{"source": "ln-0", "destination": node2pub, "interval_secs": 1, "amount_msat": 2000}]
-base.warcli(f"network export --exclude=[1] --activity={json.dumps(activity).replace(' ', '')}")
+base.warcli(f"network export --exclude=[1,3] --activity={json.dumps(activity).replace(' ', '')}")
 base.wait_for_predicate(lambda: check_invoices(2) > 1)
 assert check_invoices(0) == 1
 assert check_invoices(1) == 0

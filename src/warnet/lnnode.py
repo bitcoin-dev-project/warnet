@@ -5,6 +5,7 @@ from backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
+from .lnchannel import LNChannel
 from .status import RunningStatus
 
 LND_CONFIG_BASE = " ".join(
@@ -173,36 +174,42 @@ class LNNode:
     def get_graph_channels(self) -> list[dict]:
         if self.impl == "lnd":
             edges = self.lncli("describegraph")["edges"]
+            print("the edges are")
+            print(edges)
             return [
                 LNChannel(
                     node1_pub=edge["node1_pub"],
                     node2_pub=edge["node2_pub"],
-                    capacity_msat=edge["capacity"],
+                    capacity_msat=(int(edge["capacity"]) * 1000),
                     short_chan_id=lnd_to_cl_scid(edge["channel_id"]),
-                    node1_min_htlc=edge["node1_policy"]["min_htlc"] if edge["node1_policy"] else 0,
-                    node2_min_htlc=edge["node2_policy"]["min_htlc"] if edge["node2_policy"] else 0,
-                    node1_max_htlc=edge["node1_policy"]["max_htlc_msat"]
+                    node1_min_htlc=int(edge["node1_policy"]["min_htlc"])
                     if edge["node1_policy"]
                     else 0,
-                    node2_max_htlc=edge["node2_policy"]["max_htlc_msat"]
+                    node2_min_htlc=int(edge["node2_policy"]["min_htlc"])
                     if edge["node2_policy"]
                     else 0,
-                    node1_base_fee_msat=edge["node1_policy"]["fee_base_msat"]
+                    node1_max_htlc=int(edge["node1_policy"]["max_htlc_msat"])
                     if edge["node1_policy"]
                     else 0,
-                    node2_base_fee_msat=edge["node2_policy"]["fee_base_msat"]
+                    node2_max_htlc=int(edge["node2_policy"]["max_htlc_msat"])
                     if edge["node2_policy"]
                     else 0,
-                    node1_fee_rate_milli_msat=edge["node1_policy"]["fee_rate_milli_msat"]
+                    node1_base_fee_msat=int(edge["node1_policy"]["fee_base_msat"])
                     if edge["node1_policy"]
                     else 0,
-                    node2_fee_rate_milli_msat=edge["node2_policy"]["fee_rate_milli_msat"]
+                    node2_base_fee_msat=int(edge["node2_policy"]["fee_base_msat"])
                     if edge["node2_policy"]
                     else 0,
-                    node1_time_lock_delta=edge["node1_policy"]["time_lock_delta"]
+                    node1_fee_rate_milli_msat=int(edge["node1_policy"]["fee_rate_milli_msat"])
                     if edge["node1_policy"]
                     else 0,
-                    node2_time_lock_delta=edge["node2_policy"]["time_lock_delta"]
+                    node2_fee_rate_milli_msat=int(edge["node2_policy"]["fee_rate_milli_msat"])
+                    if edge["node2_policy"]
+                    else 0,
+                    node1_time_lock_delta=int(edge["node1_policy"]["time_lock_delta"])
+                    if edge["node1_policy"]
+                    else 0,
+                    node2_time_lock_delta=int(edge["node2_policy"]["time_lock_delta"])
                     if edge["node2_policy"]
                     else 0,
                 )
@@ -212,6 +219,8 @@ class LNNode:
             cln_channels = self.lncli("listchannels")["channels"]
             # CLN lists channels twice, once for each direction. This finds the unique channel ids.
             short_channel_ids = {chan["short_channel_id"]: chan for chan in cln_channels}.keys()
+            print("cln channels are")
+            print(cln_channels)
             channels: list[LNChannel] = []
             for short_channel_id in short_channel_ids:
                 channel_1 = [
@@ -297,54 +306,6 @@ class LNNode:
                 "cert": f"/simln/{cert_filename}",
             }
         )
-
-
-class LNChannel:
-    def __init__(
-        self,
-        node1_pub: str,
-        node2_pub: str,
-        capacity_msat: int = 0,
-        short_chan_id: str = "",
-        node1_min_htlc: int = 0,
-        node2_min_htlc: int = 0,
-        node1_max_htlc: int = 0,
-        node2_max_htlc: int = 0,
-        node1_base_fee_msat: int = 0,
-        node2_base_fee_msat: int = 0,
-        node1_fee_rate_milli_msat: int = 0,
-        node2_fee_rate_milli_msat: int = 0,
-        node1_time_lock_delta: int = 0,
-        node2_time_lock_delta: int = 0,
-    ) -> None:
-        # Ensure that the node with the lower pubkey is node1
-        if node1_pub > node2_pub:
-            node1_pub, node2_pub = node2_pub, node1_pub
-            node1_min_htlc, node2_min_htlc = node2_min_htlc, node1_min_htlc
-            node1_max_htlc, node2_max_htlc = node2_max_htlc, node1_max_htlc
-            node1_base_fee_msat, node2_base_fee_msat = node2_base_fee_msat, node1_base_fee_msat
-            node1_fee_rate_milli_msat, node2_fee_rate_milli_msat = (
-                node2_fee_rate_milli_msat,
-                node1_fee_rate_milli_msat,
-            )
-            node1_time_lock_delta, node2_time_lock_delta = (
-                node2_time_lock_delta,
-                node1_time_lock_delta,
-            )
-        self.node1_pub = node1_pub
-        self.node2_pub = node2_pub
-        self.capacity_msat = capacity_msat
-        self.short_chan_id = short_chan_id
-        self.node1_min_htlc = node1_min_htlc
-        self.node2_min_htlc = node2_min_htlc
-        self.node1_max_htlc = node1_max_htlc
-        self.node2_max_htlc = node2_max_htlc
-        self.node1_base_fee_msat = node1_base_fee_msat
-        self.node2_base_fee_msat = node2_base_fee_msat
-        self.node1_fee_rate_milli_msat = node1_fee_rate_milli_msat
-        self.node2_fee_rate_milli_msat = node2_fee_rate_milli_msat
-        self.node1_time_lock_delta = node1_time_lock_delta
-        self.node2_time_lock_delta = node2_time_lock_delta
 
 
 def lnd_to_cl_scid(id) -> str:

@@ -146,10 +146,31 @@ class LNInit(WarnetTestFramework):
                 your_channels = self.warnet.tanks[you].lnnode.get_graph_channels()
                 match = True
                 for chan_index, my_chan in enumerate(my_channels):
-                    your_chan = your_channels[chan_index]
-                    if not channel_match(my_chan, your_chan, allow_flip=False):
+                    your_chan = [chan for chan in your_channels if chan.short_chan_id == my_chan.short_chan_id][0]
+                    if not your_chan:
                         print(
-                            f"Channel policy doesn't match between tanks {me} & {you}: {my_chan['channel_id']}"
+                            f"Channel policy doesn't match between tanks {me} & {you}: {my_chan.short_chan_id}"
+                        )
+                        print("\"your_chan\" is None")
+                        match = False
+                        break
+                    
+                    try:
+                        if not channel_match(my_chan, your_chan):
+                            print(
+                                f"Channel policy doesn't match between tanks {me} & {you}: {my_chan.short_chan_id}"
+                            )
+                            print ("indexes are: " + str(tank_index) + " " + str(chan_index + 1))
+                            print("my chan is")
+                            print(my_chan.__dict__)
+                            print("your chan is")
+                            print(your_chan.__dict__)
+                            match = False
+                            break
+                    except Exception as e:
+                        print(f"Error comparing channel policies: {e}")
+                        print(
+                            f"Channel policy doesn't match between tanks {me} & {you}: {my_chan.short_chan_id}"
                         )
                         match = False
                         break
