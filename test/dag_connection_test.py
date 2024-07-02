@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import os
-import time
+from functools import partial
 from pathlib import Path
 
-from test_base import TestBase
+from test_base import TestBase, assert_log
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected.graphml"
 
@@ -18,16 +18,10 @@ base.wait_for_all_edges()
 # Start scenario
 base.warcli("scenarios run-file test/framework_tests/connect_dag.py")
 
-counter = 0
-seconds = 180
-while (len(base.rpc("scenarios_list_running")) == 1
-       and base.rpc("scenarios_list_running")[0]["active"]):
-    time.sleep(1)
-    counter += 1
-    if counter > seconds:
-        pid = base.rpc("scenarios_list_running")[0]['pid']
-        base.warcli(f"scenarios stop {pid}", False)
-        print(f"{os.path.basename(__file__)} more than {seconds} seconds")
-        assert counter < seconds
+assert_dag = partial(assert_log, base.testlog,
+                     ["Successfully ran the connect_dag.py scenario using a temporary file"],
+                     ["Test failed."])
+
+base.wait_for_predicate(assert_dag)
 
 base.stop_server()

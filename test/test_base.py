@@ -1,5 +1,6 @@
 import atexit
 import os
+import re
 import threading
 from pathlib import Path
 from subprocess import PIPE, STDOUT, Popen, run
@@ -16,7 +17,7 @@ class TestBase:
         # Warnet server stdout gets logged here
         self.tmpdir = Path(mkdtemp(prefix="warnet-test-"))
         os.environ["XDG_STATE_HOME"] = f"{self.tmpdir}"
-        self.logfilepath = self.tmpdir / "warnet" / "warnet.log"
+        self.testlog = self.tmpdir / "testbase.log"
 
         # Use the same dir name for the warnet network name
         # replacing underscores which throws off k8s
@@ -84,10 +85,21 @@ class TestBase:
         # TODO: check for conflicting warnet process
         #       maybe also ensure that no conflicting docker networks exist
 
+        def write_and_print(line):
+            if self.testlog.exists():
+                with open(self.testlog, 'a') as file:
+                    print(line)
+                    file.write(f"{line}\n")
+            else:
+                with open(self.testlog, 'w') as file:
+                    print("Creating: ", self.testlog)
+                    print(line)
+                    file.write(f"{line}\n")
+
         # For kubernetes we assume the server is started outside test base
         # but we can still read its log output
         self.server = Popen(
-            ["kubectl", "logs", "-f", "rpc-0"],
+            ["kubectl", "logs", "-f", "rpc-0", "--since=1s"],
             stdout=PIPE,
             stderr=STDOUT,
             bufsize=1,
@@ -96,7 +108,7 @@ class TestBase:
 
         # Create a thread to read the output
         self.server_thread = threading.Thread(
-            target=self.output_reader, args=(self.server.stdout, print)
+            target=self.output_reader, args=(self.server.stdout, write_and_print)
         )
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -166,3 +178,34 @@ class TestBase:
             return all(not scn["active"] for scn in scns)
 
         self.wait_for_predicate(check_scenarios)
+
+
+def assert_equal(thing1, thing2, *args):
+    if thing1 != thing2 or any(thing1 != arg for arg in args):
+        raise AssertionError("not({})".format(" == ".join(str(arg)
+                                                          for arg in (thing1, thing2) + args)))
+
+
+def debug_log_size(debug_log_path, **kwargs) -> int:
+    with open(debug_log_path, **kwargs) as dl:
+        dl.seek(0, 2)
+        return dl.tell()
+
+
+def assert_log(debug_log_path, expected_msgs, unexpected_msgs=None) -> bool:
+    if unexpected_msgs is None:
+        unexpected_msgs = []
+    assert_equal(type(expected_msgs), list)
+    assert_equal(type(unexpected_msgs), list)
+
+    found = True
+    with open(debug_log_path, encoding="utf-8", errors="replace") as dl:
+        log = dl.read()
+    for unexpected_msg in unexpected_msgs:
+        if re.search(re.escape(unexpected_msg), log, flags=re.MULTILINE):
+            raise AssertionError(
+                f'Unexpected message found in log: {unexpected_msg}')
+    for expected_msg in expected_msgs:
+        if re.search(re.escape(expected_msg), log, flags=re.MULTILINE) is None:
+            found = False
+    return found
