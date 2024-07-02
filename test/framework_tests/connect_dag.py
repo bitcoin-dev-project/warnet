@@ -110,7 +110,8 @@ class ConnectDag(WarnetTestFramework):
         self.assert_connection(eight_peers, 9, ConnectionType.DNS)
         self.assert_connection(nine_peers, 8, ConnectionType.IP)
 
-        self.log.info(f"Successfully ran the scenario file: {os.path.basename(__file__)} ")
+        self.log.info(f"Successfully ran the connect_dag.py scenario using a temporary file: "
+                      f"{os.path.basename(__file__)} ")
 
     def assert_connection(self, connector, connectee_index, connection_type: ConnectionType):
         if connection_type == ConnectionType.DNS:
