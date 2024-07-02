@@ -73,5 +73,22 @@ xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdr
       <data key="exporter">False</data>
       <data key="collect_logs">False</data>
     </node>
+    <node id="8">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <node id="9">
+      <data key="version">26.0</data>
+      <data key="bitcoin_config" />
+      <data key="tc_netem" />
+      <data key="build_args" />
+      <data key="exporter">False</data>
+      <data key="collect_logs">False</data>
+    </node>
+    <edge id="0" source="8" target="9"></edge>
   </graph>
 </graphml>

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from test_base import TestBase
 
-graph_file_path = Path(os.path.dirname(__file__)) / "data" / "eight_unconnected.graphml"
+graph_file_path = Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected.graphml"
 
 base = TestBase()
 
@@ -16,7 +16,7 @@ base.wait_for_all_tanks_status(target="running")
 base.wait_for_all_edges()
 
 # Start scenario
-base.warcli(f"scenarios run connect_dag --network_name={base.network_name}")
+base.warcli("scenarios run-file test/framework_tests/connect_dag.py")
 
 counter = 0
 seconds = 180

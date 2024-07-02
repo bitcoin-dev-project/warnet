@@ -420,9 +420,7 @@ class KubernetesBackend:
         logging_crd_name = "servicemonitors.monitoring.coreos.com"
         api = client.ApiextensionsV1Api()
         crds = api.list_custom_resource_definition()
-        if any(crd.metadata.name == logging_crd_name for crd in crds.items):
-            return True
-        return False
+        return bool(any(crd.metadata.name == logging_crd_name for crd in crds.items))
 
     def apply_prometheus_service_monitors(self, tanks):
         for tank in tanks:
