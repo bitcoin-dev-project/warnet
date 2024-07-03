@@ -22,6 +22,7 @@
         <data key="bitcoin_config">-uacomment=miner</data>
         <data key="exporter">true</data>
         <data key="collect_logs">true</data>
+        <data key="role">miner</data>
     </node>
     <node id="1">
         <data key="version">27.0</data>
