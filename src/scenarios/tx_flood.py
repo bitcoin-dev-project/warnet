@@ -20,25 +20,23 @@ class TXFlood(WarnetTestFramework):
         self.threads = []
 
     def orders(self, node):
-        try:
-            wallet = ensure_miner(node)
-            for address_type in ["legacy", "p2sh-segwit", "bech32", "bech32m"]:
-                self.addrs.append(wallet.getnewaddress(address_type=address_type))
-            while True:
-                sleep(1)
+        wallet = ensure_miner(node)
+        for address_type in ["legacy", "p2sh-segwit", "bech32", "bech32m"]:
+            self.addrs.append(wallet.getnewaddress(address_type=address_type))
+        while True:
+            sleep(1)
+            try:
                 bal = wallet.getbalance()
-                self.log.info(f"node {node.index} balance: {bal}")
                 if bal < 1:
                     continue
                 amounts = {}
                 num_out = randrange(1, len(self.nodes) // 2)
                 for _ in range(num_out):
-                    sats = int(float((bal / 2) / num_out) * 1e8)
+                    sats = int(float((bal / 20) / num_out) * 1e8)
                     amounts[choice(self.addrs)] = randrange(sats // 4, sats) / 1e8
                 wallet.sendmany(dummy="", amounts=amounts)
-                self.log.info(f"node {node.index} sendmany:\n  {amounts}")
-        except Exception as e:
-            self.log.error(f"thread for node {node.index} crashed: {e}")
+            except Exception as e:
+                self.log.error(f"node {node.index} error: {e}")
 
     def run_test(self):
         self.log.info(f"Starting TX mess with {len(self.nodes)} threads")

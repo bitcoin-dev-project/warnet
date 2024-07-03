@@ -47,6 +47,7 @@ class MinerStd(WarnetTestFramework):
         while not self.warnet.network_connected():
             self.log.info("Waiting for complete network connection...")
             sleep(5)
+        self.log.info("Network connected. Starting miners.")
 
         max_miners = 1
         if self.options.allnodes:
@@ -60,9 +61,13 @@ class MinerStd(WarnetTestFramework):
                 if miner.mature:
                     num = 101
                     miner.mature = False
-                self.generatetoaddress(miner.node, num, miner.addr)
-                height = miner.node.getblockcount()
-                self.log.info(f"generated {num} block(s) from node {miner.node.index}. New chain height: {height}")
+                try:
+                    self.generatetoaddress(miner.node, num, miner.addr, sync_fun=self.no_op)
+                    height = miner.node.getblockcount()
+                    self.log.info(f"generated {num} block(s) from node {miner.node.index}. New chain height: {height}")
+                except Exception as e:
+                    self.log.error(f"node {miner.node.index} error: {e}")
+
             sleep(self.options.interval)
 
 
