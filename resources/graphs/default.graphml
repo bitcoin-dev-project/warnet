@@ -17,8 +17,8 @@
   <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
   <graph edgedefault="directed">
     <node id="0">
-        <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w0</data>
+        <data key="version">27.1-exe</data>
+        <data key="bitcoin_config">-uacomment=miner</data>
         <data key="exporter">true</data>
         <data key="collect_logs">true</data>
     </node>
