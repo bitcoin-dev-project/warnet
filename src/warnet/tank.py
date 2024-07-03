@@ -93,13 +93,20 @@ class Tank:
         if "ln" in node:
             options = {
                 "impl": node["ln"],
-                "ln_image": node.get("ln_image", "lightninglabs/lnd:v0.18.0-beta"),
                 "cb_image": node.get("ln_cb_image", None),
                 "ln_config": node.get("ln_config", ""),
             }
-            from warnet.lnnode import LNNode
+            from warnet.cln import CLNNode
+            from warnet.lnd import LNDNode
 
-            self.lnnode = LNNode(self.warnet, self, self.warnet.container_interface, options)
+            if options["impl"] == "lnd":
+                options["ln_image"] = node.get("ln_image", "lightninglabs/lnd:v0.18.0-beta")
+                self.lnnode = LNDNode(self.warnet, self, self.warnet.container_interface, options)
+            elif options["impl"] == "cln":
+                options["ln_image"] = node.get("ln_image", "elementsproject/lightningd:v23.11")
+                self.lnnode = CLNNode(self.warnet, self, self.warnet.container_interface, options)
+            else:
+                raise Exception(f"Unsupported Lightning Network implementation: {options['impl']}")
 
         logger.debug(
             f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"

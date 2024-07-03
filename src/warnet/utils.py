@@ -17,6 +17,7 @@ from jsonschema import validate
 from schema import SCHEMA
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
+from warnet.lnchannel import LNChannel
 
 logger = logging.getLogger("utils")
 
@@ -480,27 +481,60 @@ def validate_graph_schema(graph: nx.Graph):
         validate(instance=graph.edges[e], schema=graph_schema["edge"])
 
 
-def policy_match(pol1, pol2):
+def policy_match(ch1: LNChannel, ch2: LNChannel) -> bool:
+    node_1_time_lock_delta_is_same = True
+    if ch1.node1_time_lock_delta != 0 and ch2.node1_time_lock_delta != 0:
+        node_1_time_lock_delta_is_same = max(int(ch1.node1_time_lock_delta), 18) == max(
+            int(ch2.node1_time_lock_delta), 18
+        )
+    node_2_time_lock_delta_is_same = True
+    if ch1.node2_time_lock_delta != 0 and ch2.node2_time_lock_delta != 0:
+        node_2_time_lock_delta_is_same = max(int(ch1.node2_time_lock_delta), 18) == max(
+            int(ch2.node2_time_lock_delta), 18
+        )
+
+    node_1_min_htlc_is_same = True
+    if ch1.node1_min_htlc != 0 and ch2.node1_min_htlc != 0:
+        node_1_min_htlc_is_same = max(int(ch1.node1_min_htlc), 1) == max(int(ch2.node1_min_htlc), 1)
+
+    node_2_min_htlc_is_same = True
+    if ch1.node2_min_htlc != 0 and ch2.node2_min_htlc != 0:
+        node_2_min_htlc_is_same = max(int(ch1.node2_min_htlc), 1) == max(int(ch2.node2_min_htlc), 1)
+
+    node_1_base_fee_msat_is_same = True
+    if ch1.node1_base_fee_msat != 0 and ch2.node1_base_fee_msat != 0:
+        node_1_base_fee_msat_is_same = int(ch1.node1_base_fee_msat) == int(ch2.node1_base_fee_msat)
+
+    node_2_base_fee_msat_is_same = True
+    if ch1.node2_base_fee_msat != 0 and ch2.node2_base_fee_msat != 0:
+        node_2_base_fee_msat_is_same = int(ch1.node2_base_fee_msat) == int(ch2.node2_base_fee_msat)
+
+    node_1_fee_rate_milli_msat_is_same = True
+    if ch1.node1_fee_rate_milli_msat != 0 and ch2.node1_fee_rate_milli_msat != 0:
+        node_1_fee_rate_milli_msat_is_same = int(ch1.node1_fee_rate_milli_msat) == int(
+            ch2.node1_fee_rate_milli_msat
+        )
+
+    node_2_fee_rate_milli_msat_is_same = True
+    if ch1.node2_fee_rate_milli_msat != 0 and ch2.node2_fee_rate_milli_msat != 0:
+        node_2_fee_rate_milli_msat_is_same = int(ch1.node2_fee_rate_milli_msat) == int(
+            ch2.node2_fee_rate_milli_msat
+        )
+
     return (
-        max(int(pol1["time_lock_delta"]), 18) == max(int(pol2["time_lock_delta"]), 18)
-        and max(int(pol1["min_htlc"]), 1) == max(int(pol2["min_htlc"]), 1)
-        and pol1["fee_base_msat"] == pol2["fee_base_msat"]
-        and pol1["fee_rate_milli_msat"] == pol2["fee_rate_milli_msat"]
-        # Ignoring this for now since we use capacity/2
-        # and pol1["max_htlc_msat"] == pol2["max_htlc_msat"]
+        node_1_time_lock_delta_is_same
+        and node_2_time_lock_delta_is_same
+        and node_1_min_htlc_is_same
+        and node_2_min_htlc_is_same
+        and node_1_base_fee_msat_is_same
+        and node_2_base_fee_msat_is_same
+        and node_1_fee_rate_milli_msat_is_same
+        and node_2_fee_rate_milli_msat_is_same
+        # Ignoring max_htlc for now since we use capacity/2
     )
 
 
-def channel_match(ch1, ch2, allow_flip=False):
-    if ch1["capacity"] != ch2["capacity"]:
+def channel_match(ch1: LNChannel, ch2: LNChannel) -> bool:
+    if ch1.capacity_msat != ch2.capacity_msat:
         return False
-    if policy_match(ch1["node1_policy"], ch2["node1_policy"]) and policy_match(
-        ch1["node2_policy"], ch2["node2_policy"]
-    ):
-        return True
-    if not allow_flip:
-        return False
-    else:
-        return policy_match(ch1["node1_policy"], ch2["node2_policy"]) and policy_match(
-            ch1["node2_policy"], ch2["node1_policy"]
-        )
+    return policy_match(ch1, ch2)
