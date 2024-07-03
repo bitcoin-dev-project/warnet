@@ -15,6 +15,7 @@
   <key id="channel_open"    attr.name="channel_open"     attr.type="string"   for="edge" />
   <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
   <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
+  <key id="role"            attr.name="role"             attr.type="string"   for="node" />
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">27.1-exe</data>

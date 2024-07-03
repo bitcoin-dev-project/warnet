@@ -166,6 +166,10 @@ class Warnet:
         for tank in self.tanks:
             tank.apply_network_conditions()
 
+    def apply_roles(self):
+        for tank in self.tanks:
+            tank.apply_roles()
+
     def warnet_build(self):
         self.container_interface.build()
 

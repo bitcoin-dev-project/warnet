@@ -22,6 +22,9 @@
       "image": {
         "type": "string",
         "comment": "Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag"},
+      "role": {
+        "type": "string",
+        "comment": "The role of the tank, e.g. 'miner'"},
       "bitcoin_config": {
         "type": "string",
         "default": "",

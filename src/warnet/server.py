@@ -469,6 +469,8 @@ class Server:
                     wn.warnet_up()
                     wn.wait_for_health()
                     wn.apply_network_conditions()
+                    time.sleep(1) # Can probably remove
+                    wn.apply_roles()
                     self.logger.info("Warnet started successfully")
                 except Exception as e:
                     trace = traceback.format_exc()

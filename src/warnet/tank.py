@@ -48,6 +48,7 @@ class Tank:
         self.image: str = ""
         self.bitcoin_config = ""
         self.netem = None
+        self.role = ""
         self.exporter = False
         self.metrics = None
         self.collect_logs = False
@@ -192,6 +193,11 @@ class Tank:
             logger.error(
                 f"Error applying network conditions to tank {self.index}: `{self.netem}` ({e})"
             )
+
+    def apply_roles(self):
+        if self.role is None:
+            return
+        self.warnet.container_interface.copy_file_to_pod(self.warnet.container_interface.get_pod_name(self.index, ServiceType.BITCOIN), f"scripts/{self.role}.sh", f"/tmp/exe/{self.role}.sh")
 
     def export(self, config: object, tar_file):
         if self.lnnode is not None:
