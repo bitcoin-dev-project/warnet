@@ -51,7 +51,7 @@ class LNInit(WarnetTestFramework):
             for tank in self.warnet.tanks:
                 if tank.lnnode is None:
                     continue
-                if int(tank.lnnode.get_wallet_balance()["confirmed_balance"]) < (split * 100000000):
+                if int(tank.lnnode.get_wallet_balance()) < (split * 100000000):
                     return False
             return True
 
@@ -117,13 +117,13 @@ class LNInit(WarnetTestFramework):
             self.log.info(f"Waiting for graph gossip sync, LN nodes remaining: {ln_nodes_gossip}")
             for index in ln_nodes_gossip:
                 lnnode = self.warnet.tanks[index].lnnode
-                my_edges = len(lnnode.lncli("describegraph")["edges"])
-                my_nodes = len(lnnode.lncli("describegraph")["nodes"])
-                if my_edges == len(chan_opens) and my_nodes == len(ln_nodes):
+                count_channels = len(lnnode.get_graph_channels())
+                count_graph_nodes = len(lnnode.get_graph_nodes())
+                if count_channels == len(chan_opens) and count_graph_nodes == len(ln_nodes):
                     ln_nodes_gossip.remove(index)
                 else:
                     self.log.info(
-                        f" node {index} not synced (channels: {my_edges}/{len(chan_opens)}, nodes: {my_nodes}/{len(ln_nodes)})"
+                        f" node {index} not synced (channels: {count_channels}/{len(chan_opens)}, nodes: {count_graph_nodes}/{len(ln_nodes)})"
                     )
             sleep(5)
 
@@ -142,14 +142,31 @@ class LNInit(WarnetTestFramework):
             score = 0
             for tank_index, me in enumerate(ln_nodes):
                 you = (tank_index + 1) % len(ln_nodes)
-                my_channels = self.warnet.tanks[me].lnnode.lncli("describegraph")["edges"]
-                your_channels = self.warnet.tanks[you].lnnode.lncli("describegraph")["edges"]
+                my_channels = self.warnet.tanks[me].lnnode.get_graph_channels()
+                your_channels = self.warnet.tanks[you].lnnode.get_graph_channels()
                 match = True
-                for chan_index, my_chan in enumerate(my_channels):
-                    your_chan = your_channels[chan_index]
-                    if not channel_match(my_chan, your_chan, allow_flip=False):
+                for _chan_index, my_chan in enumerate(my_channels):
+                    your_chan = [
+                        chan
+                        for chan in your_channels
+                        if chan.short_chan_id == my_chan.short_chan_id
+                    ][0]
+                    if not your_chan:
+                        print(f"Channel policy missing for channel: {my_chan.short_chan_id}")
+                        match = False
+                        break
+
+                    try:
+                        if not channel_match(my_chan, your_chan):
+                            print(
+                                f"Channel policy doesn't match between tanks {me} & {you}: {my_chan.short_chan_id}"
+                            )
+                            match = False
+                            break
+                    except Exception as e:
+                        print(f"Error comparing channel policies: {e}")
                         print(
-                            f"Channel policy doesn't match between tanks {me} & {you}: {my_chan['channel_id']}"
+                            f"Channel policy doesn't match between tanks {me} & {you}: {my_chan.short_chan_id}"
                         )
                         match = False
                         break
