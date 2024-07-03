@@ -7,13 +7,20 @@ from warnet.test_framework_bridge import WarnetTestFramework
 
 
 def cli_help():
-    return "Generate blocks over time. Options: [--allnodes | --interval=<number>]"
+    return "Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature ]"
 
+class Miner:
+    def __init__(self, node, mature):
+        self.node = node
+        self.wallet = ensure_miner(self.node)
+        self.addr = self.wallet.getnewaddress()
+        self.mature = mature
 
 class MinerStd(WarnetTestFramework):
     def set_test_params(self):
         # This is just a minimum
         self.num_nodes = 0
+        self.miners = []
 
     def add_options(self, parser):
         parser.add_argument(
@@ -29,22 +36,33 @@ class MinerStd(WarnetTestFramework):
             type=int,
             help="Number of seconds between block generation (default 60 seconds)",
         )
+        parser.add_argument(
+            "--mature",
+            dest="mature",
+            action="store_true",
+            help="When true, generate 101 blocks ONCE per miner",
+        )
 
     def run_test(self):
         while not self.warnet.network_connected():
-            sleep(1)
+            self.log.info("Waiting for complete network connection...")
+            sleep(5)
 
-        current_miner = 0
+        max_miners = 1
+        if self.options.allnodes:
+            max_miners = len(self.nodes)
+        for index in range(max_miners):
+            self.miners.append(Miner(self.nodes[index], self.options.mature))
 
         while True:
-            miner = ensure_miner(self.nodes[current_miner])
-            addr = miner.getnewaddress()
-            block = self.generatetoaddress(self.nodes[current_miner], 1, addr)
-            self.log.info(f"generated block from node {current_miner}: {block}")
-            if self.options.allnodes:
-                current_miner = current_miner + 1
-                if current_miner >= self.num_nodes:
-                    current_miner = 0
+            for miner in self.miners:
+                num = 1
+                if miner.mature:
+                    num = 101
+                    miner.mature = False
+                self.generatetoaddress(miner.node, num, miner.addr)
+                height = miner.node.getblockcount()
+                self.log.info(f"generated {num} block(s) from node {miner.node.index}. New chain height: {height}")
             sleep(self.options.interval)
 
 
