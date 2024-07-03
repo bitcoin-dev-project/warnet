@@ -40,4 +40,6 @@ if [ -n "$BITCOIN_ARGS" ]; then
 fi
 
 echo
+mkdir /tmp/exe
+/file-executor.sh /tmp/exe &
 exec "$@"
