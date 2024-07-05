@@ -19,12 +19,21 @@ class TXFlood(WarnetTestFramework):
         self.addrs = []
         self.threads = []
 
+    def add_options(self, parser):
+        parser.add_argument(
+            "--interval",
+            dest="interval",
+            default=10,
+            type=int,
+            help="Number of seconds between TX generation (default 10 seconds)",
+        )
+
     def orders(self, node):
         wallet = ensure_miner(node)
         for address_type in ["legacy", "p2sh-segwit", "bech32", "bech32m"]:
             self.addrs.append(wallet.getnewaddress(address_type=address_type))
         while True:
-            sleep(1)
+            sleep(self.options.interval)
             try:
                 bal = wallet.getbalance()
                 if bal < 1:
@@ -35,12 +44,14 @@ class TXFlood(WarnetTestFramework):
                     sats = int(float((bal / 20) / num_out) * 1e8)
                     amounts[choice(self.addrs)] = randrange(sats // 4, sats) / 1e8
                 wallet.sendmany(dummy="", amounts=amounts)
+                self.log.error(f"node {node.index} sent tx with {num_out} outputs")
             except Exception as e:
                 self.log.error(f"node {node.index} error: {e}")
 
     def run_test(self):
         self.log.info(f"Starting TX mess with {len(self.nodes)} threads")
         for node in self.nodes:
+            sleep(1) # stagger
             t = threading.Thread(target=lambda: self.orders(node))
             t.daemon = False
             t.start()

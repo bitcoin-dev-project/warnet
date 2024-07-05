@@ -67,8 +67,7 @@ class MinerStd(WarnetTestFramework):
                     self.log.info(f"generated {num} block(s) from node {miner.node.index}. New chain height: {height}")
                 except Exception as e:
                     self.log.error(f"node {miner.node.index} error: {e}")
-
-            sleep(self.options.interval)
+                sleep(self.options.interval)
 
 
 if __name__ == "__main__":
