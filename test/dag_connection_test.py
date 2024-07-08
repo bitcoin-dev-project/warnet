@@ -20,12 +20,13 @@ base.warcli("scenarios run-file test/framework_tests/connect_dag.py")
 
 counter = 0
 seconds = 180
-while (len(base.rpc("scenarios_list_running")) == 1
-       and base.rpc("scenarios_list_running")[0]["active"]):
+while (
+    len(base.rpc("scenarios_list_running")) == 1 and base.rpc("scenarios_list_running")[0]["active"]
+):
     time.sleep(1)
     counter += 1
     if counter > seconds:
-        pid = base.rpc("scenarios_list_running")[0]['pid']
+        pid = base.rpc("scenarios_list_running")[0]["pid"]
         base.warcli(f"scenarios stop {pid}", False)
         print(f"{os.path.basename(__file__)} more than {seconds} seconds")
         assert counter < seconds

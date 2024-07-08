@@ -1,5 +1,3 @@
-
-
 def ensure_miner(node):
     wallets = node.listwallets()
     if "miner" not in wallets:

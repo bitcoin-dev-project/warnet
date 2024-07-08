@@ -569,7 +569,9 @@ class KubernetesBackend:
     def get_tank_ip_addr(self, index: int) -> str | None:
         service_name = self.get_service_name(index, ServiceType.BITCOIN)
         try:
-            endpoints = self.client.read_namespaced_endpoints(name=service_name, namespace=self.namespace)
+            endpoints = self.client.read_namespaced_endpoints(
+                name=service_name, namespace=self.namespace
+            )
         except ApiValueError as e:
             self.log.info(f"ip addr request for {service_name} raised {str(e)}")
             return None

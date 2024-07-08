@@ -108,3 +108,8 @@ installlogging:
 
 connectlogging:
     ./src/templates/k8s/connect_logging.sh
+
+# Format and lint all files
+lint:
+    ruff format .
+    ruff check .

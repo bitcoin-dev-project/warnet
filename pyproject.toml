@@ -27,7 +27,6 @@ where = ["src"]
 [tool.ruff]
 extend-exclude = [
     "src/test_framework/*.py",
-    "src/scenarios/*"
 ]
 line-length = 100
 indent-width = 4

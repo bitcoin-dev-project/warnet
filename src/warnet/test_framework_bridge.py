@@ -262,7 +262,7 @@ class WarnetTestFramework(BitcoinTestFramework):
             dest="v2transport",
             default=False,
             action="store_true",
-            help="use BIP324 v2 connections between all nodes by default"
+            help="use BIP324 v2 connections between all nodes by default",
         )
 
         self.add_options(parser)
@@ -335,16 +335,19 @@ class WarnetTestFramework(BitcoinTestFramework):
 
         def get_peer_ip(peer):
             try:  # we encounter a regular ip address
-                ip_addr = str(ipaddress.ip_address(peer['addr'].split(':')[0]))
+                ip_addr = str(ipaddress.ip_address(peer["addr"].split(":")[0]))
                 return ip_addr
             except ValueError as err:  # or we encounter a service name
                 try:
                     # NETWORK-tank-TANK_INDEX-service
                     # NETWORK-test-TEST-tank-TANK_INDEX-service
-                    tank_index = int(peer['addr'].split('-')[-2])
+                    tank_index = int(peer["addr"].split("-")[-2])
                 except (ValueError, IndexError) as inner_err:
-                    raise ValueError("could not derive tank index from service name: {} {}"
-                                     .format(peer['addr'], inner_err)) from err
+                    raise ValueError(
+                        "could not derive tank index from service name: {} {}".format(
+                            peer["addr"], inner_err
+                        )
+                    ) from err
 
                 ip_addr = self.warnet.tanks[tank_index].get_ip_addr()
                 return ip_addr
@@ -354,19 +357,42 @@ class WarnetTestFramework(BitcoinTestFramework):
         # See comments in net_processing:
         # * Must have a version message before anything else
         # * Must have a verack message before anything else
-        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer['version'] != 0
-                                    for peer in from_connection.getpeerinfo()))
-        self.wait_until(lambda: any(get_peer_ip(peer) == from_ip_port and peer['version'] != 0
-                                    for peer in to_connection.getpeerinfo()))
-        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer['bytesrecv_per_msg'].pop('verack', 0) >= 21
-                                    for peer in from_connection.getpeerinfo()))
-        self.wait_until(lambda: any(get_peer_ip(peer) == from_ip_port
-                                    and peer['bytesrecv_per_msg'].pop('verack', 0) >= 21
-                                    for peer in to_connection.getpeerinfo()))
+        self.wait_until(
+            lambda: any(
+                peer["addr"] == to_ip_port and peer["version"] != 0
+                for peer in from_connection.getpeerinfo()
+            )
+        )
+        self.wait_until(
+            lambda: any(
+                get_peer_ip(peer) == from_ip_port and peer["version"] != 0
+                for peer in to_connection.getpeerinfo()
+            )
+        )
+        self.wait_until(
+            lambda: any(
+                peer["addr"] == to_ip_port and peer["bytesrecv_per_msg"].pop("verack", 0) >= 21
+                for peer in from_connection.getpeerinfo()
+            )
+        )
+        self.wait_until(
+            lambda: any(
+                get_peer_ip(peer) == from_ip_port
+                and peer["bytesrecv_per_msg"].pop("verack", 0) >= 21
+                for peer in to_connection.getpeerinfo()
+            )
+        )
         # The message bytes are counted before processing the message, so make
         # sure it was fully processed by waiting for a ping.
-        self.wait_until(lambda: any(peer['addr'] == to_ip_port and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
-                                    for peer in from_connection.getpeerinfo()))
-        self.wait_until(lambda: any(get_peer_ip(peer) == from_ip_port
-                                    and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
-                                    for peer in to_connection.getpeerinfo()))
+        self.wait_until(
+            lambda: any(
+                peer["addr"] == to_ip_port and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                for peer in from_connection.getpeerinfo()
+            )
+        )
+        self.wait_until(
+            lambda: any(
+                get_peer_ip(peer) == from_ip_port and peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                for peer in to_connection.getpeerinfo()
+            )
+        )

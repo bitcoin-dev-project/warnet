@@ -25,11 +25,14 @@ def print_cmd(cmd, super=""):
                 p["name"],
                 p["type"]["param_type"] if p["type"]["param_type"] != "Unprocessed" else "String",
                 "yes" if p["required"] else "",
-                '"' + p["default"] + '"' if p["default"] and p["type"]["param_type"] == "String"
-                else Path(p["default"]).relative_to(Path.cwd()) if p["default"] and p["type"]["param_type"] == "Path"
-                else p["default"]
+                '"' + p["default"] + '"'
+                if p["default"] and p["type"]["param_type"] == "String"
+                else Path(p["default"]).relative_to(Path.cwd())
+                if p["default"] and p["type"]["param_type"] == "Path"
+                else p["default"],
             ]
-            for p in cmd["params"] if p["name"] != "help"
+            for p in cmd["params"]
+            if p["name"] != "help"
         ]
         doc += tabulate(data, headers=headers, tablefmt="github")
     doc += "\n\n"

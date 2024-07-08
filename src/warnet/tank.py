@@ -40,6 +40,7 @@ class Tank:
 
     def __init__(self, index: int, warnet):
         from warnet.lnnode import LNNode
+
         self.index = index
         self.warnet = warnet
         self.network_name = warnet.network_name
@@ -97,6 +98,7 @@ class Tank:
                 "ln_config": node.get("ln_config", ""),
             }
             from warnet.lnnode import LNNode
+
             self.lnnode = LNNode(self.warnet, self, self.warnet.container_interface, options)
 
         logger.debug(

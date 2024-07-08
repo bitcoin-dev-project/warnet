@@ -12,8 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: chartboost/ruff-action@v1
+  ruff-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # - uses: chartboost/ruff-action@v1
+      # Until this gets updated we need to use this commit hash (or later)
+      - uses: chartboost/ruff-action@491342200cdd1cf4d5132a30ddc546b3b5bc531b
+        with:
+          args: 'format --check'
+          changed-files: 'true'
   build-image:
-    needs: [ruff]
+    needs: [ruff, ruff-format]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

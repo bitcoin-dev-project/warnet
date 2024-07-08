@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import threading
-from random import randrange, choice
+from random import choice, randrange
 from time import sleep
+
 from scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
@@ -48,8 +49,8 @@ class TXFlood(WarnetTestFramework):
     def run_test(self):
         self.log.info(f"Starting TX mess with {len(self.nodes)} threads")
         for node in self.nodes:
-            sleep(1) # stagger
-            t = threading.Thread(target=lambda: self.orders(node))
+            sleep(1)  # stagger
+            t = threading.Thread(target=lambda n=node: self.orders(n))
             t.daemon = False
             t.start()
             self.threads.append({"thread": t, "node": node})
@@ -58,10 +59,13 @@ class TXFlood(WarnetTestFramework):
             for thread in self.threads:
                 if not thread["thread"].is_alive():
                     self.log.info(f"restarting thread for node {thread['node'].index}")
-                    thread["thread"] = threading.Thread(target=lambda: self.orders(thread["node"]))
+                    thread["thread"] = threading.Thread(
+                        target=lambda n=thread["node"]: self.orders(n)
+                    )
                     thread["thread"].daemon = False
                     thread["thread"].start()
             sleep(30)
+
 
 if __name__ == "__main__":
     TXFlood().main()

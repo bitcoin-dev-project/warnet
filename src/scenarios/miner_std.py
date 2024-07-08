@@ -9,12 +9,14 @@ from warnet.test_framework_bridge import WarnetTestFramework
 def cli_help():
     return "Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature ]"
 
+
 class Miner:
     def __init__(self, node, mature):
         self.node = node
         self.wallet = ensure_miner(self.node)
         self.addr = self.wallet.getnewaddress()
         self.mature = mature
+
 
 class MinerStd(WarnetTestFramework):
     def set_test_params(self):
@@ -64,7 +66,9 @@ class MinerStd(WarnetTestFramework):
                 try:
                     self.generatetoaddress(miner.node, num, miner.addr, sync_fun=self.no_op)
                     height = miner.node.getblockcount()
-                    self.log.info(f"generated {num} block(s) from node {miner.node.index}. New chain height: {height}")
+                    self.log.info(
+                        f"generated {num} block(s) from node {miner.node.index}. New chain height: {height}"
+                    )
                 except Exception as e:
                     self.log.error(f"node {miner.node.index} error: {e}")
                 sleep(self.options.interval)

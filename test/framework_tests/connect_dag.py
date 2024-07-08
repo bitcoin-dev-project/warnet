@@ -85,8 +85,10 @@ class ConnectDag(WarnetTestFramework):
         nine_peers = self.nodes[9].getpeerinfo()
 
         for tank in self.warnet.tanks:
-            self.log.info(f"Tank {tank.index}: {tank.warnet.tanks[tank.index].get_dns_addr()} pod:"
-                          f" {tank.warnet.tanks[tank.index].get_ip_addr()}")
+            self.log.info(
+                f"Tank {tank.index}: {tank.warnet.tanks[tank.index].get_dns_addr()} pod:"
+                f" {tank.warnet.tanks[tank.index].get_ip_addr()}"
+            )
 
         self.assert_connection(zero_peers, 2, ConnectionType.DNS)
         self.assert_connection(one_peers, 2, ConnectionType.DNS)
@@ -110,18 +112,22 @@ class ConnectDag(WarnetTestFramework):
         self.assert_connection(eight_peers, 9, ConnectionType.DNS)
         self.assert_connection(nine_peers, 8, ConnectionType.IP)
 
-        self.log.info(f"Successfully ran the connect_dag.py scenario using a temporary file: "
-                      f"{os.path.basename(__file__)} ")
+        self.log.info(
+            f"Successfully ran the connect_dag.py scenario using a temporary file: "
+            f"{os.path.basename(__file__)} "
+        )
 
     def assert_connection(self, connector, connectee_index, connection_type: ConnectionType):
         if connection_type == ConnectionType.DNS:
-            assert any(d.get("addr") ==
-                       self.warnet.tanks[connectee_index].get_dns_addr() for d in connector), \
-                f"Could not find {self.options.network_name}-tank-00000{connectee_index}-service"
+            assert any(
+                d.get("addr") == self.warnet.tanks[connectee_index].get_dns_addr()
+                for d in connector
+            ), f"Could not find {self.options.network_name}-tank-00000{connectee_index}-service"
         elif connection_type == ConnectionType.IP:
-            assert any(d.get("addr").split(":")[0] ==
-                       self.warnet.tanks[connectee_index].get_ip_addr() for d in connector), \
-                f"Could not find Tank {connectee_index}'s ip addr"
+            assert any(
+                d.get("addr").split(":")[0] == self.warnet.tanks[connectee_index].get_ip_addr()
+                for d in connector
+            ), f"Could not find Tank {connectee_index}'s ip addr"
         else:
             raise ValueError("ConnectionType must be of type DNS or IP")
 
