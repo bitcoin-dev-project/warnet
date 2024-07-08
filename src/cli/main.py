@@ -4,6 +4,7 @@ from cli.image import image
 from cli.network import network
 from cli.rpc import rpc_call
 from cli.scenarios import scenarios
+from cli.copy import cp
 from requests.exceptions import ConnectionError
 from rich import print as richprint
 
@@ -17,6 +18,7 @@ cli.add_command(graph)
 cli.add_command(image)
 cli.add_command(network)
 cli.add_command(scenarios)
+cli.add_command(cp)
 
 
 @cli.command(name="help")
@@ -48,7 +50,9 @@ def help_command(ctx, commands):
     # Get the help info
     help_info = cmd_obj.get_help(ctx).strip()
     # Get rid of the duplication
-    help_info = help_info.replace("Usage: warcli help [COMMANDS]...", "Usage: warcli", 1)
+    help_info = help_info.replace(
+        "Usage: warcli help [COMMANDS]...", "Usage: warcli", 1
+    )
     richprint(help_info)
 
 
@@ -58,7 +62,9 @@ cli.add_command(help_command)
 @cli.command(context_settings={"ignore_unknown_options": True})
 @click.argument("node", type=int)
 @click.argument("method", type=str)
-@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
+@click.argument(
+    "params", type=str, nargs=-1
+)  # this will capture all remaining arguments
 @click.option("--network", default="warnet", show_default=True)
 def rpc(node, method, params, network):
     """
@@ -66,7 +72,8 @@ def rpc(node, method, params, network):
     """
     print(
         rpc_call(
-            "tank_bcli", {"network": network, "node": node, "method": method, "params": params}
+            "tank_bcli",
+            {"network": network, "node": node, "method": method, "params": params},
         )
     )
 
@@ -105,7 +112,11 @@ def messages(node_a, node_b, network):
     """
     Fetch messages sent between <node_a> and <node_b> in [network]
     """
-    print(rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}))
+    print(
+        rpc_call(
+            "tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}
+        )
+    )
 
 
 @cli.command()
