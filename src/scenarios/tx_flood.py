@@ -5,9 +5,6 @@ from time import sleep
 from scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
-BLOCKS = 100
-TXS = 100
-
 
 def cli_help():
     return "Make a big transaction mess"
@@ -44,7 +41,7 @@ class TXFlood(WarnetTestFramework):
                     sats = int(float((bal / 20) / num_out) * 1e8)
                     amounts[choice(self.addrs)] = randrange(sats // 4, sats) / 1e8
                 wallet.sendmany(dummy="", amounts=amounts)
-                self.log.error(f"node {node.index} sent tx with {num_out} outputs")
+                self.log.info(f"node {node.index} sent tx with {num_out} outputs")
             except Exception as e:
                 self.log.error(f"node {node.index} error: {e}")
 
