@@ -1,4 +1,7 @@
 import atexit
+import json
+import logging
+import logging.config
 import os
 import threading
 from pathlib import Path
@@ -7,6 +10,7 @@ from tempfile import mkdtemp
 from time import sleep
 
 from cli.rpc import rpc_call
+from warnet.server import LOGGING_CONFIG_PATH
 from warnet.utils import exponential_backoff
 from warnet.warnet import Warnet
 
@@ -31,19 +35,14 @@ class TestBase:
         self.network = True
 
     def setup_logging(self):
-        import logging
-
+        with open(LOGGING_CONFIG_PATH) as f:
+            logging_config = json.load(f)
+        # Update log file path
+        logging_config["handlers"]["file"]["filename"] = str(self.logfilepath)
+        # Apply the config
+        logging.config.dictConfig(logging_config)
         self.log = logging.getLogger("TestFramework")
-        self.log.setLevel(logging.DEBUG)
-        fh = logging.FileHandler(self.logfilepath, encoding="utf-8")
-        fh.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
-        self.log.addHandler(fh)
-        self.log.addHandler(ch)
+        self.log.info("Logging started")
 
     def cleanup(self, signum=None, frame=None):
         if self.server is None:
