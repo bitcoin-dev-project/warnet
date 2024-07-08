@@ -5,48 +5,73 @@ from pathlib import Path
 
 from test_base import TestBase
 
-graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
 
-base = TestBase()
-base.start_server()
-print(base.warcli(f"network start {graph_file_path}"))
-base.wait_for_all_tanks_status(target="running")
+class ScenariosTest(TestBase):
+    def __init__(self):
+        super().__init__()
+        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
 
-# Use rpc instead of warcli so we get raw JSON object
-scenarios = base.rpc("scenarios_available")
-assert len(scenarios) == 4
+    def run_test(self):
+        try:
+            self.start_server()
+            self.setup_network()
+            self.test_scenarios()
+        finally:
+            self.stop_server()
 
-# Start scenario
-base.warcli("scenarios run miner_std --allnodes --interval=1")
+    def setup_network(self):
+        self.log.info("Setting up network")
+        self.log.info(self.warcli(f"network start {self.graph_file_path}"))
+        self.wait_for_all_tanks_status(target="running")
+
+    def test_scenarios(self):
+        self.check_available_scenarios()
+        self.run_and_check_scenario("miner_std")
+        self.run_and_check_scenario_from_file("src/scenarios/miner_std.py")
+
+    def check_available_scenarios(self):
+        self.log.info("Checking available scenarios")
+        # Use rpc instead of warcli so we get raw JSON object
+        scenarios = self.rpc("scenarios_available")
+        assert len(scenarios) == 4, f"Expected 4 available scenarios, got {len(scenarios)}"
+        self.log.info(f"Found {len(scenarios)} available scenarios")
+
+    def run_and_check_scenario(self, scenario_name):
+        self.log.info(f"Running scenario: {scenario_name}")
+        self.warcli(f"scenarios run {scenario_name} --allnodes --interval=1")
+        self.wait_for_predicate(lambda: self.check_blocks(30))
+        self.stop_scenario()
+
+    def run_and_check_scenario_from_file(self, scenario_file):
+        self.log.info(f"Running scenario from file: {scenario_file}")
+        self.warcli(f"scenarios run-file {scenario_file} --allnodes --interval=1")
+        start = int(self.warcli("rpc 0 getblockcount"))
+        self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
+        self.stop_scenario()
+
+    def check_blocks(self, target_blocks, start: int = 0):
+        running = self.rpc("scenarios_list_running")
+        assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
+        assert running[0]["active"], "Scenario should be active"
+
+        count = int(self.warcli("rpc 0 getblockcount"))
+        self.log.debug(f"Current block count: {count}, target: {start + target_blocks}")
+        return count >= start + target_blocks
+
+    def stop_scenario(self):
+        self.log.info("Stopping running scenario")
+        running = self.rpc("scenarios_list_running")
+        assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
+        assert running[0]["active"], "Scenario should be active"
+        self.warcli(f"scenarios stop {running[0]['pid']}", False)
+        self.wait_for_predicate(self.check_scenario_stopped)
+
+    def check_scenario_stopped(self):
+        running = self.rpc("scenarios_list_running")
+        self.log.debug(f"Checking if scenario stopped. Running scenarios: {len(running)}")
+        return len(running) == 0
 
 
-def check_blocks():
-    # Ensure the scenario is still working
-    running = base.rpc("scenarios_list_running")
-    assert len(running) == 1
-    assert running[0]["active"]
-    assert "miner_std" in running[0]["cmd"]
-
-    count = int(base.warcli("rpc 0 getblockcount"))
-    print(f"Waiting for 30 blocks: {count}")
-    return count >= 30
-
-
-base.wait_for_predicate(check_blocks)
-
-# Stop scenario
-running = base.rpc("scenarios_list_running")
-assert len(running) == 1
-assert running[0]["active"]
-base.warcli(f"scenarios stop {running[0]['pid']}", False)
-
-
-def check_stop():
-    running = base.rpc("scenarios_list_running")
-    print(f"Waiting for scenario to stop: {running}")
-    return len(running) == 0
-
-
-base.wait_for_predicate(check_stop)
-
-base.stop_server()
+if __name__ == "__main__":
+    test = ScenariosTest()
+    test.run_test()
