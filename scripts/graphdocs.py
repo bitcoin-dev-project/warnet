@@ -33,14 +33,9 @@ headers = ["key", "for", "type", "default", "explanation"]
 data = []
 for section in sections:
     data += [
-        [
-            name,
-            section,
-            p["type"],
-            p.get("default", ""),
-            p["comment"]
-        ]
-        for name, p in graph_schema[section]["properties"].items() if "comment" in p
+        [name, section, p["type"], p.get("default", ""), p["comment"]]
+        for name, p in graph_schema[section]["properties"].items()
+        if "comment" in p
     ]
 
 doc += tabulate(data, headers=headers, tablefmt="github")

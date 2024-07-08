@@ -39,6 +39,7 @@ assert count > 1
 msgs = base.warcli("messages 0 1")
 assert "verack" in msgs
 
+
 def got_addrs():
     addrman = json.loads(base.warcli("rpc 0 getrawaddrman"))
     for key in ["tried", "new"]:
@@ -48,6 +49,8 @@ def got_addrs():
         if len(set(groups)) > 1:
             return True
     return False
+
+
 base.wait_for_predicate(got_addrs)
 
 base.stop_server()
