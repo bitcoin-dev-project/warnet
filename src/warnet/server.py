@@ -36,7 +36,11 @@ class Server:
         system = os.name
         if system == "nt" or platform.system() == "Windows":
             self.basedir = os.path.join(os.path.expanduser("~"), "warnet")
-        elif system == "posix" or platform.system() == "Linux" or platform.system() == "Darwin":
+        elif (
+            system == "posix"
+            or platform.system() == "Linux"
+            or platform.system() == "Darwin"
+        ):
             self.basedir = os.environ.get("XDG_STATE_HOME")
             if self.basedir is None:
                 # ~/.warnet/warnet.log
@@ -147,6 +151,7 @@ class Server:
         self.jsonrpc.register(self.tank_lncli)
         self.jsonrpc.register(self.tank_debug_log)
         self.jsonrpc.register(self.tank_messages)
+        self.jsonrpc.register(self.tank_copy)
         # Scenarios
         self.jsonrpc.register(self.scenarios_available)
         self.jsonrpc.register(self.scenarios_run)
@@ -181,15 +186,50 @@ class Server:
             return wn
         raise ServerError(f"Could not find warnet {network}")
 
+    def tank_copy(
+        self,
+        source: str = None,
+        destination: str = None,
+        recursive: bool = False,
+        file_data: str = None,
+        network: str = "warnet",
+    ) -> str:
+        """
+        Copy files or directories from the source path to the destination path within the specified network.
+        """
+        wn = self.get_warnet(network)
+        try:
+            return "tank_copy rpc method"
+            # if source is None and destination is None:
+            #     raise
+
+            # if destination is None:
+            #     print("fetching file for tank")
+            # if source is None:
+            #     print("pushing file to tank")
+
+            # result = wn.container_interface.copy_files(source, destination, recursive)
+            # return f"Successfully copied from {source} to {destination}: {result}"
+        except Exception as e:
+            msg = f"Error copying files from {source} to {destination}: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
+
     def tank_bcli(
-        self, node: int, method: str, params: list[str] | None = None, network: str = "warnet"
+        self,
+        node: int,
+        method: str,
+        params: list[str] | None = None,
+        network: str = "warnet",
     ) -> str:
         """
         Call bitcoin-cli on <node> <method> <params> in [network]
         """
         wn = self.get_warnet(network)
         try:
-            return wn.container_interface.get_bitcoin_cli(wn.tanks[node], method, params)
+            return wn.container_interface.get_bitcoin_cli(
+                wn.tanks[node], method, params
+            )
         except Exception as e:
             msg = f"Sever error calling bitcoin-cli {method}: {e}"
             self.logger.error(msg)
@@ -241,7 +281,9 @@ class Server:
 
             for message in messages:
                 # Check if 'time' key exists and its value is a number
-                if not (message.get("time") and isinstance(message["time"], int | float)):
+                if not (
+                    message.get("time") and isinstance(message["time"], int | float)
+                ):
                     continue
 
                 timestamp = datetime.utcfromtimestamp(message["time"] / 1e6).strftime(
@@ -254,8 +296,12 @@ class Server:
                 if not isinstance(body_dict, dict):  # messages will be in dict form
                     continue
 
-                body_str = ", ".join(f"{key}: {value}" for key, value in body_dict.items())
-                messages_str_list.append(f"{timestamp} {direction} {msgtype} {body_str}")
+                body_str = ", ".join(
+                    f"{key}: {value}" for key, value in body_dict.items()
+                )
+                messages_str_list.append(
+                    f"{timestamp} {direction} {msgtype} {body_str}"
+                )
 
             result_str = "\n".join(messages_str_list)
 
@@ -266,7 +312,9 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def network_export(self, network: str, activity: str | None, exclude: list[int]) -> bool:
+    def network_export(
+        self, network: str, activity: str | None, exclude: list[int]
+    ) -> bool:
         """
         Export all data for a simln container running on the network
         """
@@ -332,7 +380,11 @@ class Server:
             raise ServerError(f"Scenario not found at {scenario_path}.")
 
         try:
-            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
+            run_cmd = (
+                [sys.executable, scenario_path]
+                + additional_args
+                + [f"--network={network}"]
+            )
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(
@@ -377,7 +429,11 @@ class Server:
             raise ServerError(f"Scenario {scenario} not found at {scenario_path}.")
 
         try:
-            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
+            run_cmd = (
+                [sys.executable, scenario_path]
+                + additional_args
+                + [f"--network={network}"]
+            )
             self.logger.debug(f"Running {run_cmd}")
 
             proc = subprocess.Popen(
@@ -405,7 +461,9 @@ class Server:
                 }
             )
 
-            return f"Running scenario {scenario} with PID {proc.pid} in the background..."
+            return (
+                f"Running scenario {scenario} with PID {proc.pid} in the background..."
+            )
 
         except Exception as e:
             msg = f"Error running scenario: {e}"
@@ -417,7 +475,9 @@ class Server:
         if matching_scenarios:
             matching_scenarios[0]["proc"].terminate()  # sends SIGTERM
             # Remove from running list
-            self.running_scenarios = [sc for sc in self.running_scenarios if sc["pid"] != pid]
+            self.running_scenarios = [
+                sc for sc in self.running_scenarios if sc["pid"] != pid
+            ]
             return f"Stopped scenario with PID {pid}."
         else:
             msg = f"Could not find scenario with PID {pid}"
@@ -447,7 +507,9 @@ class Server:
                 )
             except Exception as e:
                 trace = traceback.format_exc()
-                server.logger.error(f"Unhandled exception bringing network up: {e}\n{trace}")
+                server.logger.error(
+                    f"Unhandled exception bringing network up: {e}\n{trace}"
+                )
 
         try:
             t = threading.Thread(target=lambda: thread_start(self, network))
@@ -478,7 +540,9 @@ class Server:
                     self.logger.info("Warnet started successfully")
                 except Exception as e:
                     trace = traceback.format_exc()
-                    self.logger.error(f"Unhandled exception starting warnet: {e}\n{trace}")
+                    self.logger.error(
+                        f"Unhandled exception starting warnet: {e}\n{trace}"
+                    )
 
         config_dir = gen_config_dir(network)
         if config_dir.exists():
@@ -532,11 +596,16 @@ class Server:
             wn = self.get_warnet(network)
             stats = []
             for tank in wn.tanks:
-                status = {"tank_index": tank.index, "bitcoin_status": tank.status.name.lower()}
+                status = {
+                    "tank_index": tank.index,
+                    "bitcoin_status": tank.status.name.lower(),
+                }
                 if tank.lnnode is not None:
                     status["lightning_status"] = tank.lnnode.status.name.lower()
                     if tank.lnnode.cb is not None:
-                        status["circuitbreaker_status"] = tank.lnnode.cb_status.name.lower()
+                        status["circuitbreaker_status"] = (
+                            tank.lnnode.cb_status.name.lower()
+                        )
                 stats.append(status)
             return stats
         except Exception as e:
@@ -588,7 +657,9 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def exec_run(self, index: int, service_type: int, cmd: str, network: str = "warnet") -> str:
+    def exec_run(
+        self, index: int, service_type: int, cmd: str, network: str = "warnet"
+    ) -> str:
         """
         Execute an arbitrary command in an arbitrary container,
         identified by tank index and ServiceType

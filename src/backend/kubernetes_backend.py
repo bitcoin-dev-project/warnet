@@ -254,6 +254,9 @@ class KubernetesBackend:
             container=BITCOIN_CONTAINER_NAME,
         )
         return logs
+    
+    def copy_files(self):
+        return
 
     def ln_cli(self, tank: Tank, command: list[str]):
         if tank.lnnode is None:

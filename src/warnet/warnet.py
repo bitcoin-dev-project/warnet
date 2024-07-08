@@ -12,7 +12,12 @@ import networkx
 import yaml
 from backend.kubernetes_backend import KubernetesBackend
 from templates import TEMPLATES
-from warnet.services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
+from warnet.services import (
+    AO_CONF_NAME,
+    FO_CONF_NAME,
+    GRAFANA_PROVISIONING,
+    PROM_CONF_NAME,
+)
 from warnet.tank import Tank
 from warnet.utils import gen_config_dir, load_schema, validate_graph_schema
 
@@ -135,7 +140,9 @@ class Warnet:
         self.network_name = network_name
         # Get network graph edges from graph file (required for network restarts)
         self.graph = networkx.read_graphml(
-            Path(self.config_dir / self.graph_name), node_type=int, force_multigraph=True
+            Path(self.config_dir / self.graph_name),
+            node_type=int,
+            force_multigraph=True,
         )
         validate_graph_schema(self.graph)
         self.tanks_from_graph()
@@ -254,7 +261,10 @@ class Warnet:
                         "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
                     }
                 )
-        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
+        config = {
+            "global": {"scrape_interval": "15s"},
+            "scrape_configs": scrape_configs,
+        }
         prometheus_path = self.config_dir / PROM_CONF_NAME
         try:
             with open(prometheus_path, "w") as file:
@@ -273,7 +283,9 @@ class Warnet:
 
     def network_connected(self):
         for tank in self.tanks:
-            peerinfo = json.loads(self.container_interface.get_bitcoin_cli(tank, "getpeerinfo"))
+            peerinfo = json.loads(
+                self.container_interface.get_bitcoin_cli(tank, "getpeerinfo")
+            )
             manuals = 0
             for peer in peerinfo:
                 if peer["connection_type"] == "manual":
