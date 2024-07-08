@@ -48,7 +48,7 @@ class TXFlood(WarnetTestFramework):
     def run_test(self):
         self.log.info(f"Starting TX mess with {len(self.nodes)} threads")
         for node in self.nodes:
-            sleep(1) # stagger
+            sleep(1)  # stagger
             t = threading.Thread(target=lambda: self.orders(node))
             t.daemon = False
             t.start()
@@ -62,6 +62,7 @@ class TXFlood(WarnetTestFramework):
                     thread["thread"].daemon = False
                     thread["thread"].start()
             sleep(30)
+
 
 if __name__ == "__main__":
     TXFlood().main()
