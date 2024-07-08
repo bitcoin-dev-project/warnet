@@ -738,7 +738,7 @@ class KubernetesBackend:
                 pod_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
                 pod = self.get_pod(pod_name)
                 if pod is None or pod.status is None or getattr(pod.status, "pod_ip", None) is None:
-                    print("Waiting for pod response or pod IP...")
+                    self.log.info("Waiting for pod response or pod IP...")
                     time.sleep(3)
                     continue
                 pod_ip = pod.status.pod_ip

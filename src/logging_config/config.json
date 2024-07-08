@@ -3,12 +3,12 @@
   "disable_existing_loggers": false,
   "formatters": {
     "simple": {
-      "format": " %(asctime)s - %(levelname)s - %(message)s",
-      "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+      "format": "%(asctime)s │ %(levelname)-7s │ %(name)-17s │ %(message)s",
+      "datefmt": "%Y-%m-%d %H:%M:%S"
     },
     "detailed": {
-      "format": " %(asctime)s - %(levelname)s - [%(module)s|L%(lineno)d] - %(message)s",
-      "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+      "format": "%(asctime)s │ %(levelname)-7s │ [%(module)21s:%(lineno)4d] │ %(message)s",
+      "datefmt": "%Y-%m-%d %H:%M:%S"
     }
   },
   "filters": {

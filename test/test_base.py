@@ -37,9 +37,7 @@ class TestBase:
     def setup_logging(self):
         with open(LOGGING_CONFIG_PATH) as f:
             logging_config = json.load(f)
-        # Update log file path
         logging_config["handlers"]["file"]["filename"] = str(self.logfilepath)
-        # Apply the config
         logging.config.dictConfig(logging_config)
         self.log = logging.getLogger("TestFramework")
         self.log.info("Logging started")
@@ -108,7 +106,7 @@ class TestBase:
         )
 
         self.server_thread = threading.Thread(
-            target=self.output_reader, args=(self.server.stdout, self.log.debug)
+            target=self.output_reader, args=(self.server.stdout, print)
         )
         self.server_thread.daemon = True
         self.server_thread.start()
