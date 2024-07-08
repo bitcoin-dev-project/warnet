@@ -6,51 +6,70 @@ from pathlib import Path
 
 from test_base import TestBase
 
-graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
 
-base = TestBase()
-base.start_server()
-print(base.warcli(f"network start {graph_file_path}"))
-base.wait_for_all_tanks_status(target="running")
-base.wait_for_all_edges()
+class RPCTest(TestBase):
+    def __init__(self):
+        super().__init__()
+        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
 
-# Exponential backoff will repeat this command until it succeeds.
-# That's when we are ready for commands
-base.warcli("rpc 0 getblockcount")
+    def run_test(self):
+        self.start_server()
+        try:
+            self.setup_network()
+            self.test_rpc_commands()
+            self.test_transaction_propagation()
+            self.test_message_exchange()
+            self.test_address_manager()
+        finally:
+            self.stop_server()
 
-# Fund wallet
-base.warcli("rpc 1 createwallet miner")
-base.warcli("rpc 1 -generate 101")
+    def setup_network(self):
+        self.log.info("Setting up network")
+        self.log.info(self.warcli(f"network start {self.graph_file_path}"))
+        self.wait_for_all_tanks_status(target="running")
+        self.wait_for_all_edges()
 
-base.wait_for_predicate(lambda: "101" in base.warcli("rpc 0 getblockcount"))
+    def test_rpc_commands(self):
+        self.log.info("Testing basic RPC commands")
+        self.warcli("rpc 0 getblockcount")
+        self.warcli("rpc 1 createwallet miner")
+        self.warcli("rpc 1 -generate 101")
+        self.wait_for_predicate(lambda: "101" in self.warcli("rpc 0 getblockcount"))
 
-txid = base.warcli("rpc 1 sendtoaddress bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46 0.1")
+    def test_transaction_propagation(self):
+        self.log.info("Testing transaction propagation")
+        address = "bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46"
+        txid = self.warcli(f"rpc 1 sendtoaddress {address} 0.1")
+        self.wait_for_predicate(lambda: txid in self.warcli("rpc 0 getrawmempool"))
 
-base.wait_for_predicate(lambda: txid in base.warcli("rpc 0 getrawmempool"))
+        node_log = self.warcli("debug-log 1")
+        assert txid in node_log, "Transaction ID not found in node log"
 
-node_log = base.warcli("debug-log 1")
-assert txid in node_log
+        all_logs = self.warcli(f"grep-logs {txid}")
+        count = all_logs.count("Enqueuing TransactionAddedToMempool")
+        assert count > 1, f"Transaction not propagated to enough nodes (count: {count})"
 
-all_logs = base.warcli(f"grep-logs {txid}")
-count = all_logs.count("Enqueuing TransactionAddedToMempool")
-# should be at least more than one node
-assert count > 1
+    def test_message_exchange(self):
+        self.log.info("Testing message exchange between nodes")
+        msgs = self.warcli("messages 0 1")
+        assert "verack" in msgs, "VERACK message not found in exchange"
 
-msgs = base.warcli("messages 0 1")
-assert "verack" in msgs
+    def test_address_manager(self):
+        self.log.info("Testing address manager")
+
+        def got_addrs():
+            addrman = json.loads(self.warcli("rpc 0 getrawaddrman"))
+            for key in ["tried", "new"]:
+                obj = addrman[key]
+                keys = list(obj.keys())
+                groups = [g.split("/")[0] for g in keys]
+                if len(set(groups)) > 1:
+                    return True
+            return False
+
+        self.wait_for_predicate(got_addrs)
 
 
-def got_addrs():
-    addrman = json.loads(base.warcli("rpc 0 getrawaddrman"))
-    for key in ["tried", "new"]:
-        obj = addrman[key]
-        keys = list(obj.keys())
-        groups = [g.split("/")[0] for g in keys]
-        if len(set(groups)) > 1:
-            return True
-    return False
-
-
-base.wait_for_predicate(got_addrs)
-
-base.stop_server()
+if __name__ == "__main__":
+    test = RPCTest()
+    test.run_test()
