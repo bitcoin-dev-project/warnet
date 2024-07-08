@@ -161,6 +161,12 @@ class Server:
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
+    def proc_logger(self, proc):
+        while not proc.stdout:
+            time.sleep(0.1)
+        for line in proc.stdout:
+            self.logger.info(line.decode().rstrip())
+
     def get_warnet(self, network: str) -> Warnet:
         """
         Will get a warnet from the cache if it exists.
@@ -335,13 +341,7 @@ class Server:
                 stderr=subprocess.PIPE,
             )
 
-            def proc_logger():
-                while not proc.stdout:
-                    time.sleep(0.1)
-                for line in proc.stdout:
-                    self.logger.info(line.decode().rstrip())
-
-            t = threading.Thread(target=lambda: proc_logger())
+            t = threading.Thread(target=lambda: self.proc_logger(proc))
             t.daemon = True
             t.start()
 
@@ -380,13 +380,7 @@ class Server:
                 stderr=subprocess.PIPE,
             )
 
-            def proc_logger():
-                while not proc.stdout:
-                    time.sleep(0.1)
-                for line in proc.stdout:
-                    self.logger.info(line.decode().rstrip())
-
-            t = threading.Thread(target=lambda: proc_logger())
+            t = threading.Thread(target=lambda: self.proc_logger(proc))
             t.daemon = True
             t.start()
 
