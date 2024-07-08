@@ -7,7 +7,7 @@ from pathlib import Path
 from test_base import TestBase
 
 
-class V25NetTest(TestBase):
+class OnionTest(TestBase):
     def __init__(self):
         super().__init__()
         self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
@@ -67,5 +67,5 @@ class V25NetTest(TestBase):
 
 
 if __name__ == "__main__":
-    test = V25NetTest()
+    test = OnionTest()
     test.run_test()
