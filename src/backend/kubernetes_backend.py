@@ -474,9 +474,7 @@ class KubernetesBackend:
     def get_lnnode_hostname(self, index: int) -> str:
         return f"{self.get_service_name(index, ServiceType.LIGHTNING)}.{self.namespace}"
 
-    def create_ln_container(
-        self, tank, bitcoind_service_name, volume_mounts
-    ) -> client.V1Container:
+    def create_ln_container(self, tank, bitcoind_service_name, volume_mounts) -> client.V1Container:
         # These args are appended to the Dockerfile `ENTRYPOINT ["lnd"]`
         bitcoind_rpc_host = f"{bitcoind_service_name}.{self.namespace}"
         lightning_dns = self.get_lnnode_hostname(tank.index)
@@ -488,7 +486,9 @@ class KubernetesBackend:
         elif tank.lnnode.impl == "cln":
             lightning_ready_probe = "lightning-cli --network=regtest getinfo"
         else:
-            raise Exception(f"Lightning node implementation {tank.lnnode.impl} for tank {tank.index} not supported")
+            raise Exception(
+                f"Lightning node implementation {tank.lnnode.impl} for tank {tank.index} not supported"
+            )
         lightning_container = client.V1Container(
             name=LN_CONTAINER_NAME,
             image=tank.lnnode.image,
