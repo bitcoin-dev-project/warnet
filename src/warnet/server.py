@@ -95,16 +95,10 @@ class Server:
 
     def setup_logging(self):
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-
         with open(LOGGING_CONFIG_PATH) as f:
             logging_config = json.load(f)
-
-        # Update log file path
         logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
-
-        # Apply the config
         logging.config.dictConfig(logging_config)
-
         self.logger = logging.getLogger("warnet")
         self.logger.info("Logging started")
 

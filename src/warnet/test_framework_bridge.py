@@ -48,16 +48,14 @@ class WarnetTestFramework(BitcoinTestFramework):
 
     def setup(self):
         signal.signal(signal.SIGTERM, self.handle_sigterm)
+
+        # Must setuup warnet first to avoid double formatting
+        self.warnet = Warnet.from_network(self.options.network)
         # hacked from _start_logging()
         # Scenarios will log plain messages to stdout only, which will can redirected by warnet
-        self.log = logging.getLogger()
+        self.log = logging.getLogger("WarnetTestFramework")
         self.log.setLevel(logging.INFO)  # set this to DEBUG to see ALL RPC CALLS
-        ch = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(fmt="%(message)s")
-        ch.setFormatter(formatter)
-        self.log.addHandler(ch)
 
-        self.warnet = Warnet.from_network(self.options.network)
         for i, tank in enumerate(self.warnet.tanks):
             ip = tank.ipv4
             self.log.info(f"Adding TestNode {i} from tank {tank.index} with IP {ip}")
