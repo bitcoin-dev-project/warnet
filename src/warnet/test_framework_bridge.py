@@ -49,12 +49,21 @@ class WarnetTestFramework(BitcoinTestFramework):
     def setup(self):
         signal.signal(signal.SIGTERM, self.handle_sigterm)
 
-        # Must setuup warnet first to avoid double formatting
+        # Must setup warnet first to avoid double formatting
         self.warnet = Warnet.from_network(self.options.network)
         # hacked from _start_logging()
         # Scenarios will log plain messages to stdout only, which will can redirected by warnet
-        self.log = logging.getLogger("WarnetTestFramework")
+        self.log = logging.getLogger(self.__class__.__name__)
         self.log.setLevel(logging.INFO)  # set this to DEBUG to see ALL RPC CALLS
+
+        # Because scenarios run in their own subprocess, the logger here
+        # is not the same as the warnet server or other global loggers.
+        # Scenarios log directly to stdout which gets picked up by the
+        # subprocess manager in the server, and reprinted to the global log.
+        ch = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(fmt="%(name)-8s %(message)s")
+        ch.setFormatter(formatter)
+        self.log.addHandler(ch)
 
         for i, tank in enumerate(self.warnet.tanks):
             ip = tank.ipv4
