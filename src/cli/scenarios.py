@@ -1,4 +1,5 @@
 import base64
+import os
 import sys
 
 import click
@@ -53,17 +54,23 @@ def run(scenario, network, additional_args):
 @scenarios.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario_path", type=str)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
+@click.option("--name", type=str)
 @click.option("--network", default="warnet", show_default=True)
-def run_file(scenario_path, network, additional_args):
+def run_file(scenario_path, network, additional_args, name=""):
     """
     Run <scenario_path> from the Warnet Test Framework on [network] with optional arguments
     """
+    if not scenario_path.endswith(".py"):
+        print("Error. Currently only python scenarios are supported")
+        sys.exit(1)
+    scenario_name = name if name else os.path.splitext(os.path.basename(scenario_path))[0]
     scenario_base64 = ""
     with open(scenario_path, "rb") as f:
         scenario_base64 = base64.b64encode(f.read()).decode("utf-8")
 
     params = {
         "scenario_base64": scenario_base64,
+        "scenario_name": scenario_name,
         "additional_args": additional_args,
         "network": network,
     }

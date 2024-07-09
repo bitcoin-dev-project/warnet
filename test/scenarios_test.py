@@ -36,9 +36,16 @@ class ScenariosTest(TestBase):
         assert len(scenarios) == 4, f"Expected 4 available scenarios, got {len(scenarios)}"
         self.log.info(f"Found {len(scenarios)} available scenarios")
 
+    def scenario_running(self, scenario_name: str):
+        """Check that we are only running a single scenario of the correct name"""
+        active = self.rpc("scenarios_list_running")
+        running = scenario_name in active[0]["cmd"]
+        return running and len(active) == 1
+
     def run_and_check_scenario(self, scenario_name):
         self.log.info(f"Running scenario: {scenario_name}")
         self.warcli(f"scenarios run {scenario_name} --allnodes --interval=1")
+        self.wait_for_predicate(lambda: self.scenario_running(scenario_name))
         self.wait_for_predicate(lambda: self.check_blocks(30))
         self.stop_scenario()
 
@@ -46,6 +53,8 @@ class ScenariosTest(TestBase):
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warcli(f"scenarios run-file {scenario_file} --allnodes --interval=1")
         start = int(self.warcli("rpc 0 getblockcount"))
+        scenario_name = os.path.splitext(os.path.basename(scenario_file))[0]
+        self.wait_for_predicate(lambda: self.scenario_running(scenario_name))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
         self.stop_scenario()
 

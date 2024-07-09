@@ -161,6 +161,12 @@ class Server:
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
+    def proc_logger(self, proc):
+        while not proc.stdout:
+            time.sleep(0.1)
+        for line in proc.stdout:
+            self.logger.info(line.decode().rstrip())
+
     def get_warnet(self, network: str) -> Warnet:
         """
         Will get a warnet from the cache if it exists.
@@ -310,56 +316,58 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def scenarios_run_file(
-        self, scenario_base64: str, additional_args: list[str], network: str = "warnet"
+    def _start_scenario(
+        self,
+        scenario_path: str,
+        scenario_name: str,
+        additional_args: list[str],
+        network: str,
     ) -> str:
-        scenario_path = None
-        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp_file:
-            scenario_path = temp_file.name
-
-            # decode base64 string to binary
-            scenario_bytes = base64.b64decode(scenario_base64)
-            # write binary to file
-            temp_file.write(scenario_bytes)
-
-        if not os.path.exists(scenario_path):
-            raise ServerError(f"Scenario not found at {scenario_path}.")
-
         try:
             run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
             self.logger.debug(f"Running {run_cmd}")
-
             proc = subprocess.Popen(
                 run_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-
-            def proc_logger():
-                while not proc.stdout:
-                    time.sleep(0.1)
-                for line in proc.stdout:
-                    self.logger.info(line.decode().rstrip())
-
-            t = threading.Thread(target=lambda: proc_logger())
+            t = threading.Thread(target=lambda: self.proc_logger(proc))
             t.daemon = True
             t.start()
-
             self.running_scenarios.append(
                 {
                     "pid": proc.pid,
-                    "cmd": f"{scenario_path} {' '.join(additional_args)}",
+                    "cmd": f"{scenario_name} {' '.join(additional_args)}",
                     "proc": proc,
                     "network": network,
                 }
             )
-
-            return f"Running scenario with PID {proc.pid} in the background..."
-
+            return f"Running scenario {scenario_name} with PID {proc.pid} in the background..."
         except Exception as e:
             msg = f"Error running scenario: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
+
+    def scenarios_run_file(
+        self,
+        scenario_base64: str,
+        scenario_name: str,
+        additional_args: list[str],
+        network: str = "warnet",
+    ) -> str:
+        # Extract just the filename without path and extension
+        with tempfile.NamedTemporaryFile(
+            prefix=scenario_name,
+            suffix=".py",
+            delete=False,
+        ) as temp_file:
+            scenario_path = temp_file.name
+            temp_file.write(base64.b64decode(scenario_base64))
+
+        if not os.path.exists(scenario_path):
+            raise ServerError(f"Scenario not found at {scenario_path}.")
+
+        return self._start_scenario(scenario_path, scenario_name, additional_args, network)
 
     def scenarios_run(
         self, scenario: str, additional_args: list[str], network: str = "warnet"
@@ -370,41 +378,7 @@ class Server:
         if not os.path.exists(scenario_path):
             raise ServerError(f"Scenario {scenario} not found at {scenario_path}.")
 
-        try:
-            run_cmd = [sys.executable, scenario_path] + additional_args + [f"--network={network}"]
-            self.logger.debug(f"Running {run_cmd}")
-
-            proc = subprocess.Popen(
-                run_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-
-            def proc_logger():
-                while not proc.stdout:
-                    time.sleep(0.1)
-                for line in proc.stdout:
-                    self.logger.info(line.decode().rstrip())
-
-            t = threading.Thread(target=lambda: proc_logger())
-            t.daemon = True
-            t.start()
-
-            self.running_scenarios.append(
-                {
-                    "pid": proc.pid,
-                    "cmd": f"{scenario} {' '.join(additional_args)}",
-                    "proc": proc,
-                    "network": network,
-                }
-            )
-
-            return f"Running scenario {scenario} with PID {proc.pid} in the background..."
-
-        except Exception as e:
-            msg = f"Error running scenario: {e}"
-            self.logger.error(msg)
-            raise ServerError(message=msg) from e
+        return self._start_scenario(scenario_path, scenario, additional_args, network)
 
     def scenarios_stop(self, pid: int) -> str:
         matching_scenarios = [sc for sc in self.running_scenarios if sc["pid"] == pid]
