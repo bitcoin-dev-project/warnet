@@ -39,7 +39,7 @@ class TestBase:
             logging_config = json.load(f)
         logging_config["handlers"]["file"]["filename"] = str(self.logfilepath)
         logging.config.dictConfig(logging_config)
-        self.log = logging.getLogger("TestFramework")
+        self.log = logging.getLogger("test")
         self.log.info("Logging started")
 
     def cleanup(self, signum=None, frame=None):

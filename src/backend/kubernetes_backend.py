@@ -33,7 +33,7 @@ PROMETHEUS_METRICS_PORT = 9332
 LND_MOUNT_PATH = "/root/.lnd"
 
 
-logger = logging.getLogger("KubernetesBackend")
+logger = logging.getLogger("k8s")
 
 
 class KubernetesBackend:

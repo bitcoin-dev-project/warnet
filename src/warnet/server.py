@@ -99,7 +99,7 @@ class Server:
             logging_config = json.load(f)
         logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
         logging.config.dictConfig(logging_config)
-        self.logger = logging.getLogger("warnet")
+        self.logger = logging.getLogger("server")
         self.logger.info("Logging started")
 
         def log_request():
@@ -162,8 +162,8 @@ class Server:
         self.jsonrpc.register(self.logs_grep)
 
     def proc_logger(self, proc):
-        while not proc.stdout:
-            time.sleep(0.1)
+        # while not proc.stdout:
+        #     time.sleep(0.1)
         for line in proc.stdout:
             self.logger.info(line.decode().rstrip())
 

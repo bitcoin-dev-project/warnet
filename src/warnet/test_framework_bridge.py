@@ -53,7 +53,7 @@ class WarnetTestFramework(BitcoinTestFramework):
         self.warnet = Warnet.from_network(self.options.network)
         # hacked from _start_logging()
         # Scenarios will log plain messages to stdout only, which will can redirected by warnet
-        self.log = logging.getLogger("WarnetTestFramework")
+        self.log = logging.getLogger("scenario")
         self.log.setLevel(logging.INFO)  # set this to DEBUG to see ALL RPC CALLS
 
         for i, tank in enumerate(self.warnet.tanks):
