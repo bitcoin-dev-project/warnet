@@ -107,43 +107,44 @@ class LNDNode(LNNode):
     def get_graph_nodes(self) -> list[str]:
         return list(n["pub_key"] for n in self.lncli("describegraph")["nodes"])
 
-    def get_graph_channels(self) -> list[dict]:
+    def get_graph_channels(self) -> list[LNChannel]:
         edges = self.lncli("describegraph")["edges"]
-        return [
-            LNChannel(
-                node1_pub=edge["node1_pub"],
-                node2_pub=edge["node2_pub"],
-                capacity_msat=(int(edge["capacity"]) * 1000),
-                short_chan_id=lnd_to_cl_scid(edge["channel_id"]),
-                node1_min_htlc=int(edge["node1_policy"]["min_htlc"]) if edge["node1_policy"] else 0,
-                node2_min_htlc=int(edge["node2_policy"]["min_htlc"]) if edge["node2_policy"] else 0,
-                node1_max_htlc=int(edge["node1_policy"]["max_htlc_msat"])
-                if edge["node1_policy"]
-                else 0,
-                node2_max_htlc=int(edge["node2_policy"]["max_htlc_msat"])
-                if edge["node2_policy"]
-                else 0,
-                node1_base_fee_msat=int(edge["node1_policy"]["fee_base_msat"])
-                if edge["node1_policy"]
-                else 0,
-                node2_base_fee_msat=int(edge["node2_policy"]["fee_base_msat"])
-                if edge["node2_policy"]
-                else 0,
-                node1_fee_rate_milli_msat=int(edge["node1_policy"]["fee_rate_milli_msat"])
-                if edge["node1_policy"]
-                else 0,
-                node2_fee_rate_milli_msat=int(edge["node2_policy"]["fee_rate_milli_msat"])
-                if edge["node2_policy"]
-                else 0,
-                node1_time_lock_delta=int(edge["node1_policy"]["time_lock_delta"])
-                if edge["node1_policy"]
-                else 0,
-                node2_time_lock_delta=int(edge["node2_policy"]["time_lock_delta"])
-                if edge["node2_policy"]
-                else 0,
-            )
-            for edge in edges
-        ]
+        return [self.lnchannel_from_json(edge) for edge in edges]
+
+    @staticmethod
+    def lnchannel_from_json(edge: object) -> LNChannel:
+        return LNChannel(
+            node1_pub=edge["node1_pub"],
+            node2_pub=edge["node2_pub"],
+            capacity_msat=(int(edge["capacity"]) * 1000),
+            short_chan_id=lnd_to_cl_scid(edge["channel_id"]),
+            node1_min_htlc=int(edge["node1_policy"]["min_htlc"]) if edge["node1_policy"] else 0,
+            node2_min_htlc=int(edge["node2_policy"]["min_htlc"]) if edge["node2_policy"] else 0,
+            node1_max_htlc=int(edge["node1_policy"]["max_htlc_msat"])
+            if edge["node1_policy"]
+            else 0,
+            node2_max_htlc=int(edge["node2_policy"]["max_htlc_msat"])
+            if edge["node2_policy"]
+            else 0,
+            node1_base_fee_msat=int(edge["node1_policy"]["fee_base_msat"])
+            if edge["node1_policy"]
+            else 0,
+            node2_base_fee_msat=int(edge["node2_policy"]["fee_base_msat"])
+            if edge["node2_policy"]
+            else 0,
+            node1_fee_rate_milli_msat=int(edge["node1_policy"]["fee_rate_milli_msat"])
+            if edge["node1_policy"]
+            else 0,
+            node2_fee_rate_milli_msat=int(edge["node2_policy"]["fee_rate_milli_msat"])
+            if edge["node2_policy"]
+            else 0,
+            node1_time_lock_delta=int(edge["node1_policy"]["time_lock_delta"])
+            if edge["node1_policy"]
+            else 0,
+            node2_time_lock_delta=int(edge["node2_policy"]["time_lock_delta"])
+            if edge["node2_policy"]
+            else 0,
+        )
 
     def get_peers(self) -> list[str]:
         return list(p["pub_key"] for p in self.lncli("listpeers")["peers"])

@@ -87,37 +87,36 @@ class CLNNode(LNNode):
     def get_graph_nodes(self) -> list[str]:
         return list(n["nodeid"] for n in self.lncli("listnodes")["nodes"])
 
-    def get_graph_channels(self) -> list[dict]:
+    def get_graph_channels(self) -> list[LNChannel]:
         cln_channels = self.lncli("listchannels")["channels"]
         # CLN lists channels twice, once for each direction. This finds the unique channel ids.
         short_channel_ids = {chan["short_channel_id"]: chan for chan in cln_channels}.keys()
-        channels: list[LNChannel] = []
+        channels = []
         for short_channel_id in short_channel_ids:
-            channel_1 = [
+            node1, node2 = (
                 chans for chans in cln_channels if chans["short_channel_id"] == short_channel_id
-            ][0]
-            channel_2 = [
-                chans for chans in cln_channels if chans["short_channel_id"] == short_channel_id
-            ][1]
-
-            channels.append(
-                LNChannel(
-                    node1_pub=channel_1["source"],
-                    node2_pub=channel_2["source"],
-                    capacity_msat=channel_1["amount_msat"],
-                    short_chan_id=channel_1["short_channel_id"],
-                    node1_min_htlc=channel_1["htlc_minimum_msat"],
-                    node2_min_htlc=channel_2["htlc_minimum_msat"],
-                    node1_max_htlc=channel_1["htlc_maximum_msat"],
-                    node2_max_htlc=channel_2["htlc_maximum_msat"],
-                    node1_base_fee_msat=channel_1["base_fee_millisatoshi"],
-                    node2_base_fee_msat=channel_2["base_fee_millisatoshi"],
-                    node1_fee_rate_milli_msat=channel_1["fee_per_millionth"],
-                    node2_fee_rate_milli_msat=channel_2["fee_per_millionth"],
-                )
             )
-
+            channels.append(self.lnchannel_from_json(node1, node2))
         return channels
+
+    @staticmethod
+    def lnchannel_from_json(node1: object, node2: object) -> LNChannel:
+        assert node1["short_channel_id"] == node2["short_channel_id"]
+        assert node1["direction"] != node2["direction"]
+        return LNChannel(
+            node1_pub=node1["source"],
+            node2_pub=node2["source"],
+            capacity_msat=node1["amount_msat"],
+            short_chan_id=node1["short_channel_id"],
+            node1_min_htlc=node1["htlc_minimum_msat"],
+            node2_min_htlc=node2["htlc_minimum_msat"],
+            node1_max_htlc=node1["htlc_maximum_msat"],
+            node2_max_htlc=node2["htlc_maximum_msat"],
+            node1_base_fee_msat=node1["base_fee_millisatoshi"],
+            node2_base_fee_msat=node2["base_fee_millisatoshi"],
+            node1_fee_rate_milli_msat=node1["fee_per_millionth"],
+            node2_fee_rate_milli_msat=node2["fee_per_millionth"],
+        )
 
     def get_peers(self) -> list[str]:
         return list(p["id"] for p in self.lncli("listpeers")["peers"])
