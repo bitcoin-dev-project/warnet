@@ -482,56 +482,24 @@ def validate_graph_schema(graph: nx.Graph):
 
 
 def policy_match(ch1: LNChannel, ch2: LNChannel) -> bool:
-    node_1_time_lock_delta_is_same = True
-    if ch1.node1_time_lock_delta != 0 and ch2.node1_time_lock_delta != 0:
-        node_1_time_lock_delta_is_same = max(int(ch1.node1_time_lock_delta), 18) == max(
-            int(ch2.node1_time_lock_delta), 18
-        )
-    node_2_time_lock_delta_is_same = True
-    if ch1.node2_time_lock_delta != 0 and ch2.node2_time_lock_delta != 0:
-        node_2_time_lock_delta_is_same = max(int(ch1.node2_time_lock_delta), 18) == max(
-            int(ch2.node2_time_lock_delta), 18
-        )
+    def compare_attributes(attr1, attr2, min_value=0):
+        if attr1 == 0 or attr2 == 0:
+            return True
+        return max(int(attr1), min_value) == max(int(attr2), min_value)
 
-    node_1_min_htlc_is_same = True
-    if ch1.node1_min_htlc != 0 and ch2.node1_min_htlc != 0:
-        node_1_min_htlc_is_same = max(int(ch1.node1_min_htlc), 1) == max(int(ch2.node1_min_htlc), 1)
+    # Ignoring max_htlc for now since we use capacity/2
+    attributes_to_compare = [
+        (ch1.node1_time_lock_delta, ch2.node1_time_lock_delta, 18),
+        (ch1.node2_time_lock_delta, ch2.node2_time_lock_delta, 18),
+        (ch1.node1_min_htlc, ch2.node1_min_htlc, 1),
+        (ch1.node2_min_htlc, ch2.node2_min_htlc, 1),
+        (ch1.node1_base_fee_msat, ch2.node1_base_fee_msat),
+        (ch1.node2_base_fee_msat, ch2.node2_base_fee_msat),
+        (ch1.node1_fee_rate_milli_msat, ch2.node1_fee_rate_milli_msat),
+        (ch2.node2_fee_rate_milli_msat, ch2.node2_fee_rate_milli_msat),
+    ]
 
-    node_2_min_htlc_is_same = True
-    if ch1.node2_min_htlc != 0 and ch2.node2_min_htlc != 0:
-        node_2_min_htlc_is_same = max(int(ch1.node2_min_htlc), 1) == max(int(ch2.node2_min_htlc), 1)
-
-    node_1_base_fee_msat_is_same = True
-    if ch1.node1_base_fee_msat != 0 and ch2.node1_base_fee_msat != 0:
-        node_1_base_fee_msat_is_same = int(ch1.node1_base_fee_msat) == int(ch2.node1_base_fee_msat)
-
-    node_2_base_fee_msat_is_same = True
-    if ch1.node2_base_fee_msat != 0 and ch2.node2_base_fee_msat != 0:
-        node_2_base_fee_msat_is_same = int(ch1.node2_base_fee_msat) == int(ch2.node2_base_fee_msat)
-
-    node_1_fee_rate_milli_msat_is_same = True
-    if ch1.node1_fee_rate_milli_msat != 0 and ch2.node1_fee_rate_milli_msat != 0:
-        node_1_fee_rate_milli_msat_is_same = int(ch1.node1_fee_rate_milli_msat) == int(
-            ch2.node1_fee_rate_milli_msat
-        )
-
-    node_2_fee_rate_milli_msat_is_same = True
-    if ch1.node2_fee_rate_milli_msat != 0 and ch2.node2_fee_rate_milli_msat != 0:
-        node_2_fee_rate_milli_msat_is_same = int(ch1.node2_fee_rate_milli_msat) == int(
-            ch2.node2_fee_rate_milli_msat
-        )
-
-    return (
-        node_1_time_lock_delta_is_same
-        and node_2_time_lock_delta_is_same
-        and node_1_min_htlc_is_same
-        and node_2_min_htlc_is_same
-        and node_1_base_fee_msat_is_same
-        and node_2_base_fee_msat_is_same
-        and node_1_fee_rate_milli_msat_is_same
-        and node_2_fee_rate_milli_msat_is_same
-        # Ignoring max_htlc for now since we use capacity/2
-    )
+    return all(compare_attributes(*attrs) for attrs in attributes_to_compare)
 
 
 def channel_match(ch1: LNChannel, ch2: LNChannel) -> bool:

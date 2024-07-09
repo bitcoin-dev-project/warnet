@@ -52,8 +52,7 @@ class LNNode(ABC):
 
     @abstractmethod
     def open_channel_to_tank(self, index: int, channel_open_data: str) -> str:
-        """Return the channel point in the form txid:output_index
-        """
+        """Return the channel point in the form txid:output_index"""
         pass
 
     @abstractmethod
