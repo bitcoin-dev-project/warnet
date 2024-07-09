@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 from test_base import TestBase
+from warnet.lnd import LNDNode
 from warnet.utils import DEFAULT_TAG
 
 graph_file_path = Path(os.path.dirname(__file__)) / "data" / "services.graphml"
@@ -69,35 +70,14 @@ base.warcli("scenarios run ln_init")
 base.wait_for_all_scenarios()
 
 
-def channel_match(ch1, ch2):
-    if ch1["capacity"] != ch2["capacity"]:
-        return False
-    if policy_match(ch1["node1_policy"], ch2["node1_policy"]) and policy_match(
-        ch1["node2_policy"], ch2["node2_policy"]
-    ):
-        return True
-    return policy_match(ch1["node1_policy"], ch2["node2_policy"]) and policy_match(
-        ch1["node2_policy"], ch2["node1_policy"]
-    )
-
-
-def policy_match(pol1, pol2):
-    return (
-        max(int(pol1["time_lock_delta"]), 18) == max(int(pol2["time_lock_delta"]), 18)
-        and max(int(pol1["min_htlc"]), 1) == max(int(pol2["min_htlc"]), 1)
-        and pol1["fee_base_msat"] == pol2["fee_base_msat"]
-        and pol1["fee_rate_milli_msat"] == pol2["fee_rate_milli_msat"]
-    )
-
-
 print("Ensuring warnet LN channel policies match imported JSON description")
 with open(json_file_path) as file:
     actual = json.loads(base.warcli("lncli 0 describegraph"))["edges"]
     expected = json.loads(file.read())["edges"]
     expected = sorted(expected, key=lambda chan: int(chan["channel_id"]))
     for chan_index, actual_chan in enumerate(actual):
-        expected_chan = expected[chan_index]
-        if not channel_match(actual_chan, expected_chan):
+        expected_chan = LNDNode.lnchannel_from_json(expected[chan_index])
+        if not expected_chan.channel_match(LNDNode.lnchannel_from_json(actual_chan)):
             raise Exception(
                 f"Channel policy doesn't match source: {actual_chan['channel_id']}\n"
                 + "Actual:\n"

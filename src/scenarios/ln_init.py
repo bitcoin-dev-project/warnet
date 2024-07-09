@@ -4,7 +4,6 @@ from time import sleep
 
 from scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
-from warnet.utils import channel_match
 
 
 def cli_help():
@@ -157,7 +156,7 @@ class LNInit(WarnetTestFramework):
                         break
 
                     try:
-                        if not channel_match(my_chan, your_chan):
+                        if not my_chan.channel_match(your_chan):
                             print(
                                 f"Channel policy doesn't match between tanks {me} & {you}: {my_chan.short_chan_id}"
                             )

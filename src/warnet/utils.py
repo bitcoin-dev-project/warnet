@@ -17,7 +17,6 @@ from jsonschema import validate
 from schema import SCHEMA
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
-from warnet.lnchannel import LNChannel
 
 logger = logging.getLogger("utils")
 
@@ -479,30 +478,3 @@ def validate_graph_schema(graph: nx.Graph):
         validate(instance=graph.nodes[n], schema=graph_schema["node"])
     for e in list(graph.edges):
         validate(instance=graph.edges[e], schema=graph_schema["edge"])
-
-
-def policy_match(ch1: LNChannel, ch2: LNChannel) -> bool:
-    def compare_attributes(attr1, attr2, min_value=0):
-        if attr1 == 0 or attr2 == 0:
-            return True
-        return max(int(attr1), min_value) == max(int(attr2), min_value)
-
-    # Ignoring max_htlc for now since we use capacity/2
-    attributes_to_compare = [
-        (ch1.node1_time_lock_delta, ch2.node1_time_lock_delta, 18),
-        (ch1.node2_time_lock_delta, ch2.node2_time_lock_delta, 18),
-        (ch1.node1_min_htlc, ch2.node1_min_htlc, 1),
-        (ch1.node2_min_htlc, ch2.node2_min_htlc, 1),
-        (ch1.node1_base_fee_msat, ch2.node1_base_fee_msat),
-        (ch1.node2_base_fee_msat, ch2.node2_base_fee_msat),
-        (ch1.node1_fee_rate_milli_msat, ch2.node1_fee_rate_milli_msat),
-        (ch2.node2_fee_rate_milli_msat, ch2.node2_fee_rate_milli_msat),
-    ]
-
-    return all(compare_attributes(*attrs) for attrs in attributes_to_compare)
-
-
-def channel_match(ch1: LNChannel, ch2: LNChannel) -> bool:
-    if ch1.capacity_msat != ch2.capacity_msat:
-        return False
-    return policy_match(ch1, ch2)
