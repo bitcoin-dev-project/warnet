@@ -1,3 +1,6 @@
+import io
+import tarfile
+
 from backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
@@ -128,4 +131,48 @@ class CLNNode(LNNode):
         cmd = f"lightning-cli {cmd}"
 
     def export(self, config: object, tar_file):
-        pass
+        # Retrieve the credentials
+        ca_cert = self.backend.get_file(
+            self.tank.index,
+            ServiceType.LIGHTNING,
+            "/root/.lightning/regtest/ca.pem",
+        )
+        client_cert = self.backend.get_file(
+            self.tank.index,
+            ServiceType.LIGHTNING,
+            "/root/.lightning/regtest/client.pem",
+        )
+        client_key = self.backend.get_file(
+            self.tank.index,
+            ServiceType.LIGHTNING,
+            "/root/.lightning/regtest/client-key.pem",
+        )
+        name = f"ln-{self.tank.index}"
+        ca_cert_filename = f"{name}_ca_cert.pem"
+        client_cert_filename = f"{name}_client_cert.pem"
+        client_key_filename = f"{name}_client_key.pem"
+        host = self.backend.get_lnnode_hostname(self.tank.index)
+
+        # Add the files to the in-memory tar archive
+        tarinfo1 = tarfile.TarInfo(name=ca_cert_filename)
+        tarinfo1.size = len(ca_cert)
+        fileobj1 = io.BytesIO(ca_cert)
+        tar_file.addfile(tarinfo=tarinfo1, fileobj=fileobj1)
+        tarinfo2 = tarfile.TarInfo(name=client_cert_filename)
+        tarinfo2.size = len(client_cert)
+        fileobj2 = io.BytesIO(client_cert)
+        tar_file.addfile(tarinfo=tarinfo2, fileobj=fileobj2)
+        tarinfo3 = tarfile.TarInfo(name=client_key_filename)
+        tarinfo3.size = len(client_key)
+        fileobj3 = io.BytesIO(client_key)
+        tar_file.addfile(tarinfo=tarinfo3, fileobj=fileobj3)
+
+        config["nodes"].append(
+            {
+                "id": name,
+                "address": f"https://{host}:{self.rpc_port}",
+                "ca_cert": f"/simln/{ca_cert_filename}",
+                "client_cert": f"/simln/{client_cert_filename}",
+                "client_key": f"/simln/{client_key_filename}",
+            }
+        )
