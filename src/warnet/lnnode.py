@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, handle_json
@@ -5,7 +7,8 @@ from warnet.utils import exponential_backoff, handle_json
 from .status import RunningStatus
 
 
-class LNNode:
+class LNNode(ABC):
+    @abstractmethod
     def __init__(self, warnet, tank, backend: KubernetesBackend, options):
         pass
 
@@ -21,39 +24,51 @@ class LNNode:
             self.tank.index, ServiceType.CIRCUITBREAKER
         )
 
+    @abstractmethod
     def get_conf(self, ln_container_name, tank_container_name) -> str:
         pass
 
     @exponential_backoff(max_retries=20, max_delay=300)
     @handle_json
+    @abstractmethod
     def lncli(self, cmd) -> dict:
         pass
 
+    @abstractmethod
     def getnewaddress(self):
         pass
 
+    @abstractmethod
     def get_pub_key(self):
         pass
 
+    @abstractmethod
     def getURI(self):
         pass
 
+    @abstractmethod
     def get_wallet_balance(self) -> int:
         pass
 
-    # returns the channel point in the form txid:output_index
+    @abstractmethod
     def open_channel_to_tank(self, index: int, channel_open_data: str) -> str:
+        """Return the channel point in the form txid:output_index
+        """
         pass
 
+    @abstractmethod
     def update_channel_policy(self, chan_point: str, policy: str) -> str:
         pass
 
+    @abstractmethod
     def get_graph_nodes(self) -> list[str]:
         pass
 
+    @abstractmethod
     def get_graph_channels(self) -> list[dict]:
         pass
 
+    @abstractmethod
     def get_peers(self) -> list[str]:
         pass
 
@@ -63,9 +78,11 @@ class LNNode:
         res = self.lncli(f"connect {uri}")
         return res
 
+    @abstractmethod
     def generate_cli_command(self, command: list[str]):
         pass
 
+    @abstractmethod
     def export(self, config: object, tar_file):
         pass
 
