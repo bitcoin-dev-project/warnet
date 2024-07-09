@@ -169,3 +169,10 @@ class TestBase:
             return all(not scn["active"] for scn in scns)
 
         self.wait_for_predicate(check_scenarios)
+
+    def get_scenario_return_code(self, scenario_name):
+        scns = self.rpc("scenarios_list_running")
+        scns = [scn for scn in scns if scn["cmd"].strip() == scenario_name]
+        if len(scns) == 0:
+            raise Exception(f"Scenario {scenario_name} not found in running scenarios")
+        return scns[0]["return_code"]
