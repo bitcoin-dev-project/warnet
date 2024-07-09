@@ -100,6 +100,7 @@ class Server:
         logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
         logging.config.dictConfig(logging_config)
         self.logger = logging.getLogger("server")
+        self.scenario_logger = logging.getLogger("scenario")
         self.logger.info("Logging started")
 
         def log_request():
@@ -161,11 +162,11 @@ class Server:
         # Logs
         self.jsonrpc.register(self.logs_grep)
 
-    def proc_logger(self, proc):
-        # while not proc.stdout:
-        #     time.sleep(0.1)
+    def scenario_log(self, proc):
+        while not proc.stdout:
+            time.sleep(0.1)
         for line in proc.stdout:
-            self.logger.info(line.decode().rstrip())
+            self.scenario_logger.info(line.decode().rstrip())
 
     def get_warnet(self, network: str) -> Warnet:
         """
@@ -331,7 +332,7 @@ class Server:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-            t = threading.Thread(target=lambda: self.proc_logger(proc))
+            t = threading.Thread(target=lambda: self.scenario_log(proc))
             t.daemon = True
             t.start()
             self.running_scenarios.append(
