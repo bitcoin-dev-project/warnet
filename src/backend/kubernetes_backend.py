@@ -16,7 +16,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.dynamic.exceptions import NotFoundError, ResourceNotFoundError
 from kubernetes.stream import stream
-from warnet.services import ServiceType, services
+from warnet.services import SERVICES, ServiceType
 from warnet.status import RunningStatus
 from warnet.tank import Tank
 from warnet.utils import parse_raw_messages
@@ -81,14 +81,17 @@ class KubernetesBackend:
         self.remove_prometheus_service_monitors(warnet.tanks)
 
         for service_name in warnet.services:
-            self.client.delete_namespaced_pod(
-                self.get_service_pod_name(services[service_name]["container_name_suffix"]),
-                self.namespace,
-            )
-            self.client.delete_namespaced_service(
-                self.get_service_service_name(services[service_name]["container_name_suffix"]),
-                self.namespace,
-            )
+            try:
+                self.client.delete_namespaced_pod(
+                    self.get_service_pod_name(SERVICES[service_name]["container_name_suffix"]),
+                    self.namespace,
+                )
+                self.client.delete_namespaced_service(
+                    self.get_service_service_name(SERVICES[service_name]["container_name_suffix"]),
+                    self.namespace,
+                )
+            except Exception as e:
+                self.log.error(f"Could not delete service: {service_name}:\n{e}")
 
         return True
 
@@ -724,7 +727,10 @@ class KubernetesBackend:
             self.apply_prometheus_service_monitors(warnet.tanks)
 
         for service_name in warnet.services:
-            self.service_from_json(services[service_name])
+            try:
+                self.service_from_json(SERVICES[service_name])
+            except Exception as e:
+                self.log.error(f"Error starting service: {service_name}\n{e}")
 
         self.log.debug("Containers and services created. Configuring IP addresses")
         # now that the pods have had a second to create,
@@ -831,7 +837,7 @@ class KubernetesBackend:
         self.client.create_namespaced_service(namespace=self.namespace, body=service_service)
 
     def write_service_config(self, source_path: str, service_name: str, destination_path: str):
-        obj = services[service_name]
+        obj = SERVICES[service_name]
         container_name = "sidecar"
         # Copy the archive from our local drive (Warnet RPC container/pod)
         # to the destination service's sidecar container via ssh

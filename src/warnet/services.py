@@ -12,7 +12,7 @@ class ServiceType(Enum):
     CIRCUITBREAKER = 3
 
 
-services = {
+SERVICES = {
     # "forkobserver": {
     #     "image": "b10c/fork-observer:latest",
     #     "container_name_suffix": "fork-observer",
