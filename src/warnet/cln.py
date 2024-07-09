@@ -129,6 +129,7 @@ class CLNNode(LNNode):
         network = f"--network={self.tank.warnet.bitcoin_network}"
         cmd = f"{network} {' '.join(command)}"
         cmd = f"lightning-cli {cmd}"
+        return cmd
 
     def export(self, config: object, tar_file):
         # Retrieve the credentials
