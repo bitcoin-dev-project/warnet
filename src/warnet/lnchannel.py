@@ -47,7 +47,7 @@ class LNChannel:
         self.node2_fee_rate_milli_msat = node2_fee_rate_milli_msat
         self.node1_time_lock_delta = node1_time_lock_delta
         self.node2_time_lock_delta = node2_time_lock_delta
-        self.logger = logging.getLogger("lnchannel")
+        self.logger = logging.getLogger("lnchan")
 
     def __str__(self) -> str:
         return (
@@ -65,6 +65,28 @@ class LNChannel:
             f"base_fee={self.node2_base_fee_msat}, "
             f"fee_rate={self.node2_fee_rate_milli_msat}, "
             f"time_lock_delta={self.node2_time_lock_delta}))"
+        )
+
+    # Only used to compare warnet channels imported from a mainnet source file
+    # because pubkeys are unpredictable and node 1/2 might be swapped
+    def flip(self) -> "LNChannel":
+        return LNChannel(
+            # Keep the old pubkeys so the constructor doesn't just flip it back
+            node1_pub=self.node1_pub,
+            node2_pub=self.node2_pub,
+            capacity_msat=self.capacity_msat,
+            short_chan_id=self.short_chan_id,
+            # Flip the policies
+            node1_min_htlc=self.node2_min_htlc,
+            node2_min_htlc=self.node1_min_htlc,
+            node1_max_htlc=self.node2_max_htlc,
+            node2_max_htlc=self.node1_max_htlc,
+            node1_base_fee_msat=self.node2_base_fee_msat,
+            node2_base_fee_msat=self.node1_base_fee_msat,
+            node1_fee_rate_milli_msat=self.node2_fee_rate_milli_msat,
+            node2_fee_rate_milli_msat=self.node1_fee_rate_milli_msat,
+            node1_time_lock_delta=self.node2_time_lock_delta,
+            node2_time_lock_delta=self.node1_time_lock_delta,
         )
 
     def policy_match(self, ch2: "LNChannel") -> bool:

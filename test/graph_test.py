@@ -98,11 +98,15 @@ class GraphTest(TestBase):
                 expected_chan = LNDNode.lnchannel_from_json(expected[chan_index])
                 actual_chan = LNDNode.lnchannel_from_json(actual_chan_json)
                 if not expected_chan.channel_match(actual_chan):
-                    raise Exception(
-                        f"Channel policy doesn't match source: {actual_chan.short_chan_id}\n"
-                        + f"Actual:\n{actual_chan}\n"
-                        + f"Expected:\n{expected_chan}\n"
+                    self.log.info(
+                        f"Channel {chan_index} policy mismatch, testing flipped channel: {actual_chan.short_chan_id}"
                     )
+                    if not expected_chan.channel_match(actual_chan.flip()):
+                        raise Exception(
+                            f"Channel policy doesn't match source: {actual_chan.short_chan_id}\n"
+                            + f"Actual:\n{actual_chan}\n"
+                            + f"Expected:\n{expected_chan}\n"
+                        )
 
 
 if __name__ == "__main__":
