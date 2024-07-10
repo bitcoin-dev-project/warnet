@@ -15,6 +15,9 @@ CLN_CONFIG_BASE = " ".join(
         "--database-upgrade=true",
         "--bitcoin-retry-timeout=600",
         "--bind-addr=0.0.0.0:9735",
+        "--developer",
+        "--dev-fast-gossip",
+        "--log-level=debug",
     ]
 )
 
