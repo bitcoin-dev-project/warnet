@@ -43,7 +43,7 @@
         "comment": "A string of configure options used when building Bitcoin Core from source code, e.g. '--without-gui --disable-tests'"},
       "ln": {
         "type": "string",
-        "comment": "Attach a lightning network node of this implementation (currently only supports 'lnd')"},
+        "comment": "Attach a lightning network node of this implementation (currently only supports 'lnd' or 'cln')"},
       "ln_image": {
         "type": "string",
         "comment": "Specify a lightning network node image from Dockerhub with the format repository/image:tag"},

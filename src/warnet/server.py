@@ -142,6 +142,7 @@ class Server:
         self.jsonrpc.register(self.tank_lncli)
         self.jsonrpc.register(self.tank_debug_log)
         self.jsonrpc.register(self.tank_messages)
+        self.jsonrpc.register(self.tank_ln_pub_key)
         # Scenarios
         self.jsonrpc.register(self.scenarios_available)
         self.jsonrpc.register(self.scenarios_run)
@@ -205,6 +206,18 @@ class Server:
             return wn.container_interface.ln_cli(wn.tanks[node], command)
         except Exception as e:
             msg = f"Error calling lncli: {e}"
+            self.logger.error(msg)
+            raise ServerError(message=msg) from e
+
+    def tank_ln_pub_key(self, node: int, network: str = "warnet") -> str:
+        """
+        Get lightning pub key on <node> in [network]
+        """
+        wn = self.get_warnet(network)
+        try:
+            return wn.container_interface.ln_pub_key(wn.tanks[node])
+        except Exception as e:
+            msg = f"Error getting pub key: {e}"
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 

@@ -87,6 +87,21 @@ def lncli(node: int, command: tuple, network: str):
     )
 
 
+@cli.command(context_settings={"ignore_unknown_options": True})
+@click.argument("node", type=int)
+@click.option("--network", default="warnet", show_default=True, type=str)
+def ln_pub_key(node: int, network: str):
+    """
+    Get lightning node pub key on <node> in [network]
+    """
+    print(
+        rpc_call(
+            "tank_ln_pub_key",
+            {"network": network, "node": node},
+        )
+    )
+
+
 @cli.command()
 @click.argument("node", type=int, required=True)
 @click.option("--network", default="warnet", show_default=True)
