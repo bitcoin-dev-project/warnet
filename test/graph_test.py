@@ -75,14 +75,15 @@ with open(json_file_path) as file:
     actual = json.loads(base.warcli("lncli 0 describegraph"))["edges"]
     expected = json.loads(file.read())["edges"]
     expected = sorted(expected, key=lambda chan: int(chan["channel_id"]))
-    for chan_index, actual_chan in enumerate(actual):
+    for chan_index, actual_chan_json in enumerate(actual):
         expected_chan = LNDNode.lnchannel_from_json(expected[chan_index])
-        if not expected_chan.channel_match(LNDNode.lnchannel_from_json(actual_chan)):
+        actual_chan = LNDNode.lnchannel_from_json(actual_chan_json)
+        if not expected_chan.channel_match(actual_chan):
             raise Exception(
                 f"Channel policy doesn't match source: {actual_chan['channel_id']}\n"
                 + "Actual:\n"
-                + json.dumps(actual_chan, indent=2)
+                + json.dumps(actual_chan.__dict__(), indent=2)
                 + "Expected:\n"
-                + json.dumps(expected_chan, indent=2)
+                + json.dumps(expected_chan.__dict__(), indent=2)
             )
 base.stop_server()
