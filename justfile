@@ -111,5 +111,5 @@ connectlogging:
 
 # Format and lint all files
 lint:
-    ruff format .
+    ruff format --check .
     ruff check .
