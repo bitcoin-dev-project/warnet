@@ -36,14 +36,6 @@ class DAGConnectionTest(TestBase):
         self.log_unexpected_msgs = ["Test failed."]
         self.wait_for_all_scenarios()
         self.assert_log_msgs_passed()
-        self.stop_running_scenario()
-
-    def stop_running_scenario(self):
-        running_scenarios = self.rpc("scenarios_list_running")
-        if running_scenarios:
-            pid = running_scenarios[0]["pid"]
-            self.log.warning(f"Stopping scenario with PID {pid}")
-            self.warcli(f"scenarios stop {pid}", False)
 
 
 if __name__ == "__main__":
