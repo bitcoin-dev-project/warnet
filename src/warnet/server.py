@@ -412,6 +412,7 @@ class Server:
                 "pid": sc["pid"],
                 "cmd": sc["cmd"],
                 "active": sc["proc"].poll() is None,
+                "return_code": sc["proc"].returncode,
                 "network": sc["network"],
             }
             for sc in self.running_scenarios

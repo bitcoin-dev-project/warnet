@@ -43,6 +43,9 @@ class LNTest(TestBase):
         self.warcli("rpc 0 getblockcount")
         self.warcli("scenarios run ln_init")
         self.wait_for_all_scenarios()
+        scenario_return_code = self.get_scenario_return_code("ln_init")
+        if scenario_return_code != 0:
+            raise Exception("LN Init scenario failed")
 
     def test_channel_policies(self):
         self.log.info("Ensuring node-level channel policy settings")
