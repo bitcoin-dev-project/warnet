@@ -21,6 +21,9 @@ class TestBase:
         self.setup_environment()
         self.setup_logging()
         atexit.register(self.cleanup)
+        self.log_expected_msgs: None | [str] = None
+        self.log_unexpected_msgs: None | [str] = None
+        self.log_msg_assertions_passed = False
         self.log.info("Warnet test base initialized")
 
     def setup_environment(self):
@@ -42,6 +45,15 @@ class TestBase:
         logging.config.dictConfig(logging_config)
         self.log = logging.getLogger("test")
         self.log.info("Logging started")
+
+    def print_and_assert_msgs(self, message):
+        if (
+            self.log_expected_msgs
+            or self.log_unexpected_msgs
+            and assert_log(self.log_expected_msgs, self.log_unexpected_msgs)
+        ):
+            self.log_msg_assertions_passed = True
+        print(message)
 
     def cleanup(self, signum=None, frame=None):
         if self.server is None:
