@@ -55,6 +55,11 @@ class TestBase:
             self.log_msg_assertions_passed = True
         print(message)
 
+    def assert_log_msgs_passed(self):
+        assert (
+            self.log_msg_assertions_passed
+        ), f"Log assertion failed: {self.log_expected_msgs}, {self.log_unexpected_msgs}"
+
     def cleanup(self, signum=None, frame=None):
         if self.server is None:
             return
