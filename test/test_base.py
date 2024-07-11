@@ -3,6 +3,7 @@ import json
 import logging
 import logging.config
 import os
+import re
 import threading
 from pathlib import Path
 from subprocess import PIPE, Popen, run
@@ -176,3 +177,26 @@ class TestBase:
         if len(scns) == 0:
             raise Exception(f"Scenario {scenario_name} not found in running scenarios")
         return scns[0]["return_code"]
+
+
+def assert_equal(thing1, thing2, *args):
+    if thing1 != thing2 or any(thing1 != arg for arg in args):
+        raise AssertionError(
+            "not({})".format(" == ".join(str(arg) for arg in (thing1, thing2) + args))
+        )
+
+
+def assert_log(log_message, expected_msgs, unexpected_msgs=None) -> bool:
+    if unexpected_msgs is None:
+        unexpected_msgs = []
+    assert_equal(type(expected_msgs), list)
+    assert_equal(type(unexpected_msgs), list)
+
+    found = True
+    for unexpected_msg in unexpected_msgs:
+        if re.search(re.escape(unexpected_msg), log_message, flags=re.MULTILINE):
+            raise AssertionError(f"Unexpected message found in log: {unexpected_msg}")
+    for expected_msg in expected_msgs:
+        if re.search(re.escape(expected_msg), log_message, flags=re.MULTILINE) is None:
+            found = False
+    return found
