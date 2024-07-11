@@ -119,7 +119,7 @@ class TestBase:
         )
 
         self.server_thread = threading.Thread(
-            target=self.output_reader, args=(self.server.stdout, print)
+            target=self.output_reader, args=(self.server.stdout, self.print_and_assert_msgs)
         )
         self.server_thread.daemon = True
         self.server_thread.start()
