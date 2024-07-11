@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import time
 from pathlib import Path
 
 from test_base import TestBase
@@ -13,7 +12,6 @@ class DAGConnectionTest(TestBase):
         self.graph_file_path = (
             Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected.graphml"
         )
-        self.scenario_timeout = 180  # seconds
 
     def run_test(self):
         self.start_server()
@@ -32,23 +30,13 @@ class DAGConnectionTest(TestBase):
     def run_connect_dag_scenario(self):
         self.log.info("Running connect_dag scenario")
         self.warcli("scenarios run-file test/framework_tests/connect_dag.py")
-
-        start_time = time.time()
-        while time.time() - start_time < self.scenario_timeout:
-            running_scenarios = self.rpc("scenarios_list_running")
-            if not running_scenarios:
-                self.log.info("Scenario completed successfully")
-                return
-
-            if len(running_scenarios) == 1 and not running_scenarios[0]["active"]:
-                self.log.info("Scenario completed successfully")
-                return
-
-            time.sleep(1)
-
-        self.log.error(f"Scenario did not complete within {self.scenario_timeout} seconds")
+        self.log_expected_msgs = [
+            "Successfully ran the connect_dag.py scenario using a temporary file"
+        ]
+        self.log_unexpected_msgs = ["Test failed."]
+        self.wait_for_all_scenarios()
+        self.assert_log_msgs_passed()
         self.stop_running_scenario()
-        raise AssertionError(f"Scenario timed out after {self.scenario_timeout} seconds")
 
     def stop_running_scenario(self):
         running_scenarios = self.rpc("scenarios_list_running")
