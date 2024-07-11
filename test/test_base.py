@@ -5,7 +5,7 @@ import logging.config
 import os
 import threading
 from pathlib import Path
-from subprocess import PIPE, STDOUT, Popen, run
+from subprocess import PIPE, Popen, run
 from tempfile import mkdtemp
 from time import sleep
 
@@ -100,7 +100,7 @@ class TestBase:
         self.server = Popen(
             ["kubectl", "logs", "-f", "rpc-0"],
             stdout=PIPE,
-            stderr=STDOUT,
+            stderr=PIPE,
             bufsize=1,
             universal_newlines=True,
         )
