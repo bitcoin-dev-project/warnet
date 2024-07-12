@@ -114,7 +114,7 @@ class TestBase:
         # but we can still read its log output
         self.log.info("Starting Warnet server")
         self.server = Popen(
-            ["kubectl", "logs", "-f", "rpc-0"],
+            ["kubectl", "logs", "-f", "rpc-0", "--since=1s"],
             stdout=PIPE,
             stderr=PIPE,
             bufsize=1,
