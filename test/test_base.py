@@ -47,10 +47,8 @@ class TestBase:
         self.log.info("Logging started")
 
     def print_and_assert_msgs(self, message):
-        if (
-            self.log_expected_msgs
-            or self.log_unexpected_msgs
-            and assert_log(self.log_expected_msgs, self.log_unexpected_msgs)
+        if (self.log_expected_msgs or self.log_unexpected_msgs) and assert_log(
+            message, self.log_expected_msgs, self.log_unexpected_msgs
         ):
             self.log_msg_assertions_passed = True
         print(message)
