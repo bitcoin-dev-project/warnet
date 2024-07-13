@@ -46,7 +46,7 @@ class TestBase:
         self.log = logging.getLogger("test")
         self.log.info("Logging started")
 
-    def print_and_assert_msgs(self, message):
+    def _print_and_assert_msgs(self, message):
         if (self.log_expected_msgs or self.log_unexpected_msgs) and assert_log(
             message, self.log_expected_msgs, self.log_unexpected_msgs
         ):
@@ -123,7 +123,7 @@ class TestBase:
         )
 
         self.server_thread = threading.Thread(
-            target=self.output_reader, args=(self.server.stdout, self.print_and_assert_msgs)
+            target=self.output_reader, args=(self.server.stdout, self._print_and_assert_msgs)
         )
         self.server_thread.daemon = True
         self.server_thread.start()
