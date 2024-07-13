@@ -57,6 +57,7 @@ class TestBase:
         assert (
             self.log_msg_assertions_passed
         ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
+        self.log_msg_assertions_passed = False
 
     def cleanup(self, signum=None, frame=None):
         if self.server is None:
