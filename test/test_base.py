@@ -46,19 +46,6 @@ class TestBase:
         self.log = logging.getLogger("test")
         self.log.info("Logging started")
 
-    def _print_and_assert_msgs(self, message):
-        if (self.log_expected_msgs or self.log_unexpected_msgs) and assert_log(
-            message, self.log_expected_msgs, self.log_unexpected_msgs
-        ):
-            self.log_msg_assertions_passed = True
-        print(message)
-
-    def assert_log_msgs(self):
-        assert (
-            self.log_msg_assertions_passed
-        ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
-        self.log_msg_assertions_passed = False
-
     def cleanup(self, signum=None, frame=None):
         if self.server is None:
             return
@@ -75,6 +62,19 @@ class TestBase:
             self.server.wait()
             self.server_thread.join()
             self.server = None
+
+    def _print_and_assert_msgs(self, message):
+        if (self.log_expected_msgs or self.log_unexpected_msgs) and assert_log(
+            message, self.log_expected_msgs, self.log_unexpected_msgs
+        ):
+            self.log_msg_assertions_passed = True
+        print(message)
+
+    def assert_log_msgs(self):
+        assert (
+            self.log_msg_assertions_passed
+        ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
+        self.log_msg_assertions_passed = False
 
     def warcli(self, cmd, network=True):
         self.log.debug(f"Executing warcli command: {cmd}")
