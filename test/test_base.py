@@ -53,7 +53,7 @@ class TestBase:
             self.log_msg_assertions_passed = True
         print(message)
 
-    def assert_log_msgs_passed(self):
+    def assert_log_msgs(self):
         assert (
             self.log_msg_assertions_passed
         ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"

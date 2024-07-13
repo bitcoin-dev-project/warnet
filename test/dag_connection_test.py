@@ -36,7 +36,7 @@ class DAGConnectionTest(TestBase):
         ]
         self.log_unexpected_msgs = ["Test failed."]
         self.wait_for_all_scenarios()
-        self.assert_log_msgs_passed()
+        self.assert_log_msgs()
 
     def run_connect_dag_scenario_post_connection(self):
         self.log.info("Running connect_dag scenario")
@@ -44,7 +44,7 @@ class DAGConnectionTest(TestBase):
         self.log_expected_msgs = ["Successfully ran the connect_dag.py scenario"]
         self.log_unexpected_msgs = ["Test failed"]
         self.wait_for_all_scenarios()
-        self.assert_log_msgs_passed()
+        self.assert_log_msgs()
 
 
 if __name__ == "__main__":
