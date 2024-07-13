@@ -18,6 +18,7 @@ class DAGConnectionTest(TestBase):
         try:
             self.setup_network()
             self.run_connect_dag_scenario()
+            self.run_connect_dag_scenario_post_connection()
         finally:
             self.stop_server()
 
@@ -34,6 +35,14 @@ class DAGConnectionTest(TestBase):
             "Successfully ran the connect_dag.py scenario using a temporary file"
         ]
         self.log_unexpected_msgs = ["Test failed."]
+        self.wait_for_all_scenarios()
+        self.assert_log_msgs_passed()
+
+    def run_connect_dag_scenario_post_connection(self):
+        self.log.info("Running connect_dag scenario")
+        self.warcli("scenarios run-file test/framework_tests/connect_dag.py")
+        self.log_expected_msgs = ["Successfully ran the connect_dag.py scenario"]
+        self.log_unexpected_msgs = ["Test failed"]
         self.wait_for_all_scenarios()
         self.assert_log_msgs_passed()
 
