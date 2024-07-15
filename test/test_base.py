@@ -3,9 +3,10 @@ import json
 import logging
 import logging.config
 import os
+import re
 import threading
 from pathlib import Path
-from subprocess import PIPE, STDOUT, Popen, run
+from subprocess import PIPE, Popen, run
 from tempfile import mkdtemp
 from time import sleep
 
@@ -20,6 +21,9 @@ class TestBase:
         self.setup_environment()
         self.setup_logging()
         atexit.register(self.cleanup)
+        self.log_expected_msgs: None | [str] = None
+        self.log_unexpected_msgs: None | [str] = None
+        self.log_msg_assertions_passed = False
         self.log.info("Warnet test base initialized")
 
     def setup_environment(self):
@@ -59,6 +63,19 @@ class TestBase:
             self.server_thread.join()
             self.server = None
 
+    def _print_and_assert_msgs(self, message):
+        print(message)
+        if (self.log_expected_msgs or self.log_unexpected_msgs) and assert_log(
+            message, self.log_expected_msgs, self.log_unexpected_msgs
+        ):
+            self.log_msg_assertions_passed = True
+
+    def assert_log_msgs(self):
+        assert (
+            self.log_msg_assertions_passed
+        ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
+        self.log_msg_assertions_passed = False
+
     def warcli(self, cmd, network=True):
         self.log.debug(f"Executing warcli command: {cmd}")
         command = ["warcli"] + cmd.split()
@@ -94,19 +111,19 @@ class TestBase:
         # TODO: check for conflicting warnet process
         #       maybe also ensure that no conflicting docker networks exist
 
-        # For kubernetes we assume the server is started outside test base
+        # For kubernetes we assume the server is started outside test base,
         # but we can still read its log output
         self.log.info("Starting Warnet server")
         self.server = Popen(
-            ["kubectl", "logs", "-f", "rpc-0"],
+            ["kubectl", "logs", "-f", "rpc-0", "--since=1s"],
             stdout=PIPE,
-            stderr=STDOUT,
+            stderr=PIPE,
             bufsize=1,
             universal_newlines=True,
         )
 
         self.server_thread = threading.Thread(
-            target=self.output_reader, args=(self.server.stdout, print)
+            target=self.output_reader, args=(self.server.stdout, self._print_and_assert_msgs)
         )
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -176,3 +193,26 @@ class TestBase:
         if len(scns) == 0:
             raise Exception(f"Scenario {scenario_name} not found in running scenarios")
         return scns[0]["return_code"]
+
+
+def assert_equal(thing1, thing2, *args):
+    if thing1 != thing2 or any(thing1 != arg for arg in args):
+        raise AssertionError(
+            "not({})".format(" == ".join(str(arg) for arg in (thing1, thing2) + args))
+        )
+
+
+def assert_log(log_message, expected_msgs, unexpected_msgs=None) -> bool:
+    if unexpected_msgs is None:
+        unexpected_msgs = []
+    assert_equal(type(expected_msgs), list)
+    assert_equal(type(unexpected_msgs), list)
+
+    found = True
+    for unexpected_msg in unexpected_msgs:
+        if re.search(re.escape(unexpected_msg), log_message, flags=re.MULTILINE):
+            raise AssertionError(f"Unexpected message found in log: {unexpected_msg}")
+    for expected_msg in expected_msgs:
+        if re.search(re.escape(expected_msg), log_message, flags=re.MULTILINE) is None:
+            found = False
+    return found
