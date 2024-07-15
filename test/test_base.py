@@ -64,11 +64,11 @@ class TestBase:
             self.server = None
 
     def _print_and_assert_msgs(self, message):
+        print(message)
         if (self.log_expected_msgs or self.log_unexpected_msgs) and assert_log(
             message, self.log_expected_msgs, self.log_unexpected_msgs
         ):
             self.log_msg_assertions_passed = True
-        print(message)
 
     def assert_log_msgs(self):
         assert (
