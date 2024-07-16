@@ -5,7 +5,7 @@ from backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
-from .lnchannel import LNChannel
+from .lnchannel import LNChannel, LNPolicy
 from .lnnode import LNNode
 from .status import RunningStatus
 
@@ -96,29 +96,46 @@ class CLNNode(LNNode):
         short_channel_ids = {chan["short_channel_id"]: chan for chan in cln_channels}.keys()
         channels = []
         for short_channel_id in short_channel_ids:
-            node1, node2 = (
+            nodes = [
                 chans for chans in cln_channels if chans["short_channel_id"] == short_channel_id
-            )
-            channels.append(self.lnchannel_from_json(node1, node2))
+            ]
+            # CLN has only heard about one side of the channel
+            if len(nodes) == 1:
+                channels.append(self.lnchannel_from_json(nodes[0], None))
+                continue
+            channels.append(self.lnchannel_from_json(nodes[0], nodes[1]))
         return channels
 
     @staticmethod
     def lnchannel_from_json(node1: object, node2: object) -> LNChannel:
         assert node1["short_channel_id"] == node2["short_channel_id"]
         assert node1["direction"] != node2["direction"]
+        if not node1:
+            raise ValueError("node1 can't be None")
+
+        node2_policy = (
+            LNPolicy(
+                min_htlc=node2["htlc_minimum_msat"],
+                max_htlc=node2["htlc_maximum_msat"],
+                base_fee_msat=node2["base_fee_millisatoshi"],
+                fee_rate_milli_msat=node2["fee_per_millionth"],
+            )
+            if node2 is not None
+            else None
+        )
+
         return LNChannel(
             node1_pub=node1["source"],
-            node2_pub=node2["source"],
+            node2_pub=node1["destination"],
             capacity_msat=node1["amount_msat"],
             short_chan_id=node1["short_channel_id"],
-            node1_min_htlc=node1["htlc_minimum_msat"],
-            node2_min_htlc=node2["htlc_minimum_msat"],
-            node1_max_htlc=node1["htlc_maximum_msat"],
-            node2_max_htlc=node2["htlc_maximum_msat"],
-            node1_base_fee_msat=node1["base_fee_millisatoshi"],
-            node2_base_fee_msat=node2["base_fee_millisatoshi"],
-            node1_fee_rate_milli_msat=node1["fee_per_millionth"],
-            node2_fee_rate_milli_msat=node2["fee_per_millionth"],
+            node1_policy=LNPolicy(
+                min_htlc=node1["htlc_minimum_msat"],
+                max_htlc=node1["htlc_maximum_msat"],
+                base_fee_msat=node1["base_fee_millisatoshi"],
+                fee_rate_milli_msat=node1["fee_per_millionth"],
+            ),
+            node2_policy=node2_policy,
         )
 
     def get_peers(self) -> list[str]:

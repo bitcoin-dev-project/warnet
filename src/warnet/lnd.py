@@ -5,7 +5,7 @@ from backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 
-from .lnchannel import LNChannel
+from .lnchannel import LNChannel, LNPolicy
 from .lnnode import LNNode, lnd_to_cl_scid
 from .status import RunningStatus
 
@@ -113,37 +113,37 @@ class LNDNode(LNNode):
 
     @staticmethod
     def lnchannel_from_json(edge: object) -> LNChannel:
+        node1_policy = (
+            LNPolicy(
+                min_htlc=int(edge["node1_policy"]["min_htlc"]),
+                max_htlc=int(edge["node1_policy"]["max_htlc_msat"]),
+                base_fee_msat=int(edge["node1_policy"]["fee_base_msat"]),
+                fee_rate_milli_msat=int(edge["node1_policy"]["fee_rate_milli_msat"]),
+                time_lock_delta=int(edge["node1_policy"]["time_lock_delta"]),
+            )
+            if edge["node1_policy"]
+            else None
+        )
+
+        node2_policy = (
+            LNPolicy(
+                min_htlc=int(edge["node2_policy"]["min_htlc"]),
+                max_htlc=int(edge["node2_policy"]["max_htlc_msat"]),
+                base_fee_msat=int(edge["node2_policy"]["fee_base_msat"]),
+                fee_rate_milli_msat=int(edge["node2_policy"]["fee_rate_milli_msat"]),
+                time_lock_delta=int(edge["node2_policy"]["time_lock_delta"]),
+            )
+            if edge["node2_policy"]
+            else None
+        )
+
         return LNChannel(
             node1_pub=edge["node1_pub"],
             node2_pub=edge["node2_pub"],
             capacity_msat=(int(edge["capacity"]) * 1000),
             short_chan_id=lnd_to_cl_scid(edge["channel_id"]),
-            node1_min_htlc=int(edge["node1_policy"]["min_htlc"]) if edge["node1_policy"] else 0,
-            node2_min_htlc=int(edge["node2_policy"]["min_htlc"]) if edge["node2_policy"] else 0,
-            node1_max_htlc=int(edge["node1_policy"]["max_htlc_msat"])
-            if edge["node1_policy"]
-            else 0,
-            node2_max_htlc=int(edge["node2_policy"]["max_htlc_msat"])
-            if edge["node2_policy"]
-            else 0,
-            node1_base_fee_msat=int(edge["node1_policy"]["fee_base_msat"])
-            if edge["node1_policy"]
-            else 0,
-            node2_base_fee_msat=int(edge["node2_policy"]["fee_base_msat"])
-            if edge["node2_policy"]
-            else 0,
-            node1_fee_rate_milli_msat=int(edge["node1_policy"]["fee_rate_milli_msat"])
-            if edge["node1_policy"]
-            else 0,
-            node2_fee_rate_milli_msat=int(edge["node2_policy"]["fee_rate_milli_msat"])
-            if edge["node2_policy"]
-            else 0,
-            node1_time_lock_delta=int(edge["node1_policy"]["time_lock_delta"])
-            if edge["node1_policy"]
-            else 0,
-            node2_time_lock_delta=int(edge["node2_policy"]["time_lock_delta"])
-            if edge["node2_policy"]
-            else 0,
+            node1_policy=node1_policy,
+            node2_policy=node2_policy,
         )
 
     def get_peers(self) -> list[str]:
