@@ -142,8 +142,6 @@ class LNChannel:
         return node1_policy_match and node2_policy_match
 
     def channel_match(self, ch2: "LNChannel") -> bool:
-        print(self)
-        print(ch2)
         if self.capacity_msat != ch2.capacity_msat:
             self.logger.debug(f"Capacity mismatch: {self.capacity_msat} != {ch2.capacity_msat}")
             return False
