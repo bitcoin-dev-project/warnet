@@ -33,7 +33,10 @@ class ScenariosTest(TestBase):
         self.log.info("Checking available scenarios")
         # Use rpc instead of warcli so we get raw JSON object
         scenarios = self.rpc("scenarios_available")
-        assert len(scenarios) == 4, f"Expected 4 available scenarios, got {len(scenarios)}"
+        scenario_count = 6
+        assert len(scenarios) == scenario_count, (
+            f"Expected {scenario_count} available scenarios, " f"got {len(scenarios)}"
+        )
         self.log.info(f"Found {len(scenarios)} available scenarios")
 
     def scenario_running(self, scenario_name: str):
