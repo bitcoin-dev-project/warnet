@@ -108,8 +108,6 @@ class CLNNode(LNNode):
 
     @staticmethod
     def lnchannel_from_json(node1: object, node2: object) -> LNChannel:
-        assert node1["short_channel_id"] == node2["short_channel_id"]
-        assert node1["direction"] != node2["direction"]
         if not node1:
             raise ValueError("node1 can't be None")
 
