@@ -14,9 +14,10 @@ from pathlib import Path
 
 import networkx as nx
 from jsonschema import validate
-from schema import SCHEMA
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
+
+from .schema import SCHEMA
 
 logger = logging.getLogger("utils")
 

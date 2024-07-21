@@ -27,7 +27,7 @@ class ScenariosTest(TestBase):
     def test_scenarios(self):
         self.check_available_scenarios()
         self.run_and_check_scenario("miner_std")
-        self.run_and_check_scenario_from_file("src/scenarios/miner_std.py")
+        self.run_and_check_scenario_from_file("src/warnet/scenarios/miner_std.py")
 
     def check_available_scenarios(self):
         self.log.info("Checking available scenarios")

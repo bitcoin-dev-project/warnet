@@ -26,7 +26,7 @@ spec:
         livenessProbe:
           # fail (restart) the pod if we can't find pid of warnet
           exec:
-            command: [ "/bin/bash", "-c", "/root/warnet/src/templates/rpc/livenessProbe.sh" ]
+            command: [ "/bin/bash", "-c", "/root/warnet/src/warnet/templates/rpc/livenessProbe.sh" ]
           initialDelaySeconds: 20
           periodSeconds: 5
           failureThreshold: 3

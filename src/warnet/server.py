@@ -1,5 +1,7 @@
 import argparse
 import base64
+import importlib
+import importlib.resources as pkg_resources
 import io
 import json
 import logging
@@ -16,19 +18,18 @@ import threading
 import time
 import traceback
 from datetime import datetime
-from pathlib import Path
 
-import scenarios
+import warnet.scenarios as scenarios
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
-from warnet.services import ServiceType
-from warnet.utils import gen_config_dir
-from warnet.warnet import Warnet
+
+from .services import ServiceType
+from .utils import gen_config_dir
+from .warnet import Warnet
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
-LOGGING_CONFIG_PATH = Path("src/logging_config/config.json")
 
 
 class Server:
@@ -95,7 +96,7 @@ class Server:
 
     def setup_logging(self):
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        with open(LOGGING_CONFIG_PATH) as f:
+        with pkg_resources.open_text("warnet.logging_config", "config.json") as f:
             logging_config = json.load(f)
         logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
         logging.config.dictConfig(logging_config)
@@ -321,9 +322,14 @@ class Server:
         try:
             scenario_list = []
             for s in pkgutil.iter_modules(scenarios.__path__):
-                m = pkgutil.resolve_name(f"scenarios.{s.name}")
-                if hasattr(m, "cli_help"):
-                    scenario_list.append((s.name, m.cli_help()))
+                module_name = f"warnet.scenarios.{s.name}"
+                try:
+                    m = importlib.import_module(module_name)
+                    if hasattr(m, "cli_help"):
+                        scenario_list.append((s.name, m.cli_help()))
+                except ModuleNotFoundError as e:
+                    print(f"Module not found: {module_name}, error: {e}")
+                    raise
             return scenario_list
         except Exception as e:
             msg = f"Error listing scenarios: {e}"
@@ -386,8 +392,13 @@ class Server:
     def scenarios_run(
         self, scenario: str, additional_args: list[str], network: str = "warnet"
     ) -> str:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        scenario_path = os.path.join(base_dir, "scenarios", f"{scenario}.py")
+        # Use importlib.resources to get the scenario path
+        scenario_package = "warnet.scenarios"
+        scenario_filename = f"{scenario}.py"
+
+        # Ensure the scenario file exists within the package
+        with importlib.resources.path(scenario_package, scenario_filename) as scenario_path:
+            scenario_path = str(scenario_path)  # Convert Path object to string
 
         if not os.path.exists(scenario_path):
             raise ServerError(f"Scenario {scenario} not found at {scenario_path}.")

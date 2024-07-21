@@ -18,4 +18,4 @@ DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh 
 
 You can optionally specify `LATEST=1` to also include the `latest` tag on docker hub.
 
-Once a new image has been pushed, it should be referenced in [warnet-rpc-statefulset.yaml](../src/templates/warnet-rpc-statefulset.yaml) in the `image` field.
+Once a new image has been pushed, it should be referenced in [warnet-rpc-statefulset.yaml](../src/warnet/templates/warnet-rpc-statefulset.yaml) in the `image` field.
