@@ -20,7 +20,7 @@ EXPOSE 9276
 # we defer this to the entrypoint script for dev mode to enable hot-reloading.
 
 # Copy the entrypoint script into the container
-COPY src/warnet/templates/rpc/entrypoint.sh /usr/local/bin/
+COPY entrypoint.sh /usr/local/bin/
 
 # Make the entrypoint script executable
 RUN chmod +x /usr/local/bin/entrypoint.sh

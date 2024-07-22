@@ -66,7 +66,7 @@ def minikube_setup():
         check_minikube
 
         # Build image in local registry and load into minikube
-        docker build -t warnet/dev -f {template_path}/rpc/Dockerfile_rpc_dev . --load
+        docker build -t warnet/dev -f {template_path}/rpc/Dockerfile_rpc_dev {template_path}/rpc --load
         minikube image load warnet/dev
         """
 
