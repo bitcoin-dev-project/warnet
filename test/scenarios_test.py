@@ -52,7 +52,7 @@ class ScenariosTest(TestBase):
     def run_and_check_scenario_from_file(self, scenario_file):
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warcli(f"scenarios run-file {scenario_file} --allnodes --interval=1")
-        start = int(self.warcli("rpc 0 getblockcount"))
+        start = int(self.warcli("bitcoin rpc 0 getblockcount"))
         scenario_name = os.path.splitext(os.path.basename(scenario_file))[0]
         self.wait_for_predicate(lambda: self.scenario_running(scenario_name))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
@@ -63,7 +63,7 @@ class ScenariosTest(TestBase):
         assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
         assert running[0]["active"], "Scenario should be active"
 
-        count = int(self.warcli("rpc 0 getblockcount"))
+        count = int(self.warcli("bitcoin rpc 0 getblockcount"))
         self.log.debug(f"Current block count: {count}, target: {start + target_blocks}")
         return count >= start + target_blocks
 

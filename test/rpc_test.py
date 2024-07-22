@@ -31,34 +31,34 @@ class RPCTest(TestBase):
 
     def test_rpc_commands(self):
         self.log.info("Testing basic RPC commands")
-        self.warcli("rpc 0 getblockcount")
-        self.warcli("rpc 1 createwallet miner")
-        self.warcli("rpc 1 -generate 101")
-        self.wait_for_predicate(lambda: "101" in self.warcli("rpc 0 getblockcount"))
+        self.warcli("bitcoin rpc 0 getblockcount")
+        self.warcli("bitcoin rpc 1 createwallet miner")
+        self.warcli("bitcoin rpc 1 -generate 101")
+        self.wait_for_predicate(lambda: "101" in self.warcli("bitcoin rpc 0 getblockcount"))
 
     def test_transaction_propagation(self):
         self.log.info("Testing transaction propagation")
         address = "bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46"
-        txid = self.warcli(f"rpc 1 sendtoaddress {address} 0.1")
-        self.wait_for_predicate(lambda: txid in self.warcli("rpc 0 getrawmempool"))
+        txid = self.warcli(f"bitcoin rpc 1 sendtoaddress {address} 0.1")
+        self.wait_for_predicate(lambda: txid in self.warcli("bitcoin rpc 0 getrawmempool"))
 
-        node_log = self.warcli("debug-log 1")
+        node_log = self.warcli("bitcoin debug-log 1")
         assert txid in node_log, "Transaction ID not found in node log"
 
-        all_logs = self.warcli(f"grep-logs {txid}")
+        all_logs = self.warcli(f"bitcoin grep-logs {txid}")
         count = all_logs.count("Enqueuing TransactionAddedToMempool")
         assert count > 1, f"Transaction not propagated to enough nodes (count: {count})"
 
     def test_message_exchange(self):
         self.log.info("Testing message exchange between nodes")
-        msgs = self.warcli("messages 0 1")
+        msgs = self.warcli("bitcoin messages 0 1")
         assert "verack" in msgs, "VERACK message not found in exchange"
 
     def test_address_manager(self):
         self.log.info("Testing address manager")
 
         def got_addrs():
-            addrman = json.loads(self.warcli("rpc 0 getrawaddrman"))
+            addrman = json.loads(self.warcli("bitcoin rpc 0 getrawaddrman"))
             for key in ["tried", "new"]:
                 obj = addrman[key]
                 keys = list(obj.keys())

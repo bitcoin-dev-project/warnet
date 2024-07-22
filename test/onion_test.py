@@ -34,7 +34,7 @@ class OnionTest(TestBase):
 
     def check_reachability(self):
         try:
-            info = json.loads(self.warcli("rpc 0 getnetworkinfo"))
+            info = json.loads(self.warcli("bitcoin rpc 0 getnetworkinfo"))
             for net in info["networks"]:
                 if net["name"] == "ipv4" and not net["reachable"]:
                     return False
@@ -53,12 +53,12 @@ class OnionTest(TestBase):
 
     def test_onion_peer_connection(self):
         self.log.info("Attempting addnode to onion peer")
-        self.warcli(f"rpc 1 addnode {self.onion_addr} add")
+        self.warcli(f"bitcoin rpc 1 addnode {self.onion_addr} add")
         # Might take up to 10 minutes
         self.wait_for_predicate(self.check_onion_peer, timeout=10 * 60)
 
     def check_onion_peer(self):
-        peers = json.loads(self.warcli("rpc 0 getpeerinfo"))
+        peers = json.loads(self.warcli("bitcoin rpc 0 getpeerinfo"))
         for peer in peers:
             self.log.debug(f"Checking peer: {peer['network']} {peer['addr']}")
             if peer["network"] == "onion":

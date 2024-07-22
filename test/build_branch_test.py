@@ -32,8 +32,8 @@ class BuildBranchTest(TestBase):
         self.wait_for_predicate(self.check_peers, timeout=5 * 60)
 
     def check_peers(self):
-        info0 = json.loads(self.warcli("rpc 0 getpeerinfo"))
-        info1 = json.loads(self.warcli("rpc 1 getpeerinfo"))
+        info0 = json.loads(self.warcli("bitcoin rpc 0 getpeerinfo"))
+        info1 = json.loads(self.warcli("bitcoin rpc 1 getpeerinfo"))
         self.log.debug(
             f"Waiting for both nodes to get one peer: node0: {len(info0)}, node1: {len(info1)}"
         )
