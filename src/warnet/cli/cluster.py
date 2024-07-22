@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+from importlib import resources
 
 import click
 
@@ -44,54 +45,56 @@ def run_command(command, stream_output=False):
 
 @cluster.command()
 def start():
-    """Setup and start the RPC in dev mode with minikube"""
-    script_content = """
-    #!/usr/bin/env bash
-    set -euxo pipefail
+    """Setup and start Warnet with minikube"""
+    with resources.path("warnet.templates", "") as template_path:
+        script_content = f"""
+        #!/usr/bin/env bash
+        set -euxo pipefail
 
-    # Function to check if minikube is running
-    check_minikube() {
-        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=max --cpus=max --mount --mount-string="$PWD:/mnt/src"
-    }
+        # Function to check if minikube is running
+        check_minikube() {{
+            minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=max --cpus=max --mount --mount-string="$PWD:/mnt/src"
+        }}
 
-    # Function to check if warnet-rpc container is already running
-    check_warnet_rpc() {
-        if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
-            echo "warnet-rpc already running in minikube"
-            exit 1
-        fi
-    }
+        # Function to check if warnet-rpc container is already running
+        check_warnet_rpc() {{
+            if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
+                echo "warnet-rpc already running in minikube"
+                exit 1
+            fi
+        }}
 
-    # Check minikube status
-    check_minikube
+        # Check minikube status
+        check_minikube
 
-    # Build image in local registry and load into minikube
-    docker build -t warnet/dev -f src/warnet/templates/rpc/Dockerfile_rpc_dev . --load
-    minikube image load warnet/dev
+        # Build image in local registry and load into minikube
+        docker build -t warnet/dev -f {template_path}/rpc/Dockerfile_rpc_dev . --load
+        minikube image load warnet/dev
 
-    # Setup k8s
-    kubectl apply -f src/warnet/templates/rpc/namespace.yaml
-    kubectl apply -f src/warnet/templates/rpc/rbac-config.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-service.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
-    kubectl config set-context --current --namespace=warnet
+        # Setup k8s
+        kubectl apply -f {template_path}/rpc/namespace.yaml
+        kubectl apply -f {template_path}/rpc/rbac-config.yaml
+        kubectl apply -f {template_path}/rpc/warnet-rpc-service.yaml
+        kubectl apply -f {template_path}/rpc/warnet-rpc-statefulset-dev.yaml
+        kubectl config set-context --current --namespace=warnet
 
-    # Check for warnet-rpc container
-    check_warnet_rpc
+        # Check for warnet-rpc container
+        check_warnet_rpc
 
-    until kubectl get pod rpc-0 --namespace=warnet; do
-       echo "Waiting for server to find pod rpc-0..."
-       sleep 4
-    done
+        until kubectl get pod rpc-0 --namespace=warnet; do
+           echo "Waiting for server to find pod rpc-0..."
+           sleep 4
+        done
 
-    echo "⏲️ This could take a minute or so."
-    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+        echo "⏲️ This could take a minute or so."
+        kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
 
-    echo Done...
-    """
-    res = run_command(script_content, stream_output=True)
-    if res:
-        _port_start_internal()
+        echo Done...
+        """
+
+        res = run_command(script_content, stream_output=True)
+        if res:
+            _port_start_internal()
 
 
 @cluster.command()
