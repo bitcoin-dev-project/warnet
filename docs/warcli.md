@@ -17,24 +17,6 @@ parameters in <angle brackets>.
 
 ## API Commands
 
-### `warcli debug-log`
-Fetch the Bitcoin Core debug log from \<node> in [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node    | Int    | yes        |           |
-| network | String |            | "warnet"  |
-
-### `warcli grep-logs`
-Grep combined logs via fluentd using regex \<pattern>
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| pattern | String | yes        |           |
-| network | String |            | "warnet"  |
-
 ### `warcli help`
 Display help information for the given [command] (and sub-command).
     If no command is given, display help for the main CLI.
@@ -44,17 +26,31 @@ options:
 |----------|--------|------------|-----------|
 | commands | String |            |           |
 
-### `warcli lncli`
-Call lightning cli \<command> on \<node> in [network]
+### `warcli setup`
+Run the Warnet quick start setup script
+
+
+## Bitcoin
+
+### `warcli bitcoin debug-log`
+Fetch the Bitcoin Core debug log from \<node> in [network]
 
 options:
 | name    | type   | required   | default   |
 |---------|--------|------------|-----------|
 | node    | Int    | yes        |           |
-| command | String | yes        |           |
 | network | String |            | "warnet"  |
 
-### `warcli messages`
+### `warcli bitcoin grep-logs`
+Grep combined logs via fluentd using regex \<pattern>
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| pattern | String | yes        |           |
+| network | String |            | "warnet"  |
+
+### `warcli bitcoin messages`
 Fetch messages sent between \<node_a> and \<node_b> in [network]
 
 options:
@@ -64,7 +60,7 @@ options:
 | node_b  | Int    | yes        |           |
 | network | String |            | "warnet"  |
 
-### `warcli rpc`
+### `warcli bitcoin rpc`
 Call bitcoin-cli \<method> [params] on \<node> in [network]
 
 options:
@@ -75,8 +71,22 @@ options:
 | params  | String |            |           |
 | network | String |            | "warnet"  |
 
-### `warcli stop`
-Stop warnet.
+## Cluster
+
+### `warcli cluster port-start`
+Port forward (runs as a detached process)
+
+
+### `warcli cluster port-stop`
+Stop the port forwarding process
+
+
+### `warcli cluster start`
+Setup and start Warnet with minikube
+
+
+### `warcli cluster stop`
+Stop the warnet server and tear down the cluster
 
 
 ## Graph
@@ -133,6 +143,27 @@ options:
 | arches     | String |            |           |
 | action     | String |            |           |
 
+## Ln
+
+### `warcli ln pubkey`
+Get lightning node pub key on \<node> in [network]
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| node    | Int    | yes        |           |
+| network | String |            | "warnet"  |
+
+### `warcli ln rpc`
+Call lightning cli rpc \<command> on \<node> in [network]
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| node    | Int    | yes        |           |
+| command | String | yes        |           |
+| network | String |            | "warnet"  |
+
 ## Network
 
 ### `warcli network connected`
@@ -176,11 +207,11 @@ options:
 Start a warnet with topology loaded from a \<graph_file> into [network]
 
 options:
-| name       | type   | required   | default                    |
-|------------|--------|------------|----------------------------|
-| graph_file | Path   |            | src/graphs/default.graphml |
-| force      | Bool   |            | False                      |
-| network    | String |            | "warnet"                   |
+| name       | type   | required   | default                           |
+|------------|--------|------------|-----------------------------------|
+| graph_file | Path   |            | src/warnet/graphs/default.graphml |
+| force      | Bool   |            | False                             |
+| network    | String |            | "warnet"                          |
 
 ### `warcli network status`
 Get status of a warnet named [network]
@@ -226,6 +257,7 @@ options:
 |-----------------|--------|------------|-----------|
 | scenario_path   | String | yes        |           |
 | additional_args | String |            |           |
+| name            | String |            |           |
 | network         | String |            | "warnet"  |
 
 ### `warcli scenarios stop`
