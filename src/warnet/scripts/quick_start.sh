@@ -52,14 +52,6 @@ print_message "" "" ""
 print_message "" "    Let's find out if your system has what it takes to run Warnet..." ""
 print_message "" "" ""
 
-current_git=$(basename "$(git rev-parse --show-toplevel)" || true)
-if [ -n "$current_git" ]; then
-    print_message "" " ⭐️ Currently in the warnet directory"
-else
-    print_message "" " Please navigate to the warnet directory."
-    exit 1
-fi
-
 minikube_path=$(command -v minikube || true)
 if [ -n "$minikube_path" ]; then
     print_partial_message " ⭐️ Found " "minikube" ": $minikube_path " "$BOLD"
