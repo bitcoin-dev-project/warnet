@@ -14,7 +14,7 @@ def run_command(command):
 
 def build_image(
     repo: str,
-    branch: str,
+    commit_sha: str,
     docker_registry: str,
     tag: str,
     build_args: str,
@@ -38,7 +38,7 @@ def build_image(
             return False
 
     print(f"{repo=:}")
-    print(f"{branch=:}")
+    print(f"{commit_sha=:}")
     print(f"{docker_registry=:}")
     print(f"{tag=:}")
     print(f"{build_args=:}")
@@ -70,7 +70,7 @@ def build_image(
         f"docker buildx build"
         f" --platform {platforms}"
         f" --build-arg REPO={repo}"
-        f" --build-arg BRANCH={branch}"
+        f" --build-arg COMMIT_SHA={commit_sha}"
         f" --build-arg BUILD_ARGS={build_args}"
         f" --tag {image_full_name}"
         f" --file src/templates/Dockerfile ."

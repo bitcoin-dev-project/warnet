@@ -1,7 +1,7 @@
 # Setup deps stage
-FROM alpine as deps
+FROM alpine AS deps
 ARG REPO
-ARG BRANCH
+ARG COMMIT_SHA
 ARG BUILD_ARGS
 
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -27,14 +27,16 @@ COPY src/templates/addrman.patch /tmp/
 
 
 # Clone and patch and build stage
-FROM deps as build
+FROM deps AS build
 ENV BITCOIN_PREFIX=/opt/bitcoin
 WORKDIR /build
 
 RUN set -ex \
     && cd /build \
-    && git clone --depth 1 --branch "${BRANCH}" "https://github.com/${REPO}" \
+    && git clone --depth 1 "https://github.com/${REPO}" \
     && cd bitcoin \
+    && git fetch --depth 1 origin "$COMMIT_SHA" \
+    && git checkout "$COMMIT_SHA" \
     && git apply /tmp/isroutable.patch \
     && git apply /tmp/addrman.patch \
     && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
