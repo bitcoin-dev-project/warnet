@@ -3,15 +3,16 @@ import os
 import sys
 
 import click
-from cli.rpc import rpc_call
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
+from .rpc import rpc_call
+
 
 @click.group(name="scenarios")
 def scenarios():
-    """Scenario commands"""
+    """Manage scenarios on a running network"""
 
 
 @scenarios.command()

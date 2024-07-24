@@ -3,7 +3,7 @@ import threading
 from random import choice, randrange
 from time import sleep
 
-from scenarios.utils import ensure_miner
+from warnet.scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
 

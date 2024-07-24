@@ -10,7 +10,7 @@ from warnet.utils import DEFAULT_TAG, create_cycle_graph, validate_graph_schema
 
 @click.group(name="graph")
 def graph():
-    """Graph commands"""
+    """Create and validate network graphs"""
 
 
 @graph.command()

@@ -7,7 +7,7 @@ from .image_build import build_image
 
 @click.group(name="image")
 def image():
-    """Compile and deploy a custom version of bitcoin core to a docker image registry"""
+    """Build a a custom Warnet Bitcoin Core image"""
 
 
 @image.command()

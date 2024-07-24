@@ -18,7 +18,8 @@ from test_framework.test_framework import (
 )
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
-from warnet.warnet import Warnet
+
+from .warnet import Warnet
 
 
 # Ensure that all RPC calls are made with brand new http connections

@@ -62,7 +62,7 @@ class GraphTest(TestBase):
         self.log.info(self.warcli(f"network start {self.graph_file_path}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
-        self.warcli("rpc 0 getblockcount")
+        self.warcli("bitcoin rpc 0 getblockcount")
 
         self.log.info("Checking services...")
         self.warcli("network down")
@@ -73,7 +73,7 @@ class GraphTest(TestBase):
         self.log.info(self.warcli(f"network start {Path(self.tf_create)} --force"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
-        self.warcli("rpc 0 getblockcount")
+        self.warcli("bitcoin rpc 0 getblockcount")
         self.warcli("network down")
         self.wait_for_all_tanks_status(target="stopped")
 
@@ -82,7 +82,7 @@ class GraphTest(TestBase):
         self.log.info(self.warcli(f"network start {Path(self.tf_import)} --force"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
-        self.warcli("rpc 0 getblockcount")
+        self.warcli("bitcoin rpc 0 getblockcount")
         self.warcli("scenarios run ln_init")
         self.wait_for_all_scenarios()
 
@@ -91,7 +91,7 @@ class GraphTest(TestBase):
     def verify_ln_channel_policies(self):
         self.log.info("Ensuring warnet LN channel policies match imported JSON description")
         with open(self.json_file_path) as file:
-            actual = json.loads(self.warcli("lncli 0 describegraph"))["edges"]
+            actual = json.loads(self.warcli("ln rpc 0 describegraph"))["edges"]
             expected = json.loads(file.read())["edges"]
             expected = sorted(expected, key=lambda chan: int(chan["channel_id"]))
             for chan_index, actual_chan_json in enumerate(actual):

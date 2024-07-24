@@ -1,7 +1,7 @@
 import io
 import tarfile
 
-from backend.kubernetes_backend import KubernetesBackend
+from warnet.backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
 

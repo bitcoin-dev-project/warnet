@@ -1,4 +1,4 @@
-import os
+import importlib.resources
 import subprocess
 
 ARCHES = ["amd64", "arm64", "armhf"]
@@ -44,10 +44,14 @@ def build_image(
     print(f"{build_args=:}")
     print(f"{build_arches=:}")
 
-    if not os.path.isdir("src/templates"):
-        print("Directory src/templates does not exist.")
-        print("Please run this script from the project root.")
-        return False
+    # Use importlib.resources to check if the templates directory exists
+    template_package = "warnet.templates"
+    with importlib.resources.path(template_package, "Dockerfile") as dockerfile_path:
+        dockerfile_dir = dockerfile_path.parent
+        if not dockerfile_dir.is_dir():
+            print("Directory src/warnet/templates does not exist.")
+            print("Please run this script from the project root.")
+            return False
 
     # Setup buildkit
     builder_name = "bitcoind-builder"
@@ -58,11 +62,11 @@ def build_image(
     if not run_command(create_builder_cmd):  # noqa: SIM102
         # try to use existing
         if not run_command(use_builder_cmd):
-            print(f"Could create or use builder {builder_name} and create new builder")
+            print(f"Could not create or use builder {builder_name} and create new builder")
             return False
 
     image_full_name = f"{docker_registry}:{tag}"
-    print(f"{image_full_name=:}")
+    print(f"{image_full_name=}")
 
     platforms = ",".join([f"linux/{arch}" for arch in build_arches])
 
@@ -73,10 +77,10 @@ def build_image(
         f" --build-arg COMMIT_SHA={commit_sha}"
         f" --build-arg BUILD_ARGS={build_args}"
         f" --tag {image_full_name}"
-        f" --file src/templates/Dockerfile ."
+        f" --file {dockerfile_path} ."
         f" --{action}"
     )
-    print(f"Using {build_command=:}")
+    print(f"Using {build_command=}")
 
     res = False
     try:

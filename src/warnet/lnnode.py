@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from backend.kubernetes_backend import KubernetesBackend
+from warnet.backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
 from warnet.utils import exponential_backoff, handle_json
 

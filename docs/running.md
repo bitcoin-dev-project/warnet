@@ -9,9 +9,9 @@ a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet
 
 ## Kubernetes
 
-Deploy the resources in `src/templates/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
+Deploy the resources in `src/warnet/templates/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
 
-This can be done with from inside the `src/templates/` directory by running:
+This can be done with from inside the `src/warnet/templates/` directory by running:
 
 ```bash
 kubectl apply -f '*.yaml'
@@ -40,13 +40,13 @@ kubectl delete statefulset
 First make sure you have `helm` installed, then simply run the following script:
 
 ```bash
-./src/templates/k8s/install_logging.sh
+./src/warnet/templates/k8s/install_logging.sh
 ```
 
 To forward port to view Grafana dashboard:
 
 ```bash
-./src/templates/k8s/connect_logging.sh
+./src/warnet/templates/k8s/connect_logging.sh
 ```
 
 ## Kubernetes (e.g. minikube)
