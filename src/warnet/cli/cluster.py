@@ -6,9 +6,15 @@ from importlib import resources
 import click
 
 
-@click.group(name="cluster")
+@click.group(name="cluster", chain=True)
 def cluster():
-    """Start, configure and stop a warnet k8s cluster"""
+    """Start, configure and stop a warnet k8s cluster\n
+    \b
+    Supports chaining, e.g:
+      warcli cluster minikube-setup deploy
+      warcli cluster teardown minikube-clean
+    """
+    pass
 
 
 def run_command(command, stream_output=False):
@@ -44,8 +50,8 @@ def run_command(command, stream_output=False):
 
 
 @cluster.command()
-def start():
-    """Setup and start Warnet with minikube"""
+def minikube_setup():
+    """Setup minikube for use with Warnet"""
     with resources.path("warnet.templates", "") as template_path:
         script_content = f"""
         #!/usr/bin/env bash
@@ -56,6 +62,25 @@ def start():
             minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=max --cpus=max --mount --mount-string="$PWD:/mnt/src"
         }}
 
+        # Check minikube status
+        check_minikube
+
+        # Build image in local registry and load into minikube
+        docker build -t warnet/dev -f {template_path}/rpc/Dockerfile_rpc_dev . --load
+        minikube image load warnet/dev
+        """
+
+        run_command(script_content, stream_output=True)
+
+
+@cluster.command()
+def deploy():
+    """Setup Warnet using the current kubectl-configured cluster"""
+    with resources.path("warnet.templates", "") as template_path:
+        script_content = f"""
+        #!/usr/bin/env bash
+        set -euxo pipefail
+
         # Function to check if warnet-rpc container is already running
         check_warnet_rpc() {{
             if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
@@ -64,14 +89,7 @@ def start():
             fi
         }}
 
-        # Check minikube status
-        check_minikube
-
-        # Build image in local registry and load into minikube
-        docker build -t warnet/dev -f {template_path}/rpc/Dockerfile_rpc_dev . --load
-        minikube image load warnet/dev
-
-        # Setup k8s
+        # Setup K8s
         kubectl apply -f {template_path}/rpc/namespace.yaml
         kubectl apply -f {template_path}/rpc/rbac-config.yaml
         kubectl apply -f {template_path}/rpc/warnet-rpc-service.yaml
@@ -98,7 +116,18 @@ def start():
 
 
 @cluster.command()
-def stop():
+def minikube_clean():
+    """Reinit minikube images"""
+    script_content = """
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    minikube image rm warnet/dev
+    """
+    run_command(script_content, stream_output=True)
+
+
+@cluster.command()
+def teardown():
     """Stop the warnet server and tear down the cluster"""
     script_content = """
     #!/usr/bin/env bash
@@ -107,8 +136,6 @@ def stop():
     kubectl delete namespace warnet
     kubectl delete namespace warnet-logging
     kubectl config set-context --current --namespace=default
-
-    minikube image rm warnet/dev
     """
     run_command(script_content, stream_output=True)
     _port_stop_internal()
