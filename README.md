@@ -16,6 +16,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 ## Documentation
 
 - [Installation](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/install.md)
+- [Quick Run](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/quickrun.md)
 - [Running Warnet](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/running.md)
 - [Network Topology](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/graph.md)
 - [CLI Commands](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/warcli.md)
