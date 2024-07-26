@@ -4,7 +4,6 @@ include src/warnet/templates/fork_observer_config.toml
 include src/warnet/templates/addrman_observer_config.toml
 include src/warnet/templates/addrman.patch
 include src/warnet/templates/isroutable.patch
-include src/warnet/scripts/quick_start.sh
 graft src/warnet/templates/k8s
 graft src/warnet/templates/rpc
 graft src/warnet/templates/grafana-provisioning
