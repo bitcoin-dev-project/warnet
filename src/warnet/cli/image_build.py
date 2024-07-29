@@ -70,7 +70,8 @@ def build_image(
         f" --build-arg COMMIT_SHA={commit_sha}"
         f" --build-arg BUILD_ARGS={build_args}"
         f" --tag {image_full_name}"
-        f" --file {dockerfile_path} ."
+        f" --file {dockerfile_path}"
+        f" {dockerfile_path.parent}"
         f" --{action}"
     )
     print(f"Using {build_command=}")

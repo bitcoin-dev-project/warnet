@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-from importlib import resources
 
 import click
 
@@ -52,67 +51,67 @@ def run_command(command, stream_output=False):
 @cluster.command()
 def minikube_setup():
     """Setup minikube for use with Warnet"""
-    with resources.path("warnet.templates", "") as template_path:
-        script_content = f"""
-        #!/usr/bin/env bash
-        set -euxo pipefail
+    template_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "manifests" / "rpc"
 
-        # Function to check if minikube is running
-        check_minikube() {{
-            minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=max --cpus=max --mount --mount-string="$PWD:/mnt/src"
-        }}
+    script_content = f"""
+    #!/usr/bin/env bash
+    set -euxo pipefail
 
-        # Check minikube status
-        check_minikube
+    # Function to check if minikube is running
+    check_minikube() {{
+        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=max --cpus=max --mount --mount-string="$PWD:/mnt/src"
+    }}
 
-        # Build image in local registry and load into minikube
-        docker build -t warnet/dev -f {template_path}/rpc/Dockerfile_rpc_dev {template_path}/rpc --load
-        minikube image load warnet/dev
-        """
+    # Check minikube status
+    check_minikube
 
-        run_command(script_content, stream_output=True)
+    # Build image in local registry and load into minikube
+    docker build -t warnet/dev -f {template_path}/Dockerfile_dev {template_path} --load
+    minikube image load warnet/dev
+    """
+
+    run_command(script_content, stream_output=True)
 
 
 @cluster.command()
 def deploy():
     """Setup Warnet using the current kubectl-configured cluster"""
-    with resources.path("warnet.templates", "") as template_path:
-        script_content = f"""
-        #!/usr/bin/env bash
-        set -euxo pipefail
+    script_content = f"""
+    #!/usr/bin/env bash
+    set -euxo pipefail
 
-        # Function to check if warnet-rpc container is already running
-        check_warnet_rpc() {{
-            if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
-                echo "warnet-rpc already running in minikube"
-                exit 1
-            fi
-        }}
+    # Function to check if warnet-rpc container is already running
+    check_warnet_rpc() {{
+        if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
+            echo "warnet-rpc already running in minikube"
+            exit 1
+        fi
+    }}
 
-        # Setup K8s
-        kubectl apply -f {template_path}/rpc/namespace.yaml
-        kubectl apply -f {template_path}/rpc/rbac-config.yaml
-        kubectl apply -f {template_path}/rpc/warnet-rpc-service.yaml
-        kubectl apply -f {template_path}/rpc/warnet-rpc-statefulset-dev.yaml
-        kubectl config set-context --current --namespace=warnet
+    # Setup K8s
+    kubectl apply -f manifests/namespace.yaml
+    kubectl apply -f manifests/rbac-config.yaml
+    kubectl apply -f manifests/warnet-rpc-service.yaml
+    kubectl apply -f manifests/warnet-rpc-statefulset-dev.yaml
+    kubectl config set-context --current --namespace=warnet
 
-        # Check for warnet-rpc container
-        check_warnet_rpc
+    # Check for warnet-rpc container
+    check_warnet_rpc
 
-        until kubectl get pod rpc-0 --namespace=warnet; do
-           echo "Waiting for server to find pod rpc-0..."
-           sleep 4
-        done
+    until kubectl get pod rpc-0 --namespace=warnet; do
+       echo "Waiting for server to find pod rpc-0..."
+       sleep 4
+    done
 
-        echo "⏲️ This could take a minute or so."
-        kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
+    echo "⏲️ This could take a minute or so."
+    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
 
-        echo Done...
-        """
+    echo Done...
+    """
 
-        res = run_command(script_content, stream_output=True)
-        if res:
-            _port_start_internal()
+    res = run_command(script_content, stream_output=True)
+    if res:
+        _port_start_internal()
 
 
 @cluster.command()

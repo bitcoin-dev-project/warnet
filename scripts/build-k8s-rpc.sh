@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Run with e.g.:
-# $ DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 LATEST=1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
+# $ DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 LATEST=1 ./scripts/build-k8s-rpc.sh Dockerfile_prod
 
 # Fail on any step
 set -ex

@@ -5,10 +5,10 @@ default:
     just --list
 
 cluster:
-    kubectl apply -f src/warnet/templates/rpc/namespace.yaml
-    kubectl apply -f src/warnet/templates/rpc/rbac-config.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-service.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-statefulset.yaml
+    kubectl apply -f manifests/namespace.yaml
+    kubectl apply -f manifests/rbac-config.yaml
+    kubectl apply -f manifests/warnet-rpc-service.yaml
+    kubectl apply -f manifests/warnet-rpc-statefulset.yaml
 
 # Setup and start the RPC in dev mode with minikube
 start:
@@ -32,14 +32,14 @@ start:
     check_minikube
 
     # Build image in local registry and load into minikube
-    docker build -t warnet/dev -f src/warnet/templates/rpc/Dockerfile_rpc_dev src/warnet/templates/rpc --load
+    docker build -t warnet/dev -f images/rpc/Dockerfile_dev images/rpc --load
     minikube image load warnet/dev
 
     # Setup k8s
-    kubectl apply -f src/warnet/templates/rpc/namespace.yaml
-    kubectl apply -f src/warnet/templates/rpc/rbac-config.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-service.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
+    kubectl apply -f manifests/namespace.yaml
+    kubectl apply -f manifests/rbac-config.yaml
+    kubectl apply -f manifests/warnet-rpc-service.yaml
+    kubectl apply -f manifests/warnet-rpc-statefulset-dev.yaml
     kubectl config set-context --current --namespace=warnet
 
     # Check for warnet-rpc container
@@ -68,11 +68,11 @@ stop:
 
 # Setup and start the RPC in dev mode with Docker Desktop
 startd:
-    docker build -t warnet/dev -f src/warnet/templates/rpc/Dockerfile_rpc_dev src/warnet/templates/rpc --load
-    kubectl apply -f src/warnet/templates/rpc/namespace.yaml
-    kubectl apply -f src/warnet/templates/rpc/rbac-config.yaml
-    kubectl apply -f src/warnet/templates/rpc/warnet-rpc-service.yaml
-    sed 's?/mnt/src?'`PWD`'?g' src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+    docker build -t warnet/dev -f images/rpc/Dockerfile_dev images/rpc --load
+    kubectl apply -f manifests/namespace.yaml
+    kubectl apply -f manifests/rbac-config.yaml
+    kubectl apply -f manifests/warnet-rpc-service.yaml
+    sed 's?/mnt/src?'`PWD`'?g' manifests/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online

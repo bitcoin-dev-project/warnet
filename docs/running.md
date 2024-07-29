@@ -9,7 +9,7 @@ a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet
 
 ## Kubernetes
 
-Deploy the resources in `src/warnet/templates/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
+Deploy the resources in `manifests/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
 
 This can be done with from inside the `src/warnet/templates/` directory by running:
 

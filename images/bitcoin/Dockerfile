@@ -22,8 +22,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
     sqlite-dev \
     zeromq-dev
 
-COPY images/bitcoin/isroutable.patch /tmp/
-COPY images/bitcoin/addrman.patch /tmp/
+COPY isroutable.patch /tmp/
+COPY addrman.patch /tmp/
 
 
 # Clone and patch and build stage
@@ -77,7 +77,7 @@ RUN --mount=type=cache,target=/var/cache/apk sed -i 's/http\:\/\/dl-cdn.alpineli
     su-exec
 
 COPY --from=build /opt/bitcoin /usr/local
-COPY images/bitcoin/entrypoint.sh /
+COPY entrypoint.sh /
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
