@@ -80,7 +80,7 @@ COPY --from=build /opt/bitcoin /usr/local
 COPY entrypoint.sh /
 
 VOLUME ["/home/bitcoin/.bitcoin"]
-EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
+EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332 28332 28333 28334
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bitcoind"]
