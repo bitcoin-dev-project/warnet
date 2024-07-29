@@ -14,7 +14,6 @@ import yaml
 from .backend.kubernetes_backend import KubernetesBackend
 from .services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
 from .tank import Tank
-from .templates import TEMPLATES
 from .utils import gen_config_dir, load_schema, validate_graph_schema
 
 logger = logging.getLogger("warnet")
@@ -184,85 +183,85 @@ class Warnet:
 
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
-        if "forkobserver" in self.services:
-            self.write_fork_observer_config()
-        if "addrmanobserver" in self.services:
-            self.write_addrman_observer_config()
-        if "grafana" in self.services:
-            self.write_grafana_config()
-        if "prometheus" in self.services:
-            self.write_prometheus_config()
+    #     if "forkobserver" in self.services:
+    #         self.write_fork_observer_config()
+    #     if "addrmanobserver" in self.services:
+    #         self.write_addrman_observer_config()
+    #     if "grafana" in self.services:
+    #         self.write_grafana_config()
+    #     if "prometheus" in self.services:
+    #         self.write_prometheus_config()
 
-    def write_fork_observer_config(self):
-        src = TEMPLATES / FO_CONF_NAME
-        dst = self.config_dir / FO_CONF_NAME
-        shutil.copy(src, dst)
-        with open(dst, "a") as f:
-            for tank in self.tanks:
-                f.write(
-                    f"""
-                    [[networks.nodes]]
-                    id = {tank.index}
-                    name = "Node {tank.index}"
-                    description = "Warnet tank {tank.index}"
-                    rpc_host = "{tank.ipv4}"
-                    rpc_port = {tank.rpc_port}
-                    rpc_user = "{tank.rpc_user}"
-                    rpc_password = "{tank.rpc_password}"
-                """
-                )
-        logger.info(f"Wrote file: {dst}")
+    # def write_fork_observer_config(self):
+    #     src = FO_CONF_NAME
+    #     dst = self.config_dir / FO_CONF_NAME
+    #     shutil.copy(src, dst)
+    #     with open(dst, "a") as f:
+    #         for tank in self.tanks:
+    #             f.write(
+    #                 f"""
+    #                 [[networks.nodes]]
+    #                 id = {tank.index}
+    #                 name = "Node {tank.index}"
+    #                 description = "Warnet tank {tank.index}"
+    #                 rpc_host = "{tank.ipv4}"
+    #                 rpc_port = {tank.rpc_port}
+    #                 rpc_user = "{tank.rpc_user}"
+    #                 rpc_password = "{tank.rpc_password}"
+    #             """
+    #             )
+    #     logger.info(f"Wrote file: {dst}")
 
-    def write_addrman_observer_config(self):
-        src = TEMPLATES / AO_CONF_NAME
-        dst = self.config_dir / AO_CONF_NAME
-        shutil.copy(src, dst)
-        with open(dst, "a") as f:
-            for tank in self.tanks:
-                f.write(
-                    f"""
-                    [[nodes]]
-                    id = {tank.index}
-                    name = "node-{tank.index}"
-                    rpc_host = "{tank.ipv4}"
-                    rpc_port = {tank.rpc_port}
-                    rpc_user = "{tank.rpc_user}"
-                    rpc_password = "{tank.rpc_password}"
-                """
-                )
-        logger.info(f"Wrote file: {dst}")
+    # def write_addrman_observer_config(self):
+    #     src =  AO_CONF_NAME
+    #     dst = self.config_dir / AO_CONF_NAME
+    #     shutil.copy(src, dst)
+    #     with open(dst, "a") as f:
+    #         for tank in self.tanks:
+    #             f.write(
+    #                 f"""
+    #                 [[nodes]]
+    #                 id = {tank.index}
+    #                 name = "node-{tank.index}"
+    #                 rpc_host = "{tank.ipv4}"
+    #                 rpc_port = {tank.rpc_port}
+    #                 rpc_user = "{tank.rpc_user}"
+    #                 rpc_password = "{tank.rpc_password}"
+    #             """
+    #             )
+    #     logger.info(f"Wrote file: {dst}")
 
-    def write_grafana_config(self):
-        src = TEMPLATES / GRAFANA_PROVISIONING
-        dst = self.config_dir / GRAFANA_PROVISIONING
-        shutil.copytree(src, dst, dirs_exist_ok=True)
-        logger.info(f"Wrote directory: {dst}")
+    # def write_grafana_config(self):
+    #     src = GRAFANA_PROVISIONING
+    #     dst = self.config_dir / GRAFANA_PROVISIONING
+    #     shutil.copytree(src, dst, dirs_exist_ok=True)
+    #     logger.info(f"Wrote directory: {dst}")
 
-    def write_prometheus_config(self):
-        scrape_configs = [
-            {
-                "job_name": "cadvisor",
-                "scrape_interval": "15s",
-                "static_configs": [{"targets": [f"{self.network_name}_cadvisor:8080"]}],
-            }
-        ]
-        for tank in self.tanks:
-            if tank.exporter:
-                scrape_configs.append(
-                    {
-                        "job_name": tank.exporter_name,
-                        "scrape_interval": "5s",
-                        "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
-                    }
-                )
-        config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
-        prometheus_path = self.config_dir / PROM_CONF_NAME
-        try:
-            with open(prometheus_path, "w") as file:
-                yaml.dump(config, file)
-            logger.info(f"Wrote file: {prometheus_path}")
-        except Exception as e:
-            logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
+    # def write_prometheus_config(self):
+    #     scrape_configs = [
+    #         {
+    #             "job_name": "cadvisor",
+    #             "scrape_interval": "15s",
+    #             "static_configs": [{"targets": [f"{self.network_name}_cadvisor:8080"]}],
+    #         }
+    #     ]
+    #     for tank in self.tanks:
+    #         if tank.exporter:
+    #             scrape_configs.append(
+    #                 {
+    #                     "job_name": tank.exporter_name,
+    #                     "scrape_interval": "5s",
+    #                     "static_configs": [{"targets": [f"{tank.exporter_name}:9332"]}],
+    #                 }
+    #             )
+    #     config = {"global": {"scrape_interval": "15s"}, "scrape_configs": scrape_configs}
+    #     prometheus_path = self.config_dir / PROM_CONF_NAME
+    #     try:
+    #         with open(prometheus_path, "w") as file:
+    #             yaml.dump(config, file)
+    #         logger.info(f"Wrote file: {prometheus_path}")
+    #     except Exception as e:
+    #         logger.error(f"An error occurred while writing to {prometheus_path}: {e}")
 
     def export(self, config: object, tar_file, exclude: list[int]):
         for tank in self.tanks:

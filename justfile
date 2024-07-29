@@ -104,10 +104,10 @@ build branch tag registry=registry repo=repo build-args=build-args action=load:
     warcli image build --registry={{registry}} --repo={{repo}} --branch={{branch}} --arches="{{arches}}" --tag={{tag}} --build-args="{{build-args}}" --action={{action}}
 
 installlogging:
-    ./src/warnet/templates/k8s/install_logging.sh
+    ./scripts/install_logging.sh
 
 connectlogging:
-    ./src/warnet/templates/k8s/connect_logging.sh
+    ./scripts/connect_logging.sh
 
 # Format and lint all files
 lint:

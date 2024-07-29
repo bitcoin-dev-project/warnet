@@ -9,44 +9,20 @@ a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet
 
 ## Kubernetes
 
-Deploy the resources in `manifests/`, this sets up the correct permissions on the cluster (`rbac-config.yaml`) and deploys the warnet RPC server as a service + statefulset.
-
-This can be done with from inside the `src/warnet/templates/` directory by running:
-
-```bash
-kubectl apply -f '*.yaml'
-```
-
-Once the RPC server comes up we need to forward the RPC port from the cluster.
-This can be done with:
-
-```bash
-kubectl port-forward svc/rpc 9276:9276
-```
-
-This allows you to communicate with the RPC server using `warcli`. Developers
-should check the [developer notes](developer-notes.md) to see how to
-update the RPC server when developing on Kubernetes.
-
-Currently, while `warcli network down` will bring down the pods, the RPC server needs manual deletion.
-This can be done using:
-
-```bash
-kubectl delete statefulset
-```
+// TODO
 
 ### Install logging infrastructure
 
 First make sure you have `helm` installed, then simply run the following script:
 
 ```bash
-./src/warnet/templates/k8s/install_logging.sh
+./scripts/install_logging.sh
 ```
 
 To forward port to view Grafana dashboard:
 
 ```bash
-./src/warnet/templates/k8s/connect_logging.sh
+./scripts/connect_logging.sh
 ```
 
 ## Kubernetes (e.g. minikube)

@@ -1,7 +1,8 @@
 adminUser: admin
 adminPassword: password
 admin: {}
-datasources:manifests/.yaml:
+datasources:
+  datasources.yaml:
     apiVersion: 1
     datasources:
     - name: Prometheus
