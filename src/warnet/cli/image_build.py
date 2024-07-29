@@ -21,7 +21,7 @@ def build_image(
     tag: str,
     build_args: str,
     arches: str,
-    action: str = "load",
+    action: str,
 ):
     if not build_args:
         build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings "'
