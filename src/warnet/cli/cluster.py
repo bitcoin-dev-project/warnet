@@ -8,19 +8,32 @@ import click
 MANIFEST_PATH = files("manifests")
 RPC_PATH = files("images").joinpath("rpc")
 
+SCRIPTS_PATH = files("scripts")
+START_SCRIPT = SCRIPTS_PATH / "start.sh"
+DEPLOY_SCRIPT = SCRIPTS_PATH / "deploy.sh"
+INSTALL_LOGGING_SCRIPT = SCRIPTS_PATH / "install_logging.sh"
+CONNECT_LOGGING_SCRIPT = SCRIPTS_PATH / "connect_logging.sh"
+
 
 @click.group(name="cluster", chain=True)
 def cluster():
     """Start, configure and stop a warnet k8s cluster\n
     \b
     Supports chaining, e.g:
-      warcli cluster minikube-setup deploy
-      warcli cluster teardown minikube-clean
+      warcli cluster deploy
+      warcli cluster teardown
     """
     pass
 
 
-def run_command(command, stream_output=False):
+def run_command(command, stream_output=False, env=None):
+    # Merge the current environment with the provided env
+    full_env = os.environ.copy()
+    if env:
+        # Convert all env values to strings (only a safeguard)
+        env = {k: str(v) for k, v in env.items()}
+        full_env.update(env)
+
     if stream_output:
         process = subprocess.Popen(
             ["/bin/bash", "-c", command],
@@ -29,6 +42,7 @@ def run_command(command, stream_output=False):
             text=True,
             bufsize=1,
             universal_newlines=True,
+            env=full_env,
         )
 
         for line in iter(process.stdout.readline, ""):
@@ -53,93 +67,51 @@ def run_command(command, stream_output=False):
 
 
 @cluster.command()
-def minikube_setup():
-    """Setup minikube for use with Warnet"""
-    script_content = f"""
-    #!/usr/bin/env bash
-    set -euxo pipefail
-
-    # Function to check if minikube is running
-    check_minikube() {{
-        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=4000mb --cpus=4 --mount --mount-string="$PWD:/mnt/src"
-    }}
-
-    # Check minikube status
-    check_minikube
-
-    # Build image in local registry and load into minikube
-    docker build -t warnet/dev -f {RPC_PATH}/Dockerfile_dev {RPC_PATH} --load
-    minikube image load warnet/dev
-    """
-
-    run_command(script_content, stream_output=True)
+@click.option("--clean", is_flag=True, help="Remove configuration files")
+def setup_minikube(clean):
+    """Configure a local minikube cluster"""
+    memory = click.prompt(
+        "How much RAM should we assign to the minikube cluster? (MB)",
+        type=int,
+        default=4000,
+    )
+    cpu = click.prompt(
+        "How many CPUs should we assign to the minikube cluster?", type=int, default=4
+    )
+    env = {"WAR_MEM": str(memory), "WAR_CPU": str(cpu), "WAR_RPC": RPC_PATH}
+    run_command(SCRIPTS_PATH / "setup_minikube.sh", stream_output=True, env=env)
 
 
+# TODO: Add a --dev flag to this
 @cluster.command()
-def deploy():
-    """Setup Warnet using the current kubectl-configured cluster"""
-    script_content = f"""
-    #!/usr/bin/env bash
-    set -euxo pipefail
-
-    # Function to check if warnet-rpc container is already running
-    check_warnet_rpc() {{
-        if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
-            echo "warnet-rpc already running in minikube"
-            exit 1
-        fi
-    }}
-
-    # Setup K8s
-    kubectl apply -f {MANIFEST_PATH}/namespace.yaml
-    kubectl apply -f {MANIFEST_PATH}/rbac-config.yaml
-    kubectl apply -f {MANIFEST_PATH}/warnet-rpc-service.yaml
-    kubectl apply -f {MANIFEST_PATH}/warnet-rpc-statefulset-dev.yaml
-    kubectl config set-context --current --namespace=warnet
-
-    # Check for warnet-rpc container
-    check_warnet_rpc
-
-    until kubectl get pod rpc-0 --namespace=warnet; do
-       echo "Waiting for server to find pod rpc-0..."
-       sleep 4
-    done
-
-    echo "⏲️ This could take a minute or so."
-    kubectl wait --for=condition=Ready --timeout=2m pod rpc-0
-
-    echo Done...
-    """
-
-    res = run_command(script_content, stream_output=True)
+@click.option("--dev", is_flag=True, help="Remove configuration files")
+def deploy(dev: bool):
+    """Deploy Warnet using the current kubectl-configured cluster"""
+    env = {"WAR_MANIFESTS": str(MANIFEST_PATH)}
+    if dev:
+        env["WAR_DEV"] = 1
+    res = run_command(SCRIPTS_PATH / "deploy.sh", stream_output=True, env=env)
     if res:
         _port_start_internal()
 
 
 @cluster.command()
-def minikube_clean():
-    """Reinit minikube images"""
-    script_content = """
-    #!/usr/bin/env bash
-    set -euxo pipefail
-    minikube image rm warnet/dev
-    """
-    run_command(script_content, stream_output=True)
+def teardown():
+    """Stop the warnet server and tear down the cluster"""
+    run_command(SCRIPTS_PATH / "stop.sh", stream_output=True)
+    _port_stop_internal()
 
 
 @cluster.command()
-def teardown():
-    """Stop the warnet server and tear down the cluster"""
-    script_content = """
-    #!/usr/bin/env bash
-    set -euxo pipefail
+def deploy_logging():
+    """Deploy logging configurations to the cluster using helm"""
+    run_command(SCRIPTS_PATH / "install_logging.sh", stream_output=True)
 
-    kubectl delete namespace warnet
-    kubectl delete namespace warnet-logging
-    kubectl config set-context --current --namespace=default
-    """
-    run_command(script_content, stream_output=True)
-    _port_stop_internal()
+
+@cluster.command()
+def connect_logging():
+    """Connect kubectl to cluster logging"""
+    run_command(CONNECT_LOGGING_SCRIPT, stream_output=True)
 
 
 def is_windows():
