@@ -1,3 +1,4 @@
+import os
 import base64  # noqa: I001
 from pathlib import Path
 
@@ -8,9 +9,7 @@ from rich.console import Console
 from rich.table import Table
 from .rpc import rpc_call  # noqa: I001
 
-from warnet.graphs import GRAPHS  # noqa: I001
-
-DEFAULT_GRAPH_FILE = GRAPHS / "default.graphml"
+DEFAULT_GRAPH_FILE = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "graphs" / "default.graphml"
 
 
 def print_repr(wn: dict) -> None:

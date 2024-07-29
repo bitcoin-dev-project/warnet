@@ -5,7 +5,7 @@ Warnet creates a Bitcoin network using a network topology from a [graphml](https
 Before any scenarios or RPC commands can be executed, a Warnet network must be started from a graph.
 See [warcli.md](warcli.md) for more details on these commands.
 
-To start a network called `"warnet"` from the [default graph file](../src/graphs/default.graphml):
+To start a network called `"warnet"` from the [default graph file](../graphs/default.graphml):
 ```
 warcli network start
 ```
