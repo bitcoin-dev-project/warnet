@@ -5,14 +5,11 @@ Warnet is the top-level class for a simulated network.
 import base64
 import json
 import logging
-import shutil
 from pathlib import Path
 
 import networkx
-import yaml
 
 from .backend.kubernetes_backend import KubernetesBackend
-from .services import AO_CONF_NAME, FO_CONF_NAME, GRAFANA_PROVISIONING, PROM_CONF_NAME
 from .tank import Tank
 from .utils import gen_config_dir, load_schema, validate_graph_schema
 
@@ -183,6 +180,7 @@ class Warnet:
 
     def generate_deployment(self):
         self.container_interface.generate_deployment_file(self)
+
     #     if "forkobserver" in self.services:
     #         self.write_fork_observer_config()
     #     if "addrmanobserver" in self.services:

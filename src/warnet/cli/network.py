@@ -1,15 +1,23 @@
-import os
 import base64  # noqa: I001
+import json
+import os
 from pathlib import Path
 
 import click
-import json
 from rich import print
 from rich.console import Console
 from rich.table import Table
+
 from .rpc import rpc_call  # noqa: I001
 
-DEFAULT_GRAPH_FILE = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "graphs" / "default.graphml"
+DEFAULT_GRAPH_FILE = (
+    Path(os.path.dirname(os.path.abspath(__file__)))
+    / ".."
+    / ".."
+    / ".."
+    / "graphs"
+    / "default.graphml"
+)
 
 
 def print_repr(wn: dict) -> None:

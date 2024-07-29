@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import click
 
@@ -51,7 +52,9 @@ def run_command(command, stream_output=False):
 @cluster.command()
 def minikube_setup():
     """Setup minikube for use with Warnet"""
-    template_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "manifests" / "rpc"
+    template_path = (
+        Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "manifests" / "rpc"
+    )
 
     script_content = f"""
     #!/usr/bin/env bash
@@ -76,17 +79,17 @@ def minikube_setup():
 @cluster.command()
 def deploy():
     """Setup Warnet using the current kubectl-configured cluster"""
-    script_content = f"""
+    script_content = """
     #!/usr/bin/env bash
     set -euxo pipefail
 
     # Function to check if warnet-rpc container is already running
-    check_warnet_rpc() {{
+    check_warnet_rpc() {
         if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
             echo "warnet-rpc already running in minikube"
             exit 1
         fi
-    }}
+    }
 
     # Setup K8s
     kubectl apply -f manifests/namespace.yaml

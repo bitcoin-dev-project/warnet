@@ -22,11 +22,11 @@ import warnet.scenarios as scenarios
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
+from warnet import SRC_DIR
 
 from .services import ServiceType
 from .utils import gen_config_dir
 from .warnet import Warnet
-from warnet import SRC_DIR
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001

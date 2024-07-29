@@ -4,7 +4,16 @@ from pathlib import Path
 
 ARCHES = ["amd64", "arm64", "armhf"]
 
-dockerfile_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "images" / "bitcoin" / "Dockerfile"
+dockerfile_path = (
+    Path(os.path.dirname(os.path.abspath(__file__)))
+    / ".."
+    / ".."
+    / ".."
+    / "images"
+    / "bitcoin"
+    / "Dockerfile"
+)
+
 
 def run_command(command):
     try:
