@@ -1,8 +1,10 @@
-import importlib.resources
+import os
 import subprocess
+from pathlib import Path
 
 ARCHES = ["amd64", "arm64", "armhf"]
 
+dockerfile_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "images" / "bitcoin" / "Dockerfile"
 
 def run_command(command):
     try:
@@ -43,15 +45,6 @@ def build_image(
     print(f"{tag=:}")
     print(f"{build_args=:}")
     print(f"{build_arches=:}")
-
-    # Use importlib.resources to check if the templates directory exists
-    template_package = "warnet.templates"
-    with importlib.resources.path(template_package, "Dockerfile") as dockerfile_path:
-        dockerfile_dir = dockerfile_path.parent
-        if not dockerfile_dir.is_dir():
-            print("Directory src/warnet/templates does not exist.")
-            print("Please run this script from the project root.")
-            return False
 
     # Setup buildkit
     builder_name = "bitcoind-builder"
