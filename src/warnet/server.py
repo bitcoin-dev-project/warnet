@@ -1,7 +1,6 @@
 import argparse
 import base64
 import importlib
-import importlib.resources as pkg_resources
 import io
 import json
 import logging
@@ -27,6 +26,7 @@ from flask_jsonrpc.exceptions import ServerError
 from .services import ServiceType
 from .utils import gen_config_dir
 from .warnet import Warnet
+from warnet import SRC_DIR
 
 WARNET_SERVER_PORT = 9276
 CONFIG_DIR_ALREADY_EXISTS = 32001
@@ -96,7 +96,7 @@ class Server:
 
     def setup_logging(self):
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        with pkg_resources.open_text("warnet.logging_config", "config.json") as f:
+        with open(SRC_DIR / "logging_config.json") as f:
             logging_config = json.load(f)
         logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
         logging.config.dictConfig(logging_config)

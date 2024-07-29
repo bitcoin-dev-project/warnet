@@ -1,5 +1,4 @@
 import atexit
-import importlib.resources as pkg_resources
 import json
 import logging
 import logging.config
@@ -11,6 +10,7 @@ from subprocess import PIPE, Popen, run
 from tempfile import mkdtemp
 from time import sleep
 
+from warnet import SRC_DIR
 from warnet.cli.rpc import rpc_call
 from warnet.utils import exponential_backoff
 from warnet.warnet import Warnet
@@ -39,7 +39,7 @@ class TestBase:
         self.network = True
 
     def setup_logging(self):
-        with pkg_resources.open_text("warnet.logging_config", "config.json") as f:
+        with open(SRC_DIR / "logging_config.json") as f:
             logging_config = json.load(f)
         logging_config["handlers"]["file"]["filename"] = str(self.logfilepath)
         logging.config.dictConfig(logging_config)

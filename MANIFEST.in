@@ -1,4 +1,3 @@
-include src/warnet/schema/*.json
 graft images
 graft manifests
 graft scripts
