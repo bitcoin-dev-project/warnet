@@ -1,15 +1,12 @@
 # Quick run
 
-Warnet runs a server which can be used to manage multiple networks. On docker
-this runs locally, but on Kubernetes this runs as a `statefulSet` in the
-cluster.
+## Installation
 
-If the `$XDG_STATE_HOME` environment variable is set, the server will log to
-a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet/warnet.log`.
+Either install warnet via pip, or clone the source and install:
 
-## Quick start via pip
+### via pip
 
-You can install warnet via `pip` into your virtual environment with
+You can install warnet via `pip` into a virtual environment with
 
 ```bash
 python3 -m venv .venv
@@ -17,28 +14,53 @@ source .venv/bin/activate
 pip install warnet
 ```
 
-Following installation `warcli` commands will operate natively on the Kubernetes cluster currently configured with `kubectl`.
+### via cloned source
 
-Starting the Warnet server is as easy as:
+You can install warnet from source into a virtual environment with
 
 ```bash
-# (optional) if using a local minikube cluster check that we have all required programs installed
-warcli setup
+git clone https://github.com/bitcoin-dev-project/warnet.git
+cd warnet
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
 
-# (optional) if using a local minikube cluster, set it up
-warcli cluster minikube-setup
+## Running
+
+> [!TIP]
+> When developing locally add the `--dev` flag to `warcli cluster deploy` to enable dev mode with hot-reloading server.
+
+### Using minikube
+
+To run a local cluster using minikube:
+
+```bash
+warcli cluster setup-minikube
 
 warcli cluster deploy
 ```
 
-This also automatically configures port forwarding to the Server in the cluster.
+### Other cluster types
+
+If not using minikube (e.g. using Docker Desktop or a managed cluster), `warcli` commands will operate natively on the current Kubernetes context, so you can simply run:
+
+```bash
+warcli cluster deploy
+```
+
+...to deploy warnet to your cluster.
+
+`warcli deploy` also automatically configures port forwarding to the Server in the cluster.
+
+## Stopping
 
 To tear down the cluster:
 
 ```bash
 warcli cluster teardown
+```
 
-# (optional) if using a local minikube cluster, remove the image
-warcli cluster minikube-clean
+## Log location
 
-
+If the `$XDG_STATE_HOME` environment variable is set, the server will log to a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet/warnet.log`.
