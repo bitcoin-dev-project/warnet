@@ -26,6 +26,10 @@ options:
 |----------|--------|------------|-----------|
 | commands | String |            |           |
 
+### `warcli setup`
+Check Warnet requirements are installed
+
+
 ## Bitcoin
 
 ### `warcli bitcoin debug-log`
@@ -69,16 +73,20 @@ options:
 
 ## Cluster
 
+### `warcli cluster connect-logging`
+Connect kubectl to cluster logging
+
+
 ### `warcli cluster deploy`
-Setup Warnet using the current kubectl-configured cluster
+Deploy Warnet using the current kubectl-configured cluster
 
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| dev    | Bool   |            | False     |
 
-### `warcli cluster minikube-clean`
-Reinit minikube images
-
-
-### `warcli cluster minikube-setup`
-Setup minikube for use with Warnet
+### `warcli cluster deploy-logging`
+Deploy logging configurations to the cluster using helm
 
 
 ### `warcli cluster port-start`
@@ -88,6 +96,14 @@ Port forward (runs as a detached process)
 ### `warcli cluster port-stop`
 Stop the port forwarding process
 
+
+### `warcli cluster setup-minikube`
+Configure a local minikube cluster
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| clean  | Bool   |            | False     |
 
 ### `warcli cluster teardown`
 Stop the warnet server and tear down the cluster
