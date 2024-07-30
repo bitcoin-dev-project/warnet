@@ -72,7 +72,7 @@ startd:
     kubectl apply -f resources/manifests/namespace.yaml
     kubectl apply -f resources/manifests/rbac-config.yaml
     kubectl apply -f resources/manifests/warnet-rpc-service.yaml
-    sed 's?/mnt/src?'`PWD`'?g' resouces/manifests/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+    sed 's?/mnt/src?'`PWD`'?g' resources/manifests/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online
