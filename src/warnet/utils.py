@@ -16,8 +16,7 @@ import networkx as nx
 from jsonschema import validate
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
-
-from .schema import SCHEMA
+from warnet import SRC_DIR
 
 logger = logging.getLogger("utils")
 
@@ -27,7 +26,6 @@ DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
 ]
-GRAPH_SCHEMA_PATH = SCHEMA / "graph_schema.json"
 
 
 class NonErrorFilter(logging.Filter):
@@ -465,7 +463,7 @@ def convert_unsupported_attributes(graph: nx.Graph):
 
 
 def load_schema():
-    with open(GRAPH_SCHEMA_PATH) as schema_file:
+    with open(SRC_DIR / "graph_schema.json") as schema_file:
         return json.load(schema_file)
 
 

@@ -1,7 +1,9 @@
-import importlib.resources
 import subprocess
+from importlib.resources import files
 
 ARCHES = ["amd64", "arm64", "armhf"]
+
+dockerfile_path = files("images.bitcoin").joinpath("Dockerfile")
 
 
 def run_command(command):
@@ -19,7 +21,7 @@ def build_image(
     tag: str,
     build_args: str,
     arches: str,
-    action: str = "load",
+    action: str,
 ):
     if not build_args:
         build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings "'
@@ -43,15 +45,6 @@ def build_image(
     print(f"{tag=:}")
     print(f"{build_args=:}")
     print(f"{build_arches=:}")
-
-    # Use importlib.resources to check if the templates directory exists
-    template_package = "warnet.templates"
-    with importlib.resources.path(template_package, "Dockerfile") as dockerfile_path:
-        dockerfile_dir = dockerfile_path.parent
-        if not dockerfile_dir.is_dir():
-            print("Directory src/warnet/templates does not exist.")
-            print("Please run this script from the project root.")
-            return False
 
     # Setup buildkit
     builder_name = "bitcoind-builder"
@@ -77,7 +70,8 @@ def build_image(
         f" --build-arg COMMIT_SHA={commit_sha}"
         f" --build-arg BUILD_ARGS={build_args}"
         f" --tag {image_full_name}"
-        f" --file {dockerfile_path} ."
+        f" --file {dockerfile_path}"
+        f" {dockerfile_path.parent}"
         f" --{action}"
     )
     print(f"Using {build_command=}")

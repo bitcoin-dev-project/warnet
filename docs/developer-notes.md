@@ -13,9 +13,9 @@ To help with this a helper script is provided: [build-k8s-rpc.sh](../scripts/bui
 This script can be run in the following way:
 
 ```bash
-DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh Dockerfile_rpc
+DOCKER_REGISTRY=bitcoindevproject/warnet-rpc TAG=0.1 ./scripts/build-k8s-rpc.sh Dockerfile_prod
 ```
 
 You can optionally specify `LATEST=1` to also include the `latest` tag on docker hub.
 
-Once a new image has been pushed, it should be referenced in [warnet-rpc-statefulset.yaml](../src/warnet/templates/warnet-rpc-statefulset.yaml) in the `image` field.
+Once a new image has been pushed, it should be referenced in manifests/warnet-rpc-statefulset.yaml in the `image` field.

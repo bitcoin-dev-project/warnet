@@ -38,7 +38,7 @@ jobs:
       - name: Build and push production RPC image
         uses: docker/build-push-action@v5
         with:
-          file: src/templates/rpc/Dockerfile_rpc
+          file: resources/images/rpc/Dockerfile_prod
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
@@ -50,7 +50,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
-          file: src/templates/rpc/Dockerfile_rpc_dev
+          file: resources/images/rpc/Dockerfile_dev
           platforms: linux/amd64,linux/arm64
           context: .
           push: true

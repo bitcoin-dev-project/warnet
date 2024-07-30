@@ -35,7 +35,7 @@ jobs:
       - name: Build and export
         uses: docker/build-push-action@v5
         with:
-          file: src/warnet/templates/rpc/Dockerfile_rpc
+          file: resources/images/rpc/Dockerfile_prod
           context: .
           tags: warnet/dev
           cache-from: type=gha
@@ -74,13 +74,13 @@ jobs:
           uv pip install -e .
 
           echo "Contents of warnet-rpc-statefulset-dev.yaml being used:"
-          cat src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
+          cat resources/manifests/warnet-rpc-statefulset-dev.yaml
 
           echo Setting up k8s
-          kubectl apply -f src/warnet/templates/rpc/namespace.yaml
-          kubectl apply -f src/warnet/templates/rpc/rbac-config.yaml
-          kubectl apply -f src/warnet/templates/rpc/warnet-rpc-service.yaml
-          kubectl apply -f src/warnet/templates/rpc/warnet-rpc-statefulset-dev.yaml
+          kubectl apply -f resources/manifests/namespace.yaml
+          kubectl apply -f resources/manifests/rbac-config.yaml
+          kubectl apply -f resources/manifests/warnet-rpc-service.yaml
+          kubectl apply -f resources/manifests/warnet-rpc-statefulset-dev.yaml
           kubectl config set-context --current --namespace=warnet
 
           echo sleeping for 30s to give k8s time to boot

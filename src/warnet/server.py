@@ -1,7 +1,6 @@
 import argparse
 import base64
 import importlib
-import importlib.resources as pkg_resources
 import io
 import json
 import logging
@@ -23,6 +22,7 @@ import warnet.scenarios as scenarios
 from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
+from warnet import SRC_DIR
 
 from .services import ServiceType
 from .utils import gen_config_dir
@@ -73,7 +73,7 @@ class Server:
 
     def setup_global_exception_handler(self):
         """
-        Use flask to log traceback of unhandled excpetions
+        Use flask to log traceback of unhandled exceptions
         """
 
         @self.app.errorhandler(Exception)
@@ -96,7 +96,7 @@ class Server:
 
     def setup_logging(self):
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
-        with pkg_resources.open_text("warnet.logging_config", "config.json") as f:
+        with open(SRC_DIR / "logging_config.json") as f:
             logging_config = json.load(f)
         logging_config["handlers"]["file"]["filename"] = str(self.log_file_path)
         logging.config.dictConfig(logging_config)

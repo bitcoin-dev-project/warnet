@@ -17,8 +17,8 @@ def image():
 @click.option("--tag", required=True, type=str)
 @click.option("--build-args", required=False, type=str)
 @click.option("--arches", required=False, type=str)
-@click.option("--action", required=False, type=str)
-def build(repo, commit_sha, registry, tag, build_args, arches, action="load"):
+@click.option("--action", required=False, type=str, default="load")
+def build(repo, commit_sha, registry, tag, build_args, arches, action):
     """
     Build bitcoind and bitcoin-cli from <repo> at <commit_sha> as <registry>:<tag>.
     Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
