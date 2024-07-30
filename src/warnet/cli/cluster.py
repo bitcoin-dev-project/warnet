@@ -1,9 +1,12 @@
 import os
 import subprocess
 import sys
-from pathlib import Path
+from importlib.resources import files
 
 import click
+
+MANIFEST_PATH = files("manifests")
+RPC_PATH = files("images").joinpath("rpc")
 
 
 @click.group(name="cluster", chain=True)
@@ -52,24 +55,20 @@ def run_command(command, stream_output=False):
 @cluster.command()
 def minikube_setup():
     """Setup minikube for use with Warnet"""
-    template_path = (
-        Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / ".." / "manifests" / "rpc"
-    )
-
     script_content = f"""
     #!/usr/bin/env bash
     set -euxo pipefail
 
     # Function to check if minikube is running
     check_minikube() {{
-        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=max --cpus=max --mount --mount-string="$PWD:/mnt/src"
+        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=4000mb --cpus=4 --mount --mount-string="$PWD:/mnt/src"
     }}
 
     # Check minikube status
     check_minikube
 
     # Build image in local registry and load into minikube
-    docker build -t warnet/dev -f {template_path}/Dockerfile_dev {template_path} --load
+    docker build -t warnet/dev -f {RPC_PATH}/Dockerfile_dev {RPC_PATH} --load
     minikube image load warnet/dev
     """
 
@@ -79,23 +78,23 @@ def minikube_setup():
 @cluster.command()
 def deploy():
     """Setup Warnet using the current kubectl-configured cluster"""
-    script_content = """
+    script_content = f"""
     #!/usr/bin/env bash
     set -euxo pipefail
 
     # Function to check if warnet-rpc container is already running
-    check_warnet_rpc() {
+    check_warnet_rpc() {{
         if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
             echo "warnet-rpc already running in minikube"
             exit 1
         fi
-    }
+    }}
 
     # Setup K8s
-    kubectl apply -f manifests/namespace.yaml
-    kubectl apply -f manifests/rbac-config.yaml
-    kubectl apply -f manifests/warnet-rpc-service.yaml
-    kubectl apply -f manifests/warnet-rpc-statefulset-dev.yaml
+    kubectl apply -f {MANIFEST_PATH}/namespace.yaml
+    kubectl apply -f {MANIFEST_PATH}/rbac-config.yaml
+    kubectl apply -f {MANIFEST_PATH}/warnet-rpc-service.yaml
+    kubectl apply -f {MANIFEST_PATH}/warnet-rpc-statefulset-dev.yaml
     kubectl config set-context --current --namespace=warnet
 
     # Check for warnet-rpc container

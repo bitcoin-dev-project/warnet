@@ -1,4 +1,2 @@
 include src/warnet/*.json
-graft images
-graft manifests
-graft scripts
+graft resources

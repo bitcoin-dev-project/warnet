@@ -5,10 +5,10 @@ default:
     just --list
 
 cluster:
-    kubectl apply -f manifests/namespace.yaml
-    kubectl apply -f manifests/rbac-config.yaml
-    kubectl apply -f manifests/warnet-rpc-service.yaml
-    kubectl apply -f manifests/warnet-rpc-statefulset.yaml
+    kubectl apply -f resources/manifests/namespace.yaml
+    kubectl apply -f resources/manifests/rbac-config.yaml
+    kubectl apply -f resources/manifests/warnet-rpc-service.yaml
+    kubectl apply -f resources/manifests/warnet-rpc-statefulset.yaml
 
 # Setup and start the RPC in dev mode with minikube
 start:
@@ -32,14 +32,14 @@ start:
     check_minikube
 
     # Build image in local registry and load into minikube
-    docker build -t warnet/dev -f images/rpc/Dockerfile_dev images/rpc --load
+    docker build -t warnet/dev -f resources/images/rpc/Dockerfile_dev resources/images/rpc --load
     minikube image load warnet/dev
 
     # Setup k8s
-    kubectl apply -f manifests/namespace.yaml
-    kubectl apply -f manifests/rbac-config.yaml
-    kubectl apply -f manifests/warnet-rpc-service.yaml
-    kubectl apply -f manifests/warnet-rpc-statefulset-dev.yaml
+    kubectl apply -f resources/manifests/namespace.yaml
+    kubectl apply -f resources/manifests/rbac-config.yaml
+    kubectl apply -f resources/manifests/warnet-rpc-service.yaml
+    kubectl apply -f resources/manifests/warnet-rpc-statefulset-dev.yaml
     kubectl config set-context --current --namespace=warnet
 
     # Check for warnet-rpc container
@@ -68,11 +68,11 @@ stop:
 
 # Setup and start the RPC in dev mode with Docker Desktop
 startd:
-    docker build -t warnet/dev -f images/rpc/Dockerfile_dev images/rpc --load
-    kubectl apply -f manifests/namespace.yaml
-    kubectl apply -f manifests/rbac-config.yaml
-    kubectl apply -f manifests/warnet-rpc-service.yaml
-    sed 's?/mnt/src?'`PWD`'?g' manifests/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
+    docker build -t warnet/dev -f resources/images/rpc/Dockerfile_dev resources/images/rpc --load
+    kubectl apply -f resources/manifests/namespace.yaml
+    kubectl apply -f resources/manifests/rbac-config.yaml
+    kubectl apply -f resources/manifests/warnet-rpc-service.yaml
+    sed 's?/mnt/src?'`PWD`'?g' resouces/manifests/warnet-rpc-statefulset-dev.yaml | kubectl apply -f -
     kubectl config set-context --current --namespace=warnet
 
     echo waiting for rpc to come online
@@ -104,10 +104,10 @@ build branch tag registry=registry repo=repo build-args=build-args action=load:
     warcli image build --registry={{registry}} --repo={{repo}} --branch={{branch}} --arches="{{arches}}" --tag={{tag}} --build-args="{{build-args}}" --action={{action}}
 
 installlogging:
-    ./scripts/install_logging.sh
+    resources/scripts/install_logging.sh
 
 connectlogging:
-    ./scripts/connect_logging.sh
+    resources/scripts/connect_logging.sh
 
 # Format and lint all files
 lint:

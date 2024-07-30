@@ -73,7 +73,7 @@ class Server:
 
     def setup_global_exception_handler(self):
         """
-        Use flask to log traceback of unhandled excpetions
+        Use flask to log traceback of unhandled exceptions
         """
 
         @self.app.errorhandler(Exception)

@@ -1,3 +1,3 @@
-from pathlib import Path
+from importlib.resources import files
 
-SRC_DIR = Path(__file__).parent
+SRC_DIR = files("warnet")

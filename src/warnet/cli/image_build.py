@@ -1,18 +1,9 @@
-import os
 import subprocess
-from pathlib import Path
+from importlib.resources import files
 
 ARCHES = ["amd64", "arm64", "armhf"]
 
-dockerfile_path = (
-    Path(os.path.dirname(os.path.abspath(__file__)))
-    / ".."
-    / ".."
-    / ".."
-    / "images"
-    / "bitcoin"
-    / "Dockerfile"
-)
+dockerfile_path = files("images.bitcoin").joinpath("Dockerfile")
 
 
 def run_command(command):
