@@ -40,7 +40,7 @@ jobs:
         with:
           file: resources/images/rpc/Dockerfile_prod
           platforms: linux/amd64,linux/arm64
-          context: .
+          context: src/warnet/templates/rpc
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -52,7 +52,7 @@ jobs:
         with:
           file: resources/images/rpc/Dockerfile_dev
           platforms: linux/amd64,linux/arm64
-          context: .
+          context: src/warnet/templates/rpc
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:dev
           labels: ${{ steps.meta.outputs.labels }}
