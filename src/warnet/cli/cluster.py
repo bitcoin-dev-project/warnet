@@ -56,21 +56,17 @@ def run_command(command, stream_output=False):
 @cluster.command()
 def minikube_setup():
     """Setup minikube for use with Warnet"""
-    script_content = f"""
+    script_content = """
     #!/usr/bin/env bash
     set -euxo pipefail
 
     # Function to check if minikube is running
-    check_minikube() {{
-        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=4000mb --cpus=4 --mount --mount-string="$PWD:/mnt/src"
-    }}
+    check_minikube() {
+        minikube status | grep -q "Running" && echo "Minikube is already running" || minikube start --memory=4000mb --cpus=4
+    }
 
     # Check minikube status
     check_minikube
-
-    # Build image in local registry and load into minikube
-    docker build -t warnet/dev -f {RPC_PATH}/Dockerfile_dev {RPC_PATH} --load
-    minikube image load warnet/dev
     """
 
     run_command(script_content, stream_output=True)
@@ -95,7 +91,7 @@ def deploy():
     kubectl apply -f {MANIFEST_PATH}/namespace.yaml
     kubectl apply -f {MANIFEST_PATH}/rbac-config.yaml
     kubectl apply -f {MANIFEST_PATH}/warnet-rpc-service.yaml
-    kubectl apply -f {MANIFEST_PATH}/warnet-rpc-statefulset-dev.yaml
+    sed "s|bitcoindevproject/warnet-rpc:latest|bitcoindevproject/warnet-rpc:{VERSION}|" {MANIFEST_PATH}/warnet-rpc-statefulset.yaml | kubectl apply -f -
     kubectl config set-context --current --namespace=warnet
 
     # Check for warnet-rpc container
@@ -120,12 +116,7 @@ def deploy():
 @cluster.command()
 def minikube_clean():
     """Reinit minikube images"""
-    script_content = """
-    #!/usr/bin/env bash
-    set -euxo pipefail
-    minikube image rm warnet/dev
-    """
-    run_command(script_content, stream_output=True)
+    run_command("minikube delete", stream_output=True)
 
 
 @cluster.command()
