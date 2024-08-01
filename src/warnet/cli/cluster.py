@@ -4,6 +4,7 @@ import sys
 from importlib.resources import files
 
 import click
+from warnet.version import VERSION
 
 MANIFEST_PATH = files("manifests")
 RPC_PATH = files("images").joinpath("rpc")

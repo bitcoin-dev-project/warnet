@@ -19,8 +19,18 @@ jobs:
       - uses: chartboost/ruff-action@v1
         with:
           args: 'format --check'
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Check version consistency
+        run: python .github/scripts/check_version.py
   build-image:
-    needs: [ruff, ruff-format]
+    needs: [ruff, ruff-format, check-version]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
