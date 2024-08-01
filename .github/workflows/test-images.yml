@@ -1,0 +1,50 @@
+name: test image builds
+
+on:
+  workflow_run:
+    workflows: ["test"]
+    types:
+      - completed
+
+jobs:
+  test-prod:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build production RPC image
+        uses: docker/build-push-action@v5
+        with:
+          file: resources/images/rpc/Dockerfile_prod
+          platforms: linux/amd64,linux/arm64
+          context: .
+          push: false
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  test-dev:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build dev RPC image
+        uses: docker/build-push-action@v5
+        with:
+          file: resources/images/rpc/Dockerfile_dev
+          platforms: linux/amd64,linux/arm64
+          context: resources/images/rpc
+          push: false
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_RPC_REPO }}:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
