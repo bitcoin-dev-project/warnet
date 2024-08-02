@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key id="services"        attr.name="services"         attr.type="string"   for="graph" />
+  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
+  <key id="image"           attr.name="image"            attr.type="string"   for="node" />
+  <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
+  <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
+  <key id="exporter"        attr.name="exporter"         attr.type="boolean"  for="node" />
+  <key id="metrics"         attr.name="metrics"          attr.type="string"   for="node" />
+  <key id="collect_logs"    attr.name="collect_logs"     attr.type="boolean"  for="node" />
+  <key id="build_args"      attr.name="build_args"       attr.type="string"   for="node" />
+  <key id="ln"              attr.name="ln"               attr.type="string"   for="node" />
+  <key id="ln_image"        attr.name="ln_image"         attr.type="string"   for="node" />
+  <key id="ln_cb_image"     attr.name="ln_cb_image"      attr.type="string"   for="node" />
+  <key id="ln_config"       attr.name="ln_config"        attr.type="string"   for="node" />
+  <key id="channel_open"    attr.name="channel_open"     attr.type="string"   for="edge" />
+  <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
+  <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
+  <graph edgedefault="directed">
+    <node id="0">
+        <data key="version">27.0</data>
+        <data key="exporter">true</data>
+    </node>
+    <node id="1">
+        <data key="version">27.0</data>
+        <data key="exporter">true</data>
+        <data key="metrics">txrate=getchaintxstats(10)["txrate"]</data>
+    </node>
+    <node id="2">
+        <data key="version">27.0</data>
+    </node>
+    <edge id="1" source="0" target="1"></edge>
+    <edge id="2" source="1" target="2"></edge>
+    <edge id="3" source="2" target="0"></edge>
+  </graph>
+</graphml>
