@@ -37,7 +37,7 @@ class TXFlood(WarnetTestFramework):
                 if bal < 1:
                     continue
                 amounts = {}
-                num_out = randrange(1, len(self.nodes) // 2)
+                num_out = randrange(1, (len(self.nodes) // 2) + 1)
                 for _ in range(num_out):
                     sats = int(float((bal / 20) / num_out) * 1e8)
                     amounts[choice(self.addrs)] = randrange(sats // 4, sats) / 1e8
