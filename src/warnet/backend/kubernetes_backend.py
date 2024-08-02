@@ -414,15 +414,18 @@ class KubernetesBackend:
         return bitcoind_container
 
     def create_prometheus_container(self, tank) -> client.V1Container:
+        env = [
+            client.V1EnvVar(name="BITCOIN_RPC_HOST", value="127.0.0.1"),
+            client.V1EnvVar(name="BITCOIN_RPC_PORT", value=str(tank.rpc_port)),
+            client.V1EnvVar(name="BITCOIN_RPC_USER", value=tank.rpc_user),
+            client.V1EnvVar(name="BITCOIN_RPC_PASSWORD", value=tank.rpc_password),
+        ]
+        if tank.metrics is not None:
+            env.append(
+                client.V1EnvVar(name="METRICS", value=tank.metrics),
+            )
         return client.V1Container(
-            name="prometheus",
-            image="jvstein/bitcoin-prometheus-exporter:latest",
-            env=[
-                client.V1EnvVar(name="BITCOIN_RPC_HOST", value="127.0.0.1"),
-                client.V1EnvVar(name="BITCOIN_RPC_PORT", value=str(tank.rpc_port)),
-                client.V1EnvVar(name="BITCOIN_RPC_USER", value=tank.rpc_user),
-                client.V1EnvVar(name="BITCOIN_RPC_PASSWORD", value=tank.rpc_password),
-            ],
+            name="prometheus", image="bitcoindevproject/bitcoin-exporter:latest", env=env
         )
 
     def check_logging_crds_installed(self):
