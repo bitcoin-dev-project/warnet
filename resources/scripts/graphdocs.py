@@ -9,7 +9,7 @@ from warnet.utils import load_schema
 
 graph_schema = load_schema()
 
-file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / "docs" / "graph.md"
+file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / "docs" / "graph.md"
 
 doc = ""
 
