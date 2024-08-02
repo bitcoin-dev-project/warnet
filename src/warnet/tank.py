@@ -49,6 +49,7 @@ class Tank:
         self.bitcoin_config = ""
         self.netem = None
         self.exporter = False
+        self.metrics = None
         self.collect_logs = False
         self.build_args = ""
         self.lnnode: LNNode | None = None
@@ -106,6 +107,9 @@ class Tank:
                 self.lnnode = CLNNode(self.warnet, self, self.warnet.container_interface, options)
             else:
                 raise Exception(f"Unsupported Lightning Network implementation: {options['impl']}")
+
+        if "metrics" in node:
+            self.metrics = node["metrics"]
 
         logger.debug(
             f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"
