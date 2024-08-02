@@ -436,11 +436,13 @@ class KubernetesBackend:
             if not tank.exporter:
                 continue
 
+            tank_name = self.get_pod_name(tank.index, ServiceType.BITCOIN)
+
             service_monitor = {
                 "apiVersion": "monitoring.coreos.com/v1",
                 "kind": "ServiceMonitor",
                 "metadata": {
-                    "name": f"warnet-tank-{tank.index:06d}",
+                    "name": tank_name,
                     "namespace": MAIN_NAMESPACE,
                     "labels": {
                         "app.kubernetes.io/name": "bitcoind-metrics",
@@ -449,7 +451,7 @@ class KubernetesBackend:
                 },
                 "spec": {
                     "endpoints": [{"port": "prometheus-metrics"}],
-                    "selector": {"matchLabels": {"app": f"warnet-tank-{tank.index:06d}"}},
+                    "selector": {"matchLabels": {"app": tank_name}},
                 },
             }
             # Create the custom resource using the dynamic client
