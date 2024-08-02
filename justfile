@@ -61,7 +61,7 @@ stop:
     set -euxo pipefail
 
     kubectl delete namespace warnet
-    kubectl delete namespace warnet-logging
+    kubectl delete namespace warnet-logging --ignore-not-found
     kubectl config set-context --current --namespace=default
 
     minikube image rm warnet/dev
@@ -84,7 +84,7 @@ startd:
 stopd:
     # Delete all resources
     kubectl delete namespace warnet
-    kubectl delete namespace warnet-logging
+    kubectl delete namespace warnet-logging --ignore-not-found
     kubectl config set-context --current --namespace=default
 
     echo Done...
