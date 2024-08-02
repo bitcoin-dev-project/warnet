@@ -41,6 +41,7 @@ where = ["src", "resources"]
 [tool.ruff]
 extend-exclude = [
     "src/test_framework/*.py",
+    "resources/images/exporter/authproxy.py",
 ]
 line-length = 100
 indent-width = 4
