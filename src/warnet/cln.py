@@ -82,6 +82,8 @@ class CLNNode(LNNode):
         tank = self.warnet.tanks[index]
         [pubkey, host] = tank.lnnode.getURI().split("@")
         res = self.lncli(f"fundchannel id={pubkey} {channel_open_data}")
+        if "txid" not in res or "outnum" not in res:
+            raise ValueError(f"Error opening channel to tank: {res}")
         return f"{res['txid']}:{res['outnum']}"
 
     def update_channel_policy(self, chan_point: str, policy: str) -> str:
