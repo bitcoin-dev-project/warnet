@@ -18,7 +18,7 @@ check_warnet_rpc() {
 minikube delete
 
 # Prepare minikube start command
-MINIKUBE_CMD="minikube start --mount --mount-string=\"$PWD:/mnt/src\""
+MINIKUBE_CMD="minikube start --driver=docker --container-runtime=containerd --mount --mount-string=\"$PWD:/mnt/src\""
 
 # Check for WAR_CPU and add to command if set
 if [ -n "${WAR_CPU:-}" ]; then
