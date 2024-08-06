@@ -1,0 +1,95 @@
+{
+  "title": "Default Warnet Dashboard",
+  "refresh": "5s",
+  "panels":
+  [
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "outbounds",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Outbound connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "inbounds",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Inbound connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "mempool_size",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Mempool size",
+      "type": "timeseries"
+    },
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "blocks",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Blocks",
+      "type": "timeseries"
+    }
+  ]
+}

@@ -79,5 +79,34 @@ resources/scripts/connect_logging.sh
 The Grafana dashboard (and API) will be accessible without requiring authentication
 at http://localhost:3000
 
+## Dashboards
+
+To view the default metrics in the included default dashboard, upload the dashboard
+JSON file to the Grafana server:
+
+```
+curl localhost:3000/api/dashboards/db \
+  -H "Content-Type: application/json" \
+  --data "{\"dashboard\": $(cat resources/configs/grafana/default_dashboard.json)}"
+```
+
+Note the URL in the reply from the server (example):
+
+```
+{"folderUid":"","id":2,"slug":"default-warnet-dashboard","status":"success","uid":"fdu0pda1z6a68b","url":"/d/fdu0pda1z6a68b/default-warnet-dashboard","version":1}(
+```
+
+Open the dashboard in your browser (example):
+
+`http://localhost:3000/d/fdu0pda1z6a68b/default-warnet-dashboard`
+
+The metrics visualizers in the default dashboard will appear with minimal size:
 
 
+![compact-dashboard](compact_dashboard.png)
+
+
+...but they can be stretched and rearranged by dragging in the browser:
+
+
+![compact-dashboard](expanded_dashboard.png)
