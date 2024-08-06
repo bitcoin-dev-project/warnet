@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
-  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
   <key id="services"        attr.name="services"         attr.type="string"   for="graph" />
+  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
   <key id="image"           attr.name="image"            attr.type="string"   for="node" />
   <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
   <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
   <key id="exporter"        attr.name="exporter"         attr.type="boolean"  for="node" />
+  <key id="metrics"         attr.name="metrics"          attr.type="string"   for="node" />
   <key id="collect_logs"    attr.name="collect_logs"     attr.type="boolean"  for="node" />
   <key id="build_args"      attr.name="build_args"       attr.type="string"   for="node" />
   <key id="ln"              attr.name="ln"               attr.type="string"   for="node" />
