@@ -100,13 +100,3 @@ Open the dashboard in your browser (example):
 
 `http://localhost:3000/d/fdu0pda1z6a68b/default-warnet-dashboard`
 
-The metrics visualizers in the default dashboard will appear with minimal size:
-
-
-![compact-dashboard](compact_dashboard.png)
-
-
-...but they can be stretched and rearranged by dragging in the browser:
-
-
-![compact-dashboard](expanded_dashboard.png)
