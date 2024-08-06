@@ -23,7 +23,13 @@
         }
       ],
       "title": "Outbound connections",
-      "type": "timeseries"
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
     },
     {
       "datasource":
@@ -45,7 +51,13 @@
         }
       ],
       "title": "Inbound connections",
-      "type": "timeseries"
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
     },
     {
       "datasource":
@@ -67,7 +79,13 @@
         }
       ],
       "title": "Mempool size",
-      "type": "timeseries"
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
     },
     {
       "datasource":
@@ -89,7 +107,13 @@
         }
       ],
       "title": "Blocks",
-      "type": "timeseries"
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
     }
   ]
 }
