@@ -6,6 +6,7 @@ datasources:
     apiVersion: 1
     datasources:
     - name: Prometheus
+      uid: "PBFA97CFB590B2094"
       type: prometheus
       url: http://prometheus-kube-prometheus-prometheus.warnet-logging:9090
     - name: Loki
