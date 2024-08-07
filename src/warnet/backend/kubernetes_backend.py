@@ -329,7 +329,7 @@ class KubernetesBackend:
                     name=pod.metadata.name,
                     container=BITCOIN_CONTAINER_NAME,
                     namespace=self.namespace,
-                    timestamps=True,
+                    timestamps=False,
                     _preload_content=False,
                 )
 
