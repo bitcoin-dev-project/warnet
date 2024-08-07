@@ -48,14 +48,20 @@ def messages(node_a, node_b, network):
 @bitcoin.command()
 @click.argument("pattern", type=str, required=True)
 @click.option("--show-k8s-timestamps", is_flag=True, default=False, show_default=True)
+@click.option("--no-sort", is_flag=True, default=False, show_default=True)
 @click.option("--network", default="warnet", show_default=True)
-def grep_logs(pattern, network, show_k8s_timestamps):
+def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
     """
     Grep combined logs via fluentd using regex <pattern>
     """
     print(
         rpc_call(
             "logs_grep",
-            {"network": network, "pattern": pattern, "k8s_timestamps": show_k8s_timestamps},
+            {
+                "network": network,
+                "pattern": pattern,
+                "k8s_timestamps": show_k8s_timestamps,
+                "no_sort": no_sort,
+            },
         )
     )

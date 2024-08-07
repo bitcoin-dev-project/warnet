@@ -313,7 +313,7 @@ class KubernetesBackend:
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    def logs_grep(self, pattern: str, network: str, k8s_timestamps=False):
+    def logs_grep(self, pattern: str, network: str, k8s_timestamps=False, no_sort=False):
         compiled_pattern = re.compile(pattern)
         matching_logs = []
         pods = self.client.list_namespaced_pod(self.namespace)
@@ -335,7 +335,7 @@ class KubernetesBackend:
             except ApiException as e:
                 print(f"Error fetching logs for pod {pod.metadata.name}: {e}")
 
-        sorted_logs = sorted(matching_logs, key=lambda x: x[0])
+        sorted_logs = matching_logs if no_sort else sorted(matching_logs, key=lambda x: x[0])
         # Prepend pod names
         formatted_logs = [f"{pod_name}: {log}" for log, pod_name in sorted_logs]
 

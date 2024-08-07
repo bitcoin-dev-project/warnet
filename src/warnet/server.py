@@ -570,13 +570,15 @@ class Server:
             self.logger.error(msg)
             raise ServerError(message=msg) from e
 
-    def logs_grep(self, pattern: str, network: str = "warnet", k8s_timestamps=False) -> str:
+    def logs_grep(
+        self, pattern: str, network: str = "warnet", k8s_timestamps=False, no_sort=False
+    ) -> str:
         """
         Grep the logs from the fluentd container for a regex pattern
         """
         try:
             wn = self.get_warnet(network)
-            return wn.container_interface.logs_grep(pattern, network, k8s_timestamps)
+            return wn.container_interface.logs_grep(pattern, network, k8s_timestamps, no_sort)
         except Exception as e:
             msg = f"Error grepping logs using pattern {pattern}: {e}"
             self.logger.error(msg)
