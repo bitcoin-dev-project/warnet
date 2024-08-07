@@ -336,7 +336,8 @@ class KubernetesBackend:
                 for log_entry in log_stream:
                     log_entry_str = log_entry.decode("utf-8").strip()
                     if compiled_pattern.search(log_entry_str):
-                        matching_logs.append(log_entry_str)
+                        pod_prefixed_log = f"{pod.metadata.name}: {log_entry_str}"
+                        matching_logs.append(pod_prefixed_log)
             except ApiException as e:
                 print(f"Error fetching logs for pod {pod.metadata.name}: {e}")
 
