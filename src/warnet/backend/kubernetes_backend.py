@@ -313,7 +313,7 @@ class KubernetesBackend:
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    def logs_grep(self, pattern: str, network: str):
+    def logs_grep(self, pattern: str, network: str, k8s_timestamps=False):
         compiled_pattern = re.compile(pattern)
         matching_logs = []
 
@@ -329,7 +329,7 @@ class KubernetesBackend:
                     name=pod.metadata.name,
                     container=BITCOIN_CONTAINER_NAME,
                     namespace=self.namespace,
-                    timestamps=False,
+                    timestamps=k8s_timestamps,
                     _preload_content=False,
                 )
 
