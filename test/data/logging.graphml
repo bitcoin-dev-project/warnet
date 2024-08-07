@@ -18,13 +18,18 @@
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w0</data>
+        <data key="exporter">true</data>
     </node>
     <node id="1">
-      <data key="version">bitcoin/bitcoin#24.x</data>
-      <data key="bitcoin_config">-uacomment=v24_build</data>
-      <data key="build_args">--disable-zmq</data>
+        <data key="version">27.0</data>
+        <data key="exporter">true</data>
+        <data key="metrics">txrate=getchaintxstats(10)["txrate"]</data>
     </node>
-    <edge id="0" source="0" target="1"></edge>
+    <node id="2">
+        <data key="version">27.0</data>
+    </node>
+    <edge id="1" source="0" target="1"></edge>
+    <edge id="2" source="1" target="2"></edge>
+    <edge id="3" source="2" target="0"></edge>
   </graph>
 </graphml>

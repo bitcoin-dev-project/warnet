@@ -6,8 +6,17 @@ datasources:
     apiVersion: 1
     datasources:
     - name: Prometheus
+      uid: "PBFA97CFB590B2094"
       type: prometheus
       url: http://prometheus-kube-prometheus-prometheus.warnet-logging:9090
     - name: Loki
       type: loki
       url: http://loki-gateway.warnet-logging:80
+grafana.ini:
+  auth:
+    disable_login_form: true
+    disable_signout_menu: true
+  auth.anonymous:
+    enabled: true
+    org_name: Main Org.
+    org_role: Editor

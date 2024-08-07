@@ -33,6 +33,9 @@
         "type": "boolean",
         "default": false,
         "comment": "Whether to attach a Prometheus data exporter to the tank"},
+      "metrics": {
+        "type": "string",
+        "comment": "A space-separated string of RPC queries to scrape by Prometheus"},
       "collect_logs": {
         "type": "boolean",
         "default": false,

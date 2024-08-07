@@ -1,0 +1,119 @@
+{
+  "title": "Default Warnet Dashboard",
+  "refresh": "5s",
+  "panels":
+  [
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2094"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2094"
+          },
+          "expr": "outbounds",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Outbound connections",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2094"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2094"
+          },
+          "expr": "inbounds",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Inbound connections",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2094"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2094"
+          },
+          "expr": "mempool_size",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Mempool size",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "datasource":
+      {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2094"
+      },
+      "targets":
+      [
+        {
+          "datasource":
+          {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2094"
+          },
+          "expr": "blocks",
+          "legendFormat": "{{pod}}",
+          "range": true
+        }
+      ],
+      "title": "Blocks",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}
