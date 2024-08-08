@@ -8,14 +8,6 @@ if [ -z "${WAR_RPC+x}" ]; then
     exit 1
 fi
 
-# Function to check if warnet-rpc container is already running
-check_warnet_rpc() {
-    if kubectl get pods --all-namespaces | grep -q "bitcoindevproject/warnet-rpc"; then
-        echo "warnet-rpc pod found"
-        exit 1
-    fi
-}
-
 # Check minikube status
 minikube delete
 
