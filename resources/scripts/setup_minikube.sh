@@ -8,6 +8,35 @@ if [ -z "${WAR_RPC+x}" ]; then
     exit 1
 fi
 
+# Colors and styles
+RESET='\033[0m'
+BOLD='\033[1m'
+
+# Use colors if we can and have the color space
+if command -v tput &> /dev/null; then
+    ncolors=$(tput colors)
+    if [ -n "$ncolors" ] && [ "$ncolors" -ge 8 ]; then
+        RESET=$(tput sgr0)
+        BOLD=$(tput bold)
+    fi
+fi
+
+print_message() {
+    local color="$1"
+    local message="$2"
+    local format="${3:-}"
+    echo -e "${format}${color}${message}${RESET}"
+}
+
+print_partial_message() {
+    local pre_message="$1"
+    local formatted_part="$2"
+    local post_message="$3"
+    local format="${4:-}"  # Default to empty string if not provided
+    local color="${5:-$RESET}"
+
+    echo -e "${color}${pre_message}${format}${formatted_part}${RESET}${color}${post_message}${RESET}"
+}
 # Check minikube status
 minikube delete
 
