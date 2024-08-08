@@ -39,6 +39,30 @@ print_partial_message() {
 
     echo -e "${color}${pre_message}${format}${formatted_part}${RESET}${color}${post_message}${RESET}"
 }
+
+docker_path=$(command -v docker || true)
+if [ -n "$docker_path" ]; then
+    print_partial_message " ⭐️ Found " "docker" ": $docker_path" "$BOLD"
+else
+    print_partial_message " 💥 Could not find " "docker" ". Please follow this link to install Docker Engine..." "$BOLD"
+    print_message "" "   https://docs.docker.com/engine/install/" "$BOLD"
+    ERROR_CODE=127
+fi
+
+current_user=$(whoami)
+current_context=$(docker context show)
+if id -nG "$current_user" | grep -qw "docker"; then
+    print_partial_message " ⭐️ Found " "$current_user" " in the docker group" "$BOLD"
+elif [ "$current_context" == "rootless" ]; then
+    print_message " " "⭐️ Running Docker as rootless" "$BOLD"
+elif [[ "$(uname)" == "Darwin" ]]; then
+    print_message " " "⭐️ Running Docker on Darwin" "$BOLD"
+else
+    print_partial_message " 💥 Could not find " "$current_user" " in the docker group. Please add it like this..." "$BOLD"
+    print_message "" "   sudo usermod -aG docker $current_user && newgrp docker" "$BOLD"
+    ERROR_CODE=1
+fi
+
 if [ $ERROR_CODE -ne 0 ]; then
     print_message "" "There were errors in the setup process. Please fix them and try again." "$BOLD"
     exit $ERROR_CODE
