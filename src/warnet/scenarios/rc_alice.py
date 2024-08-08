@@ -180,6 +180,13 @@ def create_chan_state(
     nsequence,
     preimage_parent_tx: CTransaction,
 ) -> tuple[CTransaction, CTransaction, CTransaction]:
+    def create_commitment_tx(funding_txid, funding_vout):
+        # CreateCommitTx
+        # SignNextCommitment
+        # genRemoteHtlcSigJobs (sign the timeout txn)
+        # CommitScriptAnchors
+        pass
+
     witness_script = CScript(
         [
             fundee_seckey.get_pubkey().get_bytes(),
