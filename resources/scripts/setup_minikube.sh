@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
+set +x
+set +v
 
 if [ -z "${WAR_RPC+x}" ]; then
     echo "WAR_RPC is unset. Please provide a path to warnet RPC images."
