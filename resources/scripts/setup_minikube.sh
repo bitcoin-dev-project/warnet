@@ -63,6 +63,15 @@ else
     ERROR_CODE=1
 fi
 
+minikube_path=$(command -v minikube || true)
+if [ -n "$minikube_path" ]; then
+    print_partial_message " ⭐️ Found " "minikube" ": $minikube_path " "$BOLD"
+else
+    print_partial_message " 💥 Could not find " "minikube" ". Please follow this link to install it..." "$BOLD"
+    print_message "" "   https://minikube.sigs.k8s.io/docs/start/" "$BOLD"
+    ERROR_CODE=127
+fi
+
 if [ $ERROR_CODE -ne 0 ]; then
     print_message "" "There were errors in the setup process. Please fix them and try again." "$BOLD"
     exit $ERROR_CODE
