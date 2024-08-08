@@ -8,6 +8,8 @@ if [ -z "${WAR_RPC+x}" ]; then
     exit 1
 fi
 
+ERROR_CODE=0
+
 # Colors and styles
 RESET='\033[0m'
 BOLD='\033[1m'
@@ -37,6 +39,11 @@ print_partial_message() {
 
     echo -e "${color}${pre_message}${format}${formatted_part}${RESET}${color}${post_message}${RESET}"
 }
+if [ $ERROR_CODE -ne 0 ]; then
+    print_message "" "There were errors in the setup process. Please fix them and try again." "$BOLD"
+    exit $ERROR_CODE
+fi
+
 # Check minikube status
 minikube delete
 
