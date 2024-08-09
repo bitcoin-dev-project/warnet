@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
+set +x
+set +v
 
 # Delete namespaces
 kubectl delete namespace warnet --ignore-not-found

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-set -euxo pipefail
-
+set -euo pipefail
+set +x
+set +v
 
 if [ -z "${WAR_MANIFESTS+x}" ]; then
     echo "WAR_MANIFESTS is unset. Please provide a path to warnet manifests."
