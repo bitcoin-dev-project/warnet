@@ -18,7 +18,7 @@ def build_image(
     repo: str,
     commit_sha: str,
     docker_registry: str,
-    tag: str,
+    tags: str,
     build_args: str,
     arches: str,
     action: str,
@@ -42,7 +42,7 @@ def build_image(
     print(f"{repo=:}")
     print(f"{commit_sha=:}")
     print(f"{docker_registry=:}")
-    print(f"{tag=:}")
+    print(f"{tags=:}")
     print(f"{build_args=:}")
     print(f"{build_arches=:}")
 
@@ -52,14 +52,13 @@ def build_image(
     use_builder_cmd = f"docker buildx use --builder {builder_name}"
     cleanup_builder_cmd = f"docker buildx rm {builder_name}"
 
-    if not run_command(create_builder_cmd):  # noqa: SIM102
-        # try to use existing
-        if not run_command(use_builder_cmd):
-            print(f"Could not create or use builder {builder_name} and create new builder")
-            return False
+    if not run_command(create_builder_cmd) and not run_command(use_builder_cmd):
+        print(f"Could not create or use builder {builder_name} and create new builder")
+        return False
 
-    image_full_name = f"{docker_registry}:{tag}"
-    print(f"{image_full_name=}")
+    tag_list = tags.split(",")
+    tag_args = " ".join([f"--tag {tag.strip()}" for tag in tag_list])
+    print(f"{tag_args=}")
 
     platforms = ",".join([f"linux/{arch}" for arch in build_arches])
 
@@ -69,7 +68,7 @@ def build_image(
         f" --build-arg REPO={repo}"
         f" --build-arg COMMIT_SHA={commit_sha}"
         f" --build-arg BUILD_ARGS={build_args}"
-        f" --tag {image_full_name}"
+        f" {tag_args}"
         f" --file {dockerfile_path}"
         f" {dockerfile_path.parent}"
         f" --{action}"
@@ -82,7 +81,6 @@ def build_image(
     except Exception as e:
         print(f"Error:\n{e}")
     finally:
-        # Tidy up the buildx builder
         if not run_command(cleanup_builder_cmd):
             print("Warning: Failed to remove the buildx builder.")
         else:

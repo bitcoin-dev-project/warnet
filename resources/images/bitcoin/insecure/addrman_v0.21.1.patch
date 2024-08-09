@@ -1,0 +1,13 @@
+diff --git a/src/netaddress.cpp b/src/netaddress.cpp
+index e0d4638dd6a..a84b3980f30 100644
+--- a/src/netaddress.cpp
++++ b/src/netaddress.cpp
+@@ -742,6 +742,8 @@ std::vector<unsigned char> CNetAddr::GetGroup(const std::vector<bool> &asmap) co
+         uint32_t ipv4 = GetLinkedIPv4();
+         vchRet.push_back((ipv4 >> 24) & 0xFF);
+         vchRet.push_back((ipv4 >> 16) & 0xFF);
++        vchRet.push_back((ipv4 >> 8) & 0xFF);
++        vchRet.push_back(ipv4 & 0xFF);
+         return vchRet;
+     } else if (IsTor() || IsI2P() || IsCJDNS()) {
+         nBits = 4;
