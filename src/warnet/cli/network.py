@@ -66,7 +66,6 @@ def start(graph_file: Path, force: bool, network: str):
         "network_from_file",
         {"graph_file": encoded_graph_file, "force": force, "network": network},
     )
-    assert isinstance(result, dict)
     print_repr(result)
 
 
@@ -87,7 +86,6 @@ def down(network: str):
     """
 
     running_scenarios = rpc_call("scenarios_list_running", {})
-    assert isinstance(running_scenarios, list)
     if running_scenarios:
         for scenario in running_scenarios:
             pid = scenario.get("pid")
@@ -111,7 +109,6 @@ def info(network: str):
     Get info about a warnet named [network]
     """
     result = rpc_call("network_info", {"network": network})
-    assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
     print_repr(result)
 
 
@@ -122,7 +119,6 @@ def status(network: str):
     Get status of a warnet named [network]
     """
     result = rpc_call("network_status", {"network": network})
-    assert isinstance(result, list), "Result is not a list"  # Make mypy happy
     for tank in result:
         lightning_status = ""
         circuitbreaker_status = ""
