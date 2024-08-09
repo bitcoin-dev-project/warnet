@@ -24,7 +24,9 @@ def rpc_call(rpc_method, params: dict[str, Any] | tuple[Any, ...] | None):
         response = requests.post(url, json=payload)
     except requests.exceptions.ConnectionError as e:
         logging.debug(e)
-        logging.error(f"Error connecting to {url}. Is the server running and using matching API URL?")
+        logging.error(
+            f"Error connecting to {url}. Is the server running and using the correct URL?"
+        )
         return
     match parse(response.json()):
         case Ok(result, _):
