@@ -22,14 +22,14 @@ def rpc_call(rpc_method, params: dict[str, Any] | tuple[Any, ...] | None):
     url = f"http://127.0.0.1:{WARNET_SERVER_PORT}/api"
     try:
         response = requests.post(url, json=payload)
-    except ConnectionRefusedError as e:
-        print(f"Error connecting to {url}. Is the server running and using matching API URL?")
+    except requests.exceptions.ConnectionError as e:
         logging.debug(e)
+        logging.error(f"Error connecting to {url}. Is the server running and using matching API URL?")
         return
     match parse(response.json()):
         case Ok(result, _):
             return result
         case Error(code, message, _, _):
-            print(f"{code}: {message}")
+            logging.error(f"{code}: {message}")
             sys.exit(1)
             # raise JSONRPCException(code, message)
