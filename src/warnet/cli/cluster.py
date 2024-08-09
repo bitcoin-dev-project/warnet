@@ -87,7 +87,7 @@ def setup_minikube(clean):
 @click.option("--dev", is_flag=True, help="Remove configuration files")
 def deploy(dev: bool):
     """Deploy Warnet using the current kubectl-configured cluster"""
-    env = {"WAR_MANIFESTS": str(MANIFEST_PATH)}
+    env = {"WAR_MANIFESTS": str(MANIFEST_PATH), "WAR_RPC": RPC_PATH}
     if dev:
         env["WAR_DEV"] = 1
     res = run_command(SCRIPTS_PATH / "deploy.sh", stream_output=True, env=env)

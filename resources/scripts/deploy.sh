@@ -22,9 +22,12 @@ kubectl apply -f "$WAR_MANIFESTS/warnet-rpc-service.yaml"
 
 # Deploy rpc server
 if [ -n "${WAR_DEV+x}" ]; then # Dev mode selector
+    # Build image in local registry
+    docker build -t warnet/dev -f "$WAR_RPC/Dockerfile_dev" "$WAR_RPC" --load
     if [ "$(kubectl config current-context)" = "docker-desktop" ]; then
         sed "s?/mnt/src?$(pwd)?g" "$WAR_MANIFESTS/warnet-rpc-statefulset-dev.yaml" | kubectl apply -f -
-    else
+    else # assuming minikube
+        minikube image load warnet/dev
         kubectl apply -f "$WAR_MANIFESTS/warnet-rpc-statefulset-dev.yaml"
     fi
 else

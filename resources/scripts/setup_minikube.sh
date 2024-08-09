@@ -96,8 +96,6 @@ fi
 # Start minikube with the constructed command
 eval "$MINIKUBE_CMD"
 
-# Build image in local registry and load into minikube
-docker build -t warnet/dev -f "$WAR_RPC/Dockerfile_dev" "$WAR_RPC" --load
-minikube image load warnet/dev
+
 
 echo Done...
