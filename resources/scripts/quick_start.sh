@@ -38,7 +38,7 @@ print_partial_message() {
     local pre_message="$1"
     local formatted_part="$2"
     local post_message="$3"
-    local format="$4"
+    local format="${4:-}"  # Default to empty string if not provided
     local color="${5:-$RESET}"
 
     echo -e "${color}${pre_message}${format}${formatted_part}${RESET}${color}${post_message}${RESET}"
@@ -103,7 +103,6 @@ if [ -n "$just_path" ]; then
 else
     print_partial_message " 💥 Could not find " "just" ". Please follow this link to install it..." "$BOLD"
     print_message "" "   https://github.com/casey/just?tab=readme-ov-file#pre-built-binaries" "$BOLD"
-    exit 127
 fi
 
 python_path=$(command -v python3 || true)
@@ -115,11 +114,10 @@ else
     exit 127
 fi
 
-venv_status=$(python3 -m venv --help || true)
-if [ -n "$venv_status" ]; then
-    print_partial_message " ⭐️ Found " "venv" ": a python3 module" "$BOLD"
+if [ -n "$VIRTUAL_ENV" ]; then
+    print_partial_message " ⭐️ Running in virtual environment: " "$VIRTUAL_ENV" "$BOLD"
 else
-    print_partial_message " 💥 Could not find " "venv" ". Please install it using your package manager." "$BOLD"
+    print_partial_message " 💥 Not running in a virtual environment. " "Please activate a venv before proceeding." "$BOLD"
     exit 127
 fi
 
@@ -136,44 +134,3 @@ else
     print_partial_message " 💥 Could not find " "BPF" ". Please figure out how to enable Berkeley Packet Filters in your kernel." "$BOLD"
     exit 1
 fi
-
-print_message "" "" ""
-print_message "" "    Let's try to spin up a python virtual environment..." ""
-print_message "" "" ""
-
-if [ -d ".venv" ]; then
-    print_message "" "    It looks like a virtual environment already exists!" ""
-else
-    print_message "" "    Creating a new virtual environment..." ""
-    python3 -m venv .venv
-fi
-
-source .venv/bin/activate
-
-print_message "" "" ""
-print_partial_message " ⭐️ " "venv" ": The python virtual environment looks good" "$BOLD"
-print_message "" "" ""
-print_message "" "    Let's install warnet into that virtual environment..." ""
-print_message "" "" ""
-
-pip install --upgrade pip
-pip install -e .
-
-print_message "" "" ""
-print_partial_message " ⭐️ " "warnet" ": We installed Warnet in the virtual environment" "$BOLD"
-print_message "" "" ""
-print_message "" "    Now, let's get the Warnet started..." ""
-print_message "" "" ""
-
-just start
-just p &
-sleep 1
-warcli network start
-sleep 1
-while warcli network connected | grep -q "False"; do
-    sleep 2
-done
-print_message "" "🥳" ""
-print_message "" "Run the following command to enter into the python virtual environment..." ""
-print_message "" "    source .venv/bin/activate" "$BOLD"
-print_partial_message "   After that, you can run " "warcli help" " to start running Warnet commands." "$BOLD"

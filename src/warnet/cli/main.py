@@ -1,3 +1,7 @@
+import os
+import subprocess
+from importlib.resources import files
+
 import click
 from rich import print as richprint
 
@@ -8,6 +12,8 @@ from .image import image
 from .ln import ln
 from .network import network
 from .scenarios import scenarios
+
+QUICK_START_PATH = files("scripts").joinpath("quick_start.sh")
 
 
 @click.group()
@@ -58,6 +64,35 @@ def help_command(ctx, commands):
 
 
 cli.add_command(help_command)
+
+
+@cli.command()
+def setup():
+    """Check Warnet requirements are installed"""
+    try:
+        process = subprocess.Popen(
+            ["/bin/bash", str(QUICK_START_PATH)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            # This preserves colours from grant's lovely script!
+            env=dict(os.environ, TERM="xterm-256color"),
+        )
+
+        for line in iter(process.stdout.readline, ""):
+            print(line, end="", flush=True)
+
+        process.stdout.close()
+        return_code = process.wait()
+
+        if return_code != 0:
+            print(f"Quick start script failed with return code {return_code}")
+            return False
+        return True
+
+    except Exception as e:
+        print(f"An error occurred while running the quick start script: {e}")
+        return False
 
 
 if __name__ == "__main__":
