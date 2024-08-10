@@ -532,6 +532,8 @@ class Server:
                     if tank.lnnode.cb is not None:
                         status["circuitbreaker_status"] = tank.lnnode.cb_status.name.lower()
                 stats.append(status)
+            if not stats:
+                self.logger.error(f"The network {network} has no tanks")
             return stats
         except Exception as e:
             msg = f"Error getting network status: {e}"

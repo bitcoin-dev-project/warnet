@@ -119,7 +119,7 @@ def status(network: str):
     Get status of a warnet named [network]
     """
     result = rpc_call("network_status", {"network": network})
-    for tank in result:
+    for tank in result or []:
         lightning_status = ""
         circuitbreaker_status = ""
         if "lightning_status" in tank:
