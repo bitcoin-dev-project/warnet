@@ -3,6 +3,7 @@ import os
 import sys
 from io import BytesIO
 from pathlib import Path
+from xml.etree.ElementTree import ParseError
 
 import click
 import networkx as nx
@@ -128,6 +129,10 @@ def validate(graph: Path):
     """
     Validate a <graph file> against the schema.
     """
-    with open(graph) as f:
-        graph = nx.parse_graphml(f.read(), node_type=int, force_multigraph=True)
+    try:
+        with open(graph) as f:
+            graph = nx.parse_graphml(f.read(), node_type=int, force_multigraph=True)
+    except ParseError as e:
+        print(f"Error. {e}")
+        sys.exit(1)
     return validate_graph_schema(graph)

@@ -11,6 +11,7 @@ import sys
 import time
 from io import BytesIO
 from pathlib import Path
+from xml.etree.ElementTree import ParseError
 
 import networkx as nx
 from jsonschema import validate
@@ -471,9 +472,13 @@ def validate_graph_schema(graph: nx.Graph):
     """
     Validate a networkx.Graph against the node schema
     """
-    graph_schema = load_schema()
-    validate(instance=graph.graph, schema=graph_schema["graph"])
-    for n in list(graph.nodes):
-        validate(instance=graph.nodes[n], schema=graph_schema["node"])
-    for e in list(graph.edges):
-        validate(instance=graph.edges[e], schema=graph_schema["edge"])
+    try:
+        graph_schema = load_schema()
+        validate(instance=graph.graph, schema=graph_schema["graph"])
+        for n in list(graph.nodes):
+            validate(instance=graph.nodes[n], schema=graph_schema["node"])
+        for e in list(graph.edges):
+            validate(instance=graph.edges[e], schema=graph_schema["edge"])
+    except ParseError as e:
+        print(f"Error. {e}")
+        sys.exit(1)
