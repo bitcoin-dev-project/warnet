@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from io import BytesIO
+from json import JSONDecodeError
 from pathlib import Path
 from xml.etree.ElementTree import ParseError
 
@@ -55,12 +56,22 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
         sys.exit(1)
 
     with open(infile) as f:
-        json_graph = json.loads(f.read())
+        try:
+            json_graph = json.loads(f.read())
+        except JSONDecodeError as e:
+            print(f"Error. {e}")
+            print(f"Did {infile} come from lnd's `lncli describegraph` command?")
+            sys.exit(1)
 
     # Start with a connected L1 graph with the right amount of tanks
-    graph = create_cycle_graph(
-        len(json_graph["nodes"]), version=DEFAULT_TAG, bitcoin_conf=None, random_version=False
-    )
+    try:
+        graph = create_cycle_graph(
+            len(json_graph["nodes"]), version=DEFAULT_TAG, bitcoin_conf=None, random_version=False
+        )
+    except KeyError as e:
+        print(f"Error. {e}")
+        print(f"Did {infile} come from lnd's `lncli describegraph` command?")
+        sys.exit(1)
 
     # Initialize all the tanks with basic LN node configurations
     for index, n in enumerate(graph.nodes()):
