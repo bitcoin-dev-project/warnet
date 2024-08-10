@@ -1,4 +1,6 @@
 import json
+import os
+import sys
 from io import BytesIO
 from pathlib import Path
 
@@ -47,6 +49,10 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
     channels and their policies as well.
     Returns XML file as string with or without --outfile option.
     """
+    if not os.path.exists(infile):
+        print(f"Error. {infile} does not exist")
+        sys.exit(1)
+
     with open(infile) as f:
         json_graph = json.loads(f.read())
 
