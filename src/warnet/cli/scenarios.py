@@ -60,6 +60,9 @@ def run_file(scenario_path, network, additional_args, name=""):
     """
     Run <scenario_path> from the Warnet Test Framework on [network] with optional arguments
     """
+    if not os.path.exists(scenario_path):
+        print(f"Error. {scenario_path} does not exist")
+        sys.exit(1)
     if not scenario_path.endswith(".py"):
         print("Error. Currently only python scenarios are supported")
         sys.exit(1)
