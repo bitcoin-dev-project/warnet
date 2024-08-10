@@ -109,7 +109,10 @@ def info(network: str):
     Get info about a warnet named [network]
     """
     result = rpc_call("network_info", {"network": network})
-    print_repr(result)
+    if result:
+        print_repr(result)
+    else:
+        print(f"Network information not available for: {network}")
 
 
 @network.command()
