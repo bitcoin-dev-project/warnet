@@ -313,34 +313,33 @@ class KubernetesBackend:
         messages.sort(key=lambda x: x["time"])
         return messages
 
-    def logs_grep(self, pattern: str, network: str):
+    def logs_grep(self, pattern: str, network: str, k8s_timestamps=False, no_sort=False):
         compiled_pattern = re.compile(pattern)
         matching_logs = []
-
         pods = self.client.list_namespaced_pod(self.namespace)
-
-        # TODO: Can adapt to only search lnd or bitcoind containers?
         relevant_pods = [pod for pod in pods.items if "warnet" in pod.metadata.name]
 
-        # Iterate through the filtered pods to fetch and search logs
         for pod in relevant_pods:
             try:
                 log_stream = self.client.read_namespaced_pod_log(
                     name=pod.metadata.name,
                     container=BITCOIN_CONTAINER_NAME,
                     namespace=self.namespace,
-                    timestamps=True,
+                    timestamps=k8s_timestamps,
                     _preload_content=False,
                 )
-
                 for log_entry in log_stream:
                     log_entry_str = log_entry.decode("utf-8").strip()
                     if compiled_pattern.search(log_entry_str):
-                        matching_logs.append(log_entry_str)
+                        matching_logs.append((log_entry_str, pod.metadata.name))
             except ApiException as e:
                 print(f"Error fetching logs for pod {pod.metadata.name}: {e}")
 
-        return "\n".join(matching_logs)
+        sorted_logs = matching_logs if no_sort else sorted(matching_logs, key=lambda x: x[0])
+        # Prepend pod names
+        formatted_logs = [f"{pod_name}: {log}" for log, pod_name in sorted_logs]
+
+        return "\n".join(formatted_logs)
 
     def generate_deployment_file(self, warnet):
         """
