@@ -22,8 +22,7 @@ def cluster():
     """Start, configure and stop a warnet k8s cluster\n
     \b
     Supports chaining, e.g:
-      warcli cluster deploy
-      warcli cluster teardown
+      warcli cluster deploy-logging connect-logging
     """
     pass
 

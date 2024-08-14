@@ -51,7 +51,7 @@ warcli cluster deploy
 
 ...to deploy warnet to your cluster.
 
-`warcli deploy` also automatically configures port forwarding to the Server in the cluster.
+`warcli cluster deploy` also automatically configures port forwarding to the Server in the cluster.
 
 ## Stopping
 
