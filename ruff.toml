@@ -1,0 +1,23 @@
+extend-exclude = [
+    "src/test_framework/*.py",
+    "resources/images/exporter/authproxy.py",
+]
+line-length = 100
+indent-width = 4
+
+[lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+ignore = ["E501"] # Line too long
