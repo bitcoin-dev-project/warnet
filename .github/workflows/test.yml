@@ -12,13 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: chartboost/ruff-action@v1
+        with:
+          args: 'check .'
   ruff-format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: chartboost/ruff-action@v1
         with:
-          args: 'format --check'
+          args: 'format --check .'
   build-image:
     needs: [ruff, ruff-format]
     runs-on: ubuntu-latest
