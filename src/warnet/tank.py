@@ -197,7 +197,11 @@ class Tank:
     def apply_roles(self):
         if self.role is None:
             return
-        self.warnet.container_interface.copy_file_to_pod(self.warnet.container_interface.get_pod_name(self.index, ServiceType.BITCOIN), f"scripts/{self.role}.sh", f"/tmp/exe/{self.role}.sh")
+        self.warnet.container_interface.copy_file_to_pod(
+            self.warnet.container_interface.get_pod_name(self.index, ServiceType.BITCOIN),
+            f"resources/scripts/{self.role}.sh",
+            f"/tmp/exe/{self.role}.sh",
+        )
 
     def export(self, config: object, tar_file):
         if self.lnnode is not None:

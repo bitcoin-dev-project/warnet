@@ -886,40 +886,50 @@ class KubernetesBackend:
 
     def copy_file_to_pod(self, pod_name, src_path, dest_path):
         import os
+
         tmp_path = "/tmp/" + os.path.basename(dest_path)
+        self.log.debug(f"Copying file {src_path} to {dest_path} on {pod_name}")
 
         # Read the file content
         try:
-            with open(src_path, 'rb') as file_content:
+            with open(src_path, "rb") as file_content:
                 content = file_content.read()
         except Exception as e:
             print(f"Failed to read source file: {e}")
             return
 
         # Create a temp dir in the pod
-        exec_command = ['mkdir', '-p', os.path.dirname(tmp_path)]
+        exec_command = ["mkdir", "-p", os.path.dirname(tmp_path)]
         try:
-            resp = stream(self.client.connect_get_namespaced_pod_exec,
-                          pod_name,
-                          self.namespace,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False)
+            resp = stream(
+                self.client.connect_get_namespaced_pod_exec,
+                pod_name,
+                self.namespace,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
             print(f"Temporary directory creation response: {resp}")
         except Exception as e:
             print(f"Failed to create temporary directory in pod: {e}")
             return
 
         # Write the file to the temp dir in the pod
-        exec_command = ['sh', '-c', f'cat > {tmp_path}']
+        exec_command = ["sh", "-c", f"cat > {tmp_path}"]
         try:
-            resp = stream(self.client.connect_get_namespaced_pod_exec,
-                          pod_name,
-                          self.namespace,
-                          command=exec_command,
-                          stderr=True, stdin=True,
-                          stdout=True, tty=False,
-                          _preload_content=False)
+            resp = stream(
+                self.client.connect_get_namespaced_pod_exec,
+                pod_name,
+                self.namespace,
+                command=exec_command,
+                stderr=True,
+                stdin=True,
+                stdout=True,
+                tty=False,
+                _preload_content=False,
+            )
 
             resp.write_stdin(content.decode())
             resp.close()
@@ -929,56 +939,72 @@ class KubernetesBackend:
             return
 
         # Make it executable before copying to final dir
-        exec_command = ['chmod', '+x', tmp_path]
+        exec_command = ["chmod", "+x", tmp_path]
         try:
-            resp = stream(self.client.connect_get_namespaced_pod_exec,
-                          pod_name,
-                          self.namespace,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False)
+            resp = stream(
+                self.client.connect_get_namespaced_pod_exec,
+                pod_name,
+                self.namespace,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
             print(f"File permission change response: {resp}")
         except Exception as e:
             print(f"Failed to change file permissions in pod: {e}")
             return
 
         # Create the final dir in the pod if not exists
-        exec_command = ['mkdir', '-p', os.path.dirname(dest_path)]
+        exec_command = ["mkdir", "-p", os.path.dirname(dest_path)]
         try:
-            resp = stream(self.client.connect_get_namespaced_pod_exec,
-                          pod_name,
-                          self.namespace,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False)
+            resp = stream(
+                self.client.connect_get_namespaced_pod_exec,
+                pod_name,
+                self.namespace,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
             print(f"Final directory creation response: {resp}")
         except Exception as e:
             print(f"Failed to create final directory in pod: {e}")
             return
 
         # Move +x file to the final directory
-        exec_command = ['mv', tmp_path, dest_path]
+        exec_command = ["mv", tmp_path, dest_path]
         try:
-            resp = stream(self.client.connect_get_namespaced_pod_exec,
-                          pod_name,
-                          self.namespace,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False)
+            resp = stream(
+                self.client.connect_get_namespaced_pod_exec,
+                pod_name,
+                self.namespace,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
             print(f"File move response: {resp}")
         except Exception as e:
             print(f"Failed to move file to final directory in pod: {e}")
             return
 
         # Verify file was copied and is +x
-        exec_command = ['ls', '-l', dest_path]
+        exec_command = ["ls", "-l", dest_path]
         try:
-            resp = stream(self.client.connect_get_namespaced_pod_exec,
-                          pod_name,
-                          self.namespace,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False)
+            resp = stream(
+                self.client.connect_get_namespaced_pod_exec,
+                pod_name,
+                self.namespace,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+            )
             print(f"File verification response: {resp}")
         except Exception as e:
             print(f"Failed to verify file in pod: {e}")

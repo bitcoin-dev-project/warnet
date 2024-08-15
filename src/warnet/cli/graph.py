@@ -21,7 +21,15 @@ def graph():
 @click.option("--random", is_flag=True)
 @click.option("--miners", type=int, help="Number of miners")
 @click.option("--tx", type=int, help="Number of transactors")
-def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random: bool = False, miners: int = 0, tx: int =0):
+def create(
+    number: int,
+    outfile: Path,
+    version: str,
+    bitcoin_conf: Path,
+    random: bool = False,
+    miners: int = 0,
+    tx: int = 0,
+):
     """
     Create a cycle graph with <number> nodes, and include 7 extra random outbounds per node.
     Returns XML file as string with or without --outfile option

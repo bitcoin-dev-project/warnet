@@ -380,7 +380,9 @@ def set_execute_permission(file_path):
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def create_cycle_graph(n: int, version: str, bitcoin_conf: Path | None, random_version: bool, miners: int, tx: int):
+def create_cycle_graph(
+    n: int, version: str, bitcoin_conf: Path | None, random_version: bool, miners: int, tx: int
+):
     try:
         # Use nx.MultiDiGraph() so we get directed edges (source->target)
         # and still allow parallel edges (L1 p2p connections + LN channels)
