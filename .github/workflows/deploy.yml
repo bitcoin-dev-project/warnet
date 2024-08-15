@@ -40,7 +40,7 @@ jobs:
         with:
           file: resources/images/rpc/Dockerfile_prod
           platforms: linux/amd64,linux/arm64
-          context: resources/images/rpc
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
