@@ -380,7 +380,7 @@ def set_execute_permission(file_path):
     os.chmod(file_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):
+def create_cycle_graph(n: int, version: str, bitcoin_conf: Path | None, random_version: bool, miners: int, tx: int):
     try:
         # Use nx.MultiDiGraph() so we get directed edges (source->target)
         # and still allow parallel edges (L1 p2p connections + LN channels)
@@ -421,7 +421,10 @@ def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_ve
                 conf_contents = dump_bitcoin_conf(conf_dict, for_graph=True)
 
     # populate our custom fields
-    for i, node in enumerate(graph.nodes()):
+    # Add `miners` nodes as miners and `tx` nodes as transactors
+    miner_count = 0
+    transactor_count = 0
+    for i, node in enumerate(reversed(list(graph.nodes()))):
         if random_version:
             graph.nodes[node]["version"] = random.choice(WEIGHTED_TAGS)
         else:
@@ -435,6 +438,16 @@ def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_ve
         graph.nodes[node]["build_args"] = ""
         graph.nodes[node]["exporter"] = False
         graph.nodes[node]["collect_logs"] = False
+
+        # Assign roles to nodes
+        if miner_count < miners:
+            graph.nodes[node]["role"] = "miner"
+            miner_count += 1
+        elif transactor_count < tx:
+            graph.nodes[node]["role"] = "tx"
+            transactor_count += 1
+        # else:
+        #     graph.nodes[node]["role"] = "relay"  # Default role for remaining nodes
 
     convert_unsupported_attributes(graph)
     return graph
