@@ -404,3 +404,20 @@ class WarnetTestFramework(BitcoinTestFramework):
                 for peer in to_connection.getpeerinfo()
             )
         )
+
+    def cli_help(self):
+        parser = argparse.ArgumentParser(add_help=False)
+        self.add_options(parser)
+
+        options = []
+        for action in parser._actions:
+            if action.dest != "help":
+                options.append(
+                    {
+                        "name": action.option_strings[0],
+                        "help": action.help,
+                        "default": action.default,
+                    }
+                )
+
+        return {"help_text": self.help_text, "options": options}

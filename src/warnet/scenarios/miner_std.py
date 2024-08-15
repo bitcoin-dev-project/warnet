@@ -6,10 +6,6 @@ from warnet.scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
 
-def cli_help():
-    return "Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature ]"
-
-
 class Miner:
     def __init__(self, node, mature):
         self.node = node
@@ -23,6 +19,7 @@ class MinerStd(WarnetTestFramework):
         # This is just a minimum
         self.num_nodes = 0
         self.miners = []
+        self.help_text = "Generate blocks over time."
 
     def add_options(self, parser):
         parser.add_argument(
@@ -36,7 +33,7 @@ class MinerStd(WarnetTestFramework):
             dest="interval",
             default=60,
             type=int,
-            help="Number of seconds between block generation (default 60 seconds)",
+            help="Number of seconds between block generation",
         )
         parser.add_argument(
             "--mature",

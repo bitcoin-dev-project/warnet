@@ -7,15 +7,12 @@ from warnet.scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
 
-def cli_help():
-    return "Make a big transaction mess. Options: [--interval=<number>]"
-
-
 class TXFlood(WarnetTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
         self.addrs = []
         self.threads = []
+        self.help_text = "Make a big old transaction mess"
 
     def add_options(self, parser):
         parser.add_argument(
@@ -23,7 +20,7 @@ class TXFlood(WarnetTestFramework):
             dest="interval",
             default=10,
             type=int,
-            help="Number of seconds between TX generation (default 10 seconds)",
+            help="Number of seconds between transactions",
         )
 
     def orders(self, node):

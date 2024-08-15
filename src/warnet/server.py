@@ -23,6 +23,7 @@ from flask import Flask, jsonify, request
 from flask_jsonrpc.app import JSONRPC
 from flask_jsonrpc.exceptions import ServerError
 from warnet import SRC_DIR
+from warnet.test_framework_bridge import WarnetTestFramework
 
 from .services import ServiceType
 from .utils import gen_config_dir
@@ -315,7 +316,7 @@ class Server:
         wn.container_interface.write_service_config(source_file, "simln", "/simln/")
         return True
 
-    def scenarios_available(self) -> list[tuple]:
+    def scenarios_available(self) -> list[dict]:
         """
         List available scenarios in the Warnet Test Framework
         """
@@ -325,8 +326,22 @@ class Server:
                 module_name = f"warnet.scenarios.{s.name}"
                 try:
                     m = importlib.import_module(module_name)
-                    if hasattr(m, "cli_help"):
-                        scenario_list.append((s.name, m.cli_help()))
+                    for _name, obj in m.__dict__.items():
+                        if (
+                            isinstance(obj, type)
+                            and issubclass(obj, WarnetTestFramework)
+                            and obj != WarnetTestFramework
+                        ):
+                            scenario = obj()
+                            help_info = scenario.cli_help()
+                            scenario_list.append(
+                                {
+                                    "name": s.name,
+                                    "help_text": help_info["help_text"],
+                                    "options": help_info["options"],
+                                }
+                            )
+                            break  # Assuming one scenario class per module
                 except ModuleNotFoundError as e:
                     print(f"Module not found: {module_name}, error: {e}")
                     raise

@@ -4,13 +4,10 @@ from warnet.scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
 
-def cli_help():
-    return "Send a transaction using sensitive relay"
-
-
 class MinerStd(WarnetTestFramework):
     def set_test_params(self):
         self.num_nodes = 12
+        self.help_text = "Send a transaction using sensitive relay"
 
     def run_test(self):
         # PR branch node

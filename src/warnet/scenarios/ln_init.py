@@ -6,13 +6,10 @@ from warnet.scenarios.utils import ensure_miner
 from warnet.test_framework_bridge import WarnetTestFramework
 
 
-def cli_help():
-    return "Fund LN wallets and open channels"
-
-
 class LNInit(WarnetTestFramework):
     def set_test_params(self):
         self.num_nodes = None
+        self.help_text = "Fund LN wallets and open channels"
 
     def run_test(self):
         self.log.info("Lock out of IBD")
