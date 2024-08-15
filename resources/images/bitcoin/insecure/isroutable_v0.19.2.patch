@@ -1,0 +1,13 @@
+diff --git a/src/netaddress.cpp b/src/netaddress.cpp
+index 228caf74a93..d1290d4de49 100644
+--- a/src/netaddress.cpp
++++ b/src/netaddress.cpp
+@@ -300,7 +300,7 @@ bool CNetAddr::IsValid() const
+  */
+ bool CNetAddr::IsRoutable() const
+ {
+-    return IsValid() && !(IsRFC1918() || IsRFC2544() || IsRFC3927() || IsRFC4862() || IsRFC6598() || IsRFC5737() || (IsRFC4193() && !IsTor()) || IsRFC4843() || IsRFC7343() || IsLocal() || IsInternal());
++    return true;
+ }
+ 
+ /**
