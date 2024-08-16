@@ -114,6 +114,8 @@ fi
 # Start minikube with the constructed command
 eval "$MINIKUBE_CMD"
 
+echo
+print_message "" "Next, run the following command to deploy warnet" ""
+print_message "" "    warcli cluster deploy" "$BOLD"
+print_partial_message "   After that, run " "warcli network start" " to start the network." "$BOLD"
 
-
-echo Done...
