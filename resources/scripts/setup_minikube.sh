@@ -72,6 +72,24 @@ else
     ERROR_CODE=127
 fi
 
+kubectl_path=$(command -v kubectl || true)
+if [ -n "$kubectl_path" ]; then
+    print_partial_message " ⭐️ Found " "kubectl" ": $kubectl_path " "$BOLD"
+else
+    print_partial_message " 💥 Could not find " "kubectl" ". Please follow this link to install it..." "$BOLD"
+    print_message "" "   https://kubernetes.io/docs/tasks/tools/" "$BOLD"
+    ERROR_CODE=127
+fi
+
+helm_path=$(command -v helm || true)
+if [ -n "$helm_path" ]; then
+    print_partial_message " ⭐️ Found " "helm" ": $helm_path" "$BOLD"
+else
+    print_partial_message " 💥 Could not find " "helm" ". Please follow this link to install it..." "$BOLD"
+    print_message "" "   https://helm.sh/docs/intro/install/" "$BOLD"
+    ERROR_CODE=127
+fi
+
 if [ $ERROR_CODE -ne 0 ]; then
     print_message "" "There were errors in the setup process. Please fix them and try again." "$BOLD"
     exit $ERROR_CODE
@@ -96,6 +114,8 @@ fi
 # Start minikube with the constructed command
 eval "$MINIKUBE_CMD"
 
+echo
+print_message "" "Next, run the following command to deploy warnet" ""
+print_message "" "    warcli cluster deploy" "$BOLD"
+print_partial_message "   After that, run " "warcli network start" " to start the network." "$BOLD"
 
-
-echo Done...
