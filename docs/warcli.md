@@ -45,10 +45,12 @@ options:
 Grep combined logs via fluentd using regex \<pattern>
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| pattern | String | yes        |           |
-| network | String |            | "warnet"  |
+| name                | type   | required   | default   |
+|---------------------|--------|------------|-----------|
+| pattern             | String | yes        |           |
+| show_k8s_timestamps | Bool   |            | False     |
+| no_sort             | Bool   |            | False     |
+| network             | String |            | "warnet"  |
 
 ### `warcli bitcoin messages`
 Fetch messages sent between \<node_a> and \<node_b> in [network]
