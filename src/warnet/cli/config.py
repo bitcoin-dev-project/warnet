@@ -23,18 +23,19 @@ class Config:
             self.config = yaml.safe_load(file)
 
     def _save_config(self):
+        cleaned_config = {k: (v if v is not None else '') for k, v in self.config.items()}
         with open(CONFIG_PATH, "w") as file:
-            yaml.safe_dump(self.config, file)
+            yaml.safe_dump(cleaned_config, file)
 
     def read(self, key):
-        if key in self.config and self.config[key] is not None:
+        if key in self.config and (self.config[key] is not None and self.config[key] != ''):
             return self.config[key]
         else:
             raise KeyNotSetError(key)
 
     def write(self, key, value):
         if key in self.config:
-            if self.config[key] is None:
+            if self.config[key] is None or self.config[key] == '':
                 self.config[key] = value
                 self._save_config()
             else:
