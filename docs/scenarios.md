@@ -5,7 +5,7 @@ with some modifications: most notably that `self.nodes[]` represents an array of
 dockerized `bitcoind` nodes. Scenario files can be run with a python interpreter
 or from `warcli` commands and used to control many nodes in the network simultaneously.
 
-See [`src/scenarios`](../src/scenarios) for examples of how these can be written.
+See [`src/warnet/scenarios`](../src/warnet/scenarios) for examples of how these can be written.
 
 To see available scenarios (loaded from the default directory):
 
@@ -13,7 +13,9 @@ To see available scenarios (loaded from the default directory):
 warcli scenarios available
 ```
 
-Once a scenarios is selected it can be run with `warcli scenarios run [--network=warnet] <scenario_name> [scenario_params]`, e.g.:
+Once a scenarios is selected it can be run with `warcli scenarios run [--network=warnet] <scenario_name> [scenario_params]`.
+
+The [`miner_std`](../src/warnet/scenarios/miner_std.py) scenario is a good one to start with as it automates block generation:
 
 ```bash
 # Have all nodes generate a block 5 seconds apart in a round-robin
@@ -25,17 +27,18 @@ This will run the run the scenario in the background until it exits or is stoppe
 Active scenarios can be listed and terminated by PID:
 
 ```bash
-$ warcli scenarios active
-miner_std           Generate blocks over time. Options: [--allnodes | --interval=<number>]
-sens_relay          Send a transaction using sensitive relay
-tx_flood            Generate 100 blocks with 100 TXs each
+$ warcli scenarios available
+miner_std      Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature]
+sens_relay     Send a transaction using sensitive relay
+tx_flood       Generate 100 blocks with 100 TXs each
 
 $ warcli scenarios run tx_flood
 Running scenario tx_flood with PID 14683 in the background...
 
 $ warcli scenarios active
-        PID     Command                                                          Network   Active
-        14683   tx_flood                                                         warnet    True
+      ┃ Active ┃ Cmd       ┃ Network ┃ Pid   ┃ Return_code ┃
+      ┡━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━┩
+      │ True   │ tx_flood  │ warnet  │ 14683 │ None        ┃
 
 $ warcli scenarios stop 14683
 Stopped scenario with PID 14683.
@@ -44,4 +47,4 @@ Stopped scenario with PID 14683.
 ## Add scenarios
 
 To add your own scenario make a copy of one of the existing python tests in src/scenarios/ and write the desired scenario.
-Save this file back into the same src/scenarios/ directory and it will be listed and available for running using the aforementioned commands.
+Save this file back into the same `src/warnet/scenarios/` directory and it will be listed and available for running using the aforementioned commands.

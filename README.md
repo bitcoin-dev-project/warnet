@@ -15,15 +15,15 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 
 ## Documentation
 
-- [Installation](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/install.md)
-- [Quick Run](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/quickrun.md)
-- [Running Warnet](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/running.md)
-- [Network Topology](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/graph.md)
-- [CLI Commands](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/warcli.md)
-- [Scenarios](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/scenarios.md)
-- [Data Collection](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/data.md)
-- [Monitoring](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/monitoring.md)
-- [Lightning Network](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/lightning.md)
-- [Connecting to local nodes](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/connecting-local-nodes.md)
+- [Installation](/docs/install.md)
+- [Quick Run](/docs/quickrun.md)
+- [Running Warnet](/docs/running.md)
+- [Network Topology](/docs/graph.md)
+- [CLI Commands](/docs/warcli.md)
+- [Scenarios](/docs/scenarios.md)
+- [Monitoring](/docs/logging_monitoring.md)
+- [Lightning Network](/docs/lightning.md)
+- [Scaling](/docs/scaling.md)
+- [Connecting to local nodes](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/
 
 ![warnet-art](https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/docs/machines.webp)
