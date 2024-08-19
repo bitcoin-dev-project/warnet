@@ -8,7 +8,7 @@ from warnet.test_framework_bridge import WarnetTestFramework
 
 
 def cli_help():
-    return "Make a big transaction mess"
+    return "Make a big transaction mess. Options: [--interval=<number>]"
 
 
 class TXFlood(WarnetTestFramework):
