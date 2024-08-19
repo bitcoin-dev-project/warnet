@@ -225,6 +225,14 @@ options:
 |---------|--------|------------|-----------|
 | network | String |            | "warnet"  |
 
+### `warcli network logs`
+Get Kubernetes logs from the RPC server
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| follow | Bool   |            | False     |
+
 ### `warcli network start`
 Start a warnet with topology loaded from a \<graph_file> into [network]
 
