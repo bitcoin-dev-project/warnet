@@ -45,6 +45,13 @@ print_partial_message() {
     echo -e "${color}${pre_message}${format}${formatted_part}${RESET}${color}${post_message}${RESET}"
 }
 
+prompt_user() {
+    local prompt="$1"
+    tput bold  # Make the prompt bold
+    echo "$prompt"
+    tput sgr0   # Reset formatting
+}
+
 print_message "" "" ""
 print_message "" "   ╭───────────────────────────╮" ""
 print_message "" "   │  Welcome to Warnet Setup  │" ""
@@ -53,23 +60,23 @@ print_message "" "" ""
 print_message "" "    Let's find out if your system has what it takes to run Warnet..." ""
 print_message "" "" ""
 
-minikube_path=$(command -v minikube || true)
-if [ -n "$minikube_path" ]; then
-    print_partial_message " ⭐️ Found " "minikube" ": $minikube_path " "$BOLD"
-else
-    print_partial_message " 💥 Could not find " "minikube" ". Please follow this link to install it..." "$BOLD"
-    print_message "" "   https://minikube.sigs.k8s.io/docs/start/" "$BOLD"
-    exit 127
+prompt_user "Use [1] minikube (Default) or [2] docker-desktop? Enter 1 or 2: "
+read -r choice
+
+if [[ "$choice" == "1" || -z "$choice" ]]; then
+   choice=1
+elif ! [[ "$choice" == "2" ]]; then
+   echo "    Please enter 1 for minikube or 2 for docker-desktop."
+   exit 1
 fi
 
-kubectl_path=$(command -v kubectl || true)
-if [ -n "$kubectl_path" ]; then
-    print_partial_message " ⭐️ Found " "kubectl" ": $kubectl_path " "$BOLD"
-else
-    print_partial_message " 💥 Could not find " "kubectl" ". Please follow this link to install it..." "$BOLD"
-    print_message "" "   https://kubernetes.io/docs/tasks/tools/" "$BOLD"
-    exit 127
+if [[ "$choice" == "1" || -z "$choice" ]]; then
+   approach="minikube"
+elif [[ "$choice" == "2" ]]; then
+   approach="docker-desktop"
 fi
+
+print_partial_message " ⭐️ You chose " ""$approach"" "." "$BOLD"
 
 docker_path=$(command -v docker || true)
 if [ -n "$docker_path" ]; then
