@@ -134,8 +134,6 @@ class Tank:
 
     @property
     def ipv4(self):
-        if self._ipv4 is None:
-            self._ipv4 = generate_ipv4_addr(self.warnet.subnet)
         return self._ipv4
 
     @property

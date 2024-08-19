@@ -36,9 +36,8 @@ class Warnet:
         # Warnet
         repr["warnet_headers"] = [
             "Temp dir",
-            "Bitcoin network",
+            "Network name",
             "Docker network",
-            "Subnet",
             "Graph",
         ]
         repr["warnet"] = [
@@ -46,7 +45,6 @@ class Warnet:
                 str(self.config_dir),
                 self.bitcoin_network,
                 self.network_name,
-                self.subnet,
                 str(self.graph),
             ]
         ]
@@ -55,7 +53,6 @@ class Warnet:
         tank_headers = [
             "Index",
             "Version",
-            "IPv4",
             "bitcoin conf",
             "tc_netem",
             "LN",
@@ -68,7 +65,6 @@ class Warnet:
             tank_data = [
                 tank.index,
                 tank.version if tank.version else tank.image,
-                tank.ipv4,
                 tank.bitcoin_config,
                 tank.netem,
             ]
