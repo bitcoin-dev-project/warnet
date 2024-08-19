@@ -14,7 +14,6 @@ from warnet.utils import DEFAULT_TAG
 class GraphTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "services.graphml"
         self.json_file_path = Path(os.path.dirname(__file__)) / "data" / "LN_10.json"
         self.NUM_IMPORTED_NODES = 10
         self.test_dir = tempfile.TemporaryDirectory()
@@ -27,7 +26,7 @@ class GraphTest(TestBase):
 
         self.start_server()
         try:
-            self.test_graph_with_optional_services()
+            self.test_graph_with_optional_restart()
             self.test_created_graph()
             self.test_imported_graph()
         finally:
@@ -55,16 +54,30 @@ class GraphTest(TestBase):
         self.log.info("Validating graph schema")
         assert "invalid" not in self.warcli(f"graph validate {Path(self.tf_create)}", False)
         assert "invalid" not in self.warcli(f"graph validate {Path(self.tf_import)}", False)
-        assert "invalid" not in self.warcli(f"graph validate {self.graph_file_path}", False)
 
-    def test_graph_with_optional_services(self):
-        self.log.info("Testing graph with optional services...")
-        self.log.info(self.warcli(f"network start {self.graph_file_path}"))
-        self.wait_for_all_tanks_status(target="running")
-        self.wait_for_all_edges()
-        self.warcli("bitcoin rpc 0 getblockcount")
+    def test_graph_with_optional_restart(self):
+        self.log.info("Testing graph with optional restart...")
+        graph_file_path = Path(os.path.dirname(__file__)) / "data" / "restart.graphml"
+        self.log.info(self.warcli(f"network start {graph_file_path}"))
 
-        self.log.info("Checking services...")
+        def expected_statuses():
+            statuses = self.rpc(method="network_status", params={"network": self.network_name})
+            assert len(statuses) == 3
+            # Tanks 0 and 1 have invalid config options that will crash bitcoind
+            for tank in statuses:
+                # auto-restarting forever
+                if tank["tank_index"] == 0 and tank["bitcoin_status"] != "pending":
+                    return False
+                # crash once with error
+                if tank["tank_index"] == 1 and tank["bitcoin_status"] != "failed":
+                    return False
+                # fine
+                if tank["tank_index"] == 2 and tank["bitcoin_status"] != "running":
+                    return False
+            return True
+
+        self.wait_for_predicate(expected_statuses)
+
         self.warcli("network down")
         self.wait_for_all_tanks_status(target="stopped")
 

@@ -46,6 +46,7 @@ class Tank:
         self.bitcoin_network = warnet.bitcoin_network
         self.version: str = ""
         self.image: str = ""
+        self.restart = True
         self.bitcoin_config = ""
         self.netem = None
         self.exporter = False

@@ -559,9 +559,7 @@ class KubernetesBackend:
                 },
             ),
             spec=client.V1PodSpec(
-                # Might need some more thinking on the pod restart policy, setting to Never for now
-                # This means if a node has a problem it dies
-                restart_policy="OnFailure",
+                restart_policy="OnFailure" if tank.restart else "Never",
                 containers=containers,
                 volumes=volumes,
             ),

@@ -22,6 +22,11 @@
       "image": {
         "type": "string",
         "comment": "Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag"},
+      "restart": {
+        "type": "boolean",
+        "default": true,
+        "comment": "Automatically restart the tank on failure"
+      },
       "bitcoin_config": {
         "type": "string",
         "default": "",
