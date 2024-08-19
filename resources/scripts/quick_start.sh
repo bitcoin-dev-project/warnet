@@ -120,10 +120,14 @@ if [ -n "$docker_path" ]; then
     fi
 fi
 
+
+kubectl_path=$(command -v kubectl || true)
+if [ -n "$kubectl_path" ]; then
+    print_partial_message " ⭐️ Found " "kubectl" ": $kubectl_path " "$BOLD"
 else
-    print_partial_message " 💥 Could not find " "$current_user" " in the docker group. Please add it like this..." "$BOLD"
-    print_message "" "   sudo usermod -aG docker $current_user && newgrp docker" "$BOLD"
-    exit 1
+    print_partial_message " 💥 Could not find " "kubectl" ". Please follow this link to install it..." "$BOLD"
+    print_message "" "   https://kubernetes.io/docs/tasks/tools/" "$BOLD"
+    ERROR_CODE=127
 fi
 
 helm_path=$(command -v helm || true)
