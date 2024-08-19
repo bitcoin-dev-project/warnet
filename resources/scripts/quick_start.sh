@@ -88,8 +88,38 @@ else
 fi
 
 current_user=$(whoami)
-if id -nG "$current_user" | grep -qw "docker"; then
-    print_partial_message " ⭐️ Found " "$current_user" " in the docker group" "$BOLD"
+if [ -n "$docker_path" ]; then
+    current_context=$(docker context show)
+    if id -nG "$current_user" | grep -qw "docker"; then
+        print_partial_message " ⭐️ Found " "$current_user" " in the docker group" "$BOLD"
+    elif [ "$current_context" == "rootless" ]; then
+        print_message " " "⭐️ Docker is set to rootless" "$BOLD"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        print_message " " "⭐️ Found Docker on Darwin" "$BOLD"
+    else
+        print_partial_message " 💥 Could not find " "$current_user" " in the docker group. Please add it like this..." "$BOLD"
+        print_message "" "   sudo usermod -aG docker $current_user && newgrp docker" "$BOLD"
+        ERROR_CODE=1
+    fi
+
+    if docker info >/dev/null 2>&1; then
+        print_partial_message " ⭐️" " Docker" " is running" "$BOLD"
+    else
+        print_message " " "💥 Docker is not running. Please start docker." "$BOLD"
+        ERROR_CODE=1
+    fi
+
+    if [[ "$approach" == "docker-desktop" && -n "$docker_path" ]]; then
+        if docker context ls | grep -q "docker-desktop"; then
+            print_message " ⭐️ Found " "Docker Desktop" "$BOLD"
+        else
+            print_partial_message " 💥 Could not find " "docker-desktop" ". Please follow this link to install it..." "$BOLD"
+            print_message "" "   https://www.docker.com/products/docker-desktop/" "$BOLD"
+            ERROR_CODE=127
+        fi
+    fi
+fi
+
 else
     print_partial_message " 💥 Could not find " "$current_user" " in the docker group. Please add it like this..." "$BOLD"
     print_message "" "   sudo usermod -aG docker $current_user && newgrp docker" "$BOLD"
@@ -114,34 +144,6 @@ else
     ERROR_CODE=127
 fi
 
-python_path=$(command -v python3 || true)
-if [ -n "$python_path" ]; then
-    print_partial_message " ⭐️ Found " "python3" ": $python_path " "$BOLD"
-else
-    print_partial_message " 💥 Could not find " "python3" ". Please follow this link to install it (or use your package manager)..." "$BOLD"
-    print_message "" "   https://www.python.org/downloads/" "$BOLD"
-    exit 127
-fi
-
-if [ -n "$VIRTUAL_ENV" ]; then
-    print_partial_message " ⭐️ Running in virtual environment: " "$VIRTUAL_ENV" "$BOLD"
-else
-    print_partial_message " 💥 Not running in a virtual environment. " "Please activate a venv before proceeding." "$BOLD"
-    exit 127
-fi
-
-bpf_status=$(grep CONFIG_BPF /boot/config-"$(uname -r)" || true)
-if [ -n "$bpf_status" ]; then
-    config_bpf=$(echo "$bpf_status" | grep CONFIG_BPF=y)
-    if [ "$config_bpf" = "CONFIG_BPF=y" ]; then
-        print_partial_message " ⭐️ Found " "BPF" ": Berkeley Packet Filters appear enabled" "$BOLD"
-    else
-        print_partial_message " 💥 Could not find " "BPF" ". Please figure out how to enable Berkeley Packet Filters in your kernel." "$BOLD"
-        exit 1
-    fi
-else
-    print_partial_message " 💥 Could not find " "BPF" ". Please figure out how to enable Berkeley Packet Filters in your kernel." "$BOLD"
-    exit 1
 if [ $ERROR_CODE -ne 0 ]; then
     print_message "" "There were errors in the setup process. Please fix them and try again." "$BOLD"
     exit $ERROR_CODE
