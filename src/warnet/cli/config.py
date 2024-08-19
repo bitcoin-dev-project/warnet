@@ -1,12 +1,13 @@
-import yaml
-
 from importlib.resources import files
+
+import yaml
 
 CONFIG_PATH = files("configs").joinpath("warcli.yaml")
 
 
 class KeyNotSetError(Exception):
     """Custom exception raised when trying to access a key that is not set."""
+
     def __init__(self, key):
         self.key = key
         self.message = f"Key '{key}' is not set in the configuration."
@@ -18,11 +19,11 @@ class Config:
         self._load_config()
 
     def _load_config(self):
-        with open(CONFIG_PATH, 'r') as file:
+        with open(CONFIG_PATH) as file:
             self.config = yaml.safe_load(file)
 
     def _save_config(self):
-        with open(CONFIG_PATH, 'w') as file:
+        with open(CONFIG_PATH, "w") as file:
             yaml.safe_dump(self.config, file)
 
     def read(self, key):

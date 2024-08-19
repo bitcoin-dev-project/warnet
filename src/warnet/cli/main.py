@@ -5,8 +5,8 @@ from importlib.resources import files
 
 import click
 from rich import print as richprint
-
 from warnet.cli.config import Config, KeyNotSetError
+
 from .bitcoin import bitcoin
 from .cluster import cluster
 from .graph import graph
@@ -74,7 +74,7 @@ def setup():
     config = Config()
     try:
         backend_name = config.read("backend")
-    except KeyNotSetError as e:
+    except KeyNotSetError:
         print("We need to set the backend for warnet.")
         user_input = input("Use [1] minikube (Default) or [2] docker-desktop? Enter 1 or 2: ")
         if user_input == "1" or user_input == "":
