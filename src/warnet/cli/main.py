@@ -1,10 +1,12 @@
 import os
 import subprocess
+import sys
 from importlib.resources import files
 
 import click
 from rich import print as richprint
 
+from warnet.cli.config import Config, KeyNotSetError
 from .bitcoin import bitcoin
 from .cluster import cluster
 from .graph import graph
@@ -69,6 +71,22 @@ cli.add_command(help_command)
 @cli.command()
 def setup():
     """Check Warnet requirements are installed"""
+    config = Config()
+    try:
+        backend_name = config.read("backend")
+    except KeyNotSetError as e:
+        print("We need to set the backend for warnet.")
+        user_input = input("Use [1] minikube (Default) or [2] docker-desktop? Enter 1 or 2: ")
+        if user_input == "1" or user_input == "":
+            backend_name = "minikube"
+            config.write("backend", backend_name)
+        elif user_input == "2":
+            backend_name = "docker-desktop"
+            config.write("backend", backend_name)
+        else:
+            print("Next time, please enter a 1 or a 2.")
+            sys.exit(1)
+
     try:
         process = subprocess.Popen(
             ["/bin/bash", str(QUICK_START_PATH)],
