@@ -120,6 +120,20 @@ if [ -n "$docker_path" ]; then
     fi
 fi
 
+if [[ "$approach" == "minikube" ]]; then
+    minikube_path=$(command -v minikube || true)
+    if [[ "$(uname)" == "Darwin" ]] && command -v minikube &> /dev/null && [[ "$(minikube version --short)" == "v1.33.1" ]]; then
+        print_partial_message " 💥 Could not find " "minikube version > 1.33.1" ". Please upgrade..." "$BOLD"
+        print_message "" "   https://minikube.sigs.k8s.io/docs/start/" "$BOLD"
+        ERROR_CODE=127
+    elif [ -n "$minikube_path" ]; then
+        print_partial_message " ⭐️ Found " "minikube" ": $minikube_path " "$BOLD"
+    else
+        print_partial_message " 💥 Could not find " "minikube" ". Please follow this link to install it..." "$BOLD"
+        print_message "" "   https://minikube.sigs.k8s.io/docs/start/" "$BOLD"
+        ERROR_CODE=127
+    fi
+fi
 
 kubectl_path=$(command -v kubectl || true)
 if [ -n "$kubectl_path" ]; then
