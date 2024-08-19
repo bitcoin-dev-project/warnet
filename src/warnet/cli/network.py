@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .rpc import rpc_call  # noqa: I001
+from .util import run_command
 
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
@@ -158,3 +159,16 @@ def export(network: str, activity: str, exclude: str):
     print(
         rpc_call("network_export", {"network": network, "activity": activity, "exclude": exclude})
     )
+
+
+@network.command()
+@click.option("--follow", "-f", is_flag=True, help="Follow logs")
+def logs(follow: bool):
+    """Get Kubernetes logs from the RPC server"""
+    command = "kubectl logs rpc-0"
+    stream_output = False
+    if follow:
+        command += " --follow"
+        stream_output = True
+
+    run_command(command, stream_output=stream_output)
