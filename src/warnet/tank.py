@@ -108,9 +108,6 @@ class Tank:
             else:
                 raise Exception(f"Unsupported Lightning Network implementation: {options['impl']}")
 
-        if "metrics" in node:
-            self.metrics = node["metrics"]
-
         logger.debug(
             f"Parsed graph node: {self.index} with attributes: {[f'{key}={value}' for key, value in graph_properties.items()]}"
         )
