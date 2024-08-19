@@ -46,9 +46,9 @@ print_partial_message() {
 }
 
 print_message "" "" ""
-print_message "" "   ╭───────────────────────────────────╮" ""
-print_message "" "   │  Welcome to the Warnet Quickstart │" ""
-print_message "" "   ╰───────────────────────────────────╯" ""
+print_message "" "   ╭───────────────────────────╮" ""
+print_message "" "   │  Welcome to Warnet Setup  │" ""
+print_message "" "   ╰───────────────────────────╯" ""
 print_message "" "" ""
 print_message "" "    Let's find out if your system has what it takes to run Warnet..." ""
 print_message "" "" ""
