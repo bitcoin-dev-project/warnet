@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+ERROR_CODE=0
 
 is_cygwin_etal() {
     uname -s | grep -qE "CYGWIN|MINGW|MSYS"
@@ -10,7 +11,7 @@ is_wsl() {
 }
 if is_cygwin_etal || is_wsl; then
     echo "Quick start does not support Windows"
-    exit 1
+    ERROR_CODE=1
 fi
 
 
@@ -76,7 +77,7 @@ if [ -n "$docker_path" ]; then
 else
     print_partial_message " 💥 Could not find " "docker" ". Please follow this link to install Docker Engine..." "$BOLD"
     print_message "" "   https://docs.docker.com/engine/install/" "$BOLD"
-    exit 127
+    ERROR_CODE=127
 fi
 
 current_user=$(whoami)
@@ -94,7 +95,7 @@ if [ -n "$helm_path" ]; then
 else
     print_partial_message " 💥 Could not find " "helm" ". Please follow this link to install it..." "$BOLD"
     print_message "" "   https://helm.sh/docs/intro/install/" "$BOLD"
-    exit 127
+    ERROR_CODE=127
 fi
 
 just_path=$(command -v just || true)
@@ -103,6 +104,7 @@ if [ -n "$just_path" ]; then
 else
     print_partial_message " 💥 Could not find " "just" ". Please follow this link to install it..." "$BOLD"
     print_message "" "   https://github.com/casey/just?tab=readme-ov-file#pre-built-binaries" "$BOLD"
+    ERROR_CODE=127
 fi
 
 python_path=$(command -v python3 || true)
@@ -133,4 +135,7 @@ if [ -n "$bpf_status" ]; then
 else
     print_partial_message " 💥 Could not find " "BPF" ". Please figure out how to enable Berkeley Packet Filters in your kernel." "$BOLD"
     exit 1
+if [ $ERROR_CODE -ne 0 ]; then
+    print_message "" "There were errors in the setup process. Please fix them and try again." "$BOLD"
+    exit $ERROR_CODE
 fi
