@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bitcoincore.fullname" . }}
+  labels:
+    {{- include "bitcoincore.labels" . | nindent 4 }}
+data:
+  bitcoin-conf: |
+   {{ tpl .Values.config . | nindent 2 }}
