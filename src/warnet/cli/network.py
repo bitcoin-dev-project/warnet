@@ -1,5 +1,4 @@
 import tempfile
-import xml.etree.ElementTree as ET
 from importlib.resources import files
 from pathlib import Path
 from typing import Any, Dict, List
@@ -31,7 +30,7 @@ def read_graph_file(graph_file: Path) -> nx.Graph:
         return nx.parse_graphml(f.read())
 
 
-def generate_node_config(node: int, data: dict) -> str:
+def generate_node_config(node: int, data: dict, graph: nx.Graph) -> str:
     base_config = """
 regtest=1
 checkmempool=0
@@ -54,7 +53,12 @@ zmqpubrawblock=tcp://0.0.0.0:28332
 zmqpubrawtx=tcp://0.0.0.0:28333
 """
     node_specific_config = data.get("bitcoin_config", "").replace(",", "\n")
-    return f"{base_config}\n{node_specific_config}"
+
+    # Add addnode configurations for connected nodes
+    connected_nodes = list(graph.neighbors(node))
+    addnode_configs = [f"addnode=warnet-tank-{index}" for index in connected_nodes]
+
+    return f"{base_config}\n{node_specific_config}\n" + "\n".join(addnode_configs)
 
 
 def create_kubernetes_object(
@@ -113,26 +117,25 @@ def create_node_service(node: int) -> Dict[str, Any]:
 
 
 def create_config_map(node: int, config: str) -> Dict[str, Any]:
-    return create_kubernetes_object(
+    config_map = create_kubernetes_object(
         kind="ConfigMap",
         metadata={
             "name": f"bitcoin-config-tank-{node}",
             "namespace": "warnet",
         },
-        # Note: We're not passing a 'spec' here, as ConfigMaps don't have a spec
     )
+    config_map["data"] = {"bitcoin.conf": config}
+    return config_map
 
 
 def generate_kubernetes_yaml(graph: nx.Graph) -> List[Dict[str, Any]]:
     kubernetes_objects = [create_namespace()]
 
     for node, data in graph.nodes(data=True):
-        config = generate_node_config(node, data)
-        config_map = create_config_map(node, config)
-        config_map["data"] = {"bitcoin.conf": config}  # Add data directly to the ConfigMap
+        config = generate_node_config(node, data, graph)
         kubernetes_objects.extend(
             [
-                config_map,
+                create_config_map(node, config),
                 create_node_deployment(node, data),
                 create_node_service(node),
             ]
@@ -217,23 +220,3 @@ def generate_yaml(graph_file: Path, output: str):
         yaml.dump_all(kubernetes_yaml, f)
 
     print(f"Kubernetes YAML file generated: {output}")
-
-
-@network.command()
-@click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path(exists=True))
-def connect(graph_file: Path):
-    """Connect nodes based on the edges defined in the graph file."""
-    tree = ET.parse(graph_file)
-    root = tree.getroot()
-    edges = root.findall(".//{http://graphml.graphdrawing.org/xmlns}edge")
-
-    for edge in edges:
-        source, target = edge.get("source"), edge.get("target")
-        command = f"kubectl exec -it warnet-tank-{source} -- bitcoin-cli addnode warnet-tank-{target}:18443 onetry"
-        print(f"Connecting node {source} to node {target}")
-        if run_command(command, stream_output=True):
-            print(f"Successfully connected node {source} to node {target}")
-        else:
-            print(f"Failed to connect node {source} to node {target}")
-
-    print("All connections attempted.")
