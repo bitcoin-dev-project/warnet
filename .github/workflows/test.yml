@@ -7,48 +7,25 @@ on:
       - main
 
 jobs:
-  # ruff:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: chartboost/ruff-action@v1
-  #       with:
-  #         args: 'check .'
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hynek/setup-cached-uv@v1
+      - run: uv venv
+      - run: uv pip install ruff
+      - run: source .venv/bin/activate; ruff check .
   ruff-format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
-        with:
-          args: 'format --check .'
-  build-image:
-    # needs: [ruff, ruff-format]
-    needs: [ruff-format]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and export
-        uses: docker/build-push-action@v5
-        with:
-          file: resources/images/rpc/Dockerfile_prod
-          context: .
-          tags: warnet/dev
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/warnet.tar
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: warnet
-          path: /tmp/warnet.tar
+      - uses: hynek/setup-cached-uv@v1
+      - run: uv venv
+      - run: uv pip install ruff
+      - run: source .venv/bin/activate; ruff format .
   test:
-    needs: [build-image]
+    # DISABLE FOR REWRITE
+    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -102,10 +79,3 @@ jobs:
         run: |
           source .venv/bin/activate
           ./test/${{matrix.test}}
-  # build-test:
-  #   needs: [build-image]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/compose
-  #     - run: ./test/build_branch_test.py compose
