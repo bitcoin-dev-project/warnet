@@ -5,7 +5,7 @@ from importlib.resources import files
 import click
 from rich import print as richprint
 
-# from .bitcoin import bitcoin
+from .bitcoin import bitcoin
 from .graph import graph
 from .image import image
 
@@ -21,7 +21,7 @@ def cli():
     pass
 
 
-# cli.add_command(bitcoin)
+cli.add_command(bitcoin)
 cli.add_command(graph)
 cli.add_command(image)
 # cli.add_command(ln)

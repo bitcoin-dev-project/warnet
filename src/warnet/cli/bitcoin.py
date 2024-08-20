@@ -1,6 +1,6 @@
 import click
 
-from .rpc import rpc_call
+from .util import run_command
 
 
 @click.group(name="bitcoin")
@@ -17,51 +17,51 @@ def rpc(node, method, params, network):
     """
     Call bitcoin-cli <method> [params] on <node> in [network]
     """
-    print(
-        rpc_call(
-            "tank_bcli", {"network": network, "node": node, "method": method, "params": params}
-        )
-    )
+    if params:
+        cmd = f"kubectl exec warnet-node-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
+    else:
+        cmd = f"kubectl exec warnet-node-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
+    run_command(cmd)
 
 
-@bitcoin.command()
-@click.argument("node", type=int, required=True)
-@click.option("--network", default="warnet", show_default=True)
-def debug_log(node, network):
-    """
-    Fetch the Bitcoin Core debug log from <node> in [network]
-    """
-    print(rpc_call("tank_debug_log", {"node": node, "network": network}))
-
-
-@bitcoin.command()
-@click.argument("node_a", type=int, required=True)
-@click.argument("node_b", type=int, required=True)
-@click.option("--network", default="warnet", show_default=True)
-def messages(node_a, node_b, network):
-    """
-    Fetch messages sent between <node_a> and <node_b> in [network]
-    """
-    print(rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}))
-
-
-@bitcoin.command()
-@click.argument("pattern", type=str, required=True)
-@click.option("--show-k8s-timestamps", is_flag=True, default=False, show_default=True)
-@click.option("--no-sort", is_flag=True, default=False, show_default=True)
-@click.option("--network", default="warnet", show_default=True)
-def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
-    """
-    Grep combined logs via fluentd using regex <pattern>
-    """
-    print(
-        rpc_call(
-            "logs_grep",
-            {
-                "network": network,
-                "pattern": pattern,
-                "k8s_timestamps": show_k8s_timestamps,
-                "no_sort": no_sort,
-            },
-        )
-    )
+# @bitcoin.command()
+# @click.argument("node", type=int, required=True)
+# @click.option("--network", default="warnet", show_default=True)
+# def debug_log(node, network):
+#     """
+#     Fetch the Bitcoin Core debug log from <node> in [network]
+#     """
+#     print(rpc_call("tank_debug_log", {"node": node, "network": network}))
+#
+#
+# @bitcoin.command()
+# @click.argument("node_a", type=int, required=True)
+# @click.argument("node_b", type=int, required=True)
+# @click.option("--network", default="warnet", show_default=True)
+# def messages(node_a, node_b, network):
+#     """
+#     Fetch messages sent between <node_a> and <node_b> in [network]
+#     """
+#     print(rpc_call("tank_messages", {"network": network, "node_a": node_a, "node_b": node_b}))
+#
+#
+# @bitcoin.command()
+# @click.argument("pattern", type=str, required=True)
+# @click.option("--show-k8s-timestamps", is_flag=True, default=False, show_default=True)
+# @click.option("--no-sort", is_flag=True, default=False, show_default=True)
+# @click.option("--network", default="warnet", show_default=True)
+# def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
+#     """
+#     Grep combined logs via fluentd using regex <pattern>
+#     """
+#     print(
+#         rpc_call(
+#             "logs_grep",
+#             {
+#                 "network": network,
+#                 "pattern": pattern,
+#                 "k8s_timestamps": show_k8s_timestamps,
+#                 "no_sort": no_sort,
+#             },
+#         )
+#     )
