@@ -20,6 +20,16 @@ kubectl apply -f "$WAR_MANIFESTS/namespace.yaml"
 kubectl apply -f "$WAR_MANIFESTS/rbac-config.yaml"
 kubectl apply -f "$WAR_MANIFESTS/warnet-rpc-service.yaml"
 
+# Setup istio global rate limiter
+helm repo add istio https://istio-release.storage.googleapis.com/charts
+helm repo update
+kubectl create namespace istio-system
+helm install istio-base istio/base -n istio-system --set defaultRevision=default
+helm install istiod istio/istiod -n istio-system --wait
+helm status istiod -n istio-system
+kubectl get deployments -n istio-system --output wide
+kubectl apply -f "$WAR_MANIFESTS/istio-global-rate-limit.yaml"
+
 # Deploy rpc server
 if [ -n "${WAR_DEV+x}" ]; then # Dev mode selector
     # Build image in local registry

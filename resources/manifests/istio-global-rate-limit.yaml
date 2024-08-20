@@ -1,0 +1,62 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: global-ratelimit
+  namespace: istio-system
+spec:
+  configPatches:
+    - applyTo: NETWORK_FILTER
+      match:
+        context: ANY
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.tcp_proxy"
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.network.ratelimit
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.network.ratelimit.v3.RateLimit
+            domain: global
+            failure_mode_deny: true
+            rate_limit_service:
+              grpc_service:
+                envoy_grpc:
+                  cluster_name: rate_limit_cluster
+              transport_api_version: V3
+    - applyTo: CLUSTER
+      match:
+        context: ANY
+      patch:
+        operation: ADD
+        value:
+          name: rate_limit_cluster
+          type: STRICT_DNS
+          connect_timeout: 0.25s
+          lb_policy: ROUND_ROBIN
+          http2_protocol_options: {}
+          load_assignment:
+            cluster_name: rate_limit_cluster
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: ratelimit.istio-system.svc.cluster.local
+                          port_value: 8081
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimit-config
+  namespace: istio-system
+data:
+  config.yaml: |
+    domain: global
+    descriptors:
+      - key: generic_key
+        value: default
+        rate_limit:
+          unit: second
+          requests_per_unit: 1000 # Bytes
