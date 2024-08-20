@@ -10,7 +10,7 @@ from test_base import TestBase
 class OnionTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
+        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "6_node_ring.graphml"
         self.onion_addr = None
 
     def run_test(self):

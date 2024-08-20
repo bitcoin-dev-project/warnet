@@ -10,7 +10,7 @@ from test_base import TestBase
 class RPCTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
+        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "6_node_ring.graphml"
 
     def run_test(self):
         self.start_server()
