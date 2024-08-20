@@ -5,10 +5,10 @@ from importlib.resources import files
 import click
 from rich import print as richprint
 
-from .bitcoin import bitcoin
+# from .bitcoin import bitcoin
 from .graph import graph
 from .image import image
-from .ln import ln
+# from .ln import ln
 from .network import network
 from .scenarios import scenarios
 
@@ -20,10 +20,10 @@ def cli():
     pass
 
 
-cli.add_command(bitcoin)
+# cli.add_command(bitcoin)
 cli.add_command(graph)
 cli.add_command(image)
-cli.add_command(ln)
+# cli.add_command(ln)
 cli.add_command(network)
 cli.add_command(scenarios)
 

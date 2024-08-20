@@ -21,6 +21,7 @@ from warnet import SRC_DIR
 logger = logging.getLogger("utils")
 
 
+
 SUPPORTED_TAGS = ["27.0", "26.0", "25.1", "24.2", "23.2", "22.2"]
 DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [

@@ -5,7 +5,8 @@ from typing import Any
 import requests
 from jsonrpcclient.requests import request
 from jsonrpcclient.responses import Error, Ok, parse
-from warnet.server import WARNET_SERVER_PORT
+
+WARNET_SERVER_PORT = 9276
 
 
 class JSONRPCException(Exception):

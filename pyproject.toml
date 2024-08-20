@@ -12,7 +12,6 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.scripts]
-warnet = "warnet.server:run_server"
 warcli = "warnet.cli.main:cli"
 
 [project.urls]

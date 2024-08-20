@@ -5,7 +5,8 @@ from pathlib import Path
 import click
 import networkx as nx
 from rich import print
-from warnet.utils import DEFAULT_TAG, create_cycle_graph, validate_graph_schema
+
+from .util import DEFAULT_TAG, create_cycle_graph, validate_graph_schema
 
 
 @click.group(name="graph")
