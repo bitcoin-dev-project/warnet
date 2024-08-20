@@ -83,7 +83,7 @@ def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
         metadata={
             "name": f"warnet-tank-{node}",
             "namespace": "warnet",
-            "labels": {"rank": "tank", "index": str(node)},
+            "labels": {"mission": "tank", "index": str(node)},
         },
         spec={
             "containers": [
