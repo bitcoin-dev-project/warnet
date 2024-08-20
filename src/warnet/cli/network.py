@@ -8,7 +8,13 @@ import networkx as nx
 import yaml
 from rich import print
 
-from .util import run_command
+from .k8s import (
+    run_command,
+    set_kubectl_context,
+    deploy_base_configurations,
+    apply_kubernetes_yaml,
+    delete_namespace
+)
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
 WAR_MANIFESTS = files("manifests")
@@ -227,43 +233,6 @@ zmqpubrawtx=tcp://0.0.0.0:28333
     node_specific_config = data.get("bitcoin_config", "")
     node_specific_config = node_specific_config.replace(",", "\n")
     return f"{base_config}\n{node_specific_config}"
-
-
-def set_kubectl_context(namespace: str):
-    """
-    Set the default kubectl context to the specified namespace.
-    """
-    command = f"kubectl config set-context --current --namespace={namespace}"
-    result = run_command(command, stream_output=True)
-    if result:
-        print(f"Kubectl context set to namespace: {namespace}")
-    else:
-        print(f"Failed to set kubectl context to namespace: {namespace}")
-    return result
-
-
-def deploy_base_configurations():
-    base_configs = [
-        "namespace.yaml",
-        "rbac-config.yaml",
-    ]
-
-    for config in base_configs:
-        command = f"kubectl apply -f {WAR_MANIFESTS}/{config}"
-        if not run_command(command, stream_output=True):
-            print(f"Failed to apply {config}")
-            return False
-    return True
-
-
-def apply_kubernetes_yaml(yaml_file: str):
-    command = f"kubectl apply -f {yaml_file}"
-    return run_command(command, stream_output=True)
-
-
-def delete_namespace(namespace: str):
-    command = f"kubectl delete namespace {namespace}"
-    return run_command(command, stream_output=True)
 
 
 def setup_logging_helm():
