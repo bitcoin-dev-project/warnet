@@ -356,10 +356,11 @@ class Server:
             t = threading.Thread(target=lambda: self.scenario_log(proc))
             t.daemon = True
             t.start()
+            cmd = f"{scenario_name} {' '.join(additional_args)}".strip()
             self.running_scenarios.append(
                 {
                     "pid": proc.pid,
-                    "cmd": f"{scenario_name} {' '.join(additional_args)}",
+                    "cmd": cmd,
                     "proc": proc,
                     "network": network,
                 }
