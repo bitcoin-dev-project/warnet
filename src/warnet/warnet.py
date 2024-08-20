@@ -57,7 +57,6 @@ class Warnet:
             "tc_netem",
             "LN",
             "LN Image",
-            "LN IPv4",
         ]
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
@@ -73,13 +72,11 @@ class Warnet:
                     [
                         tank.lnnode.impl if tank.lnnode else "",
                         tank.lnnode.image if tank.lnnode else "",
-                        tank.lnnode.ipv4 if tank.lnnode else "",
                     ]
                 )
             tanks.append(tank_data)
         if not has_ln:
             tank_headers.remove("LN")
-            tank_headers.remove("LN IPv4")
 
         repr["tank_headers"] = tank_headers
         repr["tanks"] = tanks
@@ -135,7 +132,7 @@ class Warnet:
         if "services" in self.graph.graph:
             self.services = self.graph.graph["services"].split()
         for tank in self.tanks:
-            tank._ipv4 = self.container_interface.get_tank_ipv4(tank.index)
+            tank.ipv4 = self.container_interface.get_tank_ipv4(tank.index)
         return self
 
     def tanks_from_graph(self):

@@ -748,11 +748,9 @@ class KubernetesBackend:
                 self.log.error(f"Error starting service: {service_name}\n{e}")
 
         self.log.debug("Containers and services created. Configuring IP addresses")
+
         # now that the pods have had a second to create,
         # get the ips and set them on the tanks
-
-        # TODO: this is really hacky, should probably just update the generate_ipv4 function at some point
-        # by moving it into the base class
         for tank in warnet.tanks:
             pod_ip = None
             while not pod_ip:
@@ -764,7 +762,7 @@ class KubernetesBackend:
                     continue
                 pod_ip = pod.status.pod_ip
 
-            tank._ipv4 = pod_ip
+            tank.ipv4 = pod_ip
             self.log.debug(f"Tank {tank.index} created")
 
         with open(warnet.config_dir / "warnet-tanks.yaml", "w") as f:

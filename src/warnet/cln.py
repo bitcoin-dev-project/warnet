@@ -3,7 +3,7 @@ import tarfile
 
 from warnet.backend.kubernetes_backend import KubernetesBackend
 from warnet.services import ServiceType
-from warnet.utils import exponential_backoff, generate_ipv4_addr, handle_json
+from warnet.utils import exponential_backoff, handle_json
 
 from .lnchannel import LNChannel, LNPolicy
 from .lnnode import LNNode
@@ -30,7 +30,6 @@ class CLNNode(LNNode):
         self.image = options["ln_image"]
         self.cb = options["cb_image"]
         self.ln_config = options["ln_config"]
-        self.ipv4 = generate_ipv4_addr(self.warnet.subnet)
         self.rpc_port = 10009
         self.impl = "cln"
 

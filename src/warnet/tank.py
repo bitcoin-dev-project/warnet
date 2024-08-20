@@ -9,7 +9,6 @@ from .status import RunningStatus
 from .utils import (
     SUPPORTED_TAGS,
     exponential_backoff,
-    generate_ipv4_addr,
     sanitize_tc_netem_command,
 )
 
@@ -59,7 +58,7 @@ class Tank:
         self.zmqblockport = 28332
         self.zmqtxport = 28333
         self._suffix = None
-        self._ipv4 = None
+        self.ipv4 = None
         self._exporter_name = None
         # index of integers imported from graph file
         # indicating which tanks to initially connect to
@@ -131,10 +130,6 @@ class Tank:
         if self._suffix is None:
             self._suffix = f"{self.index:06}"
         return self._suffix
-
-    @property
-    def ipv4(self):
-        return self._ipv4
 
     @property
     def exporter_name(self):
