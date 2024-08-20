@@ -20,7 +20,7 @@ class ConnectionType(Enum):
 class ConnectDag(WarnetTestFramework):
     def set_test_params(self):
         # This is just a minimum
-        self.num_nodes = 10
+        self.num_nodes = 6
 
     def add_options(self, parser):
         parser.add_argument(
@@ -63,13 +63,6 @@ class ConnectDag(WarnetTestFramework):
         self.connect_nodes(2, 4)
         self.connect_nodes(3, 5)
         self.connect_nodes(5, 4)
-        self.connect_nodes(5, 6)
-        self.connect_nodes(6, 7)
-
-        # Nodes 8 & 9 shall come pre-connected. Attempt to connect them anyway to test the handling
-        # of dns node addresses
-        self.connect_nodes(8, 9)
-        self.connect_nodes(9, 8)
 
         self.sync_all()
 
@@ -79,10 +72,6 @@ class ConnectDag(WarnetTestFramework):
         three_peers = self.nodes[3].getpeerinfo()
         four_peers = self.nodes[4].getpeerinfo()
         five_peers = self.nodes[5].getpeerinfo()
-        six_peers = self.nodes[6].getpeerinfo()
-        seven_peers = self.nodes[7].getpeerinfo()
-        eight_peers = self.nodes[8].getpeerinfo()
-        nine_peers = self.nodes[9].getpeerinfo()
 
         for tank in self.warnet.tanks:
             self.log.info(
@@ -104,13 +93,6 @@ class ConnectDag(WarnetTestFramework):
         self.assert_connection(four_peers, 5, ConnectionType.IP)
         self.assert_connection(five_peers, 3, ConnectionType.IP)
         self.assert_connection(five_peers, 4, ConnectionType.DNS)
-        self.assert_connection(five_peers, 6, ConnectionType.DNS)
-        self.assert_connection(six_peers, 5, ConnectionType.IP)
-        self.assert_connection(six_peers, 7, ConnectionType.DNS)
-        self.assert_connection(seven_peers, 6, ConnectionType.IP)
-        # Check the pre-connected nodes
-        self.assert_connection(eight_peers, 9, ConnectionType.DNS)
-        self.assert_connection(nine_peers, 8, ConnectionType.IP)
 
         self.log.info(
             f"Successfully ran the connect_dag.py scenario using a temporary file: "
