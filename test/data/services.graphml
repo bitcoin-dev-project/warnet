@@ -11,6 +11,7 @@
   <key id="ln_image"        attr.name="ln_image"         attr.type="string"   for="node" />
   <key id="ln_cb_image"     attr.name="ln_cb_image"      attr.type="string"   for="node" />
   <key id="ln_config"       attr.name="ln_config"        attr.type="string"   for="node" />
+  <key id="resources"       attr.name="resources"        attr.type="string"   for="node" />
   <key id="channel_open"    attr.name="channel_open"     attr.type="string"   for="edge" />
   <key id="source_policy"   attr.name="source_policy"    attr.type="string"   for="edge" />
   <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
@@ -21,6 +22,7 @@
         <data key="bitcoin_config">-uacomment=w0 -debug=validation</data>
         <data key="exporter">true</data>
         <data key="ln">lnd</data>
+        <data key="resources">{'requests':{'cpu':'25m', 'memory':'100Mi'}, 'limits':{'cpu':'100m', 'memory':'250Mi'}}</data>
     </node>
   </graph>
 </graphml>

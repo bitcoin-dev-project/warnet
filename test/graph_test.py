@@ -41,7 +41,7 @@ class GraphTest(TestBase):
         self.log.info(f"CLI tool importing json and writing test graph file: {self.tf_import}")
         self.log.info(
             self.warcli(
-                f"graph import-json {self.json_file_path} --outfile={self.tf_import} --ln_image=carlakirkcohen/lnd:attackathon --cb=carlakirkcohen/circuitbreaker:attackathon-test",
+                f"graph import-json {self.json_file_path} --outfile={self.tf_import} --ln_image=carlakirkcohen/lnd:attackathon --cb=carlakirkcohen/circuitbreaker:attackathon-test --ci",
                 network=False,
             )
         )

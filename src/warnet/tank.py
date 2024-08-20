@@ -46,6 +46,7 @@ class Tank:
         self.bitcoin_network = warnet.bitcoin_network
         self.version: str = ""
         self.image: str = ""
+        self.resources: dict = dict()
         self.bitcoin_config = ""
         self.netem = None
         self.exporter = False
@@ -81,7 +82,10 @@ class Tank:
             value = node.get(property, specs.get("default"))
             if property == "version":
                 self._parse_version(value)
-            setattr(self, property, value)
+            if property == "resources":
+                setattr(self, property, eval(value))
+            else:
+                setattr(self, property, value)
             graph_properties[property] = value
 
         if self.version and self.image:

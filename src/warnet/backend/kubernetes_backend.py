@@ -384,33 +384,62 @@ class KubernetesBackend:
         bitcoind_options = tank.get_bitcoin_conf(peers)
         container_env = [client.V1EnvVar(name="BITCOIN_ARGS", value=bitcoind_options)]
 
-        bitcoind_container = client.V1Container(
-            name=container_name,
-            image=container_image,
-            env=container_env,
-            liveness_probe=client.V1Probe(
-                failure_threshold=3,
-                initial_delay_seconds=5,
-                period_seconds=5,
-                timeout_seconds=1,
-                _exec=client.V1ExecAction(command=["pidof", "bitcoind"]),
-            ),
-            readiness_probe=client.V1Probe(
-                failure_threshold=1,
-                initial_delay_seconds=0,
-                period_seconds=1,
-                timeout_seconds=1,
-                tcp_socket=client.V1TCPSocketAction(port=tank.rpc_port),
-            ),
-            security_context=client.V1SecurityContext(
-                privileged=True,
-                capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
-            ),
+        if tank.resources:
+            resources = client.V1ResourceRequirements(
+                requests=tank.resources["requests"],
+                limits=tank.resources["limits"],
+            )
+        else:
+            resources = client.V1ResourceRequirements()
+
+        liveness_probe = client.V1Probe(
+            failure_threshold=3,
+            initial_delay_seconds=5,
+            period_seconds=5,
+            timeout_seconds=1,
+            _exec=client.V1ExecAction(command=["pidof", "bitcoind"]),
         )
-        self.log.debug(
-            f"Created bitcoind container for tank {tank.index} using {bitcoind_options=:}"
+        readiness_probe = client.V1Probe(
+            failure_threshold=1,
+            initial_delay_seconds=0,
+            period_seconds=1,
+            timeout_seconds=1,
+            tcp_socket=client.V1TCPSocketAction(port=tank.rpc_port),
         )
-        return bitcoind_container
+        security_context = client.V1SecurityContext(
+            privileged=True,
+            capabilities=client.V1Capabilities(add=["NET_ADMIN", "NET_RAW"]),
+        )
+        if tank.resources:
+            bitcoind_container = client.V1Container(
+                name=container_name,
+                image=container_image,
+                env=container_env,
+                liveness_probe=liveness_probe,
+                readiness_probe=readiness_probe,
+                security_context=security_context,
+                resources=client.V1ResourceRequirements(
+                    requests=tank.resources["requests"],
+                    limits=tank.resources["limits"],
+                ),
+            )
+            self.log.debug(
+                f"Created bitcoind container for tank {tank.index} using {bitcoind_options=:}"
+            )
+            return bitcoind_container
+        else:
+            bitcoind_container = client.V1Container(
+                name=container_name,
+                image=container_image,
+                env=container_env,
+                liveness_probe=liveness_probe,
+                readiness_probe=readiness_probe,
+                security_context=security_context,
+            )
+            self.log.debug(
+                f"Created bitcoind container for tank {tank.index} using {bitcoind_options=:}"
+            )
+            return bitcoind_container
 
     def create_prometheus_container(self, tank) -> client.V1Container:
         env = [

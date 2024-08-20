@@ -40,7 +40,8 @@ def create(number: int, outfile: Path, version: str, bitcoin_conf: Path, random:
 @click.option("--outfile", type=click.Path())
 @click.option("--cb", type=str)
 @click.option("--ln_image", type=str)
-def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
+@click.option("--ci", is_flag=True)
+def import_json(infile: Path, outfile: Path, cb: str, ln_image: str, ci: bool = False):
     """
     Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
     and additionally include 7 extra random outbounds per node. Include lightning
@@ -64,6 +65,8 @@ def import_json(infile: Path, outfile: Path, cb: str, ln_image: str):
             graph.nodes[n]["ln_cb_image"] = cb
         if ln_image:
             graph.nodes[n]["ln_image"] = ln_image
+        if ci:
+            graph.nodes[n]["resources"] = "{}"
 
     # Save a map of LN pubkey -> Tank index
     ln_ids = {}

@@ -16,52 +16,62 @@
   "node": {
     "type": "object",
     "properties": {
-      "version": {
-        "type": "string",
-        "comment": "Bitcoin Core version with an available Warnet tank image on Dockerhub. May also be a GitHub repository with format user/repository:branch to build from source code"},
       "image": {
         "type": "string",
-        "comment": "Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag"},
+        "default": "bitcoindevproject/bitcoin:27.0",
+        "comment": "Bitcoin Core Warnet tank image on Dockerhub with the format repository/image:tag"
+      },
       "bitcoin_config": {
         "type": "string",
         "default": "",
-        "comment": "A string of Bitcoin Core options in command-line format, e.g. '-debug=net -blocksonly'"},
+        "comment": "A string of Bitcoin Core options in command-line format, e.g. '-debug=net -blocksonly'"
+      },
       "tc_netem": {
         "type": "string",
-        "comment": "A tc-netem command as a string beginning with 'tc qdisc add dev eth0 root netem'"},
+        "comment": "A tc-netem command as a string beginning with 'tc qdisc add dev eth0 root netem'"
+      },
       "exporter": {
         "type": "boolean",
         "default": false,
-        "comment": "Whether to attach a Prometheus data exporter to the tank"},
+        "comment": "Whether to attach a Prometheus data exporter to the tank"
+      },
       "metrics": {
         "type": "string",
-        "comment": "A space-separated string of RPC queries to scrape by Prometheus"},
+        "comment": "A space-separated string of RPC queries to scrape by Prometheus"
+      },
       "collect_logs": {
         "type": "boolean",
-        "default": false,
-        "comment": "Whether to collect Bitcoin Core debug logs with Promtail"},
+        "default": true,
+        "comment": "Whether to collect Bitcoin Core debug logs with Promtail"
+      },
       "build_args": {
         "type": "string",
         "default": "",
-        "comment": "A string of configure options used when building Bitcoin Core from source code, e.g. '--without-gui --disable-tests'"},
+        "comment": "A string of configure options used when building Bitcoin Core from source code, e.g. '--without-gui --disable-tests'"
+      },
       "ln": {
         "type": "string",
-        "comment": "Attach a lightning network node of this implementation (currently only supports 'lnd' or 'cln')"},
+        "comment": "Attach a lightning network node of this implementation (currently only supports 'lnd' or 'cln')"
+      },
       "ln_image": {
         "type": "string",
-        "comment": "Specify a lightning network node image from Dockerhub with the format repository/image:tag"},
+        "comment": "Specify a lightning network node image from Dockerhub with the format repository/image:tag"
+      },
       "ln_cb_image": {
         "type": "string",
-        "comment": "Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag"},
+        "comment": "Specify a lnd Circuit Breaker image from Dockerhub with the format repository/image:tag"
+      },
       "ln_config": {
         "type": "string",
-        "comment": "A string of arguments for the lightning network node in command-line format, e.g. '--protocol.wumbo-channels --bitcoin.timelockdelta=80'"}
+        "comment": "A string of arguments for the lightning network node in command-line format, e.g. '--protocol.wumbo-channels --bitcoin.timelockdelta=80'"
+      },
+      "resources": {
+        "type": "string",
+        "comment": "Kubernetes resource requests and limits for the node",
+        "default": "{'requests':{'cpu':'500m', 'memory':'500Mi'}, 'limits':{'cpu':'1000m', 'memory':'1500Mi'}}"
+      }
     },
-    "additionalProperties": false,
-    "oneOf": [
-      {"required": ["version"]},
-      {"required": ["image"]}
-    ],
+   "additionalProperties": false,
     "required": []
   },
   "edge": {
@@ -69,13 +79,16 @@
     "properties": {
       "channel_open": {
         "type": "string",
-        "comment": "Indicate that this edge is a lightning channel with these arguments passed to lnd openchannel"},
+        "comment": "Indicate that this edge is a lightning channel with these arguments passed to lnd openchannel"
+      },
       "source_policy": {
         "type": "string",
-        "comment": "Update the channel originator policy by passing these arguments passed to lnd updatechanpolicy"},
+        "comment": "Update the channel originator policy by passing these arguments passed to lnd updatechanpolicy"
+      },
       "target_policy": {
         "type": "string",
-        "comment": "Update the channel partner policy by passing these arguments passed to lnd updatechanpolicy"}
+        "comment": "Update the channel partner policy by passing these arguments passed to lnd updatechanpolicy"
+      }
     },
     "additionalProperties": false,
     "required": []
