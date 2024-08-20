@@ -1,5 +1,5 @@
-import json
 import tempfile
+import xml.etree.ElementTree as ET
 from importlib.resources import files
 from pathlib import Path
 
@@ -34,9 +34,9 @@ def set_kubectl_context(namespace: str):
 
 @network.command()
 @click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
-@click.option("--force", default=False, is_flag=True, type=bool)
 @click.option("--network", default="warnet", show_default=True)
-def start(graph_file: Path, force: bool, network: str):
+@click.option("--logging/--no-logging", default=False)
+def start(graph_file: Path, logging: bool, network: str):
     """
     Start a warnet with topology loaded from a <graph_file> into [network]
     """
@@ -76,6 +76,13 @@ def start(graph_file: Path, force: bool, network: str):
                 print(
                     "Warning: Failed to set kubectl context. You may need to manually switch to the warnet namespace."
                 )
+
+            if logging:
+                helm_result = setup_logging_helm()
+                if helm_result:
+                    print("Helm charts installed successfully.")
+                else:
+                    print("Failed to install Helm charts.")
         else:
             print(f"Failed to start warnet '{network}'.")
     finally:
@@ -91,6 +98,9 @@ def down(network: str):
     """
     # Delete the namespace
     command = f"kubectl delete namespace {network}"
+    result = run_command(command, stream_output=True)
+    # TODO: Fix this
+    command = "kubectl delete namespace warnet-logging"
     result = run_command(command, stream_output=True)
 
     if result:
@@ -145,6 +155,11 @@ def generate_kubernetes_yaml(graph: nx.Graph) -> list:
     kubernetes_objects.append(namespace)
 
     for node, data in graph.nodes(data=True):
+        # Create a ConfigMap for each node
+        config = generate_node_config(node, data)
+        config_map = create_config_map(node, config)
+        kubernetes_objects.append(config_map)
+
         # Create a deployment for each node
         deployment = create_node_deployment(node, data)
         kubernetes_objects.append(deployment)
@@ -163,7 +178,6 @@ def create_namespace() -> dict:
 def create_node_deployment(node: int, data: dict) -> dict:
     image = data.get("image", "bitcoindevproject/bitcoin:27.0")
     version = data.get("version", "27.0")
-    bitcoin_config = data.get("bitcoin_config", "")
 
     return {
         "apiVersion": "v1",
@@ -180,10 +194,17 @@ def create_node_deployment(node: int, data: dict) -> dict:
                     "image": image,
                     "env": [
                         {"name": "BITCOIN_VERSION", "value": version},
-                        {"name": "BITCOIN_CONFIG", "value": bitcoin_config},
+                    ],
+                    "volumeMounts": [
+                        {
+                            "name": "config",
+                            "mountPath": "/root/.bitcoin/bitcoin.conf",
+                            "subPath": "bitcoin.conf",
+                        }
                     ],
                 }
-            ]
+            ],
+            "volumes": [{"name": "config", "configMap": {"name": f"bitcoin-config-node-{node}"}}],
         },
     }
 
@@ -197,4 +218,95 @@ def create_node_service(node: int) -> dict:
             "selector": {"app": "warnet", "node": str(node)},
             "ports": [{"port": 8333, "targetPort": 8333}],
         },
+    }
+
+
+def setup_logging_helm():
+    """
+    Run the required Helm commands for setting up Grafana, Prometheus, and Loki.
+    """
+    helm_commands = [
+        "helm repo add grafana https://grafana.github.io/helm-charts",
+        "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
+        "helm repo update",
+        f"helm upgrade --install --namespace warnet-logging --create-namespace --values {WAR_MANIFESTS}/loki_values.yaml loki grafana/loki --version 5.47.2",
+        "helm upgrade --install --namespace warnet-logging promtail grafana/promtail",
+        "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --set grafana.enabled=false",
+        f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {WAR_MANIFESTS}/grafana_values.yaml",
+    ]
+
+    for command in helm_commands:
+        result = run_command(command, stream_output=True)
+        if not result:
+            print(f"Failed to run Helm command: {command}")
+            return False
+    return True
+
+
+@network.command()
+@click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path(exists=True))
+def connect(graph_file: Path):
+    """
+    Connect nodes based on the edges defined in the graph file.
+    """
+    # Parse the GraphML file
+    tree = ET.parse(graph_file)
+    root = tree.getroot()
+
+    # Find all edge elements
+    edges = root.findall(".//{http://graphml.graphdrawing.org/xmlns}edge")
+
+    for edge in edges:
+        source = edge.get("source")
+        target = edge.get("target")
+
+        # Construct the kubectl command
+        command = f"kubectl exec -it warnet-node-{source} -- bitcoin-cli -rpcuser=user -rpcpassword=password addnode warnet-node-{target}-service:8333 add"
+
+        print(f"Connecting node {source} to node {target}")
+        result = run_command(command, stream_output=True)
+
+        if result:
+            print(f"Successfully connected node {source} to node {target}")
+        else:
+            print(f"Failed to connect node {source} to node {target}")
+
+    print("All connections attempted.")
+
+
+def generate_node_config(node: int, data: dict) -> str:
+    base_config = """
+regtest=1
+checkmempool=0
+acceptnonstdtxn=1
+debuglogfile=0
+logips=1
+logtimemicros=1
+capturemessages=1
+fallbackfee=0.00001000
+listen=1
+
+[regtest]
+rpcuser=user
+rpcpassword=password
+rpcport=18443
+rpcallowip=0.0.0.0/0
+rpcbind=0.0.0.0
+
+zmqpubrawblock=tcp://0.0.0.0:28332
+zmqpubrawtx=tcp://0.0.0.0:28333
+"""
+    node_specific_config = data.get("bitcoin_config", "")
+    return f"{base_config}\n{node_specific_config}"
+
+
+def create_config_map(node: int, config: str) -> dict:
+    return {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "metadata": {
+            "name": f"bitcoin-config-node-{node}",
+            "namespace": "warnet",
+        },
+        "data": {"bitcoin.conf": config},
     }
