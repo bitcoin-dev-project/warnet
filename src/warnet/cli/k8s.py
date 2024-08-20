@@ -23,24 +23,13 @@ def get_pods():
     return sclient.list_namespaced_pod("warnet")
 
 
-def get_tanks():
+def get_mission(mission):
     pods = get_pods()
-    tanks = []
-    # TODO: filter tanks only!!!!
+    crew = []
     for pod in pods.items:
-        if "rank" in pod.metadata.labels and pod.metadata.labels["rank"] == "tank":
-            tanks.append(
-                {
-                    "tank": pod.metadata.name,
-                    "chain": "regtest",
-                    "rpc_host": pod.status.pod_ip,
-                    "rpc_port": 18443,
-                    "rpc_user": "user",
-                    "rpc_password": "password",
-                    "init_peers": [],
-                }
-            )
-    return tanks
+        if "mission" in pod.metadata.labels and pod.metadata.labels["mission"] == mission:
+            crew.append(pod)
+    return crew
 
 
 def run_command(command, stream_output=False, env=None):

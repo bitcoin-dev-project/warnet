@@ -12,7 +12,7 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from .k8s import apply_kubernetes_yaml, create_namespace, get_tanks
+from .k8s import apply_kubernetes_yaml, create_namespace, get_mission
 from .rpc import rpc_call
 
 
@@ -67,7 +67,18 @@ def run(scenario, network, additional_args):
 
     name = f"commander-{scenario.replace('_', '')}-{int(time.time())}"
 
-    tanks = get_tanks()
+    tankpods = get_mission("tank")
+    tanks = [
+                {
+                    "tank": tank.metadata.name,
+                    "chain": "regtest",
+                    "rpc_host": tank.status.pod_ip,
+                    "rpc_port": 18443,
+                    "rpc_user": "user",
+                    "rpc_password": "password",
+                    "init_peers": [],
+                } for tank in tankpods
+            ]
     kubernetes_objects = [create_namespace()]
     kubernetes_objects.extend(
         [
@@ -95,9 +106,10 @@ def run(scenario, network, additional_args):
                 "metadata": {
                     "name": name,
                     "namespace": "warnet",
-                    "labels": {"app": "warnet"},
+                    "labels": {"mission": "commander"},
                 },
                 "spec": {
+                    "restartPolicy": "Never",
                     "containers": [
                         {
                             "name": name,
@@ -163,20 +175,19 @@ def active():
     """
     List running scenarios "name": "pid" pairs
     """
-    console = Console()
-    result = rpc_call("scenarios_list_running", {})
-    if not result:
+    commanders = get_mission("commander")
+    if len(commanders) == 0:
         print("No scenarios running")
         return
-    assert isinstance(result, list)  # Make mypy happy
 
     table = Table(show_header=True, header_style="bold")
-    for key in result[0].keys():  # noqa: SIM118
-        table.add_column(key.capitalize())
+    table.add_column("Commander")
+    table.add_column("Status")
 
-    for scenario in result:
-        table.add_row(*[str(scenario[key]) for key in scenario])
+    for commander in commanders:
+        table.add_row(commander.metadata.name, commander.status.phase)
 
+    console = Console()
     console.print(table)
 
 

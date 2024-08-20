@@ -26,7 +26,6 @@ WAR_MANIFESTS = files("manifests")
 def network():
     """Network commands"""
 
-
 def read_graph_file(graph_file: Path) -> nx.Graph:
     with open(graph_file) as f:
         return nx.parse_graphml(f.read())
