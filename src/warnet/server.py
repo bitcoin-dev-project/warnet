@@ -170,13 +170,13 @@ class Server:
         for line in proc.stdout:
             self.scenario_logger.info(line.decode().rstrip())
 
-    def get_warnet(self, network: str) -> Warnet:
+    def get_warnet(self, network: str, refresh=False) -> Warnet:
         """
         Will get a warnet from the cache if it exists.
         Otherwise it will create the network using from_network() and save it
         to the cache before returning it.
         """
-        if network in self.warnets:
+        if network in self.warnets and not refresh:
             return self.warnets[network]
         wn = Warnet.from_network(network)
         if isinstance(wn, Warnet):
@@ -515,7 +515,7 @@ class Server:
         """
         Get info about a warnet network named <network>
         """
-        wn = self.get_warnet(network)
+        wn = self.get_warnet(network, refresh=True)
         return wn._warnet_dict_representation()
 
     def network_status(self, network: str = "warnet") -> list[dict]:

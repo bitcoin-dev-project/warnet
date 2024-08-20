@@ -30,6 +30,7 @@ class CLNNode(LNNode):
         self.image = options["ln_image"]
         self.cb = options["cb_image"]
         self.ln_config = options["ln_config"]
+        self.ipv4 = None
         self.rpc_port = 10009
         self.impl = "cln"
 

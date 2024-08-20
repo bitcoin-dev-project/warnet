@@ -54,10 +54,12 @@ class Warnet:
         tank_headers = [
             "Index",
             "Version",
+            "IPv4",
             "bitcoin conf",
             "tc_netem",
             "LN",
             "LN Image",
+            "LN IPv4",
         ]
         has_ln = any(tank.lnnode and tank.lnnode.impl for tank in self.tanks)
         tanks = []
@@ -65,6 +67,7 @@ class Warnet:
             tank_data = [
                 tank.index,
                 tank.version if tank.version else tank.image,
+                tank.ipv4,
                 tank.bitcoin_config,
                 tank.netem,
             ]
@@ -73,11 +76,13 @@ class Warnet:
                     [
                         tank.lnnode.impl if tank.lnnode else "",
                         tank.lnnode.image if tank.lnnode else "",
+                        tank.lnnode.ipv4 if tank.lnnode else "",
                     ]
                 )
             tanks.append(tank_data)
         if not has_ln:
             tank_headers.remove("LN")
+            tank_headers.remove("LN IPv4")
 
         repr["tank_headers"] = tank_headers
         repr["tanks"] = tanks
@@ -133,8 +138,11 @@ class Warnet:
         if "services" in self.graph.graph:
             self.services = self.graph.graph["services"].split()
         for tank in self.tanks:
-            pod_name = self.container_interface.get_pod_name(tank.index, ServiceType.BITCOIN)
-            tank.ipv4 = self.container_interface.get_ipv4(pod_name, ServiceType.BITCOIN)
+            tank.ipv4 = self.container_interface.get_ipv4(tank.index, ServiceType.BITCOIN)
+            if tank.lnnode:
+                tank.lnnode.ipv4 = self.container_interface.get_ipv4(
+                    tank.index, ServiceType.LIGHTNING
+                )
         return self
 
     def tanks_from_graph(self):
