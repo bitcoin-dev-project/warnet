@@ -6,15 +6,17 @@ Warnet allows different granularity of logging.
 
 ### Warnet network level logging
 
-For information like:
+Fetch logs from the warnet RPC server `rpc-0`, which is in charge of orchestrating the network.
+
+Examples of information provided:
 
 - how many tanks are running
 - what scenarios are running
-- RPC requests
+- warnet RPC requests
 
-To run these `warcli network logs` or `warcli network logs --follow`.
+Commands: `warcli network logs` or `warcli network logs --follow`.
 
-These logs are fetched from the warnet RPC server `rpc-0`, which is in charge of orchestrating the network.
+See more details in [warcli](/docs/warcli.md#warcli-network-logs)
 
 ### Bitcoin Core logs
 
@@ -36,7 +38,7 @@ For logs of lightning nodes, kubectl is required.
 
 ### Aggregated logs from all nodes
 
-Aggregated logs can be searched using RPC `grep-logs` with regex patterns.
+Aggregated logs can be searched using `warcli bitcoin grep-logs` with regex patterns.
 
 Example:
 
@@ -51,6 +53,8 @@ warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.723017Z [miner] AddToWalle
 warnet_test_uhynisdj_tank_000007: 2023-10-11T17:44:52.173199Z [validation] Enqueuing TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
 ... (etc)
 ```
+
+See more details in [warcli](/docs/warcli.md#warcli-bitcoin-grep-logs)
 
 ## Monitoring and Metrics
 
@@ -73,7 +77,7 @@ It might take a couple minutes to get the pod running. If you see `error: unable
 The Grafana dashboard (and API) will be accessible without requiring authentication
 at `http://localhost:3000`.
 
-The below logging scripts need to be installed before starting the network in order to collect the information for monitoring and metrics. `warcli network down && warcli network up` should do the trick.
+The `install_logging` script will need to be installed before starting the network in order to collect the information for monitoring and metrics. Restart the network with `warcli network down && warcli network up` if necessary.
 
 ### Prometheus
 

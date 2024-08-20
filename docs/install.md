@@ -1,26 +1,27 @@
 # Install Warnet
 
-Warnet requires _either_ Kubernetes or Docker to be installed in order to run the network.
-Instructions for both can be found below.
+Warnet requires Kubernetes in order to run the network. Kubernetes can be run
+remotely or locally (with minikube or Docker Desktop). `kubectl` must be run
+locally to administer the network.
 
 ## Dependencies
 
 ### Kubernetes
 
 Install [`kubectl`](https://kubernetes.io/docs/setup/) (or equivalent) and
-configure your cluster. This can be done locally with `minikube` or using a
-managed cluster.
+configure your cluster. This can be done locally with `minikube` (or Docker Desktop)
+or using a managed cluster.
 
 #### Docker engine with minikube
 
 If using Minikube to run a smaller-sized local cluster, you will require docker engine.
-To install docker engine and its `compose` plugin for your system, see: https://docs.docker.com/engine/install/
+To install docker engine, see: https://docs.docker.com/engine/install/
 
 e.g. For Ubuntu:
 
 ```bash
 # First uninstall any old versions
-for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
+for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
 
 # Add Docker's official GPG key:
 sudo apt-get update
@@ -36,7 +37,7 @@ echo \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 
-# Install the docker packages and docker compose plugin
+# Install the docker packages
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 ```
 
@@ -50,28 +51,30 @@ The Docker daemon MUST be running before stating Warnet.
 - [Check Docker user/group permissions](https://stackoverflow.com/a/48957722/1653320)
 - or [`chmod` the Docker UNIX socket](https://stackoverflow.com/a/51362528/1653320)
 
-##### macOS
+## Install Warnet
 
-On macOS, a bridge to the docker subnet is required, such as https://github.com/chipmk/docker-mac-net-connect
+### Recommended: use a virtual Python environment such as `venv`
 
 ```bash
-# Install via Homebrew
-brew install chipmk/tap/docker-mac-net-connect
-
-# Run the service and register it to launch at boot
-sudo brew services start chipmk/tap/docker-mac-net-connect
+python3 -m venv .venv # Use alternative venv manager if desired
+source .venv/bin/activate
 ```
 
-## Download Warnet
+```bash
+pip install --upgrade pip
+pip install warnet
+```
+
+## Contributing / Local Warnet Development
+
+### Download the code repository
 
 ```bash
 git clone https://github.com/bitcoin-dev-project/warnet
 cd warnet
 ```
 
-## Install Warnet
-
-### Optional: use a virtual Python environment such as `venv`
+### Recommended: use a virtual Python environment such as `venv`
 
 ```bash
 python3 -m venv .venv # Use alternative venv manager if desired
@@ -82,3 +85,4 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .
 ```
+

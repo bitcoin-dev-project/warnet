@@ -2,8 +2,8 @@
 
 Scenarios are written using the Bitcoin Core test framework for functional testing,
 with some modifications: most notably that `self.nodes[]` represents an array of
-dockerized `bitcoind` nodes. Scenario files can be run with a python interpreter
-or from `warcli` commands and used to control many nodes in the network simultaneously.
+containerized `bitcoind` nodes ("tanks"). Scenario files are run with a python interpreter
+inside the server and can control many nodes in the network simultaneously.
 
 See [`src/warnet/scenarios`](../src/warnet/scenarios) for examples of how these can be written.
 
@@ -13,7 +13,7 @@ To see available scenarios (loaded from the default directory):
 warcli scenarios available
 ```
 
-Once a scenarios is selected it can be run with `warcli scenarios run [--network=warnet] <scenario_name> [scenario_params]`.
+Once a scenario is selected it can be run with `warcli scenarios run [--network=warnet] <scenario_name> [scenario_params]`.
 
 The [`miner_std`](../src/warnet/scenarios/miner_std.py) scenario is a good one to start with as it automates block generation:
 
@@ -22,7 +22,7 @@ The [`miner_std`](../src/warnet/scenarios/miner_std.py) scenario is a good one t
 warcli scenarios run miner_std --allnodes --interval=5
 ```
 
-This will run the run the scenario in the background until it exits or is stopped by the user.
+This will run the scenario in a background thread on the server until it exits or is stopped by the user.
 
 Active scenarios can be listed and terminated by PID:
 
@@ -44,7 +44,11 @@ $ warcli scenarios stop 14683
 Stopped scenario with PID 14683.
 ```
 
-## Add scenarios
+## Running a custom scenario
 
-To add your own scenario make a copy of one of the existing python tests in src/scenarios/ and write the desired scenario.
-Save this file back into the same `src/warnet/scenarios/` directory and it will be listed and available for running using the aforementioned commands.
+You can write your own scenario file locally and upload it to the server with
+the [run-file](/docs/warcli.md#warcli-scenarios-run-file) command (example):
+
+```bash
+warcli scenarios run-file /home/me/bitcoin_attack.py
+```
