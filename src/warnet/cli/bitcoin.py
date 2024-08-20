@@ -24,16 +24,17 @@ def rpc(node, method, params, network):
     run_command(cmd)
 
 
-# @bitcoin.command()
-# @click.argument("node", type=int, required=True)
-# @click.option("--network", default="warnet", show_default=True)
-# def debug_log(node, network):
-#     """
-#     Fetch the Bitcoin Core debug log from <node> in [network]
-#     """
-#     print(rpc_call("tank_debug_log", {"node": node, "network": network}))
-#
-#
+@bitcoin.command()
+@click.argument("node", type=int, required=True)
+@click.option("--network", default="warnet", show_default=True)
+def debug_log(node, network):
+    """
+    Fetch the Bitcoin Core debug log from <node> in [network]
+    """
+    cmd = f"kubectl logs warnet-node-{node}"
+    run_command(cmd)
+
+
 # @bitcoin.command()
 # @click.argument("node_a", type=int, required=True)
 # @click.argument("node_b", type=int, required=True)
