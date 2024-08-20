@@ -166,31 +166,24 @@ def create_node_deployment(node: int, data: dict) -> dict:
     bitcoin_config = data.get("bitcoin_config", "")
 
     return {
-        "apiVersion": "apps/v1",
-        "kind": "Deployment",
+        "apiVersion": "v1",
+        "kind": "Pod",
         "metadata": {
             "name": f"warnet-node-{node}",
             "namespace": "warnet",
             "labels": {"app": "warnet", "node": str(node)},
         },
         "spec": {
-            "replicas": 1,
-            "selector": {"matchLabels": {"app": "warnet", "node": str(node)}},
-            "template": {
-                "metadata": {"labels": {"app": "warnet", "node": str(node)}},
-                "spec": {
-                    "containers": [
-                        {
-                            "name": "bitcoin",
-                            "image": image,
-                            "env": [
-                                {"name": "BITCOIN_VERSION", "value": version},
-                                {"name": "BITCOIN_CONFIG", "value": bitcoin_config},
-                            ],
-                        }
-                    ]
-                },
-            },
+            "containers": [
+                {
+                    "name": "bitcoin",
+                    "image": image,
+                    "env": [
+                        {"name": "BITCOIN_VERSION", "value": version},
+                        {"name": "BITCOIN_CONFIG", "value": bitcoin_config},
+                    ],
+                }
+            ]
         },
     }
 
