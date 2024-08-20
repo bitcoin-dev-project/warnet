@@ -225,7 +225,8 @@ zmqpubrawblock=tcp://0.0.0.0:28332
 zmqpubrawtx=tcp://0.0.0.0:28333
 """
     node_specific_config = data.get("bitcoin_config", "")
-    return f"{base_config}\n{node_specific_config.replace(",", "\n")}"
+    node_specific_config = node_specific_config.replace(",", "\n")
+    return f"{base_config}\n{node_specific_config}"
 
 
 def set_kubectl_context(namespace: str):
