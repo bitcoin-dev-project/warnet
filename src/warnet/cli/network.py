@@ -9,12 +9,12 @@ import yaml
 from rich import print
 
 from .k8s import (
+    apply_kubernetes_yaml,
+    create_namespace,
+    delete_namespace,
+    deploy_base_configurations,
     run_command,
     set_kubectl_context,
-    deploy_base_configurations,
-    apply_kubernetes_yaml,
-    delete_namespace,
-    create_namespace
 )
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")

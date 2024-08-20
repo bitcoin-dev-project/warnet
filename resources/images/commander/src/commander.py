@@ -9,8 +9,8 @@ import random
 import signal
 import sys
 import tempfile
-
 from pathlib import Path
+
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -22,13 +22,16 @@ from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
 WARNET_FILE = Path(os.path.dirname(__file__)) / "warnet.json"
-with open(WARNET_FILE, "r") as file:
+with open(WARNET_FILE) as file:
     WARNET = json.load(file)
+
 
 # Ensure that all RPC calls are made with brand new http connections
 def auth_proxy_request(self, method, path, postdata):
     self._set_conn()  # creates new http client connection
     return self.oldrequest(method, path, postdata)
+
+
 AuthServiceProxy.oldrequest = AuthServiceProxy._request
 AuthServiceProxy._request = auth_proxy_request
 
@@ -88,12 +91,14 @@ class Commander(BitcoinTestFramework):
         self.log.addHandler(ch)
 
         for i, tank in enumerate(WARNET):
-            self.log.info(f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}")
+            self.log.info(
+                f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
+            )
             node = TestNode(
                 i,
                 pathlib.Path(),  # datadir path
-                chain=tank['chain'],
-                rpchost=tank['rpc_host'],
+                chain=tank["chain"],
+                rpchost=tank["rpc_host"],
                 timewait=60,
                 timeout_factor=self.options.timeout_factor,
                 bitcoind=None,
@@ -108,7 +113,7 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
-            node.init_peers = tank['init_peers']
+            node.init_peers = tank["init_peers"]
             self.nodes.append(node)
 
         self.num_nodes = len(self.nodes)

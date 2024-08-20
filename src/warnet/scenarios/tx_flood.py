@@ -3,15 +3,15 @@ import threading
 from random import choice, randrange
 from time import sleep
 
-from warnet.scenarios.utils import ensure_miner
-from warnet.test_framework_bridge import WarnetTestFramework
+# The base class exists inside the commander container
+from commander import Commander
 
 
 def cli_help():
     return "Make a big transaction mess. Options: [--interval=<number>]"
 
 
-class TXFlood(WarnetTestFramework):
+class TXFlood(Commander):
     def set_test_params(self):
         self.num_nodes = 1
         self.addrs = []
@@ -27,7 +27,7 @@ class TXFlood(WarnetTestFramework):
         )
 
     def orders(self, node):
-        wallet = ensure_miner(node)
+        wallet = self.ensure_miner(node)
         for address_type in ["legacy", "p2sh-segwit", "bech32", "bech32m"]:
             self.addrs.append(wallet.getnewaddress(address_type=address_type))
         while True:

@@ -22,22 +22,26 @@ def get_pods():
     sclient = get_static_client()
     return sclient.list_namespaced_pod("warnet")
 
+
 def get_tanks():
     pods = get_pods()
     tanks = []
     # TODO: filter tanks only!!!!
     for pod in pods.items:
         if "rank" in pod.metadata.labels and pod.metadata.labels["rank"] == "tank":
-            tanks.append({
-                "tank": pod.metadata.name,
-                "chain": "regtest",
-                "rpc_host": pod.status.pod_ip,
-                "rpc_port": 18443,
-                "rpc_user": "user",
-                "rpc_password": "password",
-                "init_peers": []
-            })
+            tanks.append(
+                {
+                    "tank": pod.metadata.name,
+                    "chain": "regtest",
+                    "rpc_host": pod.status.pod_ip,
+                    "rpc_port": 18443,
+                    "rpc_user": "user",
+                    "rpc_password": "password",
+                    "init_peers": [],
+                }
+            )
     return tanks
+
 
 def run_command(command, stream_output=False, env=None):
     # Merge the current environment with the provided env
@@ -118,4 +122,3 @@ def apply_kubernetes_yaml(yaml_file: str):
 def delete_namespace(namespace: str):
     command = f"kubectl delete namespace {namespace}"
     return run_command(command, stream_output=True)
-

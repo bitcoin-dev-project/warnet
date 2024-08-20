@@ -2,23 +2,23 @@
 
 from time import sleep
 
-from warnet.scenarios.utils import ensure_miner
-from warnet.test_framework_bridge import WarnetTestFramework
+# The base class exists inside the commander container
+from commander import Commander
 
 
 def cli_help():
     return "Fund LN wallets and open channels"
 
 
-class LNInit(WarnetTestFramework):
+class LNInit(Commander):
     def set_test_params(self):
         self.num_nodes = None
 
     def run_test(self):
         self.log.info("Lock out of IBD")
-        miner = ensure_miner(self.nodes[0])
+        miner = self.ensure_miner(self.nodes[0])
         miner_addr = miner.getnewaddress()
-        self.generatetoaddress(self.nodes[0], 1, miner_addr)
+        self.generatetoaddress(self.nodes[0], 1, miner_addr, sync_fun=self.no_op)
 
         self.log.info("Get LN nodes and wallet addresses")
         ln_nodes = []
@@ -29,10 +29,10 @@ class LNInit(WarnetTestFramework):
                 ln_nodes.append(tank.index)
 
         self.log.info("Fund LN wallets")
-        miner = ensure_miner(self.nodes[0])
+        miner = self.ensure_miner(self.nodes[0])
         miner_addr = miner.getnewaddress()
         # 298 block base
-        self.generatetoaddress(self.nodes[0], 297, miner_addr)
+        self.generatetoaddress(self.nodes[0], 297, miner_addr, sync_fun=self.no_op)
         # divvy up the goods
         split = (miner.getbalance() - 1) // len(recv_addrs)
         sends = {}
@@ -40,7 +40,7 @@ class LNInit(WarnetTestFramework):
             sends[addr] = split
         miner.sendmany("", sends)
         # confirm funds in block 299
-        self.generatetoaddress(self.nodes[0], 1, miner_addr)
+        self.generatetoaddress(self.nodes[0], 1, miner_addr, sync_fun=self.no_op)
 
         self.log.info(
             f"Waiting for funds to be spendable: {split} BTC each for {len(recv_addrs)} LN nodes"
@@ -110,7 +110,7 @@ class LNInit(WarnetTestFramework):
                 )
 
         # Ensure all channel opens are sufficiently confirmed
-        self.generatetoaddress(self.nodes[0], 10, miner_addr)
+        self.generatetoaddress(self.nodes[0], 10, miner_addr, sync_fun=self.no_op)
         ln_nodes_gossip = ln_nodes.copy()
         while len(ln_nodes_gossip) > 0:
             self.log.info(f"Waiting for graph gossip sync, LN nodes remaining: {ln_nodes_gossip}")

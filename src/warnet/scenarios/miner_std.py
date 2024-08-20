@@ -9,6 +9,7 @@ from commander import Commander
 def cli_help():
     return "Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature ]"
 
+
 class Miner:
     def __init__(self, node, mature):
         self.node = node

@@ -3,20 +3,18 @@ import importlib
 import json
 import os
 import sys
-import time
 import tempfile
-import yaml
+import time
+
 import click
+import yaml
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from .k8s import (
-    get_tanks,
-    create_namespace,
-    apply_kubernetes_yaml
-)
+from .k8s import apply_kubernetes_yaml, create_namespace, get_tanks
 from .rpc import rpc_call
+
 
 @click.group(name="scenarios")
 def scenarios():
@@ -64,7 +62,7 @@ def run(scenario, network, additional_args):
     if not os.path.exists(scenario_path):
         raise Exception(f"Scenario {scenario} not found at {scenario_path}.")
 
-    with open(scenario_path, "r") as file:
+    with open(scenario_path) as file:
         scenario_text = file.read()
 
     name = f"commander-{scenario.replace('_', '')}-{int(time.time())}"
@@ -115,16 +113,16 @@ def run(scenario, network, additional_args):
                                     "name": "scnaeriopy",
                                     "mountPath": "scenario.py",
                                     "subPath": "scenario.py",
-                                }
+                                },
                             ],
                         }
                     ],
                     "volumes": [
                         {"name": "warnetjson", "configMap": {"name": "warnetjson"}},
-                        {"name": "scnaeriopy", "configMap": {"name": "scnaeriopy"}}
+                        {"name": "scnaeriopy", "configMap": {"name": "scnaeriopy"}},
                     ],
-                }
-            }
+                },
+            },
         ]
     )
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:

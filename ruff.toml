@@ -1,5 +1,5 @@
 extend-exclude = [
-    "src/test_framework/*.py",
+    "resources/images/commander/src/test_framework",
     "resources/images/exporter/authproxy.py",
 ]
 line-length = 100
