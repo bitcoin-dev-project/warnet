@@ -30,87 +30,6 @@ options:
 Check Warnet requirements are installed
 
 
-## Bitcoin
-
-### `warcli bitcoin debug-log`
-Fetch the Bitcoin Core debug log from \<node> in [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node    | Int    | yes        |           |
-| network | String |            | "warnet"  |
-
-### `warcli bitcoin grep-logs`
-Grep combined logs via fluentd using regex \<pattern>
-
-options:
-| name                | type   | required   | default   |
-|---------------------|--------|------------|-----------|
-| pattern             | String | yes        |           |
-| show_k8s_timestamps | Bool   |            | False     |
-| no_sort             | Bool   |            | False     |
-| network             | String |            | "warnet"  |
-
-### `warcli bitcoin messages`
-Fetch messages sent between \<node_a> and \<node_b> in [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node_a  | Int    | yes        |           |
-| node_b  | Int    | yes        |           |
-| network | String |            | "warnet"  |
-
-### `warcli bitcoin rpc`
-Call bitcoin-cli \<method> [params] on \<node> in [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node    | Int    | yes        |           |
-| method  | String | yes        |           |
-| params  | String |            |           |
-| network | String |            | "warnet"  |
-
-## Cluster
-
-### `warcli cluster connect-logging`
-Connect kubectl to cluster logging
-
-
-### `warcli cluster deploy`
-Deploy Warnet using the current kubectl-configured cluster
-
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| dev    | Bool   |            | False     |
-
-### `warcli cluster deploy-logging`
-Deploy logging configurations to the cluster using helm
-
-
-### `warcli cluster port-start`
-Port forward (runs as a detached process)
-
-
-### `warcli cluster port-stop`
-Stop the port forwarding process
-
-
-### `warcli cluster setup-minikube`
-Configure a local minikube cluster
-
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| clean  | Bool   |            | False     |
-
-### `warcli cluster teardown`
-Stop the warnet server and tear down the cluster
-
-
 ## Graph
 
 ### `warcli graph create`
@@ -165,36 +84,15 @@ options:
 | arches     | String |            |           |
 | action     | String |            | "load"    |
 
-## Ln
-
-### `warcli ln pubkey`
-Get lightning node pub key on \<node> in [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node    | Int    | yes        |           |
-| network | String |            | "warnet"  |
-
-### `warcli ln rpc`
-Call lightning cli rpc \<command> on \<node> in [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node    | Int    | yes        |           |
-| command | String | yes        |           |
-| network | String |            | "warnet"  |
-
 ## Network
 
-### `warcli network connected`
-Indicate whether the all of the edges in the gaph file are connected in [network]
+### `warcli network connect`
+Connect nodes based on the edges defined in the graph file.
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| network | String |            | "warnet"  |
+| name       | type   | required   | default                          |
+|------------|--------|------------|----------------------------------|
+| graph_file | Path   |            | resources/graphs/default.graphml |
 
 ### `warcli network down`
 Bring down a running warnet named [network]
@@ -204,26 +102,14 @@ options:
 |---------|--------|------------|-----------|
 | network | String |            | "warnet"  |
 
-### `warcli network export`
-Export all [network] data for a "simln" service running in a container
-    on the network. Optionally add JSON string [activity] to simln config.
-    Optionally provide a list of tank indexes to [exclude].
-    Returns True on success.
+### `warcli network generate-yaml`
+Generate a Kubernetes YAML file from a graph file for deploying warnet nodes.
 
 options:
-| name     | type   | required   | default   |
-|----------|--------|------------|-----------|
-| network  | String |            | "warnet"  |
-| activity | String |            |           |
-| exclude  | String |            | "[]"      |
-
-### `warcli network info`
-Get info about a warnet named [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| network | String |            | "warnet"  |
+| name       | type   | required   | default                          |
+|------------|--------|------------|----------------------------------|
+| graph_file | Path   |            | resources/graphs/default.graphml |
+| output     | String |            | "warnet-deployment.yaml"         |
 
 ### `warcli network logs`
 Get Kubernetes logs from the RPC server
@@ -240,24 +126,8 @@ options:
 | name       | type   | required   | default                          |
 |------------|--------|------------|----------------------------------|
 | graph_file | Path   |            | resources/graphs/default.graphml |
-| force      | Bool   |            | False                            |
 | network    | String |            | "warnet"                         |
-
-### `warcli network status`
-Get status of a warnet named [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| network | String |            | "warnet"  |
-
-### `warcli network up`
-Bring up a previously-stopped warnet named [network]
-
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| network | String |            | "warnet"  |
+| logging    | Bool   |            | False                            |
 
 ## Scenarios
 
