@@ -10,7 +10,7 @@ class DAGConnectionTest(TestBase):
     def __init__(self):
         super().__init__()
         self.graph_file_path = (
-            Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected.graphml"
+            Path(os.path.dirname(__file__)) / "data" / "six_semi_unconnected.graphml"
         )
 
     def run_test(self):
