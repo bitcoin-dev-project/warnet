@@ -19,7 +19,7 @@ WEIGHTED_TAGS = [
 SRC_DIR = files("warnet")
 
 
-def run_command(command, stream_output=False, env=None):
+def run_command(command, stream_output=False, env=None, return_output=False):
     # Merge the current environment with the provided env
     full_env = os.environ.copy()
     if env:
@@ -37,26 +37,31 @@ def run_command(command, stream_output=False, env=None):
             universal_newlines=True,
             env=full_env,
         )
-
+        output = []
         for line in iter(process.stdout.readline, ""):
             print(line, end="")
-
+            output.append(line)
         process.stdout.close()
         return_code = process.wait()
-
         if return_code != 0:
             print(f"Command failed with return code {return_code}")
-            return False
-        return True
+            return False if not return_output else "".join(output)
+        return True if not return_output else "".join(output)
     else:
         result = subprocess.run(
-            command, shell=True, capture_output=True, text=True, executable="/bin/bash"
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            executable="/bin/bash",
+            env=full_env,
         )
         if result.returncode != 0:
             print(f"Error: {result.stderr}")
-            return False
-        print(result.stdout)
-        return True
+            return False if not return_output else result.stderr
+        if not return_output:
+            print(result.stdout)
+        return True if not return_output else result.stdout
 
 
 def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):
