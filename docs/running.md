@@ -1,48 +1,32 @@
 # Running Warnet
 
-Warnet runs a server which can be used to manage multiple networks. On docker
-this runs locally, but on Kubernetes this runs as a `statefulSet` in the
-cluster.
+Warnet runs a server which can be used to manage multiple networks. On Kubernetes
+this runs as a `statefulSet` in the cluster.
 
-If the `$XDG_STATE_HOME` environment variable is set, the server will log to
-a file `$XDG_STATE_HOME/warnet/warnet.log`, otherwise it will use `$HOME/.warnet/warnet.log`.
-
-## Kubernetes
-
-// TODO
-
-### Install logging infrastructure
-
-First make sure you have `helm` installed, then simply run the following script:
-
-```bash
-./scripts/install_logging.sh
-```
-
-To forward port to view Grafana dashboard:
-
-```bash
-./scripts/connect_logging.sh
-```
-
-## Kubernetes (e.g. minikube)
+See more details in [warcli](/docs/warcli.md), examples:
 
 To start the server run:
 
 ```bash
-warcli network start
+warcli cluster deploy
 ```
 
-Make sure the tanks are running with:
+Start a network from a graph file:
 
 ```bash
- warcli network status
+warcli network start resources/graphs/default.graphml
 ```
 
-Check if the edges of the nodes are connected with:
+Make sure all tanks are running with:
 
 ```bash
- warcli network connected
+warcli network status
+```
+
+Check if the edges of the graph (bitcoin p2p connections) are complete:
+
+```bash
+warcli network connected
 ```
 
 _Optional_ Check out the logs with:

@@ -24,6 +24,6 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 - [Monitoring](/docs/logging_monitoring.md)
 - [Lightning Network](/docs/lightning.md)
 - [Scaling](/docs/scaling.md)
-- [Connecting to local nodes](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/
+- [Connecting to local nodes](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/)
 
 ![warnet-art](https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/docs/machines.webp)

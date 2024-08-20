@@ -1,6 +1,6 @@
 # Running large networks
 
-When running a large number of containers on a single host machine (i.e. with the Docker interface), the system may run out of various resources.
+When running a large number of containers on a single host machine, the system may run out of various resources.
 We recommend setting the following values in /etc/sysctl.conf:
 
 ```sh
