@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
   <key id="services"        attr.name="services"         attr.type="string"   for="graph" />
-  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
   <key id="image"           attr.name="image"            attr.type="string"   for="node" />
   <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
   <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
@@ -17,7 +16,7 @@
   <key id="target_policy"   attr.name="target_policy"    attr.type="string"   for="edge" />
   <graph edgedefault="directed">
     <node id="0">
-      <data key="version">27.0</data>
+      <data key="image">bitcoindevproject/bitcoin:27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -33,7 +32,7 @@
       <data key="collect_logs">False</data>
     </node>
     <node id="2">
-      <data key="version">27.0</data>
+      <data key="image">bitcoindevproject/bitcoin:27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -41,7 +40,7 @@
       <data key="collect_logs">False</data>
     </node>
     <node id="3">
-      <data key="version">27.0</data>
+      <data key="image">bitcoindevproject/bitcoin:27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -49,7 +48,7 @@
       <data key="collect_logs">False</data>
     </node>
     <node id="4">
-      <data key="version">27.0</data>
+      <data key="image">bitcoindevproject/bitcoin:27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -57,23 +56,7 @@
       <data key="collect_logs">False</data>
     </node>
     <node id="5">
-      <data key="version">27.0</data>
-      <data key="bitcoin_config" />
-      <data key="tc_netem" />
-      <data key="build_args" />
-      <data key="exporter">False</data>
-      <data key="collect_logs">False</data>
-    </node>
-    <node id="6">
-      <data key="version">27.0</data>
-      <data key="bitcoin_config" />
-      <data key="tc_netem" />
-      <data key="build_args" />
-      <data key="exporter">False</data>
-      <data key="collect_logs">False</data>
-    </node>
-    <node id="7">
-      <data key="version">27.0</data>
+      <data key="image">bitcoindevproject/bitcoin:27.0</data>
       <data key="bitcoin_config" />
       <data key="tc_netem" />
       <data key="build_args" />
@@ -87,7 +70,5 @@
     <edge source="2" target="4" id="0" />
     <edge source="3" target="5" id="0" />
     <edge source="5" target="4" id="0" />
-    <edge source="5" target="6" id="0" />
-    <edge source="6" target="7" id="0" />
   </graph>
 </graphml>
