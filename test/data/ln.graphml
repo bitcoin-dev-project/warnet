@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?><graphml xmlns="http://graphml.graphdrawing.org/xmlns">
   <key id="services"        attr.name="services"         attr.type="string"   for="graph" />
-  <key id="version"         attr.name="version"          attr.type="string"   for="node" />
   <key id="image"           attr.name="image"            attr.type="string"   for="node" />
   <key id="bitcoin_config"  attr.name="bitcoin_config"   attr.type="string"   for="node" />
   <key id="tc_netem"        attr.name="tc_netem"         attr.type="string"   for="node" />
@@ -18,34 +17,34 @@
   <graph edgedefault="directed">
     <data key="services">simln</data>
     <node id="0">
-        <data key="version">27.0</data>
+        <data key="image">bitcoindevproject/bitcoin:27.0</data>
         <data key="bitcoin_config">-uacomment=w0</data>
         <data key="ln">lnd</data>
         <data key="ln_image">lightninglabs/lnd:v0.17.5-beta</data>
         <data key="collect_logs">true</data>
     </node>
     <node id="1">
-        <data key="version">27.0</data>
+        <data key="image">bitcoindevproject/bitcoin:27.0</data>
         <data key="bitcoin_config">-uacomment=w1</data>
         <data key="ln">lnd</data>
         <data key="ln_cb_image">pinheadmz/circuitbreaker:278737d</data>
         <data key="collect_logs">true</data>
     </node>
     <node id="2">
-        <data key="version">27.0</data>
+        <data key="image">bitcoindevproject/bitcoin:27.0</data>
         <data key="bitcoin_config">-uacomment=w2</data>
         <data key="ln">lnd</data>
         <data key="ln_cb_image">pinheadmz/circuitbreaker:278737d</data>
         <data key="ln_config">--bitcoin.timelockdelta=33</data>
     </node>
     <node id="3">
-        <data key="version">27.0</data>
+        <data key="image">bitcoindevproject/bitcoin:27.0</data>
         <data key="bitcoin_config">-uacomment=w2</data>
         <data key="ln">cln</data>
         <data key="ln_config">--cltv-delta=33</data>
     </node>
     <node id="4">
-        <data key="version">27.0</data>
+        <data key="image">bitcoindevproject/bitcoin:27.0</data>
         <data key="bitcoin_config">-uacomment=w3</data>
     </node>
     <edge id="1" source="0" target="1"></edge>
