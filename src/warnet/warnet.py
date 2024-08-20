@@ -10,6 +10,7 @@ from pathlib import Path
 import networkx
 
 from .backend.kubernetes_backend import KubernetesBackend
+from .services import ServiceType
 from .tank import Tank
 from .utils import gen_config_dir, load_schema, validate_graph_schema
 
@@ -132,7 +133,8 @@ class Warnet:
         if "services" in self.graph.graph:
             self.services = self.graph.graph["services"].split()
         for tank in self.tanks:
-            tank.ipv4 = self.container_interface.get_tank_ipv4(tank.index)
+            pod_name = self.container_interface.get_pod_name(tank.index, ServiceType.BITCOIN)
+            tank.ipv4 = self.container_interface.get_ipv4(pod_name, ServiceType.BITCOIN)
         return self
 
     def tanks_from_graph(self):

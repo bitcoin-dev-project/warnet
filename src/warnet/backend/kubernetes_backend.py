@@ -567,8 +567,7 @@ class KubernetesBackend:
             ),
         )
 
-    def get_tank_ipv4(self, index: int) -> str | None:
-        pod_name = self.get_pod_name(index, ServiceType.BITCOIN)
+    def get_ipv4(self, pod_name: str, service_type: ServiceType) -> str | None:
         pod = self.get_pod(pod_name)
         if pod:
             return pod.status.pod_ip
