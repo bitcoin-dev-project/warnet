@@ -1,51 +1,35 @@
-import base64  # noqa: I001
 import json
-from pathlib import Path
+import tempfile
 from importlib.resources import files
-import networkx as nx
-import yaml
+from pathlib import Path
 
 import click
+import networkx as nx
+import yaml
 from rich import print
-from rich.console import Console
-from rich.table import Table
 
-from .rpc import rpc_call  # noqa: I001
 from .util import run_command
 
-
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
-
-
-def print_repr(wn: dict) -> None:
-    if not isinstance(wn, dict):
-        print("Error, cannot print_repr of non-dict")
-        return
-    console = Console()
-
-    # Warnet table
-    warnet_table = Table(show_header=True, header_style="bold")
-    for header in wn["warnet_headers"]:
-        warnet_table.add_column(header)
-    for row in wn["warnet"]:
-        warnet_table.add_row(*[str(cell) for cell in row])
-
-    # Tank table
-    tank_table = Table(show_header=True, header_style="bold")
-    for header in wn["tank_headers"]:
-        tank_table.add_column(header)
-    for row in wn["tanks"]:
-        tank_table.add_row(*[str(cell) for cell in row])
-
-    console.print("Warnet:")
-    console.print(warnet_table)
-    console.print("\nTanks:")
-    console.print(tank_table)
+WAR_MANIFESTS = files("manifests")
 
 
 @click.group(name="network")
 def network():
     """Network commands"""
+
+
+def set_kubectl_context(namespace: str):
+    """
+    Set the default kubectl context to the specified namespace.
+    """
+    command = f"kubectl config set-context --current --namespace={namespace}"
+    result = run_command(command, stream_output=True)
+    if result:
+        print(f"Kubectl context set to namespace: {namespace}")
+    else:
+        print(f"Failed to set kubectl context to namespace: {namespace}")
+    return result
 
 
 @network.command()
@@ -56,29 +40,47 @@ def start(graph_file: Path, force: bool, network: str):
     """
     Start a warnet with topology loaded from a <graph_file> into [network]
     """
+    # Generate the Kubernetes YAML
+    graph = read_graph_file(graph_file)
+    kubernetes_yaml = generate_kubernetes_yaml(graph)
+
+    # Write the YAML to a temporary file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+        yaml.dump_all(kubernetes_yaml, temp_file)
+        temp_file_path = temp_file.name
+
     try:
-        encoded_graph_file = ""
-        with open(graph_file, "rb") as graph_file_buffer:
-            encoded_graph_file = base64.b64encode(graph_file_buffer.read()).decode("utf-8")
-    except Exception as e:
-        print(f"Error encoding graph file: {e}")
-        return
+        # Deploy base configurations
+        base_configs = [
+            "namespace.yaml",
+            "rbac-config.yaml",
+        ]
 
-    result = rpc_call(
-        "network_from_file",
-        {"graph_file": encoded_graph_file, "force": force, "network": network},
-    )
-    assert isinstance(result, dict)
-    print_repr(result)
+        for config in base_configs:
+            command = f"kubectl apply -f {WAR_MANIFESTS}/{config}"
+            result = run_command(command, stream_output=True)
+            if not result:
+                print(f"Failed to apply {config}")
+                return
 
+        # Apply the YAML using kubectl
+        command = f"kubectl apply -f {temp_file_path}"
+        result = run_command(command, stream_output=True)
 
-@network.command()
-@click.option("--network", default="warnet", show_default=True)
-def up(network: str):
-    """
-    Bring up a previously-stopped warnet named [network]
-    """
-    print(rpc_call("network_up", {"network": network}))
+        if result:
+            print(f"Warnet '{network}' started successfully.")
+
+            # Set kubectl context to the warnet namespace
+            context_result = set_kubectl_context(network)
+            if not context_result:
+                print(
+                    "Warning: Failed to set kubectl context. You may need to manually switch to the warnet namespace."
+                )
+        else:
+            print(f"Failed to start warnet '{network}'.")
+    finally:
+        # Clean up the temporary file
+        Path(temp_file_path).unlink()
 
 
 @network.command()
@@ -87,80 +89,14 @@ def down(network: str):
     """
     Bring down a running warnet named [network]
     """
+    # Delete the namespace
+    command = f"kubectl delete namespace {network}"
+    result = run_command(command, stream_output=True)
 
-    running_scenarios = rpc_call("scenarios_list_running", {})
-    assert isinstance(running_scenarios, list)
-    if running_scenarios:
-        for scenario in running_scenarios:
-            pid = scenario.get("pid")
-            if pid:
-                try:
-                    params = {"pid": pid}
-                    rpc_call("scenarios_stop", params)
-                except Exception as e:
-                    print(
-                        f"Exception when stopping scenario: {scenario} with PID {scenario.pid}: {e}"
-                    )
-                    print("Continuing with shutdown...")
-                    continue
-    print(rpc_call("network_down", {"network": network}))
-
-
-@network.command()
-@click.option("--network", default="warnet", show_default=True)
-def info(network: str):
-    """
-    Get info about a warnet named [network]
-    """
-    result = rpc_call("network_info", {"network": network})
-    assert isinstance(result, dict), "Result is not a dict"  # Make mypy happy
-    print_repr(result)
-
-
-@network.command()
-@click.option("--network", default="warnet", show_default=True)
-def status(network: str):
-    """
-    Get status of a warnet named [network]
-    """
-    result = rpc_call("network_status", {"network": network})
-    assert isinstance(result, list), "Result is not a list"  # Make mypy happy
-    for tank in result:
-        lightning_status = ""
-        circuitbreaker_status = ""
-        if "lightning_status" in tank:
-            lightning_status = f"\tLightning: {tank['lightning_status']}"
-        if "circuitbreaker_status" in tank:
-            circuitbreaker_status = f"\tCircuit Breaker: {tank['circuitbreaker_status']}"
-        print(
-            f"Tank: {tank['tank_index']} \tBitcoin: {tank['bitcoin_status']}{lightning_status}{circuitbreaker_status}"
-        )
-
-
-@network.command()
-@click.option("--network", default="warnet", show_default=True)
-def connected(network: str):
-    """
-    Indicate whether the all of the edges in the gaph file are connected in [network]
-    """
-    print(rpc_call("network_connected", {"network": network}))
-
-
-@network.command()
-@click.option("--network", default="warnet", show_default=True)
-@click.option("--activity", type=str)
-@click.option("--exclude", type=str, default="[]")
-def export(network: str, activity: str, exclude: str):
-    """
-    Export all [network] data for a "simln" service running in a container
-    on the network. Optionally add JSON string [activity] to simln config.
-    Optionally provide a list of tank indexes to [exclude].
-    Returns True on success.
-    """
-    exclude = json.loads(exclude)
-    print(
-        rpc_call("network_export", {"network": network, "activity": activity, "exclude": exclude})
-    )
+    if result:
+        print(f"Warnet '{network}' has been successfully brought down and the namespace deleted.")
+    else:
+        print(f"Failed to bring down warnet '{network}' or delete the namespace.")
 
 
 @network.command()
