@@ -297,7 +297,7 @@ zmqpubrawblock=tcp://0.0.0.0:28332
 zmqpubrawtx=tcp://0.0.0.0:28333
 """
     node_specific_config = data.get("bitcoin_config", "")
-    return f"{base_config}\n{node_specific_config}"
+    return f"{base_config}\n{node_specific_config.replace(",", "\n")}"
 
 
 def create_config_map(node: int, config: str) -> dict:
