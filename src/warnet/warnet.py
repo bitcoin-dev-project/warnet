@@ -37,8 +37,8 @@ class Warnet:
         # Warnet
         repr["warnet_headers"] = [
             "Temp dir",
-            "Network name",
-            "Docker network",
+            "Bitcoin network",
+            "Warnet network name",
             "Graph",
         ]
         repr["warnet"] = [
