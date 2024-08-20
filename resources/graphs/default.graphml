@@ -18,7 +18,7 @@
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">uacomment=w0</data>
+        <data key="bitcoin_config">uacomment=w0,debug=net</data>
         <data key="exporter">true</data>
         <data key="collect_logs">true</data>
     </node>

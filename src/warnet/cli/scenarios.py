@@ -2,6 +2,7 @@ import base64
 import importlib
 import json
 import os
+import pkgutil
 import sys
 import tempfile
 import time
@@ -11,7 +12,7 @@ import yaml
 from rich import print
 from rich.console import Console
 from rich.table import Table
-
+from warnet import scenarios as SCENARIOS
 from .k8s import apply_kubernetes_yaml, create_namespace, get_mission
 from .rpc import rpc_call
 
@@ -27,18 +28,17 @@ def available():
     List available scenarios in the Warnet Test Framework
     """
     console = Console()
-    result = rpc_call("scenarios_available", None)
-    if not isinstance(result, list):  # Make mypy happy
-        print(f"Error. Expected list but got {type(result)}: {result}")
-        sys.exit(1)
+
+    scenario_list = []
+    for s in pkgutil.iter_modules(SCENARIOS.__path__):
+        scenario_list.append(s.name)
 
     # Create the table
     table = Table(show_header=True, header_style="bold")
     table.add_column("Name")
-    table.add_column("Description")
 
-    for scenario in result:
-        table.add_row(scenario[0], scenario[1])
+    for scenario in scenario_list:
+        table.add_row(scenario)
     console.print(table)
 
 
@@ -189,13 +189,3 @@ def active():
 
     console = Console()
     console.print(table)
-
-
-@scenarios.command()
-@click.argument("pid", type=int)
-def stop(pid: int):
-    """
-    Stop scenario with PID <pid> from running
-    """
-    params = {"pid": pid}
-    print(rpc_call("scenarios_stop", params))
