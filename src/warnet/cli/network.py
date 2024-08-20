@@ -25,6 +25,7 @@ WAR_MANIFESTS = files("manifests")
 def network():
     """Network commands"""
 
+
 def read_graph_file(graph_file: Path) -> nx.Graph:
     with open(graph_file) as f:
         return nx.parse_graphml(f.read())
@@ -56,7 +57,7 @@ zmqpubrawtx=tcp://0.0.0.0:28333
 
     # Add addnode configurations for connected nodes
     connected_nodes = list(graph.neighbors(node))
-    addnode_configs = [f"addnode=warnet-tank-{index}" for index in connected_nodes]
+    addnode_configs = [f"addnode=warnet-tank-{index}-service" for index in connected_nodes]
 
     return f"{base_config}\n{node_specific_config}\n" + "\n".join(addnode_configs)
 
@@ -83,7 +84,7 @@ def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
         metadata={
             "name": f"warnet-tank-{node}",
             "namespace": "warnet",
-            "labels": {"mission": "tank", "index": str(node)},
+            "labels": {"app": "warnet", "mission": "tank", "index": str(node)},
         },
         spec={
             "containers": [
@@ -98,6 +99,10 @@ def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
                             "subPath": "bitcoin.conf",
                         }
                     ],
+                    "ports": [
+                        {"containerPort": 18444},
+                        {"containerPort": 18443},
+                    ],
                 }
             ],
             "volumes": [{"name": "config", "configMap": {"name": f"bitcoin-config-tank-{node}"}}],
@@ -110,8 +115,11 @@ def create_node_service(node: int) -> Dict[str, Any]:
         kind="Service",
         metadata={"name": f"warnet-tank-{node}-service", "namespace": "warnet"},
         spec={
-            "selector": {"app": "warnet", "node": str(node)},
-            "ports": [{"port": 8333, "targetPort": 8333}],
+            "selector": {"app": "warnet", "mission": "tank", "index": str(node)},
+            "ports": [
+                {"name": "p2p", "port": 18444, "targetPort": 18444},
+                {"name": "rpc", "port": 18443, "targetPort": 18443},
+            ],
         },
     )
 
