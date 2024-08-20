@@ -24,7 +24,7 @@ def build_image(
     action: str,
 ):
     if not build_args:
-        build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings "'
+        build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --disable-dependency-tracking "'
     else:
         build_args = f'"{build_args}"'
 
