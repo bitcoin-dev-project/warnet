@@ -13,7 +13,8 @@ from .k8s import (
     set_kubectl_context,
     deploy_base_configurations,
     apply_kubernetes_yaml,
-    delete_namespace
+    delete_namespace,
+    create_namespace
 )
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
@@ -140,10 +141,6 @@ def generate_kubernetes_yaml(graph: nx.Graph) -> list:
     return kubernetes_objects
 
 
-def create_namespace() -> dict:
-    return {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "warnet"}}
-
-
 def create_node_deployment(node: int, data: dict) -> dict:
     image = data.get("image", "bitcoindevproject/bitcoin:27.0")
     version = data.get("version", "27.0")
@@ -152,9 +149,9 @@ def create_node_deployment(node: int, data: dict) -> dict:
         "apiVersion": "v1",
         "kind": "Pod",
         "metadata": {
-            "name": f"warnet-node-{node}",
+            "name": f"warnet-tank-{node}",
             "namespace": "warnet",
-            "labels": {"app": "warnet", "node": str(node)},
+            "labels": {"rank": "tank", "index": str(node)},
         },
         "spec": {
             "containers": [

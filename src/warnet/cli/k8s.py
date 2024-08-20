@@ -21,6 +21,23 @@ def get_pods():
     sclient = get_static_client()
     return sclient.list_namespaced_pod("warnet")
 
+def get_tanks():
+    pods = get_pods()
+    tanks = []
+    # TODO: filter tanks only!!!!
+    for pod in pods.items:
+        if "rank" in pod.metadata.labels and pod.metadata.labels["rank"] == "tank":
+            tanks.append({
+                "tank": pod.metadata.name,
+                "chain": "regtest",
+                "rpc_host": pod.status.pod_ip,
+                "rpc_port": 18443,
+                "rpc_user": "user",
+                "rpc_password": "password",
+                "init_peers": []
+            })
+    return tanks
+
 def run_command(command, stream_output=False, env=None):
     # Merge the current environment with the provided env
     full_env = os.environ.copy()
@@ -61,6 +78,10 @@ def run_command(command, stream_output=False, env=None):
         return True
 
 
+def create_namespace() -> dict:
+    return {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "warnet"}}
+
+
 def set_kubectl_context(namespace: str):
     """
     Set the default kubectl context to the specified namespace.
@@ -80,10 +101,10 @@ def deploy_base_configurations():
         "rbac-config.yaml",
     ]
 
-    for config in base_configs:
-        command = f"kubectl apply -f {WAR_MANIFESTS}/{config}"
+    for bconfig in base_configs:
+        command = f"kubectl apply -f {WAR_MANIFESTS}/{bconfig}"
         if not run_command(command, stream_output=True):
-            print(f"Failed to apply {config}")
+            print(f"Failed to apply {bconfig}")
             return False
     return True
 

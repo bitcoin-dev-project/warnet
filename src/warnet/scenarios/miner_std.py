@@ -2,23 +2,22 @@
 
 from time import sleep
 
-from warnet.scenarios.utils import ensure_miner
-from warnet.test_framework_bridge import WarnetTestFramework
+# The base class exists inside the commander container
+from commander import Commander
 
 
 def cli_help():
     return "Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature ]"
 
-
 class Miner:
     def __init__(self, node, mature):
         self.node = node
-        self.wallet = ensure_miner(self.node)
+        self.wallet = Commander.ensure_miner(self.node)
         self.addr = self.wallet.getnewaddress()
         self.mature = mature
 
 
-class MinerStd(WarnetTestFramework):
+class MinerStd(Commander):
     def set_test_params(self):
         # This is just a minimum
         self.num_nodes = 0
@@ -46,7 +45,7 @@ class MinerStd(WarnetTestFramework):
         )
 
     def run_test(self):
-        while not self.warnet.network_connected():
+        while not self.network_connected():
             self.log.info("Waiting for complete network connection...")
             sleep(5)
         self.log.info("Network connected. Starting miners.")

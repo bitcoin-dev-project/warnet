@@ -1,14 +1,22 @@
 import base64
+import importlib
+import json
 import os
 import sys
-
+import time
+import tempfile
+import yaml
 import click
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
+from .k8s import (
+    get_tanks,
+    create_namespace,
+    apply_kubernetes_yaml
+)
 from .rpc import rpc_call
-
 
 @click.group(name="scenarios")
 def scenarios():
@@ -44,12 +52,85 @@ def run(scenario, network, additional_args):
     """
     Run <scenario> from the Warnet Test Framework on [network] with optional arguments
     """
-    params = {
-        "scenario": scenario,
-        "additional_args": additional_args,
-        "network": network,
-    }
-    print(rpc_call("scenarios_run", params))
+
+    # Use importlib.resources to get the scenario path
+    scenario_package = "warnet.scenarios"
+    scenario_filename = f"{scenario}.py"
+
+    # Ensure the scenario file exists within the package
+    with importlib.resources.path(scenario_package, scenario_filename) as scenario_path:
+        scenario_path = str(scenario_path)  # Convert Path object to string
+
+    if not os.path.exists(scenario_path):
+        raise Exception(f"Scenario {scenario} not found at {scenario_path}.")
+
+    with open(scenario_path, "r") as file:
+        scenario_text = file.read()
+
+    name = f"commander-{scenario.replace('_', '')}-{int(time.time())}"
+
+    tanks = get_tanks()
+    kubernetes_objects = [create_namespace()]
+    kubernetes_objects.extend(
+        [
+            {
+                "apiVersion": "v1",
+                "kind": "ConfigMap",
+                "metadata": {
+                    "name": "warnetjson",
+                    "namespace": "warnet",
+                },
+                "data": {"warnet.json": json.dumps(tanks)},
+            },
+            {
+                "apiVersion": "v1",
+                "kind": "ConfigMap",
+                "metadata": {
+                    "name": "scnaeriopy",
+                    "namespace": "warnet",
+                },
+                "data": {"scenario.py": scenario_text},
+            },
+            {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": name,
+                    "namespace": "warnet",
+                    "labels": {"app": "warnet"},
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": name,
+                            "image": "warnet-commander:latest",
+                            "imagePullPolicy": "Never",
+                            "volumeMounts": [
+                                {
+                                    "name": "warnetjson",
+                                    "mountPath": "warnet.json",
+                                    "subPath": "warnet.json",
+                                },
+                                {
+                                    "name": "scnaeriopy",
+                                    "mountPath": "scenario.py",
+                                    "subPath": "scenario.py",
+                                }
+                            ],
+                        }
+                    ],
+                    "volumes": [
+                        {"name": "warnetjson", "configMap": {"name": "warnetjson"}},
+                        {"name": "scnaeriopy", "configMap": {"name": "scnaeriopy"}}
+                    ],
+                }
+            }
+        ]
+    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+        yaml.dump_all(kubernetes_objects, temp_file)
+        temp_file_path = temp_file.name
+    apply_kubernetes_yaml(temp_file_path)
 
 
 @scenarios.command(context_settings={"ignore_unknown_options": True})
