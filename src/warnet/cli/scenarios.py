@@ -102,6 +102,7 @@ def run(scenario, network, additional_args):
                         {
                             "name": name,
                             "image": "warnet-commander:latest",
+                            "args": additional_args,
                             "imagePullPolicy": "Never",
                             "volumeMounts": [
                                 {

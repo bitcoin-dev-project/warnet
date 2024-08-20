@@ -8,4 +8,4 @@ FROM python:3.12-slim
 COPY src /
 
 # -u: force the stdout and stderr streams to be unbuffered
-CMD ["python", "-u", "/scenario.py"]
+ENTRYPOINT ["python", "-u", "/scenario.py"]
