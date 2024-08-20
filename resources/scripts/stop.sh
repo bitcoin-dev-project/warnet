@@ -9,4 +9,6 @@ kubectl delete namespace warnet-logging --ignore-not-found
 kubectl config set-context --current --namespace=default
 
 # Delete minikube, if it exists
-minikube delete || true
+if command -v minikube &> /dev/null; then
+    minikube delete || true
+fi
