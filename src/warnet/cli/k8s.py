@@ -1,21 +1,22 @@
 import os
 import subprocess
-
 from importlib.resources import files
 
 from kubernetes import client, config
 from kubernetes.dynamic import DynamicClient
 
-
 WAR_MANIFESTS = files("manifests")
+
 
 def get_static_client():
     config.load_kube_config()
     return client.CoreV1Api()
 
+
 def get_dynamic_client():
     config.load_kube_config()
     return DynamicClient(client.ApiClient())
+
 
 def get_pods():
     sclient = get_static_client()
