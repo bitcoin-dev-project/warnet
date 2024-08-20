@@ -21,9 +21,9 @@ def rpc(node, method, params, network):
     Call bitcoin-cli <method> [params] on <node> in [network]
     """
     if params:
-        cmd = f"kubectl exec warnet-node-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
+        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
     else:
-        cmd = f"kubectl exec warnet-node-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
+        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
     run_command(cmd)
 
 
@@ -34,7 +34,7 @@ def debug_log(node, network):
     """
     Fetch the Bitcoin Core debug log from <node> in [network]
     """
-    cmd = f"kubectl logs warnet-node-{node}"
+    cmd = f"kubectl logs warnet-tank-{node}"
     run_command(cmd)
 
 
@@ -107,8 +107,8 @@ def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
     for log_entry, pod_name in matching_logs:
         try:
             # Split the log entry into Kubernetes timestamp, Bitcoin timestamp, and the rest of the log
-            k8s_timestamp, rest = log_entry.split(' ', 1)
-            bitcoin_timestamp, log_message = rest.split(' ', 1)
+            k8s_timestamp, rest = log_entry.split(" ", 1)
+            bitcoin_timestamp, log_message = rest.split(" ", 1)
 
             # Format the output based on the show_k8s_timestamps option
             if show_k8s_timestamps:

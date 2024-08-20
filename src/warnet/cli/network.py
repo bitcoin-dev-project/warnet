@@ -113,7 +113,8 @@ def connect(graph_file: Path):
     for edge in edges:
         source = edge.get("source")
         target = edge.get("target")
-        command = f"kubectl exec -it warnet-node-{source} -- bitcoin-cli -rpcuser=user -rpcpassword=password addnode warnet-node-{target}-service:8333 add"
+        command = f"kubectl exec -it warnet-tank-{source} -- bitcoin-cli addnode warnet-tank-{target}:18443 onetry"
+        print(command)
 
         print(f"Connecting node {source} to node {target}")
         if run_command(command, stream_output=True):
@@ -170,7 +171,7 @@ def create_node_deployment(node: int, data: dict) -> dict:
                     ],
                 }
             ],
-            "volumes": [{"name": "config", "configMap": {"name": f"bitcoin-config-node-{node}"}}],
+            "volumes": [{"name": "config", "configMap": {"name": f"bitcoin-config-tank-{node}"}}],
         },
     }
 
@@ -179,7 +180,7 @@ def create_node_service(node: int) -> dict:
     return {
         "apiVersion": "v1",
         "kind": "Service",
-        "metadata": {"name": f"warnet-node-{node}-service", "namespace": "warnet"},
+        "metadata": {"name": f"warnet-tank-{node}-service", "namespace": "warnet"},
         "spec": {
             "selector": {"app": "warnet", "node": str(node)},
             "ports": [{"port": 8333, "targetPort": 8333}],
@@ -192,7 +193,7 @@ def create_config_map(node: int, config: str) -> dict:
         "apiVersion": "v1",
         "kind": "ConfigMap",
         "metadata": {
-            "name": f"bitcoin-config-node-{node}",
+            "name": f"bitcoin-config-tank-{node}",
             "namespace": "warnet",
         },
         "data": {"bitcoin.conf": config},
