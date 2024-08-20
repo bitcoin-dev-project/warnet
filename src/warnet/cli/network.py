@@ -2,6 +2,8 @@ import base64  # noqa: I001
 import json
 from pathlib import Path
 from importlib.resources import files
+import networkx as nx
+import yaml
 
 import click
 from rich import print
@@ -172,3 +174,98 @@ def logs(follow: bool):
         stream_output = True
 
     run_command(command, stream_output=stream_output)
+
+
+@network.command()
+@click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
+@click.option("--output", "-o", default="warnet-deployment.yaml", help="Output YAML file")
+def generate_yaml(graph_file: Path, output: str):
+    """
+    Generate a Kubernetes YAML file from a graph file for deploying warnet nodes.
+    """
+    # Read and parse the graph file
+    graph = read_graph_file(graph_file)
+
+    # Generate the Kubernetes YAML
+    kubernetes_yaml = generate_kubernetes_yaml(graph)
+
+    # Write the YAML to a file
+    with open(output, "w") as f:
+        yaml.dump_all(kubernetes_yaml, f)
+
+    print(f"Kubernetes YAML file generated: {output}")
+
+
+def read_graph_file(graph_file: Path) -> nx.Graph:
+    with open(graph_file) as f:
+        return nx.parse_graphml(f.read())
+
+
+def generate_kubernetes_yaml(graph: nx.Graph) -> list:
+    kubernetes_objects = []
+
+    # Add Namespace object
+    namespace = create_namespace()
+    kubernetes_objects.append(namespace)
+
+    for node, data in graph.nodes(data=True):
+        # Create a deployment for each node
+        deployment = create_node_deployment(node, data)
+        kubernetes_objects.append(deployment)
+
+        # Create a service for each node
+        service = create_node_service(node)
+        kubernetes_objects.append(service)
+
+    return kubernetes_objects
+
+
+def create_namespace() -> dict:
+    return {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "warnet"}}
+
+
+def create_node_deployment(node: int, data: dict) -> dict:
+    image = data.get("image", "bitcoindevproject/bitcoin:27.0")
+    version = data.get("version", "27.0")
+    bitcoin_config = data.get("bitcoin_config", "")
+
+    return {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+            "name": f"warnet-node-{node}",
+            "namespace": "warnet",
+            "labels": {"app": "warnet", "node": str(node)},
+        },
+        "spec": {
+            "replicas": 1,
+            "selector": {"matchLabels": {"app": "warnet", "node": str(node)}},
+            "template": {
+                "metadata": {"labels": {"app": "warnet", "node": str(node)}},
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "bitcoin",
+                            "image": image,
+                            "env": [
+                                {"name": "BITCOIN_VERSION", "value": version},
+                                {"name": "BITCOIN_CONFIG", "value": bitcoin_config},
+                            ],
+                        }
+                    ]
+                },
+            },
+        },
+    }
+
+
+def create_node_service(node: int) -> dict:
+    return {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {"name": f"warnet-node-{node}-service", "namespace": "warnet"},
+        "spec": {
+            "selector": {"app": "warnet", "node": str(node)},
+            "ports": [{"port": 8333, "targetPort": 8333}],
+        },
+    }
