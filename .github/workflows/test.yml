@@ -59,6 +59,8 @@ jobs:
       - uses: azure/setup-helm@v4.2.0
       - uses: medyagh/setup-minikube@master
         with:
+          cpus: max
+          memory: 10000m
           mount-path: ${{ github.workspace }}:/mnt/src
       - uses: actions/download-artifact@v4
         with:
