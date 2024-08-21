@@ -52,19 +52,6 @@ class Commander(BitcoinTestFramework):
             node.createwallet("miner", descriptors=True)
         return node.get_wallet_rpc("miner")
 
-    def network_connected(self):
-        for tank in self.nodes:
-            peerinfo = tank.getpeerinfo()
-            manuals = 0
-            for peer in peerinfo:
-                if peer["connection_type"] == "manual":
-                    manuals += 1
-            # Even if more edges are specifed, bitcoind only allows
-            # 8 manual outbound connections
-            if min(8, len(tank.init_peers)) > manuals:
-                return False
-        return True
-
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
         self.shutdown()

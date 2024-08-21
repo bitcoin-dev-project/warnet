@@ -2,7 +2,9 @@
 
 import os
 from pathlib import Path
-
+from warnet.cli.scenarios import _available as scenarios_available
+from warnet.cli.scenarios import _active as scenarios_active
+from warnet.cli.k8s import delete_pod
 from test_base import TestBase
 
 
@@ -13,7 +15,6 @@ class ScenariosTest(TestBase):
 
     def run_test(self):
         try:
-            self.start_server()
             self.setup_network()
             self.test_scenarios()
         finally:
@@ -23,85 +24,71 @@ class ScenariosTest(TestBase):
         self.log.info("Setting up network")
         self.log.info(self.warcli(f"network start {self.graph_file_path}"))
         self.wait_for_all_tanks_status(target="running")
+        self.wait_for_all_edges()
 
     def test_scenarios(self):
         self.check_available_scenarios()
-        self.run_and_check_miner_scenario("miner_std")
-        self.run_and_check_miner_scenario_from_file("src/warnet/scenarios/miner_std.py")
-        self.run_and_check_scenario_from_file("test/data/scenario_p2p_interface.py")
+        self.run_and_check_miner_scenario()
+        self.run_and_check_miner_scenario_from_file()
+        self.run_and_check_scenario_from_file()
 
     def check_available_scenarios(self):
         self.log.info("Checking available scenarios")
         # Use rpc instead of warcli so we get raw JSON object
-        scenarios = self.rpc("scenarios_available")
+        scenarios = scenarios_available()
         assert len(scenarios) == 4, f"Expected 4 available scenarios, got {len(scenarios)}"
         self.log.info(f"Found {len(scenarios)} available scenarios")
 
     def scenario_running(self, scenario_name: str):
         """Check that we are only running a single scenario of the correct name"""
-        active = self.rpc("scenarios_list_running")
-        running = scenario_name in active[0]["cmd"]
-        return running and len(active) == 1
+        active = scenarios_active()
+        assert len(active) == 1
+        return scenario_name in active[0]["commander"]
 
-    def run_and_check_scenario_from_file(self, scenario_file):
-        scenario_name = self.get_scenario_name_from_path(scenario_file)
+    def run_and_check_scenario_from_file(self):
+        scenario_file = "test/data/scenario_p2p_interface.py"
 
         def check_scenario_clean_exit():
-            running = self.rpc("scenarios_list_running")
-            scenarios = [s for s in running if s["cmd"].strip() == scenario_name]
-            if not scenarios:
-                return False
-            scenario = scenarios[0]
-            if scenario["active"]:
-                return False
-            if scenario["return_code"] != 0:
-                raise Exception(
-                    f"Scenario {scenario_name} failed with return code {scenario['return_code']}"
-                )
-            return True
+            active = scenarios_active()
+            assert len(active) == 1
+            return active[0]["status"] == "succeeded"
 
-        self.log.info(f"Running scenario: {scenario_name}")
+        self.log.info(f"Running scenario from: {scenario_file}")
         self.warcli(f"scenarios run-file {scenario_file}")
         self.wait_for_predicate(lambda: check_scenario_clean_exit())
 
-    def run_and_check_miner_scenario(self, scenario_name):
-        self.log.info(f"Running scenario: {scenario_name}")
-        self.warcli(f"scenarios run {scenario_name} --allnodes --interval=1")
-        self.wait_for_predicate(lambda: self.scenario_running(scenario_name))
+    def run_and_check_miner_scenario(self):
+        sc = "miner_std"
+        self.log.info(f"Running scenario {sc}")
+        self.warcli(f"scenarios run {sc} --allnodes --interval=1")
+        self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
         self.wait_for_predicate(lambda: self.check_blocks(30))
         self.stop_scenario()
 
-    def run_and_check_miner_scenario_from_file(self, scenario_file):
+    def run_and_check_miner_scenario_from_file(self):
+        scenario_file = "src/warnet/scenarios/miner_std.py"
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warcli(f"scenarios run-file {scenario_file} --allnodes --interval=1")
         start = int(self.warcli("bitcoin rpc 0 getblockcount"))
-        scenario_name = self.get_scenario_name_from_path(scenario_file)
-        self.wait_for_predicate(lambda: self.scenario_running(scenario_name))
+        self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
         self.stop_scenario()
 
-    def get_scenario_name_from_path(self, scenario_file):
-        return os.path.splitext(os.path.basename(scenario_file))[0]
-
     def check_blocks(self, target_blocks, start: int = 0):
-        running = self.rpc("scenarios_list_running")
-        assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
-        assert running[0]["active"], "Scenario should be active"
-
         count = int(self.warcli("bitcoin rpc 0 getblockcount"))
         self.log.debug(f"Current block count: {count}, target: {start + target_blocks}")
         return count >= start + target_blocks
 
     def stop_scenario(self):
         self.log.info("Stopping running scenario")
-        running = self.rpc("scenarios_list_running")
+        running = scenarios_active()
         assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
-        assert running[0]["active"], "Scenario should be active"
-        self.warcli(f"scenarios stop {running[0]['pid']}", False)
+        assert running[0]["status"] == "running", "Scenario should be running"
+        delete_pod(running[0]["commander"])
         self.wait_for_predicate(self.check_scenario_stopped)
 
     def check_scenario_stopped(self):
-        running = self.rpc("scenarios_list_running")
+        running = scenarios_active()
         self.log.debug(f"Checking if scenario stopped. Running scenarios: {len(running)}")
         return len(running) == 0
 

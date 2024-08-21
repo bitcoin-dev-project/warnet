@@ -92,3 +92,8 @@ def apply_kubernetes_yaml(yaml_file: str):
 def delete_namespace(namespace: str):
     command = f"kubectl delete namespace {namespace}"
     return stream_command(command)
+
+
+def delete_pod(pod_name: str):
+    command = f"kubectl delete pod {pod_name}"
+    return stream_command(command)

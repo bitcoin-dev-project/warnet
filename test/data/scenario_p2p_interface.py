@@ -4,8 +4,9 @@ from time import sleep
 
 from test_framework.messages import CInv, msg_getdata
 from test_framework.p2p import P2PInterface
-from warnet.test_framework_bridge import WarnetTestFramework
 
+# The base class exists inside the commander container
+from commander import Commander
 
 def cli_help():
     return "Run P2P GETDATA test"
@@ -21,20 +22,15 @@ class P2PStoreBlock(P2PInterface):
         self.blocks[message.block.sha256] += 1
 
 
-class GetdataTest(WarnetTestFramework):
+class GetdataTest(Commander):
     def set_test_params(self):
         self.num_nodes = 1
 
     def run_test(self):
-        while not self.warnet.network_connected():
-            self.log.info("Waiting for complete network connection...")
-            sleep(5)
-        self.log.info("Network connected")
-
         self.log.info("Adding the p2p connection")
 
         p2p_block_store = self.nodes[0].add_p2p_connection(
-            P2PStoreBlock(), dstaddr=self.warnet.tanks[0].ipv4, dstport=18444
+            P2PStoreBlock(), dstaddr=self.nodes[0].rpchost, dstport=18444
         )
 
         self.log.info("test that an invalid GETDATA doesn't prevent processing of future messages")

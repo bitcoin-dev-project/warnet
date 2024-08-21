@@ -28,7 +28,7 @@ def available():
     """
     console = Console()
 
-    scenario_list = []
+    scenario_list = _available()
     for s in pkgutil.iter_modules(SCENARIOS.__path__):
         scenario_list.append(s.name)
 
@@ -39,6 +39,13 @@ def available():
     for scenario in scenario_list:
         table.add_row(scenario)
     console.print(table)
+
+
+def _available():
+    scenario_list = []
+    for s in pkgutil.iter_modules(SCENARIOS.__path__):
+        scenario_list.append(s.name)
+    return scenario_list
 
 
 @scenarios.command(context_settings={"ignore_unknown_options": True})
@@ -56,14 +63,32 @@ def run(scenario, additional_args):
     # Ensure the scenario file exists within the package
     with importlib.resources.path(scenario_package, scenario_filename) as scenario_path:
         scenario_path = str(scenario_path)  # Convert Path object to string
+    return run_scenario(scenario_path, additional_args)
 
+
+@scenarios.command(context_settings={"ignore_unknown_options": True})
+@click.argument("scenario_path", type=str)
+@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
+def run_file(scenario_path, additional_args):
+    """
+    Run <scenario_path> from the Warnet Test Framework with optional arguments
+    """
+    if not scenario_path.endswith(".py"):
+        print("Error. Currently only python scenarios are supported")
+        sys.exit(1)
+    return run_scenario(scenario_path, additional_args)
+
+
+def run_scenario(scenario_path, additional_args):
     if not os.path.exists(scenario_path):
-        raise Exception(f"Scenario {scenario} not found at {scenario_path}.")
+        raise Exception(f"Scenario file not found at {scenario_path}.")
 
     with open(scenario_path) as file:
         scenario_text = file.read()
 
-    name = f"commander-{scenario.replace('_', '')}-{int(time.time())}"
+    scenario_name = os.path.splitext(os.path.basename(scenario_path))[0]
+
+    name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
 
     tankpods = get_mission("tank")
     tanks = [
@@ -142,37 +167,12 @@ def run(scenario, additional_args):
     apply_kubernetes_yaml(temp_file_path)
 
 
-@scenarios.command(context_settings={"ignore_unknown_options": True})
-@click.argument("scenario_path", type=str)
-@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-@click.option("--name", type=str)
-def run_file(scenario_path, additional_args, name=""):
-    """
-    Run <scenario_path> from the Warnet Test Framework with optional arguments
-    """
-    if not scenario_path.endswith(".py"):
-        print("Error. Currently only python scenarios are supported")
-        sys.exit(1)
-    scenario_name = name if name else os.path.splitext(os.path.basename(scenario_path))[0]
-    scenario_base64 = ""
-    with open(scenario_path, "rb") as f:
-        scenario_base64 = base64.b64encode(f.read()).decode("utf-8")
-
-    params = {
-        "scenario_base64": scenario_base64,
-        "scenario_name": scenario_name,
-        "additional_args": additional_args,
-    }
-    # TODO
-    # print(rpc_call("scenarios_run_file", params))
-
-
 @scenarios.command()
 def active():
     """
     List running scenarios "name": "pid" pairs
     """
-    commanders = get_mission("commander")
+    commanders = _active()
     if len(commanders) == 0:
         print("No scenarios running")
         return
@@ -182,7 +182,12 @@ def active():
     table.add_column("Status")
 
     for commander in commanders:
-        table.add_row(commander.metadata.name, commander.status.phase)
+        table.add_row(commander["commander"], commander["status"])
 
     console = Console()
     console.print(table)
+
+
+def _active():
+    commanders = get_mission("commander")
+    return [{"commander": c.metadata.name, "status": c.status.phase.lower()} for c in commanders]

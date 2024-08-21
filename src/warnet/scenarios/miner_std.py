@@ -46,10 +46,7 @@ class MinerStd(Commander):
         )
 
     def run_test(self):
-        while not self.network_connected():
-            self.log.info("Waiting for complete network connection...")
-            sleep(5)
-        self.log.info("Network connected. Starting miners.")
+        self.log.info("Starting miners.")
 
         max_miners = 1
         if self.options.allnodes:
