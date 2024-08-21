@@ -8,19 +8,20 @@ import click
 import networkx as nx
 import yaml
 from rich import print
+
 from .bitcoin import _rpc
 from .k8s import (
     apply_kubernetes_yaml,
+    create_kubernetes_object,
     create_namespace,
     delete_namespace,
     deploy_base_configurations,
-    run_command,
-    stream_command,
-    set_kubectl_context,
-    create_kubernetes_object,
     get_edges,
-    get_mission
+    get_mission,
+    set_kubectl_context,
 )
+
+from .process import stream_command
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
 WAR_MANIFESTS = files("manifests")
@@ -77,9 +78,7 @@ def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
             "name": f"warnet-tank-{node}",
             "namespace": "warnet",
             "labels": {"app": "warnet", "mission": "tank", "index": str(node)},
-            "annotations": {
-                "data": json.dumps(data)
-            }
+            "annotations": {"data": json.dumps(data)},
         },
         spec={
             "containers": [
@@ -134,11 +133,7 @@ def create_config_map(node: int, config: str) -> Dict[str, Any]:
 def create_edges_map(graph):
     edges = []
     for src, dst, data in graph.edges(data=True):
-        edges.append({
-            "src": src,
-            "dst": dst,
-            "data": data
-        })
+        edges.append({"src": src, "dst": dst, "data": data})
     config_map = create_kubernetes_object(
         kind="ConfigMap",
         metadata={
@@ -234,6 +229,7 @@ def connected():
     """Determine if all p2p conenctions defined in graph are established"""
     print(_connected())
 
+
 def _connected():
     tanks = get_mission("tank")
     edges = get_edges()
@@ -263,11 +259,15 @@ def status():
     # TODO: make it a pretty table
     print(_status())
 
+
 def _status():
     tanks = get_mission("tank")
     stats = []
     for tank in tanks:
-        status = {"tank_index": tank.metadata.labels["index"], "bitcoin_status": tank.status.phase.lower()}
+        status = {
+            "tank_index": tank.metadata.labels["index"],
+            "bitcoin_status": tank.status.phase.lower(),
+        }
         stats.append(status)
     return stats
 
