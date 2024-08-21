@@ -1,5 +1,8 @@
 import json
+import yaml
+import tempfile
 from importlib.resources import files
+from pathlib import Path
 from typing import Any, Dict
 
 from kubernetes import client, config
@@ -87,6 +90,17 @@ def deploy_base_configurations():
 def apply_kubernetes_yaml(yaml_file: str):
     command = f"kubectl apply -f {yaml_file}"
     return stream_command(command)
+
+
+def apply_kubernetes_yaml_obj(yaml_obj: str):
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+        yaml.dump(yaml_obj, temp_file)
+        temp_file_path = temp_file.name
+
+    try:
+        apply_kubernetes_yaml(temp_file_path)
+    finally:
+        Path(temp_file_path).unlink()
 
 
 def delete_namespace(namespace: str):

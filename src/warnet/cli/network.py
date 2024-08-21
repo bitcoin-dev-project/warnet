@@ -10,6 +10,7 @@ from rich import print
 
 from .bitcoin import _rpc
 from .k8s import (
+    apply_kubernetes_yaml_obj,
     create_kubernetes_object,
     delete_namespace,
     get_edges,
@@ -32,10 +33,29 @@ def network():
     """Network commands"""
 
 
-def create_edges_map(graph):
+class Edge:
+    def __init__(self, src: str, dst: str, data: Dict[str, Any]):
+        self.src = src
+        self.dst = dst
+        self.data = data
+
+    def to_dict(self):
+        return {"src": self.src, "dst": self.dst, "data": self.data}
+
+
+def edges_from_network_file(network_file: Dict[str, Any]) -> List[Edge]:
     edges = []
-    for src, dst, data in graph.edges(data=True):
-        edges.append({"src": src, "dst": dst, "data": data})
+    for node in network_file["nodes"]:
+        if "connect" in node:
+            for connection in node["connect"]:
+                edges.append(Edge(node["name"], connection, ""))
+    return edges
+
+
+def create_edges_map(network_file: Dict[str, Any]):
+    edges = []
+    for edge in edges_from_network_file(network_file):
+        edges.append(edge.to_dict())
     config_map = create_kubernetes_object(
         kind="ConfigMap",
         metadata={
@@ -44,7 +64,7 @@ def create_edges_map(graph):
         },
     )
     config_map["data"] = {"data": json.dumps(edges)}
-    return config_map
+    apply_kubernetes_yaml_obj(config_map)
 
 
 def setup_logging_helm() -> bool:
@@ -106,6 +126,8 @@ def start(network_name: str, logging: bool, network: str):
         finally:
             if temp_override_file_path:
                 Path(temp_override_file_path).unlink()
+
+    create_edges_map(network_file)
 
 
 @network.command()
