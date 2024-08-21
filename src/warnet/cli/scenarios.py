@@ -138,7 +138,6 @@ def run_scenario(scenario_path, additional_args):
                             "name": name,
                             "image": "bitcoindevproject/warnet-commander:latest",
                             "args": additional_args,
-                            "imagePullPolicy": "Never",
                             "volumeMounts": [
                                 {
                                     "name": "warnetjson",
