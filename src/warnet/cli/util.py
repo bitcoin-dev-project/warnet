@@ -74,7 +74,6 @@ def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_ve
         graph.nodes[node]["build_args"] = ""
         graph.nodes[node]["exporter"] = False
         graph.nodes[node]["collect_logs"] = False
-        graph.nodes[node]["resources"] = None
 
     convert_unsupported_attributes(graph)
     return graph

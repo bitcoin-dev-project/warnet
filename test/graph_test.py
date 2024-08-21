@@ -7,7 +7,8 @@ import uuid
 from pathlib import Path
 
 from test_base import TestBase
-from warnet.lnd import LNDNode
+
+# from warnet.lnd import LNDNode
 from warnet.utils import DEFAULT_TAG
 
 
@@ -24,12 +25,11 @@ class GraphTest(TestBase):
     def run_test(self):
         self.test_graph_creation_and_import()
         self.validate_graph_schema()
-
-        self.start_server()
         try:
-            self.test_graph_with_optional_services()
+            # TODO: re-enable these when we add lightning back
+            # self.test_graph_with_optional_services()
             self.test_created_graph()
-            self.test_imported_graph()
+            # self.test_imported_graph()
         finally:
             self.stop_server()
 
@@ -37,7 +37,7 @@ class GraphTest(TestBase):
         self.log.info(f"CLI tool creating test graph file: {self.tf_create}")
         self.log.info(
             self.warcli(
-                f"graph create 10 --outfile={self.tf_create} --version={DEFAULT_TAG}", network=False
+                f"graph create 10 --outfile={self.tf_create} --version={DEFAULT_TAG}"
             )
         )
         self.wait_for_predicate(lambda: Path(self.tf_create).exists())
@@ -46,16 +46,15 @@ class GraphTest(TestBase):
         self.log.info(
             self.warcli(
                 f"graph import-json {self.json_file_path} --outfile={self.tf_import} --ln_image=carlakirkcohen/lnd:attackathon --cb=carlakirkcohen/circuitbreaker:attackathon-test",
-                network=False,
             )
         )
         self.wait_for_predicate(lambda: Path(self.tf_import).exists())
 
     def validate_graph_schema(self):
         self.log.info("Validating graph schema")
-        assert "invalid" not in self.warcli(f"graph validate {Path(self.tf_create)}", False)
-        assert "invalid" not in self.warcli(f"graph validate {Path(self.tf_import)}", False)
-        assert "invalid" not in self.warcli(f"graph validate {self.graph_file_path}", False)
+        assert "invalid" not in self.warcli(f"graph validate {Path(self.tf_create)}")
+        assert "invalid" not in self.warcli(f"graph validate {Path(self.tf_import)}")
+        assert "invalid" not in self.warcli(f"graph validate {self.graph_file_path}")
 
     def test_graph_with_optional_services(self):
         self.log.info("Testing graph with optional services...")
@@ -70,7 +69,7 @@ class GraphTest(TestBase):
 
     def test_created_graph(self):
         self.log.info("Testing created graph...")
-        self.log.info(self.warcli(f"network start {Path(self.tf_create)} --force"))
+        self.log.info(self.warcli(f"network start {Path(self.tf_create)}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
         self.warcli("bitcoin rpc 0 getblockcount")
@@ -79,7 +78,7 @@ class GraphTest(TestBase):
 
     def test_imported_graph(self):
         self.log.info("Testing imported graph...")
-        self.log.info(self.warcli(f"network start {Path(self.tf_import)} --force"))
+        self.log.info(self.warcli(f"network start {Path(self.tf_import)}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
         self.warcli("bitcoin rpc 0 getblockcount")
@@ -90,23 +89,23 @@ class GraphTest(TestBase):
 
     def verify_ln_channel_policies(self):
         self.log.info("Ensuring warnet LN channel policies match imported JSON description")
-        with open(self.json_file_path) as file:
-            actual = json.loads(self.warcli("ln rpc 0 describegraph"))["edges"]
-            expected = json.loads(file.read())["edges"]
-            expected = sorted(expected, key=lambda chan: int(chan["channel_id"]))
-            for chan_index, actual_chan_json in enumerate(actual):
-                expected_chan = LNDNode.lnchannel_from_json(expected[chan_index])
-                actual_chan = LNDNode.lnchannel_from_json(actual_chan_json)
-                if not expected_chan.channel_match(actual_chan):
-                    self.log.info(
-                        f"Channel {chan_index} policy mismatch, testing flipped channel: {actual_chan.short_chan_id}"
-                    )
-                    if not expected_chan.channel_match(actual_chan.flip()):
-                        raise Exception(
-                            f"Channel policy doesn't match source: {actual_chan.short_chan_id}\n"
-                            + f"Actual:\n{actual_chan}\n"
-                            + f"Expected:\n{expected_chan}\n"
-                        )
+        # with open(self.json_file_path) as file:
+        #     actual = json.loads(self.warcli("ln rpc 0 describegraph"))["edges"]
+        #     expected = json.loads(file.read())["edges"]
+        #     expected = sorted(expected, key=lambda chan: int(chan["channel_id"]))
+        #     for chan_index, actual_chan_json in enumerate(actual):
+        #         expected_chan = LNDNode.lnchannel_from_json(expected[chan_index])
+        #         actual_chan = LNDNode.lnchannel_from_json(actual_chan_json)
+        #         if not expected_chan.channel_match(actual_chan):
+        #             self.log.info(
+        #                 f"Channel {chan_index} policy mismatch, testing flipped channel: {actual_chan.short_chan_id}"
+        #             )
+        #             if not expected_chan.channel_match(actual_chan.flip()):
+        #                 raise Exception(
+        #                     f"Channel policy doesn't match source: {actual_chan.short_chan_id}\n"
+        #                     + f"Actual:\n{actual_chan}\n"
+        #                     + f"Expected:\n{expected_chan}\n"
+        #                 )
 
 
 if __name__ == "__main__":

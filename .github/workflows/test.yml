@@ -33,7 +33,7 @@ jobs:
     strategy:
       matrix:
         # test: [scenarios_test.py, rpc_test.py, graph_test.py, ln_test.py, dag_connection_test.py, logging_test.py]
-        test: [rpc_test.py, scenarios_test.py]
+        test: [graph_test.py, rpc_test.py, scenarios_test.py]
     steps:
       - uses: actions/checkout@v4
       - uses: hynek/setup-cached-uv@v1
