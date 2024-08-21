@@ -93,7 +93,7 @@ def set_kubectl_context(namespace: str):
     Set the default kubectl context to the specified namespace.
     """
     command = f"kubectl config set-context --current --namespace={namespace}"
-    result = run_command(command, stream_output=True)
+    result = stream_command(command)
     if result:
         print(f"Kubectl context set to namespace: {namespace}")
     else:
@@ -109,7 +109,7 @@ def deploy_base_configurations():
 
     for bconfig in base_configs:
         command = f"kubectl apply -f {WAR_MANIFESTS}/{bconfig}"
-        if not run_command(command, stream_output=True):
+        if not stream_command(command):
             print(f"Failed to apply {bconfig}")
             return False
     return True
@@ -117,9 +117,9 @@ def deploy_base_configurations():
 
 def apply_kubernetes_yaml(yaml_file: str):
     command = f"kubectl apply -f {yaml_file}"
-    return run_command(command, stream_output=True)
+    return stream_command(command)
 
 
 def delete_namespace(namespace: str):
     command = f"kubectl delete namespace {namespace}"
-    return run_command(command, stream_output=True)
+    return stream_command(command)
