@@ -90,7 +90,7 @@ def apply_kubernetes_yaml(yaml_file: str):
 
 
 def delete_namespace(namespace: str):
-    command = f"kubectl delete namespace {namespace}"
+    command = f"kubectl delete namespace {namespace} --ignore-not-found"
     return stream_command(command)
 
 

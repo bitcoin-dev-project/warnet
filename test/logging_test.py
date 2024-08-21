@@ -21,7 +21,6 @@ class LoggingTest(TestBase):
         self.connect_logging_logger = logging.getLogger("cnct_log")
 
     def run_test(self):
-        self.start_server()
         try:
             self.start_logging()
             self.setup_network()
@@ -52,9 +51,6 @@ class LoggingTest(TestBase):
         )
         self.connect_logging_thread.daemon = True
         self.connect_logging_thread.start()
-
-        self.log.info("Waiting for RPC")
-        self.wait_for_rpc("scenarios_available")
 
     def setup_network(self):
         self.log.info("Setting up network")
