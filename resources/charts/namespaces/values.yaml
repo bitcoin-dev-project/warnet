@@ -1,8 +1,5 @@
 users:
-  - name: alice
-    roles:
-      - pod-viewer
-  - name: bob
+  - name: warcli-user
     roles:
       - pod-viewer
       - pod-manager
