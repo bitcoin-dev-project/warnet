@@ -1,0 +1,10 @@
+nodes:
+  - name: tank-0001
+    config:
+      image:
+        tag: "26.0"
+  - name: tank-0002
+  - name: tank-0003
+  - name: tank-0004
+  - name: tank-0005
+  - name: tank-0006

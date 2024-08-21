@@ -13,9 +13,9 @@ from .k8s import (
     create_namespace,
     delete_namespace,
     deploy_base_configurations,
-    run_command,
     set_kubectl_context,
 )
+from .process import run_command
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
 WAR_MANIFESTS = files("manifests")
