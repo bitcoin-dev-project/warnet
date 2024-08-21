@@ -10,6 +10,7 @@ from .graph import graph
 from .image import image
 
 # from .ln import ln
+from .namespaces import namespaces
 from .network import network
 from .scenarios import scenarios
 
@@ -25,6 +26,7 @@ cli.add_command(bitcoin)
 cli.add_command(graph)
 cli.add_command(image)
 # cli.add_command(ln)
+cli.add_command(namespaces)
 cli.add_command(network)
 cli.add_command(scenarios)
 
