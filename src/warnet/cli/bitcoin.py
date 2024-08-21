@@ -9,7 +9,7 @@ import click
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
-from .k8s import run_command
+from .process import run_command
 
 
 @click.group(name="bitcoin")
