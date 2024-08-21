@@ -52,15 +52,6 @@ print_message "" "" ""
 print_message "" "    Let's find out if your system has what it takes to run Warnet..." ""
 print_message "" "" ""
 
-minikube_path=$(command -v minikube || true)
-if [ -n "$minikube_path" ]; then
-    print_partial_message " ⭐️ Found " "minikube" ": $minikube_path " "$BOLD"
-else
-    print_partial_message " 💥 Could not find " "minikube" ". Please follow this link to install it..." "$BOLD"
-    print_message "" "   https://minikube.sigs.k8s.io/docs/start/" "$BOLD"
-    exit 127
-fi
-
 kubectl_path=$(command -v kubectl || true)
 if [ -n "$kubectl_path" ]; then
     print_partial_message " ⭐️ Found " "kubectl" ": $kubectl_path " "$BOLD"
@@ -79,15 +70,6 @@ else
     exit 127
 fi
 
-current_user=$(whoami)
-if id -nG "$current_user" | grep -qw "docker"; then
-    print_partial_message " ⭐️ Found " "$current_user" " in the docker group" "$BOLD"
-else
-    print_partial_message " 💥 Could not find " "$current_user" " in the docker group. Please add it like this..." "$BOLD"
-    print_message "" "   sudo usermod -aG docker $current_user && newgrp docker" "$BOLD"
-    exit 1
-fi
-
 helm_path=$(command -v helm || true)
 if [ -n "$helm_path" ]; then
     print_partial_message " ⭐️ Found " "helm" ": $helm_path" "$BOLD"
@@ -95,14 +77,6 @@ else
     print_partial_message " 💥 Could not find " "helm" ". Please follow this link to install it..." "$BOLD"
     print_message "" "   https://helm.sh/docs/intro/install/" "$BOLD"
     exit 127
-fi
-
-just_path=$(command -v just || true)
-if [ -n "$just_path" ]; then
-    print_partial_message " ⭐️ Found " "just" ": $just_path " "$BOLD"
-else
-    print_partial_message " 💥 Could not find " "just" ". Please follow this link to install it..." "$BOLD"
-    print_message "" "   https://github.com/casey/just?tab=readme-ov-file#pre-built-binaries" "$BOLD"
 fi
 
 python_path=$(command -v python3 || true)
@@ -121,16 +95,5 @@ else
     exit 127
 fi
 
-bpf_status=$(grep CONFIG_BPF /boot/config-"$(uname -r)" || true)
-if [ -n "$bpf_status" ]; then
-    config_bpf=$(echo "$bpf_status" | grep CONFIG_BPF=y)
-    if [ "$config_bpf" = "CONFIG_BPF=y" ]; then
-        print_partial_message " ⭐️ Found " "BPF" ": Berkeley Packet Filters appear enabled" "$BOLD"
-    else
-        print_partial_message " 💥 Could not find " "BPF" ". Please figure out how to enable Berkeley Packet Filters in your kernel." "$BOLD"
-        exit 1
-    fi
-else
-    print_partial_message " 💥 Could not find " "BPF" ". Please figure out how to enable Berkeley Packet Filters in your kernel." "$BOLD"
-    exit 1
-fi
+echo " ✅ Everything needed found"
+
