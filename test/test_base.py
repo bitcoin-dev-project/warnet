@@ -13,7 +13,7 @@ from time import sleep
 from warnet import SRC_DIR
 from warnet.cli.network import _status as network_status
 from warnet.cli.network import _connected as network_connected
-
+from warnet.cli.scenarios import _active as scenarios_active
 
 class TestBase:
     def __init__(self):
@@ -128,9 +128,13 @@ class TestBase:
 
     def wait_for_all_scenarios(self):
         def check_scenarios():
-            scns = self.rpc("scenarios_list_running")
-            return all(not scn["active"] for scn in scns)
-
+            scns = scenarios_active()
+            if len(scns) == 0:
+                return True
+            for s in scns:
+                if s["status"] != "succeeded":
+                    return False
+            return True
         self.wait_for_predicate(check_scenarios)
 
     def get_scenario_return_code(self, scenario_name):

@@ -14,7 +14,6 @@ class DAGConnectionTest(TestBase):
         )
 
     def run_test(self):
-        self.start_server()
         try:
             self.setup_network()
             self.run_connect_dag_scenario()

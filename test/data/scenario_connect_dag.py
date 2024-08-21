@@ -4,7 +4,8 @@ import os
 from enum import Enum, auto, unique
 from time import sleep
 
-from warnet.test_framework_bridge import WarnetTestFramework
+# The base class exists inside the commander container
+from commander import Commander
 
 
 def cli_help():
@@ -17,7 +18,7 @@ class ConnectionType(Enum):
     DNS = auto()
 
 
-class ConnectDag(WarnetTestFramework):
+class ConnectDag(Commander):
     def set_test_params(self):
         # This is just a minimum
         self.num_nodes = 10
