@@ -14,7 +14,6 @@ from rich.console import Console
 from rich.table import Table
 from warnet import scenarios as SCENARIOS
 from .k8s import apply_kubernetes_yaml, create_namespace, get_mission
-from .rpc import rpc_call
 
 
 @click.group(name="scenarios")
@@ -167,7 +166,8 @@ def run_file(scenario_path, network, additional_args, name=""):
         "additional_args": additional_args,
         "network": network,
     }
-    print(rpc_call("scenarios_run_file", params))
+    # TODO
+    # print(rpc_call("scenarios_run_file", params))
 
 
 @scenarios.command()
