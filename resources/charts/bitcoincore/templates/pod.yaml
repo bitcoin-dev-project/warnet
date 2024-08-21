@@ -22,8 +22,17 @@ spec:
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       ports:
-        - name: http
-          containerPort: {{ .Values.service.port }}
+        - name: rpc
+          containerPort: {{ .Values.regtest.RPCPort }}
+          protocol: TCP
+        - name: p2p
+          containerPort: {{ .Values.regtest.P2PPort }}
+          protocol: TCP
+        - name: zmq-tx
+          containerPort: {{ .Values.regtest.ZMQTxPort }}
+          protocol: TCP
+        - name: zmq-block
+          containerPort: {{ .Values.regtest.ZMQBlockPort }}
           protocol: TCP
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}

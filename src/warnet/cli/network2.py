@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 import yaml
 
-from .process import run_command
+from .process import stream_command
 
 NETWORK_DIR = Path("networks")
 DEFAULT_NETWORK = "6_node_bitcoin"
@@ -40,7 +40,8 @@ def start2(network_name: str, logging: bool, network: str):
         try:
             temp_override_file_path = ""
             node_name = node.get("name")
-            node_config_override = node.get("config")
+            # all the keys apart from name
+            node_config_override = {k: v for k, v in node.items() if k != "name"}
 
             cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {NAMESPACE} -f {defaults_file_path}"
 
@@ -52,12 +53,12 @@ def start2(network_name: str, logging: bool, network: str):
                     temp_override_file_path = temp_file.name
                 cmd = f"{cmd} -f {temp_override_file_path}"
 
-            if not run_command(cmd, stream_output=True):
+            if not stream_command(cmd):
                 print(f"Failed to run Helm command: {cmd}")
                 return
         except Exception as e:
             print(f"Error: {e}")
             return
-        finally:
-            if temp_override_file_path:
-                Path(temp_override_file_path).unlink()
+        # finally:
+        # if temp_override_file_path:
+        #     Path(temp_override_file_path).unlink()

@@ -1,3 +1,5 @@
+chain: regtest
+
 collectLogs: true
 metricsExport: true
 
@@ -19,23 +21,5 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "27.0"
 
-config: |2+
-    regtest=1
-    checkmempool=0
-    acceptnonstdtxn=1
-    debuglogfile=0
-    logips=1
-    logtimemicros=1
-    capturemessages=1
-    fallbackfee=0.00001000
-    listen=1
-
-    [regtest]
-    rpcuser=user
-    rpcpassword=password
-    rpcport=18443
-    rpcallowip=0.0.0.0/0
-    rpcbind=0.0.0.0
-
-    zmqpubrawblock=tcp://0.0.0.0:28332
-    zmqpubrawtx=tcp://0.0.0.0:28333
+config: |
+  dns=1

@@ -38,7 +38,12 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 80
+
+regtest:
+  RPCPort: 18443
+  P2PPort: 18444
+  ZMQTxPort: 28333
+  ZMQBlockPort: 28332
 
 ingress:
   enabled: false
@@ -107,23 +112,31 @@ tolerations: []
 
 affinity: {}
 
-config: |2+
-    regtest=1
-    checkmempool=0
-    acceptnonstdtxn=1
-    debuglogfile=0
-    logips=1
-    logtimemicros=1
-    capturemessages=1
-    fallbackfee=0.00001000
-    listen=1
+chain: regtest
 
-    [regtest]
-    rpcuser=user
-    rpcpassword=password
-    rpcport=18443
-    rpcallowip=0.0.0.0/0
-    rpcbind=0.0.0.0
+regtestConfig: |
+  regtest=1
 
-    zmqpubrawblock=tcp://0.0.0.0:28332
-    zmqpubrawtx=tcp://0.0.0.0:28333
+  [regtest]
+  rpcuser=user
+  rpcpassword=password
+  rpcport=18443
+  rpcallowip=0.0.0.0/0
+  rpcbind=0.0.0.0
+
+baseConfig: |
+  checkmempool=0
+  acceptnonstdtxn=1
+  debuglogfile=0
+  logips=1
+  logtimemicros=1
+  capturemessages=1
+  fallbackfee=0.00001000
+  listen=1
+
+  zmqpubrawblock=tcp://0.0.0.0:28332
+  zmqpubrawtx=tcp://0.0.0.0:28333
+
+config: ""
+
+connect: []

@@ -5,5 +5,12 @@ metadata:
   labels:
     {{- include "bitcoincore.labels" . | nindent 4 }}
 data:
-  bitcoin-conf: |
-   {{ tpl .Values.config . | nindent 2 }}
+  bitcoin.conf: |
+    {{- if eq .Values.chain "regtest" }}
+      {{- tpl .Values.regtestConfig . | nindent 4 }}
+    {{- end }}
+    {{- .Values.baseConfig | nindent 4 }}
+    {{- .Values.config | nindent 4 }}
+    {{- range .Values.connect }}
+      {{- print "connect=" . | nindent 4}}
+    {{- end }}
