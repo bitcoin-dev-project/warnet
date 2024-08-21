@@ -203,6 +203,5 @@ options:
 |-----------------|--------|------------|-----------|
 | scenario_path   | String | yes        |           |
 | additional_args | String |            |           |
-| name            | String |            |           |
 
 
