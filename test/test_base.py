@@ -11,8 +11,8 @@ from tempfile import mkdtemp
 from time import sleep
 
 from warnet import SRC_DIR
-from warnet.cli.network import _status as network_status
 from warnet.cli.network import _connected as network_connected
+from warnet.cli.network import _status as network_status
 from warnet.cli.scenarios import _active as scenarios_active
 
 
@@ -132,10 +132,7 @@ class TestBase:
             scns = scenarios_active()
             if len(scns) == 0:
                 return True
-            for s in scns:
-                if s["status"] != "succeeded":
-                    return False
-            return True
+            return all(s["status"] == "succeeded" for s in scns)
 
         self.wait_for_predicate(check_scenarios)
 

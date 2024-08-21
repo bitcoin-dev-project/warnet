@@ -20,7 +20,6 @@ from .k8s import (
     get_mission,
     set_kubectl_context,
 )
-
 from .process import stream_command
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
@@ -194,7 +193,7 @@ def start(graph_file: Path, logging: bool):
 
     try:
         if deploy_base_configurations() and apply_kubernetes_yaml(temp_file_path):
-            print(f"Warnet network started successfully.")
+            print("Warnet network started successfully.")
             if not set_kubectl_context("warnet"):
                 print(
                     "Warning: Failed to set kubectl context. You may need to manually switch to the warnet namespace."
@@ -202,7 +201,7 @@ def start(graph_file: Path, logging: bool):
             if logging and not setup_logging_helm():
                 print("Failed to install Helm charts.")
         else:
-            print(f"Failed to start warnet network.")
+            print("Failed to start warnet network.")
     finally:
         Path(temp_file_path).unlink()
 
@@ -211,9 +210,9 @@ def start(graph_file: Path, logging: bool):
 def down():
     """Bring down a running warnet"""
     if delete_namespace("warnet") and delete_namespace("warnet-logging"):
-        print(f"Warnet network has been successfully brought down and the namespaces deleted.")
+        print("Warnet network has been successfully brought down and the namespaces deleted.")
     else:
-        print(f"Failed to bring down warnet network or delete the namespaces.")
+        print("Failed to bring down warnet network or delete the namespaces.")
 
 
 @network.command()

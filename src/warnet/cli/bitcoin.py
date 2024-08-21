@@ -56,7 +56,7 @@ def grep_logs(pattern, show_k8s_timestamps, no_sort):
     """
 
     # Get all pods in the namespace
-    command = f"kubectl get pods -n warnet -o json"
+    command = "kubectl get pods -n warnet -o json"
     pods_json = run_command(command)
 
     if pods_json is False:

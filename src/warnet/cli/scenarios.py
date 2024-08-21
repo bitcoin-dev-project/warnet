@@ -1,4 +1,3 @@
-import base64
 import importlib
 import json
 import os
@@ -12,7 +11,9 @@ import yaml
 from rich import print
 from rich.console import Console
 from rich.table import Table
+
 from warnet import scenarios as SCENARIOS
+
 from .k8s import apply_kubernetes_yaml, create_namespace, get_mission
 
 
