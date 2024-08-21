@@ -238,7 +238,7 @@ def connected():
     edges = get_edges()
     for tank in tanks:
         # Get actual
-        index = tank.metadata.annotations["index"]
+        index = tank.metadata.labels["index"]
         peerinfo = json.loads(_rpc(int(index), "getpeerinfo", "", "warnet"))
         manuals = 0
         for peer in peerinfo:
