@@ -12,8 +12,6 @@ env:
 jobs:
 
   ruff:
-    # DISABLE FOR REWRITE
-    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
