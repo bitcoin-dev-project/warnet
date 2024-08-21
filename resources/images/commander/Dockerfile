@@ -5,7 +5,8 @@ FROM python:3.12-slim
 #RUN pip install --no-cache-dir prometheus_client
 
 # Prometheus exporter script for bitcoind
-COPY src /
+COPY resources/images/commander/src /
+COPY src/test_framework /test_framework
 
 # -u: force the stdout and stderr streams to be unbuffered
 ENTRYPOINT ["python", "-u", "/scenario.py"]
