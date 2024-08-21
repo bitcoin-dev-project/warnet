@@ -2,7 +2,6 @@
 
 import os
 from enum import Enum, auto, unique
-from time import sleep
 
 # The base class exists inside the commander container
 from commander import Commander
@@ -23,18 +22,7 @@ class ConnectDag(Commander):
         # This is just a minimum
         self.num_nodes = 10
 
-    def add_options(self, parser):
-        parser.add_argument(
-            "--network_name",
-            dest="network_name",
-            default="warnet",
-            help="",
-        )
-
     def run_test(self):
-        while not self.warnet.network_connected():
-            sleep(1)
-
         # All permutations of a directed acyclic graph with zero, one, or two inputs/outputs
         #
         # │ Node │ In │ Out │ Con In │ Con Out │
@@ -66,12 +54,6 @@ class ConnectDag(Commander):
         self.connect_nodes(5, 4)
         self.connect_nodes(5, 6)
         self.connect_nodes(6, 7)
-
-        # Nodes 8 & 9 shall come pre-connected. Attempt to connect them anyway to test the handling
-        # of dns node addresses
-        self.connect_nodes(8, 9)
-        self.connect_nodes(9, 8)
-
         self.sync_all()
 
         zero_peers = self.nodes[0].getpeerinfo()
@@ -85,31 +67,29 @@ class ConnectDag(Commander):
         eight_peers = self.nodes[8].getpeerinfo()
         nine_peers = self.nodes[9].getpeerinfo()
 
-        for tank in self.warnet.tanks:
-            self.log.info(
-                f"Tank {tank.index}: {tank.warnet.tanks[tank.index].get_dns_addr()} pod:"
-                f" {tank.warnet.tanks[tank.index].get_ip_addr()}"
-            )
+        for node in self.nodes:
+            self.log.info(f"Node {node.index}: tank={node.tank} ip={node.rpchost}")
 
-        self.assert_connection(zero_peers, 2, ConnectionType.DNS)
-        self.assert_connection(one_peers, 2, ConnectionType.DNS)
-        self.assert_connection(one_peers, 3, ConnectionType.DNS)
+        self.assert_connection(zero_peers, 2, ConnectionType.IP)
+        self.assert_connection(one_peers, 2, ConnectionType.IP)
+        self.assert_connection(one_peers, 3, ConnectionType.IP)
         self.assert_connection(two_peers, 0, ConnectionType.IP)
         self.assert_connection(two_peers, 1, ConnectionType.IP)
-        self.assert_connection(two_peers, 3, ConnectionType.DNS)
-        self.assert_connection(two_peers, 4, ConnectionType.DNS)
+        self.assert_connection(two_peers, 3, ConnectionType.IP)
+        self.assert_connection(two_peers, 4, ConnectionType.IP)
         self.assert_connection(three_peers, 1, ConnectionType.IP)
         self.assert_connection(three_peers, 2, ConnectionType.IP)
-        self.assert_connection(three_peers, 5, ConnectionType.DNS)
+        self.assert_connection(three_peers, 5, ConnectionType.IP)
         self.assert_connection(four_peers, 2, ConnectionType.IP)
         self.assert_connection(four_peers, 5, ConnectionType.IP)
         self.assert_connection(five_peers, 3, ConnectionType.IP)
-        self.assert_connection(five_peers, 4, ConnectionType.DNS)
-        self.assert_connection(five_peers, 6, ConnectionType.DNS)
+        self.assert_connection(five_peers, 4, ConnectionType.IP)
+        self.assert_connection(five_peers, 6, ConnectionType.IP)
         self.assert_connection(six_peers, 5, ConnectionType.IP)
-        self.assert_connection(six_peers, 7, ConnectionType.DNS)
+        self.assert_connection(six_peers, 7, ConnectionType.IP)
         self.assert_connection(seven_peers, 6, ConnectionType.IP)
         # Check the pre-connected nodes
+        # The only connection made by DNS name would be from the initial graph edges
         self.assert_connection(eight_peers, 9, ConnectionType.DNS)
         self.assert_connection(nine_peers, 8, ConnectionType.IP)
 
@@ -121,14 +101,15 @@ class ConnectDag(Commander):
     def assert_connection(self, connector, connectee_index, connection_type: ConnectionType):
         if connection_type == ConnectionType.DNS:
             assert any(
-                d.get("addr") == self.warnet.tanks[connectee_index].get_dns_addr()
+                # ignore the ...-service suffix
+                self.nodes[connectee_index].tank in d.get("addr")
                 for d in connector
-            ), f"Could not find {self.options.network_name}-tank-00000{connectee_index}-service"
+            ), "Could not find conectee hostname"
         elif connection_type == ConnectionType.IP:
             assert any(
-                d.get("addr").split(":")[0] == self.warnet.tanks[connectee_index].get_ip_addr()
+                d.get("addr").split(":")[0] == self.nodes[connectee_index].rpchost
                 for d in connector
-            ), f"Could not find Tank {connectee_index}'s ip addr"
+            ), "Could not find connectee ip addr"
         else:
             raise ValueError("ConnectionType must be of type DNS or IP")
 

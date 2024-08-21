@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 from test_base import TestBase
-
 from warnet.cli.k8s import delete_pod
 from warnet.cli.scenarios import _active as scenarios_active
 from warnet.cli.scenarios import _available as scenarios_available

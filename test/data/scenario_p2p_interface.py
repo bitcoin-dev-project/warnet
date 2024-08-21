@@ -3,7 +3,6 @@ from collections import defaultdict
 
 # The base class exists inside the commander container
 from commander import Commander
-
 from test_framework.messages import CInv, msg_getdata
 from test_framework.p2p import P2PInterface
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 import yaml
 
-from .process import stream_command, run_command
+from .process import run_command, stream_command
 
 NAMESPACES_DIR = Path("namespaces")
 DEFAULT_NAMESPACES = "two_namespaces_two_users"
@@ -13,6 +13,7 @@ NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_FILE = "defaults.yaml"
 HELM_COMMAND = "helm upgrade --install"
 BITCOIN_CHART_LOCATION = "./resources/charts/namespaces"
+
 
 @click.group(name="namespaces")
 def namespaces():
@@ -35,7 +36,9 @@ def deploy(namespaces: str):
     names = [n.get("name") for n in namespaces_file["namespaces"]]
     for n in names:
         if not n.startswith("warnet-"):
-            print(f"Failled to create namespace: {n}. Namespaces must start with a 'warnet-' prefix.")
+            print(
+                f"Failled to create namespace: {n}. Namespaces must start with a 'warnet-' prefix."
+            )
 
     # deploy namespaces
     for namespace in namespaces_file["namespaces"]:
@@ -46,7 +49,9 @@ def deploy(namespaces: str):
             # all the keys apart from name
             namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
 
-            cmd = f"{HELM_COMMAND} {namespace_name} {BITCOIN_CHART_LOCATION} -f {defaults_file_path}"
+            cmd = (
+                f"{HELM_COMMAND} {namespace_name} {BITCOIN_CHART_LOCATION} -f {defaults_file_path}"
+            )
 
             if namespace_config_override:
                 with tempfile.NamedTemporaryFile(
@@ -63,6 +68,7 @@ def deploy(namespaces: str):
             print(f"Error: {e}")
             return
 
+
 @namespaces.command()
 def list():
     """List all namespaces with 'warnet-' prefix"""
@@ -77,6 +83,7 @@ def list():
             print(f"- {ns}")
     else:
         print("No warnet namespaces found.")
+
 
 @namespaces.command()
 @click.option("--all", "destroy_all", is_flag=True, help="Destroy all warnet- prefixed namespaces")
