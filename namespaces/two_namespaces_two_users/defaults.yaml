@@ -1,0 +1,16 @@
+users:
+  - name: warcli-user
+    roles:
+      - pod-viewer
+      - pod-manager
+roles:
+  - name: pod-viewer
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch"]
+  - name: pod-manager
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch", "create", "update", "delete"]
