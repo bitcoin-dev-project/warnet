@@ -9,7 +9,7 @@ from pathlib import Path
 from test_base import TestBase
 
 # from warnet.lnd import LNDNode
-from warnet.utils import DEFAULT_TAG
+from warnet.cli.util import DEFAULT_TAG
 
 
 class GraphTest(TestBase):
