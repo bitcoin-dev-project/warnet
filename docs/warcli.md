@@ -124,6 +124,29 @@ options:
 | arches     | String |            |           |
 | action     | String |            | "load"    |
 
+## Namespaces
+
+### `warcli namespaces deploy`
+Deploy namespaces with users from a \<namespaces_file>
+
+options:
+| name       | type   | required   | default                    |
+|------------|--------|------------|----------------------------|
+| namespaces | String |            | "two_namespaces_two_users" |
+
+### `warcli namespaces destroy`
+Destroy a specific namespace or all warnet- prefixed namespaces
+
+options:
+| name        | type   | required   | default   |
+|-------------|--------|------------|-----------|
+| destroy_all | Bool   |            | False     |
+| namespace   | String |            |           |
+
+### `warcli namespaces list`
+List all namespaces with 'warnet-' prefix
+
+
 ## Network
 
 ### `warcli network connected`
