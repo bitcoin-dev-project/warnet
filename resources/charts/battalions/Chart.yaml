@@ -1,0 +1,6 @@
+apiVersion: v2
+name: battalion-namespace
+description: A Helm chart for creating a battalion namespace
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
