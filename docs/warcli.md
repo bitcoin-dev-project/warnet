@@ -134,15 +134,6 @@ Determine if all p2p conenctions defined in graph are established
 Bring down a running warnet
 
 
-### `warcli network generate-yaml`
-Generate a Kubernetes YAML file from a graph file for deploying warnet nodes.
-
-options:
-| name       | type   | required   | default                          |
-|------------|--------|------------|----------------------------------|
-| graph_file | Path   |            | resources/graphs/default.graphml |
-| output     | String |            | "warnet-deployment.yaml"         |
-
 ### `warcli network logs`
 Get Kubernetes logs from the RPC server
 
@@ -152,21 +143,6 @@ options:
 | follow | Bool   |            | False     |
 
 ### `warcli network start`
-Start a warnet with topology loaded from a \<graph_file>
-
-options:
-| name       | type   | required   | default                          |
-|------------|--------|------------|----------------------------------|
-| graph_file | Path   |            | resources/graphs/default.graphml |
-| logging    | Bool   |            | False                            |
-
-### `warcli network status`
-Return pod status
-
-
-## Network2
-
-### `warcli network2 start2`
 Start a warnet with topology loaded from \<network_name> into [network]
 
 options:
@@ -175,6 +151,10 @@ options:
 | network_name | String |            | "6_node_bitcoin" |
 | network      | String |            | "warnet"         |
 | logging      | Bool   |            | False            |
+
+### `warcli network status`
+Return pod status
+
 
 ## Scenarios
 
