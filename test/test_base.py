@@ -15,6 +15,7 @@ from warnet.cli.network import _status as network_status
 from warnet.cli.network import _connected as network_connected
 from warnet.cli.scenarios import _active as scenarios_active
 
+
 class TestBase:
     def __init__(self):
         self.setup_environment()
@@ -135,6 +136,7 @@ class TestBase:
                 if s["status"] != "succeeded":
                     return False
             return True
+
         self.wait_for_predicate(check_scenarios)
 
     def get_scenario_return_code(self, scenario_name):

@@ -92,16 +92,17 @@ def run_scenario(scenario_path, additional_args):
 
     tankpods = get_mission("tank")
     tanks = [
-                {
-                    "tank": tank.metadata.name,
-                    "chain": "regtest",
-                    "rpc_host": tank.status.pod_ip,
-                    "rpc_port": 18443,
-                    "rpc_user": "user",
-                    "rpc_password": "password",
-                    "init_peers": [],
-                } for tank in tankpods
-            ]
+        {
+            "tank": tank.metadata.name,
+            "chain": "regtest",
+            "rpc_host": tank.status.pod_ip,
+            "rpc_port": 18443,
+            "rpc_user": "user",
+            "rpc_password": "password",
+            "init_peers": [],
+        }
+        for tank in tankpods
+    ]
     kubernetes_objects = [create_namespace()]
     kubernetes_objects.extend(
         [

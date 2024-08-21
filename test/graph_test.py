@@ -36,9 +36,7 @@ class GraphTest(TestBase):
     def test_graph_creation_and_import(self):
         self.log.info(f"CLI tool creating test graph file: {self.tf_create}")
         self.log.info(
-            self.warcli(
-                f"graph create 10 --outfile={self.tf_create} --version={DEFAULT_TAG}"
-            )
+            self.warcli(f"graph create 10 --outfile={self.tf_create} --version={DEFAULT_TAG}")
         )
         self.wait_for_predicate(lambda: Path(self.tf_create).exists())
 

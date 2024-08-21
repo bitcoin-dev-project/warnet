@@ -8,6 +8,7 @@ from test_framework.p2p import P2PInterface
 # The base class exists inside the commander container
 from commander import Commander
 
+
 def cli_help():
     return "Run P2P GETDATA test"
 
