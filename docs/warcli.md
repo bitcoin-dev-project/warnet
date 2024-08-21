@@ -164,6 +164,18 @@ options:
 Return pod status
 
 
+## Network2
+
+### `warcli network2 start2`
+Start a warnet with topology loaded from \<network_name> into [network]
+
+options:
+| name         | type   | required   | default          |
+|--------------|--------|------------|------------------|
+| network_name | String |            | "6_node_bitcoin" |
+| network      | String |            | "warnet"         |
+| logging      | Bool   |            | False            |
+
 ## Scenarios
 
 ### `warcli scenarios active`
