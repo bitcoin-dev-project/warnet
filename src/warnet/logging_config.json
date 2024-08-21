@@ -11,17 +11,11 @@
       "datefmt": "%Y-%m-%d %H:%M:%S"
     }
   },
-  "filters": {
-    "no_errors": {
-      "()": "warnet.utils.NonErrorFilter"
-    }
-  },
   "handlers": {
     "stdout": {
       "class": "logging.StreamHandler",
       "level": "DEBUG",
       "formatter": "simple",
-      "filters": ["no_errors"],
       "stream": "ext://sys.stdout"
     },
     "stderr": {

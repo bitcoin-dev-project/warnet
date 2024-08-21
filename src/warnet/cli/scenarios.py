@@ -44,10 +44,9 @@ def available():
 @scenarios.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario", type=str)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-@click.option("--network", default="warnet", show_default=True)
-def run(scenario, network, additional_args):
+def run(scenario, additional_args):
     """
-    Run <scenario> from the Warnet Test Framework on [network] with optional arguments
+    Run <scenario> from the Warnet Test Framework with optional arguments
     """
 
     # Use importlib.resources to get the scenario path
@@ -147,10 +146,9 @@ def run(scenario, network, additional_args):
 @click.argument("scenario_path", type=str)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 @click.option("--name", type=str)
-@click.option("--network", default="warnet", show_default=True)
-def run_file(scenario_path, network, additional_args, name=""):
+def run_file(scenario_path, additional_args, name=""):
     """
-    Run <scenario_path> from the Warnet Test Framework on [network] with optional arguments
+    Run <scenario_path> from the Warnet Test Framework with optional arguments
     """
     if not scenario_path.endswith(".py"):
         print("Error. Currently only python scenarios are supported")
@@ -164,7 +162,6 @@ def run_file(scenario_path, network, additional_args, name=""):
         "scenario_base64": scenario_base64,
         "scenario_name": scenario_name,
         "additional_args": additional_args,
-        "network": network,
     }
     # TODO
     # print(rpc_call("scenarios_run_file", params))

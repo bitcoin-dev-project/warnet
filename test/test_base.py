@@ -6,14 +6,13 @@ import os
 import re
 import threading
 from pathlib import Path
-from subprocess import PIPE, Popen, run
+from subprocess import run
 from tempfile import mkdtemp
 from time import sleep
 
 from warnet import SRC_DIR
-from warnet.cli.rpc import rpc_call
-from warnet.utils import exponential_backoff
-from warnet.warnet import Warnet
+from warnet.cli.network import _status as network_status
+from warnet.cli.network import _connected as network_connected
 
 
 class TestBase:
@@ -30,11 +29,6 @@ class TestBase:
         self.tmpdir = Path(mkdtemp(prefix="warnet-test-"))
         os.environ["XDG_STATE_HOME"] = str(self.tmpdir)
         self.logfilepath = self.tmpdir / "warnet.log"
-        # Use the same dir name for the warnet network name
-        # replacing underscores which throws off k8s
-        self.network_name = self.tmpdir.name.replace("_", "")
-        self.server = None
-        self.server_thread = None
         self.stop_threads = threading.Event()
         self.network = True
 
@@ -47,8 +41,6 @@ class TestBase:
         self.log.info("Logging started")
 
     def cleanup(self, signum=None, frame=None):
-        if self.server is None:
-            return
         try:
             self.log.info("Stopping network")
             if self.network:
@@ -58,10 +50,6 @@ class TestBase:
             self.log.error(f"Error bringing network down: {e}")
         finally:
             self.stop_threads.set()
-            self.server.terminate()
-            self.server.wait()
-            self.server_thread.join()
-            self.server = None
 
     def _print_and_assert_msgs(self, message):
         print(message)
@@ -76,60 +64,19 @@ class TestBase:
         ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
         self.log_msg_assertions_passed = False
 
-    def warcli(self, cmd, network=True):
+    def warcli(self, cmd):
         self.log.debug(f"Executing warcli command: {cmd}")
         command = ["warcli"] + cmd.split()
-        if network:
-            command += ["--network", self.network_name]
         proc = run(command, capture_output=True)
         if proc.stderr:
             raise Exception(proc.stderr.decode().strip())
         return proc.stdout.decode().strip()
-
-    def rpc(self, method, params=None) -> dict | list:
-        """Execute a warnet RPC API call directly"""
-        self.log.debug(f"Executing RPC method: {method}")
-        return rpc_call(method, params)
-
-    @exponential_backoff(max_retries=20)
-    def wait_for_rpc(self, method, params=None):
-        """Repeatedly execute an RPC until it succeeds"""
-        return self.rpc(method, params)
 
     def output_reader(self, pipe, func):
         while not self.stop_threads.is_set():
             line = pipe.readline().strip()
             if line:
                 func(line)
-
-    def start_server(self):
-        """Start the Warnet server and wait for RPC interface to respond"""
-
-        if self.server is not None:
-            raise Exception("Server is already running")
-
-        # TODO: check for conflicting warnet process
-        #       maybe also ensure that no conflicting docker networks exist
-
-        # For kubernetes we assume the server is started outside test base,
-        # but we can still read its log output
-        self.log.info("Starting Warnet server")
-        self.server = Popen(
-            ["kubectl", "logs", "-f", "rpc-0", "--since=1s"],
-            stdout=PIPE,
-            stderr=PIPE,
-            bufsize=1,
-            universal_newlines=True,
-        )
-
-        self.server_thread = threading.Thread(
-            target=self.output_reader, args=(self.server.stdout, self._print_and_assert_msgs)
-        )
-        self.server_thread.daemon = True
-        self.server_thread.start()
-
-        self.log.info("Waiting for RPC")
-        self.wait_for_rpc("scenarios_available")
 
     def stop_server(self):
         self.cleanup()
@@ -148,8 +95,8 @@ class TestBase:
         )
 
     def get_tank(self, index):
-        wn = Warnet.from_network(self.network_name)
-        return wn.tanks[index]
+        # TODO
+        return None
 
     def wait_for_all_tanks_status(self, target="running", timeout=20 * 60, interval=5):
         """Poll the warnet server for container status
@@ -157,8 +104,11 @@ class TestBase:
         """
 
         def check_status():
-            tanks = self.wait_for_rpc("network_status", {"network": self.network_name})
+            tanks = network_status()
             stats = {"total": 0}
+            # "Probably" means all tanks are stopped and deleted
+            if len(tanks) == 0:
+                return True
             for tank in tanks:
                 for service in ["bitcoin", "lightning", "circuitbreaker"]:
                     status = tank.get(f"{service}_status")
@@ -174,11 +124,7 @@ class TestBase:
         """Ensure all tanks have all the connections they are supposed to have
         Block until all success
         """
-
-        def check_status():
-            return self.wait_for_rpc("network_connected", {"network": self.network_name})
-
-        self.wait_for_predicate(check_status, timeout, interval)
+        self.wait_for_predicate(network_connected, timeout, interval)
 
     def wait_for_all_scenarios(self):
         def check_scenarios():

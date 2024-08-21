@@ -17,12 +17,30 @@ def bitcoin():
     """Control running bitcoin nodes"""
 
 
+@bitcoin.command(context_settings={"ignore_unknown_options": True})
+@click.argument("node", type=int)
+@click.argument("method", type=str)
+@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
+def rpc(node, method, params):
+    """
+    Call bitcoin-cli <method> [params] on <node>
+    """
+    print(_rpc(node, method, params))
+
+
+def _rpc(node, method, params):
+    if params:
+        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
+    else:
+        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
+    return run_command(cmd)
+
+
 @bitcoin.command()
 @click.argument("node", type=int, required=True)
-@click.option("--network", default="warnet", show_default=True)
-def debug_log(node, network):
+def debug_log(node):
     """
-    Fetch the Bitcoin Core debug log from <node> in [network]
+    Fetch the Bitcoin Core debug log from <node>
     """
     cmd = f"kubectl logs warnet-tank-{node}"
     print(run_command(cmd))
@@ -32,14 +50,13 @@ def debug_log(node, network):
 @click.argument("pattern", type=str, required=True)
 @click.option("--show-k8s-timestamps", is_flag=True, default=False, show_default=True)
 @click.option("--no-sort", is_flag=True, default=False, show_default=True)
-@click.option("--network", default="warnet", show_default=True)
-def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
+def grep_logs(pattern, show_k8s_timestamps, no_sort):
     """
     Grep combined bitcoind logs using regex <pattern>
     """
 
     # Get all pods in the namespace
-    command = f"kubectl get pods -n {network} -o json"
+    command = f"kubectl get pods -n warnet -o json"
     pods_json = run_command(command)
 
     if pods_json is False:
@@ -68,7 +85,7 @@ def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
                 continue
 
             # Get logs from the specific container
-            command = f"kubectl logs {pod_name} -c {container_name} -n {network} --timestamps"
+            command = f"kubectl logs {pod_name} -c {container_name} -n warnet --timestamps"
             logs = run_command(command)
 
             if logs is not False:
@@ -136,18 +153,6 @@ def messages(node_a, node_b, network):
 
     except Exception as e:
         print(f"Error fetching messages between nodes {node_a} and {node_b}: {e}")
-
-
-@bitcoin.command(context_settings={"ignore_unknown_options": True})
-@click.argument("node", type=int)
-@click.argument("method", type=str)
-@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-@click.option("--network", default="warnet", show_default=True)
-def rpc(node, method, params, network):
-    """
-    Call bitcoin-cli <method> [params] on <node> in [network]
-    """
-    print(_rpc(node, method, params, network))
 
 
 def get_messages(node_a, node_b, network):
@@ -302,11 +307,3 @@ def to_jsonable(obj):
         return obj.hex()
     else:
         return obj
-
-
-def _rpc(node, method, params, network):
-    if params:
-        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
-    else:
-        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
-    return run_command(cmd)

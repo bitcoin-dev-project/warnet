@@ -13,7 +13,6 @@ class RPCTest(TestBase):
         self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "12_node_ring.graphml"
 
     def run_test(self):
-        self.start_server()
         try:
             self.setup_network()
             self.test_rpc_commands()

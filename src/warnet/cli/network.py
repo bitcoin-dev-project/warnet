@@ -187,10 +187,9 @@ def setup_logging_helm() -> bool:
 
 @network.command()
 @click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
-@click.option("--network", default="warnet", show_default=True)
 @click.option("--logging/--no-logging", default=False)
-def start(graph_file: Path, logging: bool, network: str):
-    """Start a warnet with topology loaded from a <graph_file> into [network]"""
+def start(graph_file: Path, logging: bool):
+    """Start a warnet with topology loaded from a <graph_file>"""
     graph = read_graph_file(graph_file)
     kubernetes_yaml = generate_kubernetes_yaml(graph)
 
@@ -200,27 +199,26 @@ def start(graph_file: Path, logging: bool, network: str):
 
     try:
         if deploy_base_configurations() and apply_kubernetes_yaml(temp_file_path):
-            print(f"Warnet '{network}' started successfully.")
-            if not set_kubectl_context(network):
+            print(f"Warnet network started successfully.")
+            if not set_kubectl_context("warnet"):
                 print(
                     "Warning: Failed to set kubectl context. You may need to manually switch to the warnet namespace."
                 )
             if logging and not setup_logging_helm():
                 print("Failed to install Helm charts.")
         else:
-            print(f"Failed to start warnet '{network}'.")
+            print(f"Failed to start warnet network.")
     finally:
         Path(temp_file_path).unlink()
 
 
 @network.command()
-@click.option("--network", default="warnet", show_default=True)
-def down(network: str):
-    """Bring down a running warnet named [network]"""
-    if delete_namespace(network) and delete_namespace("warnet-logging"):
-        print(f"Warnet '{network}' has been successfully brought down and the namespaces deleted.")
+def down():
+    """Bring down a running warnet"""
+    if delete_namespace("warnet") and delete_namespace("warnet-logging"):
+        print(f"Warnet network has been successfully brought down and the namespaces deleted.")
     else:
-        print(f"Failed to bring down warnet '{network}' or delete the namespaces.")
+        print(f"Failed to bring down warnet network or delete the namespaces.")
 
 
 @network.command()
@@ -234,12 +232,15 @@ def logs(follow: bool):
 @network.command()
 def connected():
     """Determine if all p2p conenctions defined in graph are established"""
+    print(_connected())
+
+def _connected():
     tanks = get_mission("tank")
     edges = get_edges()
     for tank in tanks:
         # Get actual
         index = tank.metadata.labels["index"]
-        peerinfo = json.loads(_rpc(int(index), "getpeerinfo", "", "warnet"))
+        peerinfo = json.loads(_rpc(int(index), "getpeerinfo", ""))
         manuals = 0
         for peer in peerinfo:
             if peer["connection_type"] == "manual":
@@ -254,6 +255,22 @@ def connected():
             return False
     print("Network connected")
     return True
+
+
+@network.command()
+def status():
+    """Return pod status"""
+    # TODO: make it a pretty table
+    print(_status())
+
+def _status():
+    tanks = get_mission("tank")
+    stats = []
+    for tank in tanks:
+        status = {"tank_index": tank.metadata.labels["index"], "bitcoin_status": tank.status.phase.lower()}
+        stats.append(status)
+    return stats
+
 
 @network.command()
 @click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())

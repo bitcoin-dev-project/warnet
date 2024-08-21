@@ -19,7 +19,7 @@
     <!-- <data key="services">cadvisor forkobserver addrmanobserver grafana nodeexporter prometheus</data> -->
     <node id="0">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w0 -debug=validation</data>
+        <data key="bitcoin_config">debug=validation</data>
         <data key="exporter">true</data>
         <data key="ln">lnd</data>
     </node>

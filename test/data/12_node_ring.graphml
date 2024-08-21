@@ -18,47 +18,39 @@
   <graph edgedefault="directed">
     <node id="0">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w0 -debug=validation</data>
+        <data key="bitcoin_config">debug=validation</data>
     </node>
     <node id="1">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w1 -debug=validation</data>
+        <data key="bitcoin_config">debug=validation</data>
     </node>
     <node id="2">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w2 -debug=validation</data>
+        <data key="bitcoin_config">debug=validation</data>
     </node>
     <node id="3">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w3</data>
     </node>
     <node id="4">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w4</data>
     </node>
     <node id="5">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w5</data>
     </node>
     <node id="6">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w6</data>
     </node>
     <node id="7">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w7</data>
     </node>
     <node id="8">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w8</data>
     </node>
     <node id="9">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w9</data>
     </node>
     <node id="10">
         <data key="version">27.0</data>
-        <data key="bitcoin_config">-uacomment=w10</data>
     </node>
     <node id="11">
         <data key="version">27.0</data>
