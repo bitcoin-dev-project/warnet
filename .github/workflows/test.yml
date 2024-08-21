@@ -6,6 +6,9 @@ on:
     branches:
       - dev
 
+env:
+  UV_SYSTEM_PYTHON: 1
+
 jobs:
 
   ruff:
@@ -14,19 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hynek/setup-cached-uv@v1
-      - run: uv venv
-      - run: uv pip install ruff
-      - run: source .venv/bin/activate; ruff check .
+      - run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - run: uvx ruff check .
 
   ruff-format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hynek/setup-cached-uv@v1
-      - run: uv venv
-      - run: uv pip install ruff
-      - run: source .venv/bin/activate; ruff format .
+      - run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - run: uvx ruff format . --check
 
   test:
     runs-on: ubuntu-latest
@@ -36,15 +35,13 @@ jobs:
         test: [scenarios_test.py, rpc_test.py, graph_test.py,                                       logging_test.py]
     steps:
       - uses: actions/checkout@v4
-      - uses: hynek/setup-cached-uv@v1
       - uses: azure/setup-helm@v4.2.0
       - uses: medyagh/setup-minikube@master
-      - name: Run tests
+      - name: Install uv
         run: |
-          echo Installing warnet python package for cli
-          uv venv
-          uv pip install -e .
-        shell: bash
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Install project
+        run: uv sync --all-extras --dev
       - name: Run tests
         run: |
           source .venv/bin/activate
