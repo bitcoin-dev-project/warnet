@@ -3,23 +3,17 @@ import os
 import tempfile
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, Dict, List
 
 import click
-import networkx as nx
 import yaml
 from rich import print
 
 from .bitcoin import _rpc
 from .k8s import (
-    apply_kubernetes_yaml,
     create_kubernetes_object,
-    create_namespace,
     delete_namespace,
-    deploy_base_configurations,
     get_edges,
     get_mission,
-    set_kubectl_context,
 )
 from .process import stream_command
 
@@ -31,6 +25,7 @@ DEFAULTS_FILE = "defaults.yaml"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 BITCOIN_CHART_LOCATION = "./resources/charts/bitcoincore"
 NAMESPACE = "warnet"
+
 
 @click.group(name="network")
 def network():
