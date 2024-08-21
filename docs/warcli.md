@@ -30,6 +30,46 @@ options:
 Check Warnet requirements are installed
 
 
+## Bitcoin
+
+### `warcli bitcoin debug-log`
+Fetch the Bitcoin Core debug log from \<node>
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| node   | Int    | yes        |           |
+
+### `warcli bitcoin grep-logs`
+Grep combined bitcoind logs using regex \<pattern>
+
+options:
+| name                | type   | required   | default   |
+|---------------------|--------|------------|-----------|
+| pattern             | String | yes        |           |
+| show_k8s_timestamps | Bool   |            | False     |
+| no_sort             | Bool   |            | False     |
+
+### `warcli bitcoin messages`
+Fetch messages sent between \<node_a> and \<node_b> in [network]
+
+options:
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| node_a  | Int    | yes        |           |
+| node_b  | Int    | yes        |           |
+| network | String |            | "regtest" |
+
+### `warcli bitcoin rpc`
+Call bitcoin-cli \<method> [params] on \<node>
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| node   | Int    | yes        |           |
+| method | String | yes        |           |
+| params | String |            |           |
+
 ## Graph
 
 ### `warcli graph create`
@@ -86,21 +126,13 @@ options:
 
 ## Network
 
-### `warcli network connect`
-Connect nodes based on the edges defined in the graph file.
+### `warcli network connected`
+Determine if all p2p conenctions defined in graph are established
 
-options:
-| name       | type   | required   | default                          |
-|------------|--------|------------|----------------------------------|
-| graph_file | Path   |            | resources/graphs/default.graphml |
 
 ### `warcli network down`
-Bring down a running warnet named [network]
+Bring down a running warnet
 
-options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| network | String |            | "warnet"  |
 
 ### `warcli network generate-yaml`
 Generate a Kubernetes YAML file from a graph file for deploying warnet nodes.
@@ -120,14 +152,17 @@ options:
 | follow | Bool   |            | False     |
 
 ### `warcli network start`
-Start a warnet with topology loaded from a \<graph_file> into [network]
+Start a warnet with topology loaded from a \<graph_file>
 
 options:
 | name       | type   | required   | default                          |
 |------------|--------|------------|----------------------------------|
 | graph_file | Path   |            | resources/graphs/default.graphml |
-| network    | String |            | "warnet"                         |
 | logging    | Bool   |            | False                            |
+
+### `warcli network status`
+Return pod status
+
 
 ## Scenarios
 
@@ -140,17 +175,16 @@ List available scenarios in the Warnet Test Framework
 
 
 ### `warcli scenarios run`
-Run \<scenario> from the Warnet Test Framework on [network] with optional arguments
+Run \<scenario> from the Warnet Test Framework with optional arguments
 
 options:
 | name            | type   | required   | default   |
 |-----------------|--------|------------|-----------|
 | scenario        | String | yes        |           |
 | additional_args | String |            |           |
-| network         | String |            | "warnet"  |
 
 ### `warcli scenarios run-file`
-Run \<scenario_path> from the Warnet Test Framework on [network] with optional arguments
+Run \<scenario_path> from the Warnet Test Framework with optional arguments
 
 options:
 | name            | type   | required   | default   |
@@ -158,14 +192,5 @@ options:
 | scenario_path   | String | yes        |           |
 | additional_args | String |            |           |
 | name            | String |            |           |
-| network         | String |            | "warnet"  |
-
-### `warcli scenarios stop`
-Stop scenario with PID \<pid> from running
-
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| pid    | Int    | yes        |           |
 
 
