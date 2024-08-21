@@ -3,7 +3,7 @@ import re
 
 import click
 
-from .util import run_command
+from .k8s import run_command
 
 
 @click.group(name="bitcoin")
@@ -20,11 +20,15 @@ def rpc(node, method, params, network):
     """
     Call bitcoin-cli <method> [params] on <node> in [network]
     """
+    print(_rpc(node, method, params, network))
+
+
+def _rpc(node, method, params, network):
     if params:
         cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
     else:
         cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
-    run_command(cmd)
+    return run_command(cmd)
 
 
 @bitcoin.command()
@@ -35,7 +39,7 @@ def debug_log(node, network):
     Fetch the Bitcoin Core debug log from <node> in [network]
     """
     cmd = f"kubectl logs warnet-tank-{node}"
-    run_command(cmd)
+    print(run_command(cmd))
 
 
 # @bitcoin.command()
@@ -62,7 +66,7 @@ def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
 
     # Get all pods in the namespace
     command = f"kubectl get pods -n {network} -o json"
-    pods_json = run_command(command, return_output=True)
+    pods_json = run_command(command)
 
     if pods_json is False:
         print("Error: Failed to get pods information")
@@ -91,7 +95,7 @@ def grep_logs(pattern, network, show_k8s_timestamps, no_sort):
 
             # Get logs from the specific container
             command = f"kubectl logs {pod_name} -c {container_name} -n {network} --timestamps"
-            logs = run_command(command, return_output=True)
+            logs = run_command(command)
 
             if logs is not False:
                 # Process logs

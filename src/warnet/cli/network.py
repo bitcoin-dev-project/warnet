@@ -1,3 +1,4 @@
+import json
 import tempfile
 from importlib.resources import files
 from pathlib import Path
@@ -7,14 +8,18 @@ import click
 import networkx as nx
 import yaml
 from rich import print
-
+from .bitcoin import _rpc
 from .k8s import (
     apply_kubernetes_yaml,
     create_namespace,
     delete_namespace,
     deploy_base_configurations,
     run_command,
+    stream_command,
     set_kubectl_context,
+    create_kubernetes_object,
+    get_edges,
+    get_mission
 )
 
 DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
@@ -62,19 +67,6 @@ zmqpubrawtx=tcp://0.0.0.0:28333
     return f"{base_config}\n{node_specific_config}\n" + "\n".join(addnode_configs)
 
 
-def create_kubernetes_object(
-    kind: str, metadata: Dict[str, Any], spec: Dict[str, Any] = None
-) -> Dict[str, Any]:
-    obj = {
-        "apiVersion": "v1",
-        "kind": kind,
-        "metadata": metadata,
-    }
-    if spec is not None:
-        obj["spec"] = spec
-    return obj
-
-
 def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
     image = data.get("image", "bitcoindevproject/bitcoin:27.0")
     version = data.get("version", "27.0")
@@ -84,7 +76,11 @@ def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
         metadata={
             "name": f"warnet-tank-{node}",
             "namespace": "warnet",
-            "labels": {"app": "warnet", "mission": "tank", "index": str(node)},
+            "labels": {"app": "warnet", "mission": "tank"},
+            "annotations": {
+                "index": node,
+                "data": json.dumps(data)
+            }
         },
         spec={
             "containers": [
@@ -136,6 +132,25 @@ def create_config_map(node: int, config: str) -> Dict[str, Any]:
     return config_map
 
 
+def create_edges_map(graph):
+    edges = []
+    for src, dst, data in graph.edges(data=True):
+        edges.append({
+            "src": src,
+            "dst": dst,
+            "data": data
+        })
+    config_map = create_kubernetes_object(
+        kind="ConfigMap",
+        metadata={
+            "name": "edges",
+            "namespace": "warnet",
+        },
+    )
+    config_map["data"] = {"data": json.dumps(edges)}
+    return config_map
+
+
 def generate_kubernetes_yaml(graph: nx.Graph) -> List[Dict[str, Any]]:
     kubernetes_objects = [create_namespace()]
 
@@ -148,6 +163,7 @@ def generate_kubernetes_yaml(graph: nx.Graph) -> List[Dict[str, Any]]:
                 create_node_service(node),
             ]
         )
+    kubernetes_objects.append(create_edges_map(graph))
 
     return kubernetes_objects
 
@@ -164,7 +180,7 @@ def setup_logging_helm() -> bool:
     ]
 
     for command in helm_commands:
-        if not run_command(command, stream_output=True):
+        if not stream_command(command):
             print(f"Failed to run Helm command: {command}")
             return False
     return True
@@ -213,8 +229,32 @@ def down(network: str):
 def logs(follow: bool):
     """Get Kubernetes logs from the RPC server"""
     command = f"kubectl logs rpc-0{' --follow' if follow else ''}"
-    run_command(command, stream_output=follow)
+    stream_command(command)
 
+
+@network.command()
+def connected():
+    """Determine if all p2p conenctions defined in graph are established"""
+    tanks = get_mission("tank")
+    edges = get_edges()
+    for tank in tanks:
+        # Get actual
+        index = tank.metadata.annotations["index"]
+        peerinfo = json.loads(_rpc(int(index), "getpeerinfo", "", "warnet"))
+        manuals = 0
+        for peer in peerinfo:
+            if peer["connection_type"] == "manual":
+                manuals += 1
+        # Get expected
+        init_peers = sum(1 for edge in edges if edge["src"] == index)
+        print(f"Tank {index} connections: expected={init_peers} actual={manuals}")
+        # Even if more edges are specifed, bitcoind only allows
+        # 8 manual outbound connections
+        if min(8, init_peers) > manuals:
+            print("Network not connected")
+            return False
+    print("Network connected")
+    return True
 
 @network.command()
 @click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())

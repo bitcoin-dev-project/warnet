@@ -1,6 +1,8 @@
 import os
 import subprocess
 from importlib.resources import files
+import json
+from typing import Any, Dict
 
 from kubernetes import client, config
 from kubernetes.dynamic import DynamicClient
@@ -32,44 +34,54 @@ def get_mission(mission):
     return crew
 
 
-def run_command(command, stream_output=False, env=None):
-    # Merge the current environment with the provided env
-    full_env = os.environ.copy()
-    if env:
-        # Convert all env values to strings (only a safeguard)
-        env = {k: str(v) for k, v in env.items()}
-        full_env.update(env)
+def get_edges():
+    sclient = get_static_client()
+    configmap = sclient.read_namespaced_config_map(name="edges", namespace="warnet")
+    return json.loads(configmap.data["data"])
 
-    if stream_output:
-        process = subprocess.Popen(
-            ["/bin/bash", "-c", command],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            universal_newlines=True,
-            env=full_env,
-        )
 
-        for line in iter(process.stdout.readline, ""):
-            print(line, end="")
+def run_command(command) -> str:
+    result = subprocess.run(
+        command, shell=True, capture_output=True, text=True, executable="/bin/bash"
+    )
+    if result.returncode != 0:
+        raise Exception(result.stderr)
+    return result.stdout
 
-        process.stdout.close()
-        return_code = process.wait()
 
-        if return_code != 0:
-            print(f"Command failed with return code {return_code}")
-            return False
-        return True
-    else:
-        result = subprocess.run(
-            command, shell=True, capture_output=True, text=True, executable="/bin/bash"
-        )
-        if result.returncode != 0:
-            print(f"Error: {result.stderr}")
-            return False
-        print(result.stdout)
-        return True
+def stream_command(command, env=None) -> bool:
+    process = subprocess.Popen(
+        ["/bin/bash", "-c", command],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        universal_newlines=True,
+    )
+
+    for line in iter(process.stdout.readline, ""):
+        print(line, end="")
+
+    process.stdout.close()
+    return_code = process.wait()
+
+    if return_code != 0:
+        print(f"Command failed with return code {return_code}")
+        return False
+    return True
+
+
+def create_kubernetes_object(
+    kind: str, metadata: Dict[str, Any], spec: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    obj = {
+        "apiVersion": "v1",
+        "kind": kind,
+        "metadata": metadata,
+    }
+    if spec is not None:
+        obj["spec"] = spec
+    return obj
 
 
 def create_namespace() -> dict:
