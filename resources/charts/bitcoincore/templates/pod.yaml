@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "bitcoincore.labels" . | nindent 4 }}
     {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   {{- with .Values.imagePullSecrets }}

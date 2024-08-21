@@ -11,7 +11,6 @@ from .image import image
 
 # from .ln import ln
 from .network import network
-from .network2 import network2
 from .scenarios import scenarios
 
 QUICK_START_PATH = files("scripts").joinpath("quick_start.sh")
@@ -27,7 +26,6 @@ cli.add_command(graph)
 cli.add_command(image)
 # cli.add_command(ln)
 cli.add_command(network)
-cli.add_command(network2)
 cli.add_command(scenarios)
 
 

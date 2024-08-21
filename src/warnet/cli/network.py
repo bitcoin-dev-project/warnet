@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from importlib.resources import files
 from pathlib import Path
@@ -22,111 +23,18 @@ from .k8s import (
 )
 from .process import stream_command
 
-DEFAULT_GRAPH_FILE = files("graphs").joinpath("default.graphml")
 WAR_MANIFESTS = files("manifests")
-
+NETWORK_DIR = Path("networks")
+DEFAULT_NETWORK = "6_node_bitcoin"
+NETWORK_FILE = "network.yaml"
+DEFAULTS_FILE = "defaults.yaml"
+HELM_COMMAND = "helm upgrade --install --create-namespace"
+BITCOIN_CHART_LOCATION = "./resources/charts/bitcoincore"
+NAMESPACE = "warnet"
 
 @click.group(name="network")
 def network():
     """Network commands"""
-
-
-def read_graph_file(graph_file: Path) -> nx.Graph:
-    with open(graph_file) as f:
-        return nx.parse_graphml(f.read())
-
-
-def generate_node_config(node: int, data: dict, graph: nx.Graph) -> str:
-    base_config = """
-regtest=1
-checkmempool=0
-acceptnonstdtxn=1
-debuglogfile=0
-logips=1
-logtimemicros=1
-capturemessages=1
-fallbackfee=0.00001000
-listen=1
-
-[regtest]
-rpcuser=user
-rpcpassword=password
-rpcport=18443
-rpcallowip=0.0.0.0/0
-rpcbind=0.0.0.0
-
-zmqpubrawblock=tcp://0.0.0.0:28332
-zmqpubrawtx=tcp://0.0.0.0:28333
-"""
-    node_specific_config = data.get("bitcoin_config", "").replace(",", "\n")
-
-    # Add addnode configurations for connected nodes
-    connected_nodes = list(graph.neighbors(node))
-    addnode_configs = [f"addnode=warnet-tank-{index}-service" for index in connected_nodes]
-
-    return f"{base_config}\n{node_specific_config}\n" + "\n".join(addnode_configs)
-
-
-def create_node_deployment(node: int, data: dict) -> Dict[str, Any]:
-    image = data.get("image", "bitcoindevproject/bitcoin:27.0")
-    version = data.get("version", "27.0")
-
-    return create_kubernetes_object(
-        kind="Pod",
-        metadata={
-            "name": f"warnet-tank-{node}",
-            "namespace": "warnet",
-            "labels": {"app": "warnet", "mission": "tank", "index": str(node)},
-            "annotations": {"data": json.dumps(data)},
-        },
-        spec={
-            "containers": [
-                {
-                    "name": "bitcoin",
-                    "image": image,
-                    "env": [{"name": "BITCOIN_VERSION", "value": version}],
-                    "volumeMounts": [
-                        {
-                            "name": "config",
-                            "mountPath": "/root/.bitcoin/bitcoin.conf",
-                            "subPath": "bitcoin.conf",
-                        }
-                    ],
-                    "ports": [
-                        {"containerPort": 18444},
-                        {"containerPort": 18443},
-                    ],
-                }
-            ],
-            "volumes": [{"name": "config", "configMap": {"name": f"bitcoin-config-tank-{node}"}}],
-        },
-    )
-
-
-def create_node_service(node: int) -> Dict[str, Any]:
-    return create_kubernetes_object(
-        kind="Service",
-        metadata={"name": f"warnet-tank-{node}-service", "namespace": "warnet"},
-        spec={
-            "selector": {"app": "warnet", "mission": "tank", "index": str(node)},
-            "ports": [
-                {"name": "p2p", "port": 18444, "targetPort": 18444},
-                {"name": "rpc", "port": 18443, "targetPort": 18443},
-            ],
-        },
-    )
-
-
-def create_config_map(node: int, config: str) -> Dict[str, Any]:
-    config_map = create_kubernetes_object(
-        kind="ConfigMap",
-        metadata={
-            "name": f"bitcoin-config-tank-{node}",
-            "namespace": "warnet",
-        },
-    )
-    config_map["data"] = {"bitcoin.conf": config}
-    return config_map
 
 
 def create_edges_map(graph):
@@ -142,23 +50,6 @@ def create_edges_map(graph):
     )
     config_map["data"] = {"data": json.dumps(edges)}
     return config_map
-
-
-def generate_kubernetes_yaml(graph: nx.Graph) -> List[Dict[str, Any]]:
-    kubernetes_objects = [create_namespace()]
-
-    for node, data in graph.nodes(data=True):
-        config = generate_node_config(node, data, graph)
-        kubernetes_objects.extend(
-            [
-                create_config_map(node, config),
-                create_node_deployment(node, data),
-                create_node_service(node),
-            ]
-        )
-    kubernetes_objects.append(create_edges_map(graph))
-
-    return kubernetes_objects
 
 
 def setup_logging_helm() -> bool:
@@ -180,30 +71,46 @@ def setup_logging_helm() -> bool:
 
 
 @network.command()
-@click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
+@click.argument("network_name", default=DEFAULT_NETWORK)
+@click.option("--network", default="warnet", show_default=True)
 @click.option("--logging/--no-logging", default=False)
-def start(graph_file: Path, logging: bool):
-    """Start a warnet with topology loaded from a <graph_file>"""
-    graph = read_graph_file(graph_file)
-    kubernetes_yaml = generate_kubernetes_yaml(graph)
+def start(network_name: str, logging: bool, network: str):
+    """Start a warnet with topology loaded from <network_name> into [network]"""
+    full_path = os.path.join(NETWORK_DIR, network_name)
+    network_file_path = os.path.join(full_path, NETWORK_FILE)
+    defaults_file_path = os.path.join(full_path, DEFAULTS_FILE)
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
-        yaml.dump_all(kubernetes_yaml, temp_file)
-        temp_file_path = temp_file.name
+    network_file = {}
+    with open(network_file_path) as f:
+        network_file = yaml.safe_load(f)
 
-    try:
-        if deploy_base_configurations() and apply_kubernetes_yaml(temp_file_path):
-            print("Warnet network started successfully.")
-            if not set_kubectl_context("warnet"):
-                print(
-                    "Warning: Failed to set kubectl context. You may need to manually switch to the warnet namespace."
-                )
-            if logging and not setup_logging_helm():
-                print("Failed to install Helm charts.")
-        else:
-            print("Failed to start warnet network.")
-    finally:
-        Path(temp_file_path).unlink()
+    for node in network_file["nodes"]:
+        print(f"Starting node: {node.get('name')}")
+        try:
+            temp_override_file_path = ""
+            node_name = node.get("name")
+            # all the keys apart from name
+            node_config_override = {k: v for k, v in node.items() if k != "name"}
+
+            cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {NAMESPACE} -f {defaults_file_path}"
+
+            if node_config_override:
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".yaml", delete=False
+                ) as temp_file:
+                    yaml.dump(node_config_override, temp_file)
+                    temp_override_file_path = temp_file.name
+                cmd = f"{cmd} -f {temp_override_file_path}"
+
+            if not stream_command(cmd):
+                print(f"Failed to run Helm command: {cmd}")
+                return
+        except Exception as e:
+            print(f"Error: {e}")
+            return
+        finally:
+            if temp_override_file_path:
+                Path(temp_override_file_path).unlink()
 
 
 @network.command()
@@ -269,17 +176,3 @@ def _status():
         }
         stats.append(status)
     return stats
-
-
-@network.command()
-@click.argument("graph_file", default=DEFAULT_GRAPH_FILE, type=click.Path())
-@click.option("--output", "-o", default="warnet-deployment.yaml", help="Output YAML file")
-def generate_yaml(graph_file: Path, output: str):
-    """Generate a Kubernetes YAML file from a graph file for deploying warnet nodes."""
-    graph = read_graph_file(graph_file)
-    kubernetes_yaml = generate_kubernetes_yaml(graph)
-
-    with open(output, "w") as f:
-        yaml.dump_all(kubernetes_yaml, f)
-
-    print(f"Kubernetes YAML file generated: {output}")
