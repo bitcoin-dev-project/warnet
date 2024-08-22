@@ -37,9 +37,7 @@ def namespaces():
 
 @namespaces.command()
 @click.argument(
-    "namespaces_dir",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
-    default=NAMESPACES_DIR / DEFAULT_NAMESPACES,
+    "namespaces_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path)
 )
 def deploy(namespaces_dir: Path):
     """Deploy namespaces with users from a <namespaces_file>"""

@@ -77,7 +77,6 @@ def copy_network_defaults(directory: Path):
 @click.argument(
     "network_dir",
     type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
-    default=Path(NETWORK_DIR) / DEFAULT_NETWORK,
 )
 @click.option("--logging/--no-logging", default=False)
 def deploy(network_dir: Path, logging: bool):
