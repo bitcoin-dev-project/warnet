@@ -1,0 +1,13 @@
+nodes:
+  - name: tank-0000
+    connect:
+      - tank-0002
+    metricsExport: true
+  - name: tank-0001
+    connect:
+      - tank-0002
+    metricsExport: true
+    metrics: txrate=getchaintxstats(10)["txrate"]
+  - name: tank-0002
+    connect:
+      - tank-0000

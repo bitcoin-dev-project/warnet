@@ -14,7 +14,7 @@ from test_base import TestBase
 class LoggingTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.graph_file_path = Path(os.path.dirname(__file__)) / "data" / "logging.graphml"
+        self.network_dir = Path(os.path.dirname(__file__)) / "data" / "logging"
         self.scripts_dir = Path(os.path.dirname(__file__)) / ".." / "resources" / "scripts"
         self.connect_logging_process = None
         self.connect_logging_thread = None
@@ -54,7 +54,7 @@ class LoggingTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"network deploy ./resources/networks/6_node_bitcoin"))
+        self.log.info(self.warcli(f"network deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
 
