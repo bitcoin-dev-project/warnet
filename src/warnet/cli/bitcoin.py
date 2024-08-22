@@ -38,11 +38,13 @@ def _rpc(node: int, method: str, params: str):
 
 @bitcoin.command()
 @click.argument("node", type=int, required=True)
-def debug_log(node: int):
+@click.option("--namespace", type=str, default="warnet", show_default=True)
+def debug_log(node: int, namespace: str):
     """
-    Fetch the Bitcoin Core debug log from <node>
+    Fetch the Bitcoin Core debug log from <node> in <namespace>
     """
-    cmd = f"kubectl logs warnet-tank-{node}"
+    node = str(node).zfill(4)
+    cmd = f"kubectl logs tank-{node} -n {namespace}"
     print(run_command(cmd))
 
 
