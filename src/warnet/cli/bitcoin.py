@@ -122,14 +122,15 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 @bitcoin.command()
 @click.argument("node_a", type=int, required=True)
 @click.argument("node_b", type=int, required=True)
-@click.option("--network", default="regtest", show_default=True)
-def messages(node_a: int, node_b: int, network: str):
+@click.option("--chain", default="regtest", show_default=True)
+@click.option("--namespace", default="warnet", show_default=True)
+def messages(node_a: int, node_b: int, chain: str, namespace: str):
     """
-    Fetch messages sent between <node_a> and <node_b> in [network]
+    Fetch messages sent between <node_a> and <node_b> on [chain] in a [namespace]
     """
     try:
         # Get the messages
-        messages = get_messages(node_a, node_b, network)
+        messages = get_messages(node_a, node_b, chain, namespace)
 
         if not messages:
             print(f"No messages found between {node_a} and {node_b}")
@@ -157,34 +158,42 @@ def messages(node_a: int, node_b: int, network: str):
         print(f"Error fetching messages between nodes {node_a} and {node_b}: {e}")
 
 
-def get_messages(node_a: int, node_b: int, network: str):
+def get_messages(node_a: int, node_b: int, chain: str, namespace: str):
     """
     Fetch messages from the message capture files
     """
-    subdir = "" if network == "main" else f"{network}/"
+    node_a = str(node_a).zfill(4)
+    node_b = str(node_b).zfill(4)
+
+    subdir = "" if chain == "main" else f"{chain}/"
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
     # Get the IP of node_b
-    cmd = f"kubectl get pod warnet-tank-{node_b} -o jsonpath='{{.status.podIP}}'"
+    cmd = f"kubectl get pod tank-{node_b} -n {namespace} -o jsonpath='{{.status.podIP}}'"
+    print(cmd)
     node_b_ip = run_command(cmd).strip()
+    print(f"node_b-ip: {node_b_ip}")
 
     # Get the service IP of node_b
-    cmd = f"kubectl get service warnet-tank-{node_b}-service -o jsonpath='{{.spec.clusterIP}}'"
+    cmd = f"kubectl get service tank-{node_b} -n {namespace} -o jsonpath='{{.spec.clusterIP}}'"
+    print(cmd)
     node_b_service_ip = run_command(cmd).strip()
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec warnet-tank-{node_a} -- ls {base_dir}"
+    cmd = f"kubectl exec tank-{node_a} -n {namespace} -- ls {base_dir}"
+    print(cmd)
     dirs = run_command(cmd).splitlines()
 
     messages = []
 
     for dir_name in dirs:
+        dir_name = dir_name.split("_")[0]
         if node_b_ip in dir_name or node_b_service_ip in dir_name:
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                file_path = f"{base_dir}/{dir_name}/{file}"
-
+                file_path = f"{base_dir}/{dir_name}_18444/{file}"
+                print(file_path)
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec warnet-tank-{node_a} -- cat {file_path}"
+                cmd = f"kubectl exec tank-{node_a} -n {namespace} -- cat {file_path}"
                 import subprocess
 
                 blob = subprocess.run(
