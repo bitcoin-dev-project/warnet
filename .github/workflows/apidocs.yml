@@ -29,12 +29,3 @@ jobs:
         run: |
           source .venv/bin/activate
           python3 resources/scripts/apidocs.py
-
-      - name: Run graphdocs script
-        run: |
-          source .venv/bin/activate
-          python3 resources/scripts/graphdocs.py
-
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Update apidocs and/or graphdocs
