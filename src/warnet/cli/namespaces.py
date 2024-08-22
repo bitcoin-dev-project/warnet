@@ -1,7 +1,7 @@
-import tempfile
-from pathlib import Path
 import shutil
+import tempfile
 from importlib.resources import files
+from pathlib import Path
 
 import click
 import yaml
@@ -22,8 +22,13 @@ def copy_namespaces_defaults(directory: Path):
     (directory / NAMESPACES_DIR / DEFAULT_NAMESPACES).mkdir(parents=True, exist_ok=True)
     target_namespaces_defaults = directory / NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE
     target_namespaces_example = directory / NAMESPACES_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE
-    shutil.copy2(WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE, target_namespaces_defaults)
-    shutil.copy2(WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES/ NAMESPACES_FILE, target_namespaces_example)
+    shutil.copy2(
+        WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE, target_namespaces_defaults
+    )
+    shutil.copy2(
+        WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE, target_namespaces_example
+    )
+
 
 @click.group(name="namespaces")
 def namespaces():
@@ -31,7 +36,11 @@ def namespaces():
 
 
 @namespaces.command()
-@click.argument("namespaces_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path), default=NAMESPACES_DIR / DEFAULT_NAMESPACES)
+@click.argument(
+    "namespaces_dir",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    default=NAMESPACES_DIR / DEFAULT_NAMESPACES,
+)
 def deploy(namespaces_dir: Path):
     """Deploy namespaces with users from a <namespaces_file>"""
     namespaces_file_path = namespaces_dir / NAMESPACES_FILE

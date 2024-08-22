@@ -1,9 +1,8 @@
 import json
-import os
+import shutil
 import tempfile
 from importlib.resources import files
 from pathlib import Path
-import shutil
 
 import click
 import yaml
@@ -75,7 +74,11 @@ def copy_network_defaults(directory: Path):
 
 
 @network.command()
-@click.argument("network_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path), default=Path(NETWORK_DIR) / DEFAULT_NETWORK)
+@click.argument(
+    "network_dir",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    default=Path(NETWORK_DIR) / DEFAULT_NETWORK,
+)
 @click.option("--logging/--no-logging", default=False)
 def deploy(network_dir: Path, logging: bool):
     """Deploy a warnet with topology loaded from <network_dir>"""

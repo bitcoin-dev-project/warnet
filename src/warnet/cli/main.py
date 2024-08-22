@@ -2,14 +2,16 @@ import os
 import subprocess
 from importlib.resources import files
 from pathlib import Path
+
 import click
 from rich import print as richprint
+
 from .admin import admin
 from .bitcoin import bitcoin
 from .graph import graph
 from .image import image
 from .namespaces import namespaces
-from .network import network, copy_network_defaults
+from .network import copy_network_defaults, network
 from .scenarios import scenarios
 
 QUICK_START_PATH = files("scripts").joinpath("quick_start.sh")

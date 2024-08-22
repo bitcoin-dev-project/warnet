@@ -14,7 +14,7 @@ from rich.table import Table
 
 from warnet import scenarios as SCENARIOS
 
-from .k8s import apply_kubernetes_yaml, get_mission, get_default_namespace
+from .k8s import apply_kubernetes_yaml, get_default_namespace, get_mission
 
 
 @click.group(name="scenarios")
