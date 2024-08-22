@@ -22,8 +22,12 @@ from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
 WARNET_FILE = Path(os.path.dirname(__file__)) / "warnet.json"
-with open(WARNET_FILE) as file:
-    WARNET = json.load(file)
+WARNET = []
+try:
+    with open(WARNET_FILE) as file:
+        WARNET = json.load(file)
+except:
+    pass
 
 
 # Ensure that all RPC calls are made with brand new http connections

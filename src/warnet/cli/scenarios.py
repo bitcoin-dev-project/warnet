@@ -14,7 +14,7 @@ from rich.table import Table
 
 from warnet import scenarios as SCENARIOS
 
-from .k8s import apply_kubernetes_yaml, get_mission
+from .k8s import apply_kubernetes_yaml, get_mission, get_default_namespace
 
 
 @click.group(name="scenarios")
@@ -28,24 +28,38 @@ def available():
     List available scenarios in the Warnet Test Framework
     """
     console = Console()
-
     scenario_list = _available()
-    for s in pkgutil.iter_modules(SCENARIOS.__path__):
-        scenario_list.append(s.name)
 
     # Create the table
     table = Table(show_header=True, header_style="bold")
     table.add_column("Name")
+    table.add_column("Description")
 
     for scenario in scenario_list:
-        table.add_row(scenario)
+        table.add_row(*scenario)
     console.print(table)
 
 
 def _available():
+    # This ugly hack temporarily allows us to import the scenario modules
+    # in the context in which they run: as __main__ from
+    # the root directory of the commander container.
+    scenarios_path = SCENARIOS.__path__
+    sys.path.insert(0, scenarios_path[0])
+
     scenario_list = []
-    for s in pkgutil.iter_modules(SCENARIOS.__path__):
-        scenario_list.append(s.name)
+    for s in pkgutil.iter_modules(scenarios_path):
+        module_name = f"warnet.scenarios.{s.name}"
+        try:
+            m = importlib.import_module(module_name)
+            if hasattr(m, "cli_help"):
+                scenario_list.append((s.name, m.cli_help()))
+        except Exception as e:
+            print(f"Ignoring module: {module_name} because {e}")
+
+    # Clean up that ugly hack
+    sys.path.pop(0)
+
     return scenario_list
 
 
@@ -90,7 +104,7 @@ def run_scenario(scenario_path: str, additional_args: tuple[str]):
     scenario_name = os.path.splitext(os.path.basename(scenario_path))[0]
 
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
-
+    namespace = get_default_namespace()
     tankpods = get_mission("tank")
     tanks = [
         {
@@ -112,7 +126,7 @@ def run_scenario(scenario_path: str, additional_args: tuple[str]):
                 "kind": "ConfigMap",
                 "metadata": {
                     "name": "warnetjson",
-                    "namespace": "warnet",
+                    "namespace": namespace,
                 },
                 "data": {"warnet.json": json.dumps(tanks)},
             },
@@ -121,7 +135,7 @@ def run_scenario(scenario_path: str, additional_args: tuple[str]):
                 "kind": "ConfigMap",
                 "metadata": {
                     "name": "scenariopy",
-                    "namespace": "warnet",
+                    "namespace": namespace,
                 },
                 "data": {"scenario.py": scenario_text},
             },
@@ -130,7 +144,7 @@ def run_scenario(scenario_path: str, additional_args: tuple[str]):
                 "kind": "Pod",
                 "metadata": {
                     "name": name,
-                    "namespace": "warnet",
+                    "namespace": namespace,
                     "labels": {"mission": "commander"},
                 },
                 "spec": {
