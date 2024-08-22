@@ -9,9 +9,7 @@ from test_base import TestBase
 class DAGConnectionTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.network_dir = (
-            Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected"
-        )
+        self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected"
 
     def run_test(self):
         try:
