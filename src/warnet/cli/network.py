@@ -52,21 +52,6 @@ def edges_from_network_file(network_file: dict[str, any]) -> list[Edge]:
     return edges
 
 
-def create_edges_map(network_file: dict[str, any]):
-    edges = []
-    for edge in edges_from_network_file(network_file):
-        edges.append(edge.to_dict())
-    config_map = create_kubernetes_object(
-        kind="ConfigMap",
-        metadata={
-            "name": "edges",
-            "namespace": "warnet",
-        },
-    )
-    config_map["data"] = {"data": json.dumps(edges)}
-    apply_kubernetes_yaml_obj(config_map)
-
-
 def setup_logging_helm() -> bool:
     helm_commands = [
         "helm repo add grafana https://grafana.github.io/helm-charts",
@@ -127,8 +112,6 @@ def start(network_name: str, logging: bool, network: str):
             if temp_override_file_path:
                 Path(temp_override_file_path).unlink()
 
-    create_edges_map(network_file)
-
 
 @network.command()
 def down():
@@ -155,21 +138,16 @@ def connected():
 
 def _connected():
     tanks = get_mission("tank")
-    edges = get_edges()
     for tank in tanks:
         # Get actual
-        index = tank.metadata.labels["index"]
-        peerinfo = json.loads(_rpc(int(index), "getpeerinfo", ""))
+        peerinfo = json.loads(_rpc(tank.metadata.name, "getpeerinfo", ""))
         manuals = 0
         for peer in peerinfo:
             if peer["connection_type"] == "manual":
                 manuals += 1
-        # Get expected
-        init_peers = sum(1 for edge in edges if edge["src"] == index)
-        print(f"Tank {index} connections: expected={init_peers} actual={manuals}")
         # Even if more edges are specifed, bitcoind only allows
         # 8 manual outbound connections
-        if min(8, init_peers) > manuals:
+        if min(8, int(tank.metadata.annotations["init_peers"])) > manuals:
             print("Network not connected")
             return False
     print("Network connected")

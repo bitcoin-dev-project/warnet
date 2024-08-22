@@ -11,6 +11,7 @@ from test_framework.p2p import MESSAGEMAP
 
 from .process import run_command
 
+from .k8s import get_mission
 
 @click.group(name="bitcoin")
 def bitcoin():
@@ -18,33 +19,31 @@ def bitcoin():
 
 
 @bitcoin.command(context_settings={"ignore_unknown_options": True})
-@click.argument("node", type=int)
+@click.argument("tank", type=str)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(node: int, method: str, params: str):
+def rpc(tank: str, method: str, params: str):
     """
-    Call bitcoin-cli <method> [params] on <node>
+    Call bitcoin-cli <method> [params] on <tank pod name>
     """
-    print(_rpc(node, method, params))
+    print(_rpc(tank, method, params))
 
 
-def _rpc(node: int, method: str, params: str):
+def _rpc(tank: str, method: str, params: str):
     if params:
-        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
+        cmd = f"kubectl exec {tank} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
     else:
-        cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
+        cmd = f"kubectl exec {tank} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
     return run_command(cmd)
 
 
 @bitcoin.command()
-@click.argument("node", type=int, required=True)
-@click.option("--namespace", type=str, default="warnet", show_default=True)
-def debug_log(node: int, namespace: str):
+@click.argument("tank", type=str, required=True)
+def debug_log(tank: str):
     """
-    Fetch the Bitcoin Core debug log from <node> in <namespace>
+    Fetch the Bitcoin Core debug log from <tank pod name>
     """
-    node = str(node).zfill(4)
-    cmd = f"kubectl logs tank-{node} -n {namespace}"
+    cmd = f"kubectl logs {tank}"
     print(run_command(cmd))
 
 
@@ -57,44 +56,31 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     Grep combined bitcoind logs using regex <pattern>
     """
 
-    # Get all pods in the namespace
-    command = "kubectl get pods -n warnet -o json"
-    pods_json = run_command(command)
-
-    if pods_json is False:
-        print("Error: Failed to get pods information")
-        return
-
-    try:
-        pods = json.loads(pods_json)
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
-        return
+    tanks = get_mission("tank")
 
     matching_logs = []
 
-    for pod in pods.get("items", []):
-        pod_name = pod.get("metadata", {}).get("name", "")
-        if "warnet" in pod_name:
-            # Get container names for this pod
-            containers = pod.get("spec", {}).get("containers", [])
-            if not containers:
-                continue
+    for tank in tanks:
+        pod_name = tank.metadata.name
+        # Get container names for this pod
+        containers = tank.spec.containers
+        if not containers:
+            continue
 
-            # Use the first container name
-            container_name = containers[0].get("name", "")
-            if not container_name:
-                continue
+        # Use the first container name
+        container_name = containers[0].name
+        if not container_name:
+            continue
 
-            # Get logs from the specific container
-            command = f"kubectl logs {pod_name} -c {container_name} -n warnet --timestamps"
-            logs = run_command(command)
+        # Get logs from the specific container
+        command = f"kubectl logs {pod_name} -c {container_name} -n warnet --timestamps"
+        logs = run_command(command)
 
-            if logs is not False:
-                # Process logs
-                for log_entry in logs.splitlines():
-                    if re.search(pattern, log_entry):
-                        matching_logs.append((log_entry, pod_name))
+        if logs is not False:
+            # Process logs
+            for log_entry in logs.splitlines():
+                if re.search(pattern, log_entry):
+                    matching_logs.append((log_entry, pod_name))
 
     # Sort logs if needed
     if not no_sort:
@@ -120,20 +106,19 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 
 
 @bitcoin.command()
-@click.argument("node_a", type=int, required=True)
-@click.argument("node_b", type=int, required=True)
-@click.option("--chain", default="regtest", show_default=True)
-@click.option("--namespace", default="warnet", show_default=True)
-def messages(node_a: int, node_b: int, chain: str, namespace: str):
+@click.argument("tank_a", type=str, required=True)
+@click.argument("tank_b", type=str, required=True)
+@click.option("--network", default="regtest", show_default=True)
+def messages(tank_a: str, tank_b: str, network: str):
     """
-    Fetch messages sent between <node_a> and <node_b> on [chain] in a [namespace]
+    Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [network]
     """
     try:
         # Get the messages
-        messages = get_messages(node_a, node_b, chain, namespace)
+        messages = get_messages(tank_a, tank_b, network)
 
         if not messages:
-            print(f"No messages found between {node_a} and {node_b}")
+            print(f"No messages found between {tank_a} and {tank_b}")
             return
 
         # Process and print messages
@@ -155,45 +140,31 @@ def messages(node_a: int, node_b: int, chain: str, namespace: str):
             print(f"{timestamp} {direction} {msgtype} {body_str}")
 
     except Exception as e:
-        print(f"Error fetching messages between nodes {node_a} and {node_b}: {e}")
+        print(f"Error fetching messages between nodes {tank_a} and {tank_b}: {e}")
 
 
-def get_messages(node_a: int, node_b: int, chain: str, namespace: str):
-    """
-    Fetch messages from the message capture files
-    """
-    node_a = str(node_a).zfill(4)
-    node_b = str(node_b).zfill(4)
-
-    subdir = "" if chain == "main" else f"{chain}/"
-    base_dir = f"/root/.bitcoin/{subdir}message_capture"
-
-    # Get the IP of node_b
-    cmd = f"kubectl get pod tank-{node_b} -n {namespace} -o jsonpath='{{.status.podIP}}'"
-    print(cmd)
-    node_b_ip = run_command(cmd).strip()
-    print(f"node_b-ip: {node_b_ip}")
+def get_messages(tank_a: str, tank_b: str, network: str):
+    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}'"
+    tank_b_ip = run_command(cmd).strip()
 
     # Get the service IP of node_b
-    cmd = f"kubectl get service tank-{node_b} -n {namespace} -o jsonpath='{{.spec.clusterIP}}'"
-    print(cmd)
-    node_b_service_ip = run_command(cmd).strip()
+    cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}'"
+    tank_b_service_ip = run_command(cmd).strip()
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec tank-{node_a} -n {namespace} -- ls {base_dir}"
-    print(cmd)
+    cmd = f"kubectl exec {tank_a} -- ls {base_dir}"
+
     dirs = run_command(cmd).splitlines()
 
     messages = []
 
     for dir_name in dirs:
-        dir_name = dir_name.split("_")[0]
-        if node_b_ip in dir_name or node_b_service_ip in dir_name:
+        if tank_b_ip in dir_name or tank_b_service_ip in dir_name:
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}_18444/{file}"
                 print(file_path)
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec tank-{node_a} -n {namespace} -- cat {file_path}"
+                cmd = f"kubectl exec {tank_a} -- cat {file_path}"
                 import subprocess
 
                 blob = subprocess.run(

@@ -1,0 +1,61 @@
+nodes:
+  - name: tank-0000
+    connect:
+      - tank-0001
+    config: |
+      debug=rpc
+      debug=validation
+  - name: tank-0001
+    connect:
+      - tank-0002
+    config: |
+      debug=net
+      debug=validation
+  - name: tank-0002
+    connect:
+      - tank-0003
+    config: |
+      debug=validation
+  - name: tank-0003
+    connect:
+      - tank-0004
+    config: |
+      debug=validation
+  - name: tank-0004
+    connect:
+      - tank-0005
+  - name: tank-0005
+    connect:
+      - tank-0006
+    config: |
+      debug=validation
+  - name: tank-0006
+    connect:
+      - tank-0007
+  - name: tank-0007
+    config: |
+      debug=validation
+    connect:
+      - tank-0008
+    config: |
+      debug=validation
+  - name: tank-0008
+    connect:
+      - tank-0009
+    config: |
+      debug=validation
+  - name: tank-0009
+    connect:
+      - tank-0010
+    config: |
+      debug=validation
+  - name: tank-0010
+    connect:
+      - tank-0011
+    config: |
+      debug=validation
+  - name: tank-0011
+    connect:
+      - tank-0000
+    config: |
+      debug=validation
