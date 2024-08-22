@@ -72,7 +72,7 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             continue
 
         # Get logs from the specific container
-        command = f"kubectl logs {pod_name} -c {container_name} -n warnet --timestamps"
+        command = f"kubectl logs {pod_name} -c {container_name} --timestamps"
         logs = run_command(command)
 
         if logs is not False:
