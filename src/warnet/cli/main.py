@@ -10,7 +10,6 @@ from .admin import admin
 from .bitcoin import bitcoin
 from .graph import graph
 from .image import image
-from .namespaces import namespaces
 from .network import copy_network_defaults, network
 from .scenarios import scenarios
 

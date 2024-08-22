@@ -9,9 +9,7 @@ from test_base import TestBase
 class DAGConnectionTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.graph_file_path = (
-            Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected.graphml"
-        )
+        self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected"
 
     def run_test(self):
         try:
@@ -22,7 +20,7 @@ class DAGConnectionTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"network start {self.graph_file_path}"))
+        self.log.info(self.warcli(f"network deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
 
