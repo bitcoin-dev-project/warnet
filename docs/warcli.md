@@ -33,13 +33,12 @@ Check Warnet requirements are installed
 ## Bitcoin
 
 ### `warcli bitcoin debug-log`
-Fetch the Bitcoin Core debug log from \<node> in \<namespace>
+Fetch the Bitcoin Core debug log from \<tank pod name>
 
 options:
-| name      | type   | required   | default   |
-|-----------|--------|------------|-----------|
-| node      | Int    | yes        |           |
-| namespace | String |            | "warnet"  |
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| tank   | String | yes        |           |
 
 ### `warcli bitcoin grep-logs`
 Grep combined bitcoind logs using regex \<pattern>
@@ -52,23 +51,22 @@ options:
 | no_sort             | Bool   |            | False     |
 
 ### `warcli bitcoin messages`
-Fetch messages sent between \<node_a> and \<node_b> on [chain] in a [namespace]
+Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [network]
 
 options:
-| name      | type   | required   | default   |
-|-----------|--------|------------|-----------|
-| node_a    | Int    | yes        |           |
-| node_b    | Int    | yes        |           |
-| chain     | String |            | "regtest" |
-| namespace | String |            | "warnet"  |
+| name    | type   | required   | default   |
+|---------|--------|------------|-----------|
+| tank_a  | String | yes        |           |
+| tank_b  | String | yes        |           |
+| network | String |            | "regtest" |
 
 ### `warcli bitcoin rpc`
-Call bitcoin-cli \<method> [params] on \<node>
+Call bitcoin-cli \<method> [params] on \<tank pod name>
 
 options:
 | name   | type   | required   | default   |
 |--------|--------|------------|-----------|
-| node   | Int    | yes        |           |
+| tank   | String | yes        |           |
 | method | String | yes        |           |
 | params | String |            |           |
 
