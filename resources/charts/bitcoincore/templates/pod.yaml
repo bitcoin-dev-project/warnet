@@ -14,7 +14,6 @@ spec:
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  serviceAccountName: {{ include "bitcoincore.serviceAccountName" . }}
   securityContext:
     {{- toYaml .Values.podSecurityContext | nindent 4 }}
   containers:
