@@ -1,19 +1,29 @@
-import os
 import tempfile
 from pathlib import Path
+import shutil
+from importlib.resources import files
 
 import click
 import yaml
 
 from .process import run_command, stream_command
 
+WARNET_NAMESPACES_DIR = files("namespaces")
 NAMESPACES_DIR = Path("namespaces")
-DEFAULT_NAMESPACES = "two_namespaces_two_users"
+DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
 NAMESPACES_FILE = "namespaces.yaml"
-DEFAULTS_FILE = "defaults.yaml"
+DEFAULTS_FILE = "namespace-defaults.yaml"
 HELM_COMMAND = "helm upgrade --install"
-BITCOIN_CHART_LOCATION = "./resources/charts/namespaces"
+BITCOIN_CHART_LOCATION = Path(str(files("charts").joinpath("namespaces")))
 
+
+def copy_namespaces_defaults(directory: Path):
+    """Create the project structure for a warnet project"""
+    (directory / NAMESPACES_DIR / DEFAULT_NAMESPACES).mkdir(parents=True, exist_ok=True)
+    target_namespaces_defaults = directory / NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE
+    target_namespaces_example = directory / NAMESPACES_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE
+    shutil.copy2(WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE, target_namespaces_defaults)
+    shutil.copy2(WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES/ NAMESPACES_FILE, target_namespaces_example)
 
 @click.group(name="namespaces")
 def namespaces():
@@ -21,15 +31,13 @@ def namespaces():
 
 
 @namespaces.command()
-@click.argument("namespaces", default=DEFAULT_NAMESPACES)
-def deploy(namespaces: str):
+@click.argument("namespaces_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path), default=NAMESPACES_DIR / DEFAULT_NAMESPACES)
+def deploy(namespaces_dir: Path):
     """Deploy namespaces with users from a <namespaces_file>"""
-    full_path = os.path.join(NAMESPACES_DIR, namespaces)
-    namespaces_file_path = os.path.join(full_path, NAMESPACES_FILE)
-    defaults_file_path = os.path.join(full_path, DEFAULTS_FILE)
+    namespaces_file_path = namespaces_dir / NAMESPACES_FILE
+    defaults_file_path = namespaces_dir / DEFAULTS_FILE
 
-    namespaces_file = {}
-    with open(namespaces_file_path) as f:
+    with namespaces_file_path.open() as f:
         namespaces_file = yaml.safe_load(f)
 
     # validate names before deploying
@@ -44,7 +52,7 @@ def deploy(namespaces: str):
     for namespace in namespaces_file["namespaces"]:
         print(f"Deploying namespace: {namespace.get('name')}")
         try:
-            temp_override_file_path = ""
+            temp_override_file_path = Path()
             namespace_name = namespace.get("name")
             # all the keys apart from name
             namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
@@ -58,7 +66,7 @@ def deploy(namespaces: str):
                     mode="w", suffix=".yaml", delete=False
                 ) as temp_file:
                     yaml.dump(namespace_config_override, temp_file)
-                    temp_override_file_path = temp_file.name
+                    temp_override_file_path = Path(temp_file.name)
                 cmd = f"{cmd} -f {temp_override_file_path}"
 
             if not stream_command(cmd):
@@ -67,6 +75,9 @@ def deploy(namespaces: str):
         except Exception as e:
             print(f"Error: {e}")
             return
+        finally:
+            if temp_override_file_path.exists():
+                temp_override_file_path.unlink()
 
 
 @namespaces.command()

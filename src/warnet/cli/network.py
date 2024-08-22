@@ -3,6 +3,7 @@ import os
 import tempfile
 from importlib.resources import files
 from pathlib import Path
+import shutil
 
 import click
 import yaml
@@ -13,12 +14,13 @@ from .k8s import delete_namespace, get_default_namespace, get_mission, get_pods
 from .process import stream_command
 
 WAR_MANIFESTS = files("manifests")
+WARNET_NETWORK_DIR = files("networks")
 NETWORK_DIR = Path("networks")
-DEFAULT_NETWORK = "6_node_bitcoin"
+DEFAULT_NETWORK = Path("6_node_bitcoin")
 NETWORK_FILE = "network.yaml"
-DEFAULTS_FILE = "defaults.yaml"
+DEFAULTS_FILE = "node-defaults.yaml"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
-BITCOIN_CHART_LOCATION = "./resources/charts/bitcoincore"
+BITCOIN_CHART_LOCATION = str(files("charts").joinpath("bitcoincore"))
 
 
 @click.group(name="network")
@@ -63,24 +65,30 @@ def setup_logging_helm() -> bool:
     return True
 
 
-@network.command()
-@click.argument("network_name", default=DEFAULT_NETWORK)
-@click.option("--network", default="warnet", show_default=True)
-@click.option("--logging/--no-logging", default=False)
-def start(network_name: str, logging: bool, network: str):
-    """Start a warnet with topology loaded from <network_name> into [network]"""
-    full_path = os.path.join(NETWORK_DIR, network_name)
-    network_file_path = os.path.join(full_path, NETWORK_FILE)
-    defaults_file_path = os.path.join(full_path, DEFAULTS_FILE)
+def copy_network_defaults(directory: Path):
+    """Create the project structure for a warnet project"""
+    (directory / NETWORK_DIR / DEFAULT_NETWORK).mkdir(parents=True, exist_ok=True)
+    target_network_defaults = directory / NETWORK_DIR / DEFAULT_NETWORK / DEFAULTS_FILE
+    target_network_example = directory / NETWORK_DIR / DEFAULT_NETWORK / NETWORK_FILE
+    shutil.copy2(WARNET_NETWORK_DIR / DEFAULT_NETWORK / DEFAULTS_FILE, target_network_defaults)
+    shutil.copy2(WARNET_NETWORK_DIR / DEFAULT_NETWORK / NETWORK_FILE, target_network_example)
 
-    network_file = {}
-    with open(network_file_path) as f:
+
+@network.command()
+@click.argument("network_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path), default=Path(NETWORK_DIR) / DEFAULT_NETWORK)
+@click.option("--logging/--no-logging", default=False)
+def deploy(network_dir: Path, logging: bool):
+    """Deploy a warnet with topology loaded from <network_dir>"""
+    network_file_path = network_dir / NETWORK_FILE
+    defaults_file_path = network_dir / DEFAULTS_FILE
+
+    with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
     namespace = get_default_namespace()
 
     for node in network_file["nodes"]:
-        print(f"Starting node: {node.get('name')}")
+        print(f"Deploying node: {node.get('name')}")
         try:
             temp_override_file_path = ""
             node_name = node.get("name")
@@ -94,7 +102,7 @@ def start(network_name: str, logging: bool, network: str):
                     mode="w", suffix=".yaml", delete=False
                 ) as temp_file:
                     yaml.dump(node_config_override, temp_file)
-                    temp_override_file_path = temp_file.name
+                    temp_override_file_path = Path(temp_file.name)
                 cmd = f"{cmd} -f {temp_override_file_path}"
 
             if not stream_command(cmd):
