@@ -6,9 +6,10 @@ from pathlib import Path
 from test_base import TestBase
 
 from warnet.cli.k8s import delete_pod
+from warnet.cli.process import run_command
 from warnet.cli.scenarios import _active as scenarios_active
 from warnet.cli.scenarios import _available as scenarios_available
-from warnet.cli.process import run_command
+
 
 class ScenariosTest(TestBase):
     def __init__(self):

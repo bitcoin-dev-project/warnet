@@ -126,18 +126,16 @@ def down():
         print("Warnet logging deleted")
     else:
         print("Warnet logging NOT deleted")
+    tanks = get_mission("tank")
+    for tank in tanks:
+        cmd = f"helm uninstall {tank.metadata.name}"
+        stream_command(cmd)
+    # Clean up scenarios and other pods
+    # TODO: scenarios should be helm-ified as well
     pods = get_pods()
     for pod in pods.items:
-        cmd = f"helm uninstall {pod.metadata.name}"
+        cmd = f"kubectl delete pod {pod.metadata.name}"
         stream_command(cmd)
-
-
-@network.command()
-@click.option("--follow", "-f", is_flag=True, help="Follow logs")
-def logs(follow: bool):
-    """Get Kubernetes logs from the RPC server"""
-    command = f"kubectl logs rpc-0{' --follow' if follow else ''}"
-    stream_command(command)
 
 
 @network.command()
