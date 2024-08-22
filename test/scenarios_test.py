@@ -6,6 +6,7 @@ from pathlib import Path
 from test_base import TestBase
 
 from warnet.cli.k8s import delete_pod
+from warnet.cli.process import run_command
 from warnet.cli.scenarios import _active as scenarios_active
 from warnet.cli.scenarios import _available as scenarios_available
 
@@ -79,6 +80,17 @@ class ScenariosTest(TestBase):
     def check_blocks(self, target_blocks, start: int = 0):
         count = int(self.warcli("bitcoin rpc tank-0000 getblockcount"))
         self.log.debug(f"Current block count: {count}, target: {start + target_blocks}")
+
+        try:
+            active = scenarios_active()
+            commander = active[0]["commander"]
+            command = f"kubectl logs {commander}"
+            print("\ncommander output:")
+            print(run_command(command))
+            print("\n")
+        except Exception:
+            pass
+
         return count >= start + target_blocks
 
     def stop_scenario(self):
