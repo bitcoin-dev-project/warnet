@@ -1,9 +1,11 @@
 import os
 import subprocess
+import sys
 from importlib.resources import files
 from pathlib import Path
 
 import click
+import yaml
 from rich import print as richprint
 
 from .admin import admin
@@ -85,6 +87,43 @@ def init():
     copy_network_defaults(current_dir)
     richprint(f"[green]Copied network example files to {Path(current_dir) / 'networks'}[/green]")
     richprint(f"[green]Created warnet project structure in {current_dir}[/green]")
+
+
+@cli.command()
+@click.argument("kube_config", type=str)
+def auth(kube_config: str) -> None:
+    """
+    Authorize access to a warnet cluster using a kube config file
+    """
+    try:
+        current_kubeconfig = os.environ.get("KUBECONFIG", os.path.expanduser("~/.kube/config"))
+        combined_kubeconfig = (
+            f"{current_kubeconfig}:{kube_config}" if current_kubeconfig else kube_config
+        )
+        os.environ["KUBECONFIG"] = combined_kubeconfig
+        command = "kubectl config view --flatten"
+        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print("Error occurred while executing kubectl config view --flatten:")
+        print(e.stderr)
+        sys.exit(1)
+
+    if result.returncode == 0:
+        with open(current_kubeconfig, "w") as file:
+            file.write(result.stdout)
+            print(f"Authorization file written to: {current_kubeconfig}")
+    else:
+        print("Could not create authorization file")
+        print(result.stderr)
+        sys.exit(result.returncode)
+
+    with open(current_kubeconfig) as file:
+        contents = yaml.safe_load(file)
+        print("\nUse the following command to switch to a new user:")
+        print("   kubectl config use context [user]\n")
+        print("Available users:")
+        for context in contents["contexts"]:
+            print(f"   {context['name']}")
 
 
 if __name__ == "__main__":
