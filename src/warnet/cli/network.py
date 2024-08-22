@@ -188,7 +188,7 @@ def _status():
     stats = []
     for tank in tanks:
         status = {
-            "tank_index": tank.metadata.labels["index"],
+            "tank_index": tank.metadata.labels["app.kubernetes.io/instance"],
             "bitcoin_status": tank.status.phase.lower(),
         }
         stats.append(status)
