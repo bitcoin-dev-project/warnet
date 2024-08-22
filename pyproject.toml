@@ -3,13 +3,22 @@ name = "warnet"
 version = "0.10.0"
 description = "Monitor and analyze the emergent behaviours of bitcoin networks"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["bitcoin", "warnet"]
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-dynamic = ["dependencies"]
+
+dependencies = [
+    "click==8.1.7",
+    "docker==7.1.0",
+    "flask==3.0.3",
+    "kubernetes==30.1.0",
+    "rich==13.7.1",
+    "tabulate==0.9.0",
+    "PyYAML==6.0.2",
+]
 
 [project.scripts]
 warcli = "warnet.cli.main:cli"
@@ -17,6 +26,7 @@ warcli = "warnet.cli.main:cli"
 [project.urls]
 Homepage = "https://warnet.dev"
 GitHub = "https://github.com/bitcoindevproject/warnet"
+Pypi = "https://pypi.org/project/warnet/"
 
 [project.optional-dependencies]
 build = [
@@ -27,9 +37,6 @@ build = [
 [build-system]
 requires = ["setuptools>=64", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools]
 include-package-data = true
