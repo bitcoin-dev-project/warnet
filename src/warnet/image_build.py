@@ -3,7 +3,7 @@ from importlib.resources import files
 
 ARCHES = ["amd64", "arm64", "armhf"]
 
-dockerfile_path = files("images.bitcoin").joinpath("Dockerfile")
+dockerfile_path = files("resources.images.bitcoin").joinpath("Dockerfile")
 
 
 def run_command(command):

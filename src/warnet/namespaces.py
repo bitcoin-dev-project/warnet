@@ -8,13 +8,13 @@ import yaml
 
 from .process import run_command, stream_command
 
-WARNET_NAMESPACES_DIR = files("namespaces")
+WARNET_NAMESPACES_DIR = files("resources").joinpath("namespaces")
 NAMESPACES_DIR = Path("namespaces")
 DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
 NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_FILE = "namespace-defaults.yaml"
 HELM_COMMAND = "helm upgrade --install"
-BITCOIN_CHART_LOCATION = Path(str(files("charts").joinpath("namespaces")))
+BITCOIN_CHART_LOCATION = Path(str(files("resources.charts").joinpath("namespaces")))
 
 
 def copy_namespaces_defaults(directory: Path):

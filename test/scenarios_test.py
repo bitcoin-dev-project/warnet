@@ -5,10 +5,10 @@ from pathlib import Path
 
 from test_base import TestBase
 
-from warnet.cli.k8s import delete_pod
-from warnet.cli.process import run_command
-from warnet.cli.scenarios import _active as scenarios_active
-from warnet.cli.scenarios import _available as scenarios_available
+from warnet.k8s import delete_pod
+from warnet.process import run_command
+from warnet.scenarios import _active as scenarios_active
+from warnet.scenarios import _available as scenarios_available
 
 
 class ScenariosTest(TestBase):
@@ -69,7 +69,7 @@ class ScenariosTest(TestBase):
         self.stop_scenario()
 
     def run_and_check_miner_scenario_from_file(self):
-        scenario_file = "src/warnet/scenarios/miner_std.py"
+        scenario_file = "resources/scenarios/miner_std.py"
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warcli(f"scenarios run-file {scenario_file} --allnodes --interval=1")
         start = int(self.warcli("bitcoin rpc tank-0000 getblockcount"))

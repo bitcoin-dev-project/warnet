@@ -5,6 +5,7 @@ import pkgutil
 import sys
 import tempfile
 import time
+from importlib.resources import files
 
 import click
 import yaml
@@ -12,14 +13,12 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from warnet import scenarios as SCENARIOS
-
 from .k8s import apply_kubernetes_yaml, get_default_namespace, get_mission
 
 
 @click.group(name="scenarios")
 def scenarios():
-    """Manage scenarios on a running network"""
+    """Manage scenarios on a network"""
 
 
 @scenarios.command()
@@ -41,24 +40,22 @@ def available():
 
 
 def _available():
-    # This ugly hack temporarily allows us to import the scenario modules
-    # in the context in which they run: as __main__ from
-    # the root directory of the commander container.
-    scenarios_path = SCENARIOS.__path__
-    sys.path.insert(0, scenarios_path[0])
+    scenarios_dir = files("resources.scenarios")
+    sys.path.append(scenarios_dir)
 
-    scenario_list = []
-    for s in pkgutil.iter_modules(scenarios_path):
-        module_name = f"warnet.scenarios.{s.name}"
-        try:
-            m = importlib.import_module(module_name)
-            if hasattr(m, "cli_help"):
-                scenario_list.append((s.name, m.cli_help()))
-        except Exception as e:
-            print(f"Ignoring module: {module_name} because {e}")
-
-    # Clean up that ugly hack
-    sys.path.pop(0)
+    try:
+        scenario_list = []
+        package_name = "resources.scenarios"
+        for _, name, _ in pkgutil.iter_modules([scenarios_dir]):
+            module_name = f"{package_name}.{name}"
+            try:
+                m = importlib.import_module(module_name)
+                if hasattr(m, "cli_help"):
+                    scenario_list.append((name, m.cli_help()))
+            except Exception as e:
+                print(f"Error importing module {module_name}: {e}")
+    finally:
+        sys.path.remove(scenarios_dir)
 
     return scenario_list
 
@@ -72,7 +69,7 @@ def run(scenario: str, additional_args: tuple[str]):
     """
 
     # Use importlib.resources to get the scenario path
-    scenario_package = "warnet.scenarios"
+    scenario_package = "resources.scenarios"
     scenario_filename = f"{scenario}.py"
 
     # Ensure the scenario file exists within the package
@@ -86,7 +83,7 @@ def run(scenario: str, additional_args: tuple[str]):
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 def run_file(scenario_path: str, additional_args: tuple[str]):
     """
-    Run <scenario_path> from the Warnet Test Framework with optional arguments
+    Start <scenario_path> with optional arguments
     """
     if not scenario_path.endswith(".py"):
         print("Error. Currently only python scenarios are supported")
@@ -206,3 +203,12 @@ def active():
 def _active() -> list[str]:
     commanders = get_mission("commander")
     return [{"commander": c.metadata.name, "status": c.status.phase.lower()} for c in commanders]
+
+
+@scenarios.command()
+@click.argument("pid", type=int)
+def stop(pid: int):
+    """
+    Stop scenario
+    """
+    pass
