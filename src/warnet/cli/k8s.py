@@ -8,9 +8,10 @@ from kubernetes import client, config
 from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 
-from .process import stream_command
+from .process import stream_command, run_command
 
 WAR_MANIFESTS = files("manifests")
+DEFAULT_NAMESPACE = "warnet"
 
 
 def get_static_client() -> CoreV1Event:
@@ -46,6 +47,7 @@ def get_edges() -> any:
 def create_kubernetes_object(
     kind: str, metadata: dict[str, any], spec: dict[str, any] = None
 ) -> dict[str, any]:
+    metadata["namespace"] = get_default_namespace()
     obj = {
         "apiVersion": "v1",
         "kind": kind,
@@ -93,3 +95,9 @@ def delete_namespace(namespace: str) -> bool:
 def delete_pod(pod_name: str) -> bool:
     command = f"kubectl delete pod {pod_name}"
     return stream_command(command)
+
+
+def get_default_namespace() -> str:
+    command = "kubectl config view --minify -o jsonpath='{..namespace}'"
+    kubectl_namespace = run_command(command)
+    return kubectl_namespace if kubectl_namespace else DEFAULT_NAMESPACE

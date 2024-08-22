@@ -12,6 +12,7 @@ from .bitcoin import _rpc
 from .k8s import (
     delete_namespace,
     get_mission,
+    get_default_namespace,
 )
 from .process import stream_command
 
@@ -22,7 +23,6 @@ NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "defaults.yaml"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 BITCOIN_CHART_LOCATION = "./resources/charts/bitcoincore"
-NAMESPACE = "warnet"
 
 
 @click.group(name="network")
@@ -81,6 +81,8 @@ def start(network_name: str, logging: bool, network: str):
     with open(network_file_path) as f:
         network_file = yaml.safe_load(f)
 
+    namespace = get_default_namespace()
+
     for node in network_file["nodes"]:
         print(f"Starting node: {node.get('name')}")
         try:
@@ -89,7 +91,7 @@ def start(network_name: str, logging: bool, network: str):
             # all the keys apart from name
             node_config_override = {k: v for k, v in node.items() if k != "name"}
 
-            cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {NAMESPACE} -f {defaults_file_path}"
+            cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
 
             if node_config_override:
                 with tempfile.NamedTemporaryFile(
@@ -113,7 +115,8 @@ def start(network_name: str, logging: bool, network: str):
 @network.command()
 def down():
     """Bring down a running warnet"""
-    if delete_namespace("warnet") and delete_namespace("warnet-logging"):
+    namespace = get_default_namespace()
+    if delete_namespace(namespace) and delete_namespace("warnet-logging"):
         print("Warnet network has been successfully brought down and the namespaces deleted.")
     else:
         print("Failed to bring down warnet network or delete the namespaces.")
