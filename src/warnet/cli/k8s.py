@@ -56,10 +56,6 @@ def create_kubernetes_object(
     return obj
 
 
-def create_namespace() -> dict:
-    return {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "warnet"}}
-
-
 def set_kubectl_context(namespace: str) -> bool:
     """
     Set the default kubectl context to the specified namespace.
@@ -71,20 +67,6 @@ def set_kubectl_context(namespace: str) -> bool:
     else:
         print(f"Failed to set kubectl context to namespace: {namespace}")
     return result
-
-
-def deploy_base_configurations() -> bool:
-    base_configs = [
-        "namespace.yaml",
-        "rbac-config.yaml",
-    ]
-
-    for bconfig in base_configs:
-        command = f"kubectl apply -f {WAR_MANIFESTS}/{bconfig}"
-        if not stream_command(command):
-            print(f"Failed to apply {bconfig}")
-            return False
-    return True
 
 
 def apply_kubernetes_yaml(yaml_file: str) -> bool:

@@ -14,7 +14,7 @@ from rich.table import Table
 
 from warnet import scenarios as SCENARIOS
 
-from .k8s import apply_kubernetes_yaml, create_namespace, get_mission
+from .k8s import apply_kubernetes_yaml, get_mission
 
 
 @click.group(name="scenarios")
@@ -104,7 +104,6 @@ def run_scenario(scenario_path: str, additional_args: tuple[str]):
         }
         for tank in tankpods
     ]
-    kubernetes_objects = [create_namespace()]
     kubernetes_objects.extend(
         [
             {
