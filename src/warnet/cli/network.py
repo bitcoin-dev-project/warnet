@@ -11,8 +11,8 @@ from rich import print
 from .bitcoin import _rpc
 from .k8s import (
     delete_namespace,
-    get_mission,
     get_default_namespace,
+    get_mission,
 )
 from .process import stream_command
 

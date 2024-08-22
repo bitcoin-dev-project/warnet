@@ -104,6 +104,7 @@ def run_scenario(scenario_path: str, additional_args: tuple[str]):
         }
         for tank in tankpods
     ]
+    kubernetes_objects = []
     kubernetes_objects.extend(
         [
             {

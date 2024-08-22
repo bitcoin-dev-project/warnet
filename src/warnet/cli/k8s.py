@@ -8,7 +8,7 @@ from kubernetes import client, config
 from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 
-from .process import stream_command, run_command
+from .process import run_command, stream_command
 
 WAR_MANIFESTS = files("manifests")
 DEFAULT_NAMESPACE = "warnet"
