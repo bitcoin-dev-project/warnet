@@ -89,7 +89,8 @@ def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
 
 def delete_namespace(namespace: str) -> bool:
     command = f"kubectl delete namespace {namespace} --ignore-not-found"
-    return stream_command(command)
+    print(f"Executing command: {command}")
+    return run_command(command)
 
 
 def delete_pod(pod_name: str) -> bool:

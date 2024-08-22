@@ -116,10 +116,9 @@ def start(network_name: str, logging: bool, network: str):
 def down():
     """Bring down a running warnet"""
     namespace = get_default_namespace()
-    if delete_namespace(namespace) and delete_namespace("warnet-logging"):
-        print("Warnet network has been successfully brought down and the namespaces deleted.")
-    else:
-        print("Failed to bring down warnet network or delete the namespaces.")
+    wn = delete_namespace(namespace)
+    lg = delete_namespace("warnet-logging")
+    print(f"Deleted namespaces: default namespace:{wn} logging namespace: {lg}")
 
 
 @network.command()
@@ -166,7 +165,7 @@ def _status():
     stats = []
     for tank in tanks:
         status = {
-            "tank_index": tank.metadata.labels["app.kubernetes.io/instance"],
+            "tank": tank.metadata.name,
             "bitcoin_status": tank.status.phase.lower(),
         }
         stats.append(status)
