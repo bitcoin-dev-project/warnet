@@ -26,7 +26,7 @@ def get_dynamic_client() -> DynamicClient:
 
 def get_pods() -> V1PodList:
     sclient = get_static_client()
-    return sclient.list_namespaced_pod("warnet")
+    return sclient.list_namespaced_pod(get_default_namespace())
 
 
 def get_mission(mission: str) -> list[V1PodList]:
@@ -89,7 +89,7 @@ def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
 
 def delete_namespace(namespace: str) -> bool:
     command = f"kubectl delete namespace {namespace} --ignore-not-found"
-    return stream_command(command)
+    return run_command(command)
 
 
 def delete_pod(pod_name: str) -> bool:

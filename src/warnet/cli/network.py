@@ -9,12 +9,7 @@ import yaml
 from rich import print
 
 from .bitcoin import _rpc
-from .k8s import (
-    delete_namespace,
-    get_default_namespace,
-    get_mission,
-    get_pods
-)
+from .k8s import delete_namespace, get_default_namespace, get_mission, get_pods
 from .process import stream_command
 
 WAR_MANIFESTS = files("manifests")
@@ -170,7 +165,7 @@ def _status():
     stats = []
     for tank in tanks:
         status = {
-            "tank_index": tank.metadata.labels["app.kubernetes.io/instance"],
+            "tank": tank.metadata.name,
             "bitcoin_status": tank.status.phase.lower(),
         }
         stats.append(status)
