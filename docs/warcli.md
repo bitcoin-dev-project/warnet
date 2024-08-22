@@ -33,12 +33,13 @@ Check Warnet requirements are installed
 ## Bitcoin
 
 ### `warcli bitcoin debug-log`
-Fetch the Bitcoin Core debug log from \<node>
+Fetch the Bitcoin Core debug log from \<node> in \<namespace>
 
 options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| node   | Int    | yes        |           |
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| node      | Int    | yes        |           |
+| namespace | String |            | "warnet"  |
 
 ### `warcli bitcoin grep-logs`
 Grep combined bitcoind logs using regex \<pattern>
