@@ -25,7 +25,6 @@ def cli():
 cli.add_command(bitcoin)
 cli.add_command(graph)
 cli.add_command(image)
-cli.add_command(namespaces)
 cli.add_command(network)
 cli.add_command(scenarios)
 cli.add_command(admin)

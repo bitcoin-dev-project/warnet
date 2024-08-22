@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 from rich import print as richprint
 
-from .namespaces import copy_namespaces_defaults
+from .namespaces import namespaces, copy_namespaces_defaults
 from .network import copy_network_defaults
 
 
@@ -13,7 +13,7 @@ def admin():
     """Admin commands for warnet project management"""
     pass
 
-
+admin.add_command(namespaces)
 @admin.command()
 @click.argument("directory", type=Path)
 def create(directory):
