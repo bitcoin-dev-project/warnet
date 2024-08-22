@@ -13,6 +13,7 @@ from .k8s import (
     delete_namespace,
     get_default_namespace,
     get_mission,
+    get_pods
 )
 from .process import stream_command
 
@@ -115,11 +116,14 @@ def start(network_name: str, logging: bool, network: str):
 @network.command()
 def down():
     """Bring down a running warnet"""
-    namespace = get_default_namespace()
-    if delete_namespace(namespace) and delete_namespace("warnet-logging"):
-        print("Warnet network has been successfully brought down and the namespaces deleted.")
+    if delete_namespace("warnet-logging"):
+        print("Warnet logging deleted")
     else:
-        print("Failed to bring down warnet network or delete the namespaces.")
+        print("Warnet logging NOT deleted")
+    pods = get_pods()
+    for pod in pods.items:
+        cmd = f"helm uninstall {pod.metadata.name}"
+        stream_command(cmd)
 
 
 @network.command()
