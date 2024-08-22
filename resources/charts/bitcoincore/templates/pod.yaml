@@ -7,6 +7,7 @@ metadata:
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
+    tank: {{ include "bitcoincore.fullname" . }} 
   annotations:
     init_peers: "{{ .Values.connect | len }}"
 spec:
@@ -48,6 +49,28 @@ spec:
         - mountPath: /root/.bitcoin/bitcoin.conf
           name: config
           subPath: bitcoin.conf
+    {{- if .Values.metricsExport }}
+    - name: prometheus
+      image: bitcoindevproject/bitcoin-exporter:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: prom-metrics
+          containerPort: {{ .Values.prometheusMetricsPort }}
+          protocol: TCP
+      env:
+        - name: BITCOIN_RPC_HOST
+          value: "127.0.0.1"
+        - name: BITCOIN_RPC_PORT
+          value: "{{ .Values.regtest.RPCPort }}"
+        - name: BITCOIN_RPC_USER
+          value: user
+        - name: BITCOIN_RPC_PASSWORD
+          value: password
+        {{- if .Values.metrics }}
+        - name: METRICS
+          value: {{ .Values.metrics }}
+        {{- end }}
+    {{- end}}
   volumes:
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}

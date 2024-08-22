@@ -154,6 +154,9 @@ def _connected():
                 manuals += 1
         # Even if more edges are specifed, bitcoind only allows
         # 8 manual outbound connections
+        
+        print("manual " + str(manuals))
+        print(tank.metadata.annotations["init_peers"])
         if min(8, int(tank.metadata.annotations["init_peers"])) > manuals:
             print("Network not connected")
             return False

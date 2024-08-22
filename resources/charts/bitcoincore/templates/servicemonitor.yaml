@@ -1,0 +1,15 @@
+{{- if .Values.metricsExport }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "bitcoincore.fullname" . }}
+  labels:
+    app.kubernetes.io/name: bitcoind-metrics
+    release: prometheus
+spec:
+  endpoints:
+    - port: prometheus-metrics
+  selector:
+    matchLabels:
+      tank: {{ include "bitcoincore.fullname" . }}
+{{- end }}

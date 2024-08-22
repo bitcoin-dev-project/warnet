@@ -54,7 +54,7 @@ class LoggingTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"network start {self.graph_file_path}"))
+        self.log.info(self.warcli(f"network deploy"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
 

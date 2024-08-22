@@ -27,5 +27,4 @@ nodes:
   - name: tank-0005
     connect:
       - tank-0006
-      - tank-0007
   - name: tank-0006

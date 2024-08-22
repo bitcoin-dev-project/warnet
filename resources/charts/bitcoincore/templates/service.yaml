@@ -23,5 +23,9 @@ spec:
       targetPort: zmq-block
       protocol: TCP
       name: zmq-block
+    - port: {{ .Values.prometheusMetricsPort }}
+      targetPort: prom-metrics
+      protocol: TCP
+      name: prometheus-metrics
   selector:
     {{- include "bitcoincore.selectorLabels" . | nindent 4 }}
