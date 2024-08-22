@@ -7,7 +7,10 @@ metadata:
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
-    tank: {{ include "bitcoincore.fullname" . }} 
+    tank: {{ include "bitcoincore.fullname" . }}
+    {{- if .Values.collectLogs }}
+    collect_logs: "true"
+    {{- end }}
   annotations:
     init_peers: "{{ .Values.connect | len }}"
 spec:

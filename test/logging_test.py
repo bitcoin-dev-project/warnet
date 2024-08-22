@@ -54,7 +54,7 @@ class LoggingTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"network deploy"))
+        self.log.info(self.warcli(f"network deploy ./resources/networks/6_node_bitcoin"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
 
