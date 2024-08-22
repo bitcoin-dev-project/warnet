@@ -150,7 +150,7 @@ List all namespaces with 'warnet-' prefix
 ## Network
 
 ### `warcli network connected`
-Determine if all p2p conenctions defined in graph are established
+Determine if all p2p connections defined in graph are established
 
 
 ### `warcli network down`
