@@ -11,5 +11,5 @@ spec:
     - port: prometheus-metrics
   selector:
     matchLabels:
-      tank: {{ include "bitcoincore.fullname" . }}
+      app: {{ include "bitcoincore.fullname" . }}
 {{- end }}

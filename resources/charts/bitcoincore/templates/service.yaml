@@ -4,6 +4,7 @@ metadata:
   name: {{ include "bitcoincore.fullname" . }}
   labels:
     {{- include "bitcoincore.labels" . | nindent 4 }}
+    app: {{ include "bitcoincore.fullname" . }} 
 spec:
   type: {{ .Values.service.type }}
   ports:

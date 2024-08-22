@@ -7,7 +7,7 @@ metadata:
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
-    tank: {{ include "bitcoincore.fullname" . }}
+    app: {{ include "bitcoincore.fullname" . }}
     {{- if .Values.collectLogs }}
     collect_logs: "true"
     {{- end }}
