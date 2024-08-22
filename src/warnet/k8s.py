@@ -1,6 +1,5 @@
 import json
 import tempfile
-from importlib.resources import files
 from pathlib import Path
 
 import yaml
@@ -10,7 +9,6 @@ from kubernetes.dynamic import DynamicClient
 
 from .process import run_command, stream_command
 
-WAR_MANIFESTS = files("manifests")
 DEFAULT_NAMESPACE = "warnet"
 
 

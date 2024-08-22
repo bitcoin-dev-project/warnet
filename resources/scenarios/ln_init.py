@@ -3,7 +3,10 @@
 from time import sleep
 
 # The base class exists inside the commander container
-from commander import Commander
+try:
+    from commander import Commander
+except ImportError:
+    from resources.scenarios.commander import Commander
 
 
 def cli_help():

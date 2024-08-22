@@ -13,7 +13,7 @@ from .image import image
 from .network import copy_network_defaults, network
 from .scenarios import scenarios
 
-QUICK_START_PATH = files("scripts").joinpath("quick_start.sh")
+QUICK_START_PATH = files("resources.scripts").joinpath("quick_start.sh")
 
 
 @click.group()

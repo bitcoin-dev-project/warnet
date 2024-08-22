@@ -12,14 +12,14 @@ from .bitcoin import _rpc
 from .k8s import delete_namespace, get_default_namespace, get_mission, get_pods
 from .process import stream_command
 
-WAR_MANIFESTS = files("manifests")
-WARNET_NETWORK_DIR = files("networks")
-NETWORK_DIR = Path("networks")
+WAR_MANIFESTS = files("resources.manifests")
+WARNET_NETWORK_DIR = files("resources.networks")
+NETWORK_DIR = Path("resources.networks")
 DEFAULT_NETWORK = Path("6_node_bitcoin")
 NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
-BITCOIN_CHART_LOCATION = str(files("charts").joinpath("bitcoincore"))
+BITCOIN_CHART_LOCATION = str(files("resources.charts").joinpath("bitcoincore"))
 
 
 @click.group(name="network")
