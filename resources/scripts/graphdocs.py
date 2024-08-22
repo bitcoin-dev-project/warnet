@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from tabulate import tabulate
+
 from warnet.cli.util import load_schema
 
 graph_schema = load_schema()

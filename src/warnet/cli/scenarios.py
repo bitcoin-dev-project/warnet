@@ -11,6 +11,7 @@ import yaml
 from rich import print
 from rich.console import Console
 from rich.table import Table
+
 from warnet import scenarios as SCENARIOS
 
 from .k8s import apply_kubernetes_yaml, create_namespace, get_mission
@@ -51,7 +52,7 @@ def _available():
 @scenarios.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario", type=str)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario, additional_args):
+def run(scenario: str, additional_args: tuple[str]):
     """
     Run <scenario> from the Warnet Test Framework with optional arguments
     """
@@ -69,7 +70,7 @@ def run(scenario, additional_args):
 @scenarios.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario_path", type=str)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run_file(scenario_path, additional_args):
+def run_file(scenario_path: str, additional_args: tuple[str]):
     """
     Run <scenario_path> from the Warnet Test Framework with optional arguments
     """
@@ -79,7 +80,7 @@ def run_file(scenario_path, additional_args):
     return run_scenario(scenario_path, additional_args)
 
 
-def run_scenario(scenario_path, additional_args):
+def run_scenario(scenario_path: str, additional_args: tuple[str]):
     if not os.path.exists(scenario_path):
         raise Exception(f"Scenario file not found at {scenario_path}.")
 
@@ -119,7 +120,7 @@ def run_scenario(scenario_path, additional_args):
                 "apiVersion": "v1",
                 "kind": "ConfigMap",
                 "metadata": {
-                    "name": "scnaeriopy",
+                    "name": "scenariopy",
                     "namespace": "warnet",
                 },
                 "data": {"scenario.py": scenario_text},
@@ -146,7 +147,7 @@ def run_scenario(scenario_path, additional_args):
                                     "subPath": "warnet.json",
                                 },
                                 {
-                                    "name": "scnaeriopy",
+                                    "name": "scenariopy",
                                     "mountPath": "scenario.py",
                                     "subPath": "scenario.py",
                                 },
@@ -155,7 +156,7 @@ def run_scenario(scenario_path, additional_args):
                     ],
                     "volumes": [
                         {"name": "warnetjson", "configMap": {"name": "warnetjson"}},
-                        {"name": "scnaeriopy", "configMap": {"name": "scnaeriopy"}},
+                        {"name": "scenariopy", "configMap": {"name": "scenariopy"}},
                     ],
                 },
             },
@@ -188,6 +189,6 @@ def active():
     console.print(table)
 
 
-def _active():
+def _active() -> list[str]:
     commanders = get_mission("commander")
     return [{"commander": c.metadata.name, "status": c.status.phase.lower()} for c in commanders]

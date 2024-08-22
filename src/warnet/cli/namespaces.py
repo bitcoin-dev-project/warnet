@@ -37,7 +37,7 @@ def deploy(namespaces: str):
     for n in names:
         if not n.startswith("warnet-"):
             print(
-                f"Failled to create namespace: {n}. Namespaces must start with a 'warnet-' prefix."
+                f"Failed to create namespace: {n}. Namespaces must start with a 'warnet-' prefix."
             )
 
     # deploy namespaces

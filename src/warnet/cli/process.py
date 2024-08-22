@@ -1,7 +1,7 @@
 import subprocess
 
 
-def run_command(command) -> str:
+def run_command(command: str) -> str:
     result = subprocess.run(
         command, shell=True, capture_output=True, text=True, executable="/bin/bash"
     )
@@ -10,7 +10,7 @@ def run_command(command) -> str:
     return result.stdout
 
 
-def stream_command(command, env=None) -> bool:
+def stream_command(command: str, env=None) -> bool:
     process = subprocess.Popen(
         ["/bin/bash", "-c", command],
         stdout=subprocess.PIPE,

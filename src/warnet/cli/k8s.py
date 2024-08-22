@@ -1,11 +1,11 @@
 import json
-import yaml
 import tempfile
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, Dict
 
+import yaml
 from kubernetes import client, config
+from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 
 from .process import stream_command
@@ -13,22 +13,22 @@ from .process import stream_command
 WAR_MANIFESTS = files("manifests")
 
 
-def get_static_client():
+def get_static_client() -> CoreV1Event:
     config.load_kube_config()
     return client.CoreV1Api()
 
 
-def get_dynamic_client():
+def get_dynamic_client() -> DynamicClient:
     config.load_kube_config()
     return DynamicClient(client.ApiClient())
 
 
-def get_pods():
+def get_pods() -> V1PodList:
     sclient = get_static_client()
     return sclient.list_namespaced_pod("warnet")
 
 
-def get_mission(mission):
+def get_mission(mission: str) -> list[V1PodList]:
     pods = get_pods()
     crew = []
     for pod in pods.items:
@@ -37,15 +37,15 @@ def get_mission(mission):
     return crew
 
 
-def get_edges():
+def get_edges() -> any:
     sclient = get_static_client()
     configmap = sclient.read_namespaced_config_map(name="edges", namespace="warnet")
     return json.loads(configmap.data["data"])
 
 
 def create_kubernetes_object(
-    kind: str, metadata: Dict[str, Any], spec: Dict[str, Any] = None
-) -> Dict[str, Any]:
+    kind: str, metadata: dict[str, any], spec: dict[str, any] = None
+) -> dict[str, any]:
     obj = {
         "apiVersion": "v1",
         "kind": kind,
@@ -60,7 +60,7 @@ def create_namespace() -> dict:
     return {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "warnet"}}
 
 
-def set_kubectl_context(namespace: str):
+def set_kubectl_context(namespace: str) -> bool:
     """
     Set the default kubectl context to the specified namespace.
     """
@@ -73,7 +73,7 @@ def set_kubectl_context(namespace: str):
     return result
 
 
-def deploy_base_configurations():
+def deploy_base_configurations() -> bool:
     base_configs = [
         "namespace.yaml",
         "rbac-config.yaml",
@@ -87,12 +87,12 @@ def deploy_base_configurations():
     return True
 
 
-def apply_kubernetes_yaml(yaml_file: str):
+def apply_kubernetes_yaml(yaml_file: str) -> bool:
     command = f"kubectl apply -f {yaml_file}"
     return stream_command(command)
 
 
-def apply_kubernetes_yaml_obj(yaml_obj: str):
+def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
         yaml.dump(yaml_obj, temp_file)
         temp_file_path = temp_file.name
@@ -103,11 +103,11 @@ def apply_kubernetes_yaml_obj(yaml_obj: str):
         Path(temp_file_path).unlink()
 
 
-def delete_namespace(namespace: str):
+def delete_namespace(namespace: str) -> bool:
     command = f"kubectl delete namespace {namespace} --ignore-not-found"
     return stream_command(command)
 
 
-def delete_pod(pod_name: str):
+def delete_pod(pod_name: str) -> bool:
     command = f"kubectl delete pod {pod_name}"
     return stream_command(command)

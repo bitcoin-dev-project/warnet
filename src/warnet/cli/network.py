@@ -34,7 +34,7 @@ def network():
 
 
 class Edge:
-    def __init__(self, src: str, dst: str, data: Dict[str, Any]):
+    def __init__(self, src: str, dst: str, data: dict[str, any]):
         self.src = src
         self.dst = dst
         self.data = data
@@ -43,7 +43,7 @@ class Edge:
         return {"src": self.src, "dst": self.dst, "data": self.data}
 
 
-def edges_from_network_file(network_file: Dict[str, Any]) -> List[Edge]:
+def edges_from_network_file(network_file: dict[str, any]) -> list[Edge]:
     edges = []
     for node in network_file["nodes"]:
         if "connect" in node:
@@ -52,7 +52,7 @@ def edges_from_network_file(network_file: Dict[str, Any]) -> List[Edge]:
     return edges
 
 
-def create_edges_map(network_file: Dict[str, Any]):
+def create_edges_map(network_file: dict[str, any]):
     edges = []
     for edge in edges_from_network_file(network_file):
         edges.append(edge.to_dict())
@@ -149,7 +149,7 @@ def logs(follow: bool):
 
 @network.command()
 def connected():
-    """Determine if all p2p conenctions defined in graph are established"""
+    """Determine if all p2p connections defined in graph are established"""
     print(_connected())
 
 

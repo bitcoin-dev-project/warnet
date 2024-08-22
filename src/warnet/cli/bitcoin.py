@@ -5,6 +5,7 @@ from datetime import datetime
 from io import BytesIO
 
 import click
+
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
@@ -20,14 +21,14 @@ def bitcoin():
 @click.argument("node", type=int)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(node, method, params):
+def rpc(node: int, method: str, params: str):
     """
     Call bitcoin-cli <method> [params] on <node>
     """
     print(_rpc(node, method, params))
 
 
-def _rpc(node, method, params):
+def _rpc(node: int, method: str, params: str):
     if params:
         cmd = f"kubectl exec warnet-tank-{node} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
     else:
@@ -37,7 +38,7 @@ def _rpc(node, method, params):
 
 @bitcoin.command()
 @click.argument("node", type=int, required=True)
-def debug_log(node):
+def debug_log(node: int):
     """
     Fetch the Bitcoin Core debug log from <node>
     """
@@ -49,7 +50,7 @@ def debug_log(node):
 @click.argument("pattern", type=str, required=True)
 @click.option("--show-k8s-timestamps", is_flag=True, default=False, show_default=True)
 @click.option("--no-sort", is_flag=True, default=False, show_default=True)
-def grep_logs(pattern, show_k8s_timestamps, no_sort):
+def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     """
     Grep combined bitcoind logs using regex <pattern>
     """
@@ -120,7 +121,7 @@ def grep_logs(pattern, show_k8s_timestamps, no_sort):
 @click.argument("node_a", type=int, required=True)
 @click.argument("node_b", type=int, required=True)
 @click.option("--network", default="regtest", show_default=True)
-def messages(node_a, node_b, network):
+def messages(node_a: int, node_b: int, network: str):
     """
     Fetch messages sent between <node_a> and <node_b> in [network]
     """
@@ -154,7 +155,7 @@ def messages(node_a, node_b, network):
         print(f"Error fetching messages between nodes {node_a} and {node_b}: {e}")
 
 
-def get_messages(node_a, node_b, network):
+def get_messages(node_a: int, node_b: int, network: str):
     """
     Fetch messages from the message capture files
     """
@@ -198,7 +199,7 @@ def get_messages(node_a, node_b, network):
 
 # This function is a hacked-up copy of process_file() from
 # Bitcoin Core contrib/message-capture/message-capture-parser.py
-def parse_raw_messages(blob, outbound):
+def parse_raw_messages(blob: bytes, outbound: bool):
     TIME_SIZE = 8
     LENGTH_SIZE = 4
     MSGTYPE_SIZE = 12
@@ -267,7 +268,7 @@ def parse_raw_messages(blob, outbound):
     return messages
 
 
-def to_jsonable(obj):
+def to_jsonable(obj: str):
     HASH_INTS = [
         "blockhash",
         "block_hash",
