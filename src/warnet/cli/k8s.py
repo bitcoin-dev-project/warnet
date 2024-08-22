@@ -26,7 +26,7 @@ def get_dynamic_client() -> DynamicClient:
 
 def get_pods() -> V1PodList:
     sclient = get_static_client()
-    return sclient.list_namespaced_pod("warnet")
+    return sclient.list_namespaced_pod(get_default_namespace())
 
 
 def get_mission(mission: str) -> list[V1PodList]:
