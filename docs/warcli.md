@@ -52,14 +52,15 @@ options:
 | no_sort             | Bool   |            | False     |
 
 ### `warcli bitcoin messages`
-Fetch messages sent between \<node_a> and \<node_b> in [network]
+Fetch messages sent between \<node_a> and \<node_b> on [chain] in a [namespace]
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| node_a  | Int    | yes        |           |
-| node_b  | Int    | yes        |           |
-| network | String |            | "regtest" |
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| node_a    | Int    | yes        |           |
+| node_b    | Int    | yes        |           |
+| chain     | String |            | "regtest" |
+| namespace | String |            | "warnet"  |
 
 ### `warcli bitcoin rpc`
 Call bitcoin-cli \<method> [params] on \<node>
