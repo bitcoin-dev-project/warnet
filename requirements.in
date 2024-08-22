@@ -1,9 +1,7 @@
 click
 docker
 flask
-jsonschema
 kubernetes
-networkx
 rich
 tabulate
 PyYAML

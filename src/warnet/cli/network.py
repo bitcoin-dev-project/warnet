@@ -10,10 +10,7 @@ from rich import print
 
 from .bitcoin import _rpc
 from .k8s import (
-    apply_kubernetes_yaml_obj,
-    create_kubernetes_object,
     delete_namespace,
-    get_edges,
     get_mission,
 )
 from .process import stream_command

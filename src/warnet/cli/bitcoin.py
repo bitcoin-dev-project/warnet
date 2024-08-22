@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from datetime import datetime
@@ -9,9 +8,9 @@ import click
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
+from .k8s import get_mission
 from .process import run_command
 
-from .k8s import get_mission
 
 @click.group(name="bitcoin")
 def bitcoin():
@@ -108,14 +107,14 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 @bitcoin.command()
 @click.argument("tank_a", type=str, required=True)
 @click.argument("tank_b", type=str, required=True)
-@click.option("--network", default="regtest", show_default=True)
-def messages(tank_a: str, tank_b: str, network: str):
+@click.option("--chain", default="regtest", show_default=True)
+def messages(tank_a: str, tank_b: str, chain: str):
     """
-    Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [network]
+    Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
     """
     try:
         # Get the messages
-        messages = get_messages(tank_a, tank_b, network)
+        messages = get_messages(tank_a, tank_b, chain)
 
         if not messages:
             print(f"No messages found between {tank_a} and {tank_b}")
@@ -143,7 +142,14 @@ def messages(tank_a: str, tank_b: str, network: str):
         print(f"Error fetching messages between nodes {tank_a} and {tank_b}: {e}")
 
 
-def get_messages(tank_a: str, tank_b: str, network: str):
+def get_messages(tank_a: str, tank_b: str, chain: str):
+    """
+    Fetch messages from the message capture files
+    """
+    subdir = "" if chain == "main" else f"{chain}/"
+    base_dir = f"/root/.bitcoin/{subdir}message_capture"
+
+    # Get the IP of node_b
     cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}'"
     tank_b_ip = run_command(cmd).strip()
 
@@ -161,8 +167,7 @@ def get_messages(tank_a: str, tank_b: str, network: str):
     for dir_name in dirs:
         if tank_b_ip in dir_name or tank_b_service_ip in dir_name:
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
-                file_path = f"{base_dir}/{dir_name}_18444/{file}"
-                print(file_path)
+                file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
                 cmd = f"kubectl exec {tank_a} -- cat {file_path}"
                 import subprocess
