@@ -10,11 +10,12 @@ from rich import print as richprint
 
 from .admin import admin
 from .bitcoin import bitcoin
+from .control import down, run, stop
 from .deploy import deploy as deploy_command
 from .graph import graph
 from .image import image
+from .network import copy_network_defaults, copy_scenario_defaults
 from .status import status as status_command
-from .control import stop, down, run
 
 QUICK_START_PATH = files("resources.scripts").joinpath("quick_start.sh")
 
@@ -36,47 +37,66 @@ cli.add_command(run)
 
 
 @cli.command()
-def setup():
-    """Check Warnet requirements are installed"""
+def quickstart():
+    """Setup warnet"""
     try:
         process = subprocess.Popen(
             ["/bin/bash", str(QUICK_START_PATH)],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
-            # This preserves colours from grant's lovely script!
             env=dict(os.environ, TERM="xterm-256color"),
         )
-
         for line in iter(process.stdout.readline, ""):
-            print(line, end="", flush=True)
-
+            click.echo(line, nl=False)
         process.stdout.close()
         return_code = process.wait()
-
         if return_code != 0:
-            print(f"Quick start script failed with return code {return_code}")
+            click.echo(f"Quick start script failed with return code {return_code}")
+            click.echo("Install missing requirements before proceeding")
             return False
+
+        create_project = click.confirm("Do you want to create a new project?", default=True)
+
+        if create_project:
+            default_path = os.path.abspath(os.getcwd())
+            project_path = click.prompt(
+                "Enter the project directory path",
+                default=default_path,
+                type=click.Path(file_okay=False, dir_okay=True, resolve_path=True),
+            )
+
+            _create(project_path)
+
+        click.echo("Setup completed successfully!")
         return True
 
     except Exception as e:
-        print(f"An error occurred while running the quick start script: {e}")
+        print(f"An error occurred while running the quick start script:\n\n{e}\n\n")
+        print("Please report this to https://github.com/bitcoin-dev-project/warnet/issues")
         return False
 
 
 @cli.command()
-@click.argument("directory", type=Path)
+@click.argument("directory", type=click.Path(file_okay=False, dir_okay=True, resolve_path=True))
 def create(directory: Path):
     """Create a new warnet project in the specified directory"""
-    full_path = Path()
-    full_path = directory if directory.is_absolute() else directory.resolve()
-    if os.path.exists(directory):
+    _create(directory)
+
+
+def _create(directory: Path):
+    full_path = Path(directory)
+    if full_path.exists():
         richprint(f"[red]Error: Directory {full_path} already exists[/red]")
         return
 
-    copy_network_defaults(full_path)
-    richprint(f"[green]Copied network example files to {full_path / 'networks'}[/green]")
-    richprint(f"[green]Created warnet project structure in {full_path}[/green]")
+    try:
+        copy_network_defaults(full_path)
+        copy_scenario_defaults(full_path)
+        richprint(f"[green]Copied network example files to {full_path / 'networks'}[/green]")
+        richprint(f"[green]Created warnet project structure in {full_path}[/green]")
+    except Exception as e:
+        richprint(f"[red]Error creating project: {e}[/red]")
 
 
 @cli.command()
