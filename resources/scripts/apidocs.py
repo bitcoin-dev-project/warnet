@@ -7,7 +7,7 @@ from pathlib import Path
 from click import Context
 from tabulate import tabulate
 
-from warnet.cli.main import cli
+from warnet.main import cli
 
 file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / "docs" / "warcli.md"
 
