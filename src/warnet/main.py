@@ -66,7 +66,7 @@ def quickstart():
                 type=click.Path(file_okay=False, dir_okay=True, resolve_path=True),
             )
 
-            _create(project_path)
+            create_warnet_project(Path(project_path))
 
         click.echo("Setup completed successfully!")
         return True
