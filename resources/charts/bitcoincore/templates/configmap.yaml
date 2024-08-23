@@ -9,6 +9,9 @@ data:
     {{- if eq .Values.chain "regtest" }}
       {{- tpl .Values.regtestConfig . | nindent 4 }}
     {{- end }}
+    {{- if eq .Values.chain "regtestold" }}
+      {{- tpl .Values.regtestConfigOld . | nindent 4 }}
+    {{- end }}
     {{- .Values.baseConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
     {{- range .Values.connect }}
