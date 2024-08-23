@@ -10,10 +10,11 @@ from rich import print as richprint
 
 from .admin import admin
 from .bitcoin import bitcoin
+from .deploy import deploy as deploy_command
 from .graph import graph
 from .image import image
-from .network import copy_network_defaults, network
-from .scenarios import scenarios
+from .status import status as status_command
+from .control import stop, down, run
 
 QUICK_START_PATH = files("resources.scripts").joinpath("quick_start.sh")
 
@@ -24,11 +25,14 @@ def cli():
 
 
 cli.add_command(bitcoin)
+cli.add_command(deploy_command)
 cli.add_command(graph)
 cli.add_command(image)
-cli.add_command(network)
-cli.add_command(scenarios)
+cli.add_command(status_command)
 cli.add_command(admin)
+cli.add_command(stop)
+cli.add_command(down)
+cli.add_command(run)
 
 
 @cli.command()
