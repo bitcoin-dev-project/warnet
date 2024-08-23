@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "lnd.fullname" . }}
+  labels:
+    {{- include "lnd.labels" . | nindent 4 }}
+    {{- with .Values.extraLabels }}
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+    app: {{ include "lnd.fullname" . }}
+    {{- if .Values.collectLogs }}
+    collect_logs: "true"
+    {{- end }}
+    chain: {{ .Values.global.chain }}
+spec:
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: {{ .Chart.Name }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      ports:
+        - name: rpc
+          containerPort: {{ .Values.RPCPort }}
+          protocol: TCP
+        - name: p2p
+          containerPort: {{ .Values.P2PPort }}
+          protocol: TCP
+      livenessProbe:
+        {{- toYaml .Values.livenessProbe | nindent 8 }}
+      readinessProbe:
+        {{- toYaml .Values.readinessProbe | nindent 8 }}
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      volumeMounts:
+        {{- with .Values.volumeMounts }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        - mountPath: /root/.lnd/lnd.conf
+          name: config
+          subPath: lnd.conf
+    {{- if .Values.circuitBreaker }}
+    - name: circuitbreaker
+      image: pinheadmz/circuitbreaker:278737d
+      imagePullPolicy: IfNotPresent
+    {{- end}}
+  volumes:
+    {{- with .Values.volumes }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    - configMap:
+        name: {{ include "lnd.fullname" . }}
+      name: config
+  {{- with .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.affinity }}
+  affinity:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

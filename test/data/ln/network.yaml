@@ -1,0 +1,18 @@
+nodes:
+  - name: tank-0000
+    addnode:
+      - tank-0001
+    ln:
+      lnd: true
+
+  - name: tank-0001
+    addnode:
+      - tank-0002
+    ln:
+      lnd: true
+
+  - name: tank-0002
+    addnode:
+      - tank-0000
+    ln:
+      lnd: true
