@@ -11,9 +11,9 @@ from tempfile import mkdtemp
 from time import sleep
 
 from warnet import SRC_DIR
+from warnet.control import get_active_scenarios
 from warnet.network import _connected as network_connected
 from warnet.network import _status as network_status
-from warnet.scenarios import _active as scenarios_active
 
 
 class TestBase:
@@ -45,7 +45,7 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                self.warcli("network down")
+                self.warcli("down")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")
@@ -129,7 +129,7 @@ class TestBase:
 
     def wait_for_all_scenarios(self):
         def check_scenarios():
-            scns = scenarios_active()
+            scns = get_active_scenarios()
             if len(scns) == 0:
                 return True
             return all(s["status"] == "succeeded" for s in scns)

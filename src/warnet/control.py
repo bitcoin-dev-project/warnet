@@ -1,32 +1,39 @@
-import click
-from rich import print
-from rich.console import Console
-from rich.table import Table
 import json
 import os
 import tempfile
 import time
+
+import click
 import yaml
+from rich import print
+from rich.console import Console
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
 
-from warnet import scenarios as SCENARIOS
-from .k8s import get_mission, delete_namespace, get_default_namespace, apply_kubernetes_yaml, get_pods
+from .k8s import (
+    apply_kubernetes_yaml,
+    delete_namespace,
+    get_default_namespace,
+    get_mission,
+    get_pods,
+)
 from .process import run_command, stream_command
-from rich.prompt import Prompt, Confirm
-
 
 console = Console()
+
 
 def get_active_scenarios():
     """Get list of active scenarios"""
     commanders = get_mission("commander")
     return [c.metadata.name for c in commanders]
 
+
 @click.command()
-@click.argument('scenario_name', required=False)
+@click.argument("scenario_name", required=False)
 def stop(scenario_name):
     """Stop a running scenario or all scenarios"""
     active_scenarios = get_active_scenarios()
-    
+
     if not active_scenarios:
         console.print("[bold red]No active scenarios found.[/bold red]")
         return
@@ -40,31 +47,32 @@ def stop(scenario_name):
             table.add_row(str(idx), name)
 
         console.print(table)
-        
-        choices = [str(i) for i in range(1, len(active_scenarios) + 1)] + ['a', 'q']
+
+        choices = [str(i) for i in range(1, len(active_scenarios) + 1)] + ["a", "q"]
         choice = Prompt.ask(
             "[bold yellow]Enter the number of the scenario to stop, 'a' to stop all, or 'q' to quit[/bold yellow]",
             choices=choices,
-            show_choices=False
+            show_choices=False,
         )
-        
-        if choice == 'q':
+
+        if choice == "q":
             console.print("[bold blue]Operation cancelled.[/bold blue]")
             return
-        elif choice == 'a':
+        elif choice == "a":
             if Confirm.ask("[bold red]Are you sure you want to stop all scenarios?[/bold red]"):
                 stop_all_scenarios(active_scenarios)
             else:
                 console.print("[bold blue]Operation cancelled.[/bold blue]")
             return
-        
+
         scenario_name = active_scenarios[int(choice) - 1]
-    
+
     if scenario_name not in active_scenarios:
         console.print(f"[bold red]No active scenario found with name: {scenario_name}[/bold red]")
         return
 
     stop_scenario(scenario_name)
+
 
 def stop_scenario(scenario_name):
     """Stop a single scenario"""
@@ -74,12 +82,14 @@ def stop_scenario(scenario_name):
     else:
         console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
 
+
 def stop_all_scenarios(scenarios):
     """Stop all active scenarios"""
     with console.status("[bold yellow]Stopping all scenarios...[/bold yellow]"):
         for scenario in scenarios:
             stop_scenario(scenario)
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
+
 
 def list_active_scenarios():
     """List all active scenarios"""
@@ -132,21 +142,24 @@ def down():
 
     console.print("[bold green]Warnet has been brought down.[/bold green]")
 
+
 def get_active_network(namespace):
     """Get the name of the active network (Helm release) in the given namespace"""
     cmd = f"helm list --namespace {namespace} --output json"
     result = run_command(cmd)
     if result:
         import json
+
         releases = json.loads(result)
         if releases:
             # Assuming the first release is the active network
-            return releases[0]['name']
+            return releases[0]["name"]
     return None
 
-@click.command()
-@click.argument('scenario_file', type=click.Path(exists=True, file_okay=True, dir_okay=False))
-@click.argument('additional_args', nargs=-1, type=click.UNPROCESSED)
+
+@click.command(context_settings={"ignore_unknown_options": True})
+@click.argument("scenario_file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 def run(scenario_file: str, additional_args: tuple[str]):
     """Run a scenario from a file"""
     scenario_path = os.path.abspath(scenario_file)
@@ -236,4 +249,3 @@ def run(scenario_file: str, additional_args: tuple[str]):
         print(f"Failed to start scenario: {scenario_name}")
 
     os.unlink(temp_file_path)
-

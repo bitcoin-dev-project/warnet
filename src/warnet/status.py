@@ -1,11 +1,11 @@
 import click
-from rich import print
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
 from .k8s import get_mission
+
 
 @click.command()
 def status():
@@ -54,9 +54,11 @@ def status():
     summary.append(f" | Active Scenarios: {len(scenarios)}", style="bold green")
     console.print(summary)
 
+
 def _get_tank_status():
     tanks = get_mission("tank")
     return [{"name": tank.metadata.name, "status": tank.status.phase.lower()} for tank in tanks]
+
 
 def _get_active_scenarios():
     commanders = get_mission("commander")

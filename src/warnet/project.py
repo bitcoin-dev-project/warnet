@@ -4,8 +4,6 @@ import random
 import click
 import yaml
 
-from .util import DEFAULT_TAG
-
 
 @click.group(name="project")
 def project():
