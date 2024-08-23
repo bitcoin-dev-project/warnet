@@ -54,7 +54,7 @@ class LoggingTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"network deploy {self.network_dir}"))
+        self.log.info(self.warcli(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
 
@@ -73,8 +73,11 @@ class LoggingTest(TestBase):
 
     def test_prometheus_and_grafana(self):
         self.log.info("Starting network activity scenarios")
-        self.warcli("scenarios run miner_std --allnodes --interval=5 --mature")
-        self.warcli("scenarios run tx_flood --interval=1")
+
+        miner_file = "resources/scenarios/miner_std.py"
+        tx_flood_file = "resources/scenarios/tx_flood.py"
+        self.warcli(f"run {miner_file} --allnodes --interval=5 --mature")
+        self.warcli(f"run {tx_flood_file} --interval=1")
 
         prometheus_ds = requests.get("http://localhost:3000/api/datasources/name/Prometheus")
         assert prometheus_ds.status_code == 200

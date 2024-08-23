@@ -12,9 +12,13 @@ from .bitcoin import _rpc
 from .k8s import delete_namespace, get_default_namespace, get_mission, get_pods
 from .process import stream_command
 
-WAR_MANIFESTS = files("resources.manifests")
-WARNET_NETWORK_DIR = files("resources.networks")
-NETWORK_DIR = Path("resources.networks")
+WAR_MANIFESTS_FILES = files("resources.manifests")
+WAR_NETWORK_FILES = files("resources.networks")
+WAR_SCENARIOS_FILES = files("resources.scenarios")
+
+WAR_NETWORK_DIR = WAR_NETWORK_FILES.name
+WAR_SCENARIOS_DIR = WAR_SCENARIOS_FILES.name
+
 DEFAULT_NETWORK = Path("6_node_bitcoin")
 NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
@@ -51,10 +55,10 @@ def setup_logging_helm() -> bool:
         "helm repo add grafana https://grafana.github.io/helm-charts",
         "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
         "helm repo update",
-        f"helm upgrade --install --namespace warnet-logging --create-namespace --values {WAR_MANIFESTS}/loki_values.yaml loki grafana/loki --version 5.47.2",
+        f"helm upgrade --install --namespace warnet-logging --create-namespace --values {WAR_MANIFESTS_FILES}/loki_values.yaml loki grafana/loki --version 5.47.2",
         "helm upgrade --install --namespace warnet-logging promtail grafana/promtail",
         "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --set grafana.enabled=false",
-        f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {WAR_MANIFESTS}/grafana_values.yaml",
+        f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {WAR_MANIFESTS_FILES}/grafana_values.yaml",
     ]
 
     for command in helm_commands:
@@ -66,11 +70,34 @@ def setup_logging_helm() -> bool:
 
 def copy_network_defaults(directory: Path):
     """Create the project structure for a warnet project"""
-    (directory / NETWORK_DIR / DEFAULT_NETWORK).mkdir(parents=True, exist_ok=True)
-    target_network_defaults = directory / NETWORK_DIR / DEFAULT_NETWORK / DEFAULTS_FILE
-    target_network_example = directory / NETWORK_DIR / DEFAULT_NETWORK / NETWORK_FILE
-    shutil.copy2(WARNET_NETWORK_DIR / DEFAULT_NETWORK / DEFAULTS_FILE, target_network_defaults)
-    shutil.copy2(WARNET_NETWORK_DIR / DEFAULT_NETWORK / NETWORK_FILE, target_network_example)
+    (directory / WAR_NETWORK_DIR / DEFAULT_NETWORK).mkdir(parents=True, exist_ok=True)
+    target_network_defaults = directory / WAR_NETWORK_DIR / DEFAULT_NETWORK / DEFAULTS_FILE
+    target_network_example = directory / WAR_NETWORK_DIR / DEFAULT_NETWORK / NETWORK_FILE
+    shutil.copy2(WAR_NETWORK_FILES / DEFAULT_NETWORK / DEFAULTS_FILE, target_network_defaults)
+    shutil.copy2(WAR_NETWORK_FILES / DEFAULT_NETWORK / NETWORK_FILE, target_network_example)
+
+
+def copy_scenario_defaults(directory: Path):
+    """Create the project structure for a warnet project"""
+    target_dir = directory / WAR_SCENARIOS_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Creating scenarios directory: {target_dir}")
+
+    scenarios_path = WAR_SCENARIOS_FILES.joinpath()
+
+    def should_copy(item: Path) -> bool:
+        return item.name not in ["__init__.py", "__pycache__", "commander.py"]
+
+    for item in scenarios_path.iterdir():
+        if should_copy(item):
+            if item.is_file():
+                shutil.copy2(item, target_dir)
+                print(f"Copied file: {item.name}")
+            elif item.is_dir():
+                shutil.copytree(item, target_dir / item.name, dirs_exist_ok=True)
+                print(f"Copied directory: {item.name}")
+
+    print(f"Finished copying scenario files to {target_dir}")
 
 
 @network.command()

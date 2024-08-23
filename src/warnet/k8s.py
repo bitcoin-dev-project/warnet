@@ -36,6 +36,19 @@ def get_mission(mission: str) -> list[V1PodList]:
     return crew
 
 
+def get_pod_exit_status(pod_name):
+    try:
+        sclient = get_static_client()
+        pod = sclient.read_namespaced_pod(name=pod_name, namespace=get_default_namespace())
+        for container_status in pod.status.container_statuses:
+            if container_status.state.terminated:
+                return container_status.state.terminated.exit_code
+        return None
+    except client.ApiException as e:
+        print(f"Exception when calling CoreV1Api->read_namespaced_pod: {e}")
+        return None
+
+
 def get_edges() -> any:
     sclient = get_static_client()
     configmap = sclient.read_namespaced_config_map(name="edges", namespace="warnet")

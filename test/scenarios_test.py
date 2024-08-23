@@ -8,7 +8,6 @@ from test_base import TestBase
 from warnet.k8s import delete_pod
 from warnet.process import run_command
 from warnet.scenarios import _active as scenarios_active
-from warnet.scenarios import _available as scenarios_available
 
 
 class ScenariosTest(TestBase):
@@ -25,22 +24,13 @@ class ScenariosTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"network deploy {self.network_dir}"))
+        self.log.info(self.warcli(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
 
     def test_scenarios(self):
-        self.check_available_scenarios()
-        self.run_and_check_miner_scenario()
         self.run_and_check_miner_scenario_from_file()
         self.run_and_check_scenario_from_file()
-
-    def check_available_scenarios(self):
-        self.log.info("Checking available scenarios")
-        # Use rpc instead of warcli so we get raw JSON object
-        scenarios = scenarios_available()
-        assert len(scenarios) == 4, f"Expected 4 available scenarios, got {len(scenarios)}"
-        self.log.info(f"Found {len(scenarios)} available scenarios")
 
     def scenario_running(self, scenario_name: str):
         """Check that we are only running a single scenario of the correct name"""
@@ -57,21 +47,13 @@ class ScenariosTest(TestBase):
             return active[0]["status"] == "succeeded"
 
         self.log.info(f"Running scenario from: {scenario_file}")
-        self.warcli(f"scenarios run-file {scenario_file}")
+        self.warcli(f"run {scenario_file}")
         self.wait_for_predicate(lambda: check_scenario_clean_exit())
-
-    def run_and_check_miner_scenario(self):
-        sc = "miner_std"
-        self.log.info(f"Running scenario {sc}")
-        self.warcli(f"scenarios run {sc} --allnodes --interval=1")
-        self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
-        self.wait_for_predicate(lambda: self.check_blocks(30))
-        self.stop_scenario()
 
     def run_and_check_miner_scenario_from_file(self):
         scenario_file = "resources/scenarios/miner_std.py"
         self.log.info(f"Running scenario from file: {scenario_file}")
-        self.warcli(f"scenarios run-file {scenario_file} --allnodes --interval=1")
+        self.warcli(f"run {scenario_file} --allnodes --interval=1")
         start = int(self.warcli("bitcoin rpc tank-0000 getblockcount"))
         self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
