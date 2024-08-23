@@ -88,13 +88,20 @@ def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclud
 
     print(f"Finished copying files to {target_dir}")
 
+
 def copy_network_defaults(directory: Path):
     """Create the project structure for a warnet project's network"""
     copy_defaults(directory, WAR_NETWORK_DIR, WAR_NETWORK_FILES.joinpath(), [])
 
+
 def copy_scenario_defaults(directory: Path):
     """Create the project structure for a warnet project's scenarios"""
-    copy_defaults(directory, WAR_SCENARIOS_DIR, WAR_SCENARIOS_FILES.joinpath(), ["__init__.py", "__pycache__", "commander.py"])
+    copy_defaults(
+        directory,
+        WAR_SCENARIOS_DIR,
+        WAR_SCENARIOS_FILES.joinpath(),
+        ["__init__.py", "__pycache__", "commander.py"],
+    )
 
 
 @network.command()

@@ -154,7 +154,9 @@ def auth(kube_config: str) -> None:
             user_token = user["user"]["token"]
             content["contexts"][0]
         flatten_cmd = "kubectl config view --flatten"
-        result_flatten = subprocess.run(flatten_cmd, shell=True, check=True, capture_output=True, text=True)
+        result_flatten = subprocess.run(
+            flatten_cmd, shell=True, check=True, capture_output=True, text=True
+        )
     except subprocess.CalledProcessError as e:
         print("Error occurred while executing kubectl config view --flatten:")
         print(e.stderr)
@@ -171,7 +173,9 @@ def auth(kube_config: str) -> None:
 
     try:
         update_cmd = f"kubectl config set-credentials {user_name} --token {user_token}"
-        result_update = subprocess.run(update_cmd, shell=True, check=True, capture_output=True, text=True)
+        result_update = subprocess.run(
+            update_cmd, shell=True, check=True, capture_output=True, text=True
+        )
         if result_update.returncode != 0:
             print("Could not update authorization file")
             print(result_flatten.stderr)
