@@ -139,13 +139,6 @@ class TestBase:
 
         self.wait_for_predicate(check_scenarios)
 
-    def get_scenario_return_code(self, scenario_name):
-        scns = self.rpc("scenarios_list_running")
-        scns = [scn for scn in scns if scn["cmd"].strip() == scenario_name]
-        if len(scns) == 0:
-            raise Exception(f"Scenario {scenario_name} not found in running scenarios")
-        return scns[0]["return_code"]
-
 
 def assert_equal(thing1, thing2, *args):
     if thing1 != thing2 or any(thing1 != arg for arg in args):
