@@ -120,7 +120,7 @@ def auth(kube_config: str) -> None:
     with open(current_kubeconfig) as file:
         contents = yaml.safe_load(file)
         print("\nUse the following command to switch to a new user:")
-        print("   kubectl config use context [user]\n")
+        print("   kubectl config use-context [user]\n")
         print("Available users:")
         for context in contents["contexts"]:
             print(f"   {context['name']}")
