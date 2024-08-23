@@ -77,40 +77,37 @@ def quickstart():
         return False
 
 
-@cli.command()
-@click.argument("directory", type=click.Path(file_okay=False, dir_okay=True, resolve_path=True))
-def create(directory: Path):
-    """Create a new warnet project in the specified directory"""
-    _create(directory)
-
-
-def _create(directory: Path):
-    full_path = Path(directory)
-    if full_path.exists():
-        richprint(f"[red]Error: Directory {full_path} already exists[/red]")
-        return
+def create_warnet_project(directory: Path, check_empty: bool = False):
+    """Common function to create a warnet project"""
+    if check_empty and any(directory.iterdir()):
+        richprint("[yellow]Warning: Directory is not empty[/yellow]")
+        if not click.confirm("Do you want to continue?", default=True):
+            return
 
     try:
-        copy_network_defaults(full_path)
-        copy_scenario_defaults(full_path)
-        richprint(f"[green]Copied network example files to {full_path / 'networks'}[/green]")
-        richprint(f"[green]Created warnet project structure in {full_path}[/green]")
+        copy_network_defaults(directory)
+        copy_scenario_defaults(directory)
+        richprint(f"[green]Copied network example files to {directory / 'networks'}[/green]")
+        richprint(f"[green]Created warnet project structure in {directory}[/green]")
     except Exception as e:
         richprint(f"[red]Error creating project: {e}[/red]")
 
+@cli.command()
+@click.argument(
+    "directory", type=click.Path(file_okay=False, dir_okay=True, resolve_path=True, path_type=Path)
+)
+def create(directory: Path):
+    """Create a new warnet project in the specified directory"""
+    if directory.exists():
+        richprint(f"[red]Error: Directory {directory} already exists[/red]")
+        return
+    create_warnet_project(directory)
 
 @cli.command()
 def init():
     """Initialize a warnet project in the current directory"""
-    current_dir = os.getcwd()
-    if os.listdir(current_dir):
-        richprint("[yellow]Warning: Current directory is not empty[/yellow]")
-        if not click.confirm("Do you want to continue?", default=True):
-            return
-
-    copy_network_defaults(current_dir)
-    richprint(f"[green]Copied network example files to {Path(current_dir) / 'networks'}[/green]")
-    richprint(f"[green]Created warnet project structure in {current_dir}[/green]")
+    current_dir = Path.cwd()
+    create_warnet_project(current_dir, check_empty=True)
 
 
 @cli.command()

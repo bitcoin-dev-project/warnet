@@ -68,27 +68,16 @@ def setup_logging_helm() -> bool:
     return True
 
 
-def copy_network_defaults(directory: Path):
-    """Create the project structure for a warnet project"""
-    (directory / WAR_NETWORK_DIR / DEFAULT_NETWORK).mkdir(parents=True, exist_ok=True)
-    target_network_defaults = directory / WAR_NETWORK_DIR / DEFAULT_NETWORK / DEFAULTS_FILE
-    target_network_example = directory / WAR_NETWORK_DIR / DEFAULT_NETWORK / NETWORK_FILE
-    shutil.copy2(WAR_NETWORK_FILES / DEFAULT_NETWORK / DEFAULTS_FILE, target_network_defaults)
-    shutil.copy2(WAR_NETWORK_FILES / DEFAULT_NETWORK / NETWORK_FILE, target_network_example)
-
-
-def copy_scenario_defaults(directory: Path):
-    """Create the project structure for a warnet project"""
-    target_dir = directory / WAR_SCENARIOS_DIR
+def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclude_list: list[str]):
+    """Generic function to copy default files and directories"""
+    target_dir = directory / target_subdir
     target_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Creating scenarios directory: {target_dir}")
-
-    scenarios_path = WAR_SCENARIOS_FILES.joinpath()
+    print(f"Creating directory: {target_dir}")
 
     def should_copy(item: Path) -> bool:
-        return item.name not in ["__init__.py", "__pycache__", "commander.py"]
+        return item.name not in exclude_list
 
-    for item in scenarios_path.iterdir():
+    for item in source_path.iterdir():
         if should_copy(item):
             if item.is_file():
                 shutil.copy2(item, target_dir)
@@ -97,7 +86,15 @@ def copy_scenario_defaults(directory: Path):
                 shutil.copytree(item, target_dir / item.name, dirs_exist_ok=True)
                 print(f"Copied directory: {item.name}")
 
-    print(f"Finished copying scenario files to {target_dir}")
+    print(f"Finished copying files to {target_dir}")
+
+def copy_network_defaults(directory: Path):
+    """Create the project structure for a warnet project's network"""
+    copy_defaults(directory, WAR_NETWORK_DIR, WAR_NETWORK_FILES.joinpath(), [])
+
+def copy_scenario_defaults(directory: Path):
+    """Create the project structure for a warnet project's scenarios"""
+    copy_defaults(directory, WAR_SCENARIOS_DIR, WAR_SCENARIOS_FILES.joinpath(), ["__init__.py", "__pycache__", "commander.py"])
 
 
 @network.command()
@@ -179,7 +176,7 @@ def _connected():
         for peer in peerinfo:
             if peer["connection_type"] == "manual":
                 manuals += 1
-        # Even if more edges are specifed, bitcoind only allows
+        # Even if more edges are specified, bitcoind only allows
         # 8 manual outbound connections
 
         print("manual " + str(manuals))
