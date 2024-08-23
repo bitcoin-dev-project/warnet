@@ -136,7 +136,7 @@ def init():
 @click.argument("kube_config", type=str)
 def auth(kube_config: str) -> None:
     """
-    Authorize access to a warnet cluster using a kube config file
+    Authenticate with a warnet cluster using a kube config file
     """
     try:
         current_kubeconfig = os.environ.get("KUBECONFIG", os.path.expanduser("~/.kube/config"))
@@ -144,29 +144,50 @@ def auth(kube_config: str) -> None:
             f"{current_kubeconfig}:{kube_config}" if current_kubeconfig else kube_config
         )
         os.environ["KUBECONFIG"] = combined_kubeconfig
-        command = "kubectl config view --flatten"
-        result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+        with open(kube_config) as file:
+            content = yaml.safe_load(file)
+            for elem in content:
+                print(elem)
+            cluster = content["clusters"][0]
+            user = content["users"][0]
+            user_name = user["name"]
+            user_token = user["user"]["token"]
+            context = content["contexts"][0]
+        flatten_cmd = "kubectl config view --flatten"
+        result_flatten = subprocess.run(flatten_cmd, shell=True, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
         print("Error occurred while executing kubectl config view --flatten:")
         print(e.stderr)
         sys.exit(1)
 
-    if result.returncode == 0:
+    if result_flatten.returncode == 0:
         with open(current_kubeconfig, "w") as file:
-            file.write(result.stdout)
+            file.write(result_flatten.stdout)
             print(f"Authorization file written to: {current_kubeconfig}")
     else:
         print("Could not create authorization file")
-        print(result.stderr)
-        sys.exit(result.returncode)
+        print(result_flatten.stderr)
+        sys.exit(result_flatten.returncode)
+
+    try:
+        update_cmd = f"kubectl config set-credentials {user_name} --token {user_token}"
+        result_update = subprocess.run(update_cmd, shell=True, check=True, capture_output=True, text=True)
+        if result_update.returncode != 0:
+            print("Could not update authorization file")
+            print(result_flatten.stderr)
+            sys.exit(result_flatten.returncode)
+    except subprocess.CalledProcessError as e:
+        print("Error occurred while executing kubectl config view --flatten:")
+        print(e.stderr)
+        sys.exit(1)
 
     with open(current_kubeconfig) as file:
         contents = yaml.safe_load(file)
         print("\nUse the following command to switch to a new user:")
         print("   kubectl config use-context [user]\n")
         print("Available users:")
-        for context in contents["contexts"]:
-            print(f"   {context['name']}")
+        for c in contents["contexts"]:
+            print(f"   {c['name']}")
 
 
 if __name__ == "__main__":
