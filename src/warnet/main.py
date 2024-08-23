@@ -148,11 +148,11 @@ def auth(kube_config: str) -> None:
             content = yaml.safe_load(file)
             for elem in content:
                 print(elem)
-            cluster = content["clusters"][0]
+            content["clusters"][0]
             user = content["users"][0]
             user_name = user["name"]
             user_token = user["user"]["token"]
-            context = content["contexts"][0]
+            content["contexts"][0]
         flatten_cmd = "kubectl config view --flatten"
         result_flatten = subprocess.run(flatten_cmd, shell=True, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
