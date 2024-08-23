@@ -1,0 +1,22 @@
+nodes:
+  - name: tank-0000
+    connect:
+      - tank-0001
+    lnd: true
+  - name: tank-0001
+    connect:
+      - tank-0002
+    lnd: true
+  - name: tank-0002
+    connect:
+      - tank-0000
+      - tank-0003
+    lnd: true
+  - name: tank-0003
+    connect:
+      - tank-0004
+    lnd: true
+  - name: tank-0004
+    connect:
+      - tank-0000
+    lnd: true

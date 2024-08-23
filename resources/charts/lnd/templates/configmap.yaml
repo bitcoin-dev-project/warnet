@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lnd.fullname" . }}
+  labels:
+    {{- include "lnd.labels" . | nindent 4 }}
+data:
+  lnd.conf: |
+    {{- .Values.baseConfig | nindent 4 }}
+    {{- .Values.defaultConfig | nindent 4 }}
+    {{- .Values.config | nindent 4 }}

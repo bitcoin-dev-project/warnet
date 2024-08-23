@@ -39,6 +39,7 @@ DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
+LND_CHART_LOCATION = str(CHARTS_DIR.joinpath("lnd"))
 FORK_OBSERVER_CHART = str(CHARTS_DIR.joinpath("fork-observer"))
 COMMANDER_CHART = str(CHARTS_DIR.joinpath("commander"))
 NAMESPACES_CHART_LOCATION = CHARTS_DIR.joinpath("namespaces")
