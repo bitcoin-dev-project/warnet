@@ -1,9 +1,11 @@
 import os
 import re
+import sys
 from datetime import datetime
 from io import BytesIO
 
 import click
+from urllib3.exceptions import MaxRetryError
 
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
@@ -55,7 +57,11 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     Grep combined bitcoind logs using regex <pattern>
     """
 
-    tanks = get_mission("tank")
+    try:
+        tanks = get_mission("tank")
+    except MaxRetryError as e:
+        print(f"{e}")
+        sys.exit(1)
 
     matching_logs = []
 
