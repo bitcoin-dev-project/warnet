@@ -27,7 +27,12 @@ def rpc(tank: str, method: str, params: str):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
-    print(_rpc(tank, method, params))
+    try:
+        result = _rpc(tank, method, params)
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(1)
+    print(result)
 
 
 def _rpc(tank: str, method: str, params: str):
