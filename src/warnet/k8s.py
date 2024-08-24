@@ -24,7 +24,11 @@ def get_dynamic_client() -> DynamicClient:
 
 def get_pods() -> V1PodList:
     sclient = get_static_client()
-    return sclient.list_namespaced_pod(get_default_namespace())
+    try:
+        pod_list: V1PodList = sclient.list_namespaced_pod(get_default_namespace())
+    except Exception as e:
+        raise e
+    return pod_list
 
 
 def get_mission(mission: str) -> list[V1PodList]:
