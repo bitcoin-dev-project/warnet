@@ -146,13 +146,10 @@ def auth(kube_config: str) -> None:
         os.environ["KUBECONFIG"] = combined_kubeconfig
         with open(kube_config) as file:
             content = yaml.safe_load(file)
-            for elem in content:
-                print(elem)
-            content["clusters"][0]
             user = content["users"][0]
             user_name = user["name"]
             user_token = user["user"]["token"]
-            content["contexts"][0]
+            current_context = content["current-context"]
         flatten_cmd = "kubectl config view --flatten"
         result_flatten = subprocess.run(
             flatten_cmd, shell=True, check=True, capture_output=True, text=True
@@ -187,11 +184,14 @@ def auth(kube_config: str) -> None:
 
     with open(current_kubeconfig) as file:
         contents = yaml.safe_load(file)
-        print("\nUse the following command to switch to a new user:")
-        print("   kubectl config use-context [user]\n")
-        print("Available users:")
-        for c in contents["contexts"]:
-            print(f"   {c['name']}")
+
+    with open(current_kubeconfig, "w") as file:
+        contents["current-context"] = current_context
+        yaml.safe_dump(contents, file)
+
+    with open(current_kubeconfig) as file:
+        contents = yaml.safe_load(file)
+        print(f"\nWarcli's current context is now set to: {contents['current-context']}")
 
 
 if __name__ == "__main__":
