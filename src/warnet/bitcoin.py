@@ -50,7 +50,10 @@ def debug_log(tank: str):
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
     cmd = f"kubectl logs {tank}"
-    print(run_command(cmd))
+    try:
+        print(run_command(cmd))
+    except Exception as e:
+        print(f"{e}")
 
 
 @bitcoin.command()
