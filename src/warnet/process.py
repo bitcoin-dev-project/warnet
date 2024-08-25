@@ -10,7 +10,7 @@ def run_command(command: str) -> str:
     return result.stdout
 
 
-def stream_command(command: str, env=None) -> bool:
+def stream_command(command: str) -> bool:
     process = subprocess.Popen(
         ["/bin/bash", "-c", command],
         stdout=subprocess.PIPE,
@@ -27,6 +27,5 @@ def stream_command(command: str, env=None) -> bool:
     return_code = process.wait()
 
     if return_code != 0:
-        print(f"Command failed with return code {return_code}")
-        return False
+        raise Exception(process.stderr)
     return True
