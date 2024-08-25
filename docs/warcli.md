@@ -17,17 +17,79 @@ parameters in <angle brackets>.
 
 ## API Commands
 
-### `warcli help`
-Display help information for the given [command] (and sub-command).
-    If no command is given, display help for the main CLI.
+### `warcli auth`
+Authenticate with a warnet cluster using a kube config file
 
 options:
-| name     | type   | required   | default   |
-|----------|--------|------------|-----------|
-| commands | String |            |           |
+| name        | type   | required   | default   |
+|-------------|--------|------------|-----------|
+| kube_config | String | yes        |           |
 
-### `warcli setup`
-Check Warnet requirements are installed
+### `warcli create`
+Create a new warnet project in the specified directory
+
+options:
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| directory | Path   | yes        |           |
+
+### `warcli deploy`
+Deploy a warnet with topology loaded from \<directory>
+
+options:
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| directory | Path   | yes        |           |
+
+### `warcli down`
+Bring down a running warnet
+
+
+### `warcli init`
+Initialize a warnet project in the current directory
+
+
+### `warcli quickstart`
+Setup warnet
+
+
+### `warcli run`
+Run a scenario from a file
+
+options:
+| name            | type   | required   | default   |
+|-----------------|--------|------------|-----------|
+| scenario_file   | Path   | yes        |           |
+| additional_args | String |            |           |
+
+### `warcli status`
+Display the unified status of the Warnet network and active scenarios
+
+
+### `warcli stop`
+Stop a running scenario or all scenarios
+
+options:
+| name          | type   | required   | default   |
+|---------------|--------|------------|-----------|
+| scenario_name | String |            |           |
+
+## Admin
+
+### `warcli admin create`
+Create a new warnet project in the specified directory
+
+options:
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| directory | Func   | yes        |           |
+
+### `warcli admin init`
+Initialize a warnet project in the current directory
+
+
+### `warcli admin namespaces`
+Namespaces commands
 
 
 ## Bitcoin
@@ -51,14 +113,14 @@ options:
 | no_sort             | Bool   |            | False     |
 
 ### `warcli bitcoin messages`
-Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [network]
+Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [chain]
 
 options:
-| name    | type   | required   | default   |
-|---------|--------|------------|-----------|
-| tank_a  | String | yes        |           |
-| tank_b  | String | yes        |           |
-| network | String |            | "regtest" |
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| tank_a | String | yes        |           |
+| tank_b | String | yes        |           |
+| chain  | String |            | "regtest" |
 
 ### `warcli bitcoin rpc`
 Call bitcoin-cli \<method> [params] on \<tank pod name>
@@ -72,40 +134,12 @@ options:
 
 ## Graph
 
-### `warcli graph create`
-Create a cycle graph with \<number> nodes, and include 7 extra random outbounds per node.
-    Returns XML file as string with or without --outfile option
-
-options:
-| name         | type   | required   | default   |
-|--------------|--------|------------|-----------|
-| number       | Int    | yes        |           |
-| outfile      | Path   |            |           |
-| version      | String |            | "27.0"    |
-| bitcoin_conf | Path   |            |           |
-| random       | Bool   |            | False     |
-
 ### `warcli graph import-json`
 Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
     and additionally include 7 extra random outbounds per node. Include lightning
     channels and their policies as well.
     Returns XML file as string with or without --outfile option.
 
-options:
-| name     | type   | required   | default   |
-|----------|--------|------------|-----------|
-| infile   | Path   | yes        |           |
-| outfile  | Path   |            |           |
-| cb       | String |            |           |
-| ln_image | String |            |           |
-
-### `warcli graph validate`
-Validate a \<graph file> against the schema.
-
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| graph  | Path   | yes        |           |
 
 ## Image
 
@@ -123,88 +157,5 @@ options:
 | build_args | String |            |           |
 | arches     | String |            |           |
 | action     | String |            | "load"    |
-
-## Namespaces
-
-### `warcli namespaces deploy`
-Deploy namespaces with users from a \<namespaces_file>
-
-options:
-| name       | type   | required   | default                    |
-|------------|--------|------------|----------------------------|
-| namespaces | String |            | "two_namespaces_two_users" |
-
-### `warcli namespaces destroy`
-Destroy a specific namespace or all warnet- prefixed namespaces
-
-options:
-| name        | type   | required   | default   |
-|-------------|--------|------------|-----------|
-| destroy_all | Bool   |            | False     |
-| namespace   | String |            |           |
-
-### `warcli namespaces list`
-List all namespaces with 'warnet-' prefix
-
-
-## Network
-
-### `warcli network connected`
-Determine if all p2p connections defined in graph are established
-
-
-### `warcli network down`
-Bring down a running warnet
-
-
-### `warcli network logs`
-Get Kubernetes logs from the RPC server
-
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| follow | Bool   |            | False     |
-
-### `warcli network start`
-Start a warnet with topology loaded from \<network_name> into [network]
-
-options:
-| name         | type   | required   | default          |
-|--------------|--------|------------|------------------|
-| network_name | String |            | "6_node_bitcoin" |
-| network      | String |            | "warnet"         |
-| logging      | Bool   |            | False            |
-
-### `warcli network status`
-Return pod status
-
-
-## Scenarios
-
-### `warcli scenarios active`
-List running scenarios "name": "pid" pairs
-
-
-### `warcli scenarios available`
-List available scenarios in the Warnet Test Framework
-
-
-### `warcli scenarios run`
-Run \<scenario> from the Warnet Test Framework with optional arguments
-
-options:
-| name            | type   | required   | default   |
-|-----------------|--------|------------|-----------|
-| scenario        | String | yes        |           |
-| additional_args | String |            |           |
-
-### `warcli scenarios run-file`
-Run \<scenario_path> from the Warnet Test Framework with optional arguments
-
-options:
-| name            | type   | required   | default   |
-|-----------------|--------|------------|-----------|
-| scenario_path   | String | yes        |           |
-| additional_args | String |            |           |
 
 
