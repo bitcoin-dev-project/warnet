@@ -112,13 +112,12 @@ def list_active_scenarios():
 @click.command()
 def down():
     """Bring down a running warnet"""
-    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
-
-    # Delete warnet-logging namespace
-    if delete_namespace("warnet-logging"):
-        console.print("[green]Warnet logging deleted[/green]")
-    else:
-        console.print("[red]Warnet logging NOT deleted[/red]")
+    with console.status("[bold yellow]Bringing down the warnet...[/bold yellow]"):
+        # Delete warnet-logging namespace
+        if delete_namespace("warnet-logging"):
+            console.print("[green]Warnet logging deleted[/green]")
+        else:
+            console.print("[red]Warnet logging NOT deleted[/red]")
 
     # Uninstall tanks
     tanks = get_mission("tank")
