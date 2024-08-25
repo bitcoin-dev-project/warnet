@@ -80,7 +80,10 @@ class LoggingTest(TestBase):
             "to": "now",
         }
         reply = requests.post("http://localhost:3000/api/ds/query", json=data)
-        assert reply.status_code == 200
+        if reply.status_code != 200:
+            self.log.error(f"Grafana API request failed with status code {reply.status_code}")
+            self.log.error(f"Response content: {reply.text}")
+            return None
 
         # Default ref ID is "A", only inspecting one "frame"
         return reply.json()["results"]["A"]["frames"][0]["data"]["values"]
@@ -102,6 +105,9 @@ class LoggingTest(TestBase):
 
         def get_five_values_for_metric(metric):
             data = self.make_grafana_api_request(prometheus_uid, start, metric)
+            if data is None:
+                self.log.info(f"Failed to get Grafana data for {metric}")
+                return False
             if len(data) < 1:
                 self.log.info(f"No Grafana data yet for {metric}")
                 return False

@@ -34,7 +34,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.2.0
-      - uses: medyagh/setup-minikube@master
+      - name: start minikube
+        uses: medyagh/setup-minikube@latest
+        id: minikube
+        with:
+          cpus: max
+          memory: 4000m
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
