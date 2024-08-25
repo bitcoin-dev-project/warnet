@@ -7,7 +7,6 @@ from pathlib import Path
 
 import click
 import yaml
-from rich import print as richprint
 
 from .admin import admin
 from .bitcoin import bitcoin
@@ -17,7 +16,7 @@ from .graph import graph
 from .image import image
 from .network import copy_network_defaults, copy_scenario_defaults
 from .status import status as status_command
-from .util import SUPPORTED_TAGS
+from .util import DEFAULT_TAG, SUPPORTED_TAGS
 
 QUICK_START_PATH = files("resources.scripts").joinpath("quick_start.sh")
 
@@ -54,62 +53,92 @@ def quickstart():
         process.stdout.close()
         return_code = process.wait()
         if return_code != 0:
-            click.echo(f"Quick start script failed with return code {return_code}")
-            click.echo("Install missing requirements before proceeding")
+            click.secho(
+                f"Quick start script failed with return code {return_code}", fg="red", bold=True
+            )
+            click.secho("Install missing requirements before proceeding", fg="yellow")
             return False
 
-        create_project = click.confirm("Do you want to create a new project?", default=True)
+        create_project = click.confirm(
+            click.style("\nDo you want to create a new project?", fg="blue", bold=True),
+            default=True,
+        )
         if not create_project:
-            click.echo("Setup completed successfully!")
+            click.secho("\nSetup completed successfully!", fg="green", bold=True)
             return True
 
         default_path = os.path.abspath(os.getcwd())
         project_path = click.prompt(
-            "Enter the project directory path",
+            click.style("\nEnter the project directory path", fg="blue", bold=True),
             default=default_path,
             type=click.Path(file_okay=False, dir_okay=True, resolve_path=True),
         )
 
-        custom_network = click.confirm("Do you want to create a custom network?", default=True)
+        custom_network = click.confirm(
+            click.style("\nDo you want to create a custom network?", fg="blue", bold=True),
+            default=True,
+        )
         if not custom_network:
             create_warnet_project(Path(project_path))
-            click.echo("Setup completed successfully!")
+            click.secho("\nSetup completed successfully!", fg="green", bold=True)
             return True
 
         network_name = click.prompt(
-            "Enter the network name",
+            click.style("\nEnter the network name", fg="blue", bold=True),
             type=str,
         )
-        nodes = click.prompt("How many nodes would you like?", type=int)
-        connections = click.prompt("How many connects would you like each node to have?", type=int)
+
+        nodes = click.prompt(
+            click.style("\nHow many nodes would you like?", fg="blue", bold=True),
+            type=int,
+            default=15,
+        )
+        connections = click.prompt(
+            click.style(
+                "\nHow many connections would you like each node to have?", fg="blue", bold=True
+            ),
+            type=int,
+            default=8,
+        )
         version = click.prompt(
-            "Which version would you like nodes to have by default?",
+            click.style(
+                "\nWhich version would you like nodes to be by default?", fg="blue", bold=True
+            ),
             type=click.Choice(SUPPORTED_TAGS, case_sensitive=False),
+            default=DEFAULT_TAG,
         )
 
+        click.secho("\nCreating project structure...", fg="yellow", bold=True)
         create_warnet_project(Path(project_path))
-        custom_graph(nodes, connections, version, Path(project_path) / "networks" / network_name)
-
+        click.secho("\nGenerating custom network...", fg="yellow", bold=True)
+        custom_network_path = Path(project_path) / "networks" / network_name
+        custom_graph(nodes, connections, version, custom_network_path)
+        click.secho("\nSetup completed successfully!", fg="green", bold=True)
+        click.echo("\nRun the following command to deploy this network:")
+        click.echo(f"warcli deploy {custom_network_path}")
     except Exception as e:
-        print(f"An error occurred while running the quick start script:\n\n{e}\n\n")
-        print("Please report this to https://github.com/bitcoin-dev-project/warnet/issues")
+        click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
+        click.secho(
+            "Please report this to https://github.com/bitcoin-dev-project/warnet/issues",
+            fg="yellow",
+        )
         return False
 
 
 def create_warnet_project(directory: Path, check_empty: bool = False):
     """Common function to create a warnet project"""
     if check_empty and any(directory.iterdir()):
-        richprint("[yellow]Warning: Directory is not empty[/yellow]")
+        click.secho("Warning: Directory is not empty", fg="yellow")
         if not click.confirm("Do you want to continue?", default=True):
             return
 
     try:
         copy_network_defaults(directory)
         copy_scenario_defaults(directory)
-        richprint(f"[green]Copied network example files to {directory / 'networks'}[/green]")
-        richprint(f"[green]Created warnet project structure in {directory}[/green]")
+        click.echo(f"Copied network example files to {directory}/networks")
+        click.echo(f"Created warnet project structure in {directory}")
     except Exception as e:
-        richprint(f"[red]Error creating project: {e}[/red]")
+        click.secho(f"Error creating project: {e}", fg="red")
         raise e
 
 
@@ -120,7 +149,7 @@ def create_warnet_project(directory: Path, check_empty: bool = False):
 def create(directory: Path):
     """Create a new warnet project in the specified directory"""
     if directory.exists():
-        richprint(f"[red]Error: Directory {directory} already exists[/red]")
+        click.secho(f"Error: Directory {directory} already exists", fg="red")
         return
     create_warnet_project(directory)
 
@@ -155,17 +184,17 @@ def auth(kube_config: str) -> None:
             flatten_cmd, shell=True, check=True, capture_output=True, text=True
         )
     except subprocess.CalledProcessError as e:
-        print("Error occurred while executing kubectl config view --flatten:")
-        print(e.stderr)
+        click.secho("Error occurred while executing kubectl config view --flatten:", fg="red")
+        click.secho(e.stderr, fg="red")
         sys.exit(1)
 
     if result_flatten.returncode == 0:
         with open(current_kubeconfig, "w") as file:
             file.write(result_flatten.stdout)
-            print(f"Authorization file written to: {current_kubeconfig}")
+            click.secho(f"Authorization file written to: {current_kubeconfig}", fg="green")
     else:
-        print("Could not create authorization file")
-        print(result_flatten.stderr)
+        click.secho("Could not create authorization file", fg="red")
+        click.secho(result_flatten.stderr, fg="red")
         sys.exit(result_flatten.returncode)
 
     try:
@@ -174,12 +203,12 @@ def auth(kube_config: str) -> None:
             update_cmd, shell=True, check=True, capture_output=True, text=True
         )
         if result_update.returncode != 0:
-            print("Could not update authorization file")
-            print(result_flatten.stderr)
+            click.secho("Could not update authorization file", fg="red")
+            click.secho(result_flatten.stderr, fg="red")
             sys.exit(result_flatten.returncode)
     except subprocess.CalledProcessError as e:
-        print("Error occurred while executing kubectl config view --flatten:")
-        print(e.stderr)
+        click.secho("Error occurred while executing kubectl config view --flatten:", fg="red")
+        click.secho(e.stderr, fg="red")
         sys.exit(1)
 
     with open(current_kubeconfig) as file:
@@ -191,7 +220,9 @@ def auth(kube_config: str) -> None:
 
     with open(current_kubeconfig) as file:
         contents = yaml.safe_load(file)
-        print(f"\nWarcli's current context is now set to: {contents['current-context']}")
+        click.secho(
+            f"\nWarcli's current context is now set to: {contents['current-context']}", fg="green"
+        )
 
 
 if __name__ == "__main__":
