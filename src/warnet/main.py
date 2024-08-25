@@ -204,7 +204,7 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
     nodes = []
 
     for i in range(num_nodes):
-        node = {"name": f"tank-{i:04d}", "connect": []}
+        node = {"name": f"tank-{i:04d}", "connect": [], "image": {"tag": version}}
 
         # Add round-robin connection
         next_node = (i + 1) % num_nodes
@@ -223,44 +223,19 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
 
         nodes.append(node)
 
-    # Add image tag to the first node
-    nodes[0]["image"] = {"tag": "v0.20.0"}
-
     network_yaml_data = {"nodes": nodes}
 
     with open(os.path.join(datadir, "network.yaml"), "w") as f:
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
     # Generate defaults.yaml
-    defaults_yaml_content = """
-chain: regtest
+    default_yaml_path = files("resources.networks").joinpath("6_node_bitcoin/node-defaults.yaml")
+    with open(str(default_yaml_path)) as f:
+        defaults_yaml_content = f.read()
 
-collectLogs: true
-metricsExport: true
+    with open(os.path.join(datadir, "node-defaults.yaml"), "w") as f:
+        f.write(defaults_yaml_content)
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-image:
-  repository: bitcoindevproject/bitcoin
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "27.0"
-
-config: |
-  dns=1
-"""
-
-    with open(os.path.join(datadir, "defaults.yaml"), "w") as f:
-        f.write(defaults_yaml_content.strip())
-
-    click.echo(f"Project '{datadir}' has been created with 'network.yaml' and 'defaults.yaml'.")
+    click.echo(
+        f"Project '{datadir}' has been created with 'network.yaml' and 'node-defaults.yaml'."
+    )
