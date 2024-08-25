@@ -29,3 +29,7 @@ jobs:
         run: |
           source .venv/bin/activate
           python3 resources/scripts/apidocs.py
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update apidocs on ${{ github.head_ref }}
