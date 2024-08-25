@@ -111,9 +111,6 @@ metricsExport: false
 prometheusMetricsPort: 9332
 
 regtestConfig: |
-  regtest=1
-
-  [regtest]
   rpcuser=user
   rpcpassword=password
   rpcport=18443
