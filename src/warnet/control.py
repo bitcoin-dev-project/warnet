@@ -134,7 +134,7 @@ def down():
     pods = get_pods()
     with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
         for pod in pods.items:
-            cmd = f"kubectl delete pod {pod.metadata.name}"
+            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name}"
             if stream_command(cmd):
                 console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
             else:
