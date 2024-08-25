@@ -15,14 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - uses: eifinger/setup-uv@v1
       - run: uvx ruff check .
 
   ruff-format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - uses: eifinger/setup-uv@v1
       - run: uvx ruff format . --check
 
   test:
@@ -40,9 +40,7 @@ jobs:
         with:
           cpus: max
           memory: 4000m
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+      - uses: eifinger/setup-uv@v1
       - name: Install project
         run: uv sync --all-extras --dev
       - name: Run tests
