@@ -3,6 +3,8 @@
 # Declare variables to be passed into your templates.
 namespace: warnet
 
+restartPolicy: Never
+
 image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
