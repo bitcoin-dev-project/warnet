@@ -57,6 +57,20 @@ class LoggingTest(TestBase):
         self.log.info(self.warcli(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
+        self.wait_for_endpoint_ready()
+
+    def wait_for_endpoint_ready(self):
+        self.log.info("Waiting for Grafana to be ready to receive API calls...")
+
+        def check_endpoint():
+            try:
+                response = requests.get("http://localhost:3000/login")
+                return response.status_code == 200
+            except requests.RequestException:
+                return False
+
+        self.wait_for_predicate(check_endpoint, timeout=120)
+        self.log.info("Grafana login endpoint returned status code 200")
 
     def make_grafana_api_request(self, ds_uid, start, metric):
         self.log.info("Making Grafana request...")
