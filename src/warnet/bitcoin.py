@@ -1,9 +1,11 @@
 import os
 import re
+import sys
 from datetime import datetime
 from io import BytesIO
 
 import click
+from urllib3.exceptions import MaxRetryError
 
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
@@ -25,7 +27,12 @@ def rpc(tank: str, method: str, params: str):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
-    print(_rpc(tank, method, params))
+    try:
+        result = _rpc(tank, method, params)
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(1)
+    print(result)
 
 
 def _rpc(tank: str, method: str, params: str):
@@ -43,7 +50,10 @@ def debug_log(tank: str):
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
     cmd = f"kubectl logs {tank}"
-    print(run_command(cmd))
+    try:
+        print(run_command(cmd))
+    except Exception as e:
+        print(f"{e}")
 
 
 @bitcoin.command()
@@ -55,7 +65,11 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     Grep combined bitcoind logs using regex <pattern>
     """
 
-    tanks = get_mission("tank")
+    try:
+        tanks = get_mission("tank")
+    except MaxRetryError as e:
+        print(f"{e}")
+        sys.exit(1)
 
     matching_logs = []
 
