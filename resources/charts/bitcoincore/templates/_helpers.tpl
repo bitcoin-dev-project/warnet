@@ -55,3 +55,15 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Add network section heading in bitcoin.conf after v0.17.0
+*/}}
+{{- define "bitcoincore.check_semver.regtest" -}}
+{{- $tag := .Values.image.tag | trimPrefix "v" -}}
+{{- $version := semverCompare ">=0.17.0" $tag -}}
+{{- if $version -}}
+[regtest]
+{{- end -}}
+{{- end -}}

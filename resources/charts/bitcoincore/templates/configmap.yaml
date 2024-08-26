@@ -7,6 +7,9 @@ metadata:
 data:
   bitcoin.conf: |
     {{- if eq .Values.chain "regtest" }}
+    regtest=1
+
+    {{ template "bitcoincore.check_semver.regtest" . }}
       {{- tpl .Values.regtestConfig . | nindent 4 }}
     {{- end }}
     {{- .Values.baseConfig | nindent 4 }}
