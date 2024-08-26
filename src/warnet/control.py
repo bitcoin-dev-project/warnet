@@ -112,13 +112,12 @@ def list_active_scenarios():
 @click.command()
 def down():
     """Bring down a running warnet"""
-    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
-
-    # Delete warnet-logging namespace
-    if delete_namespace("warnet-logging"):
-        console.print("[green]Warnet logging deleted[/green]")
-    else:
-        console.print("[red]Warnet logging NOT deleted[/red]")
+    with console.status("[bold yellow]Bringing down the warnet...[/bold yellow]"):
+        # Delete warnet-logging namespace
+        if delete_namespace("warnet-logging"):
+            console.print("[green]Warnet logging deleted[/green]")
+        else:
+            console.print("[red]Warnet logging NOT deleted[/red]")
 
     # Uninstall tanks
     tanks = get_mission("tank")
@@ -134,7 +133,7 @@ def down():
     pods = get_pods()
     with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
         for pod in pods.items:
-            cmd = f"kubectl delete pod {pod.metadata.name}"
+            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name}"
             if stream_command(cmd):
                 console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
             else:
