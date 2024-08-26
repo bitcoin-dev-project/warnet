@@ -9,7 +9,7 @@ from tabulate import tabulate
 
 from warnet.main import cli
 
-file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / "docs" / "warcli.md"
+file_path = Path(os.path.dirname(os.path.abspath(__file__))) / ".." / ".." / "docs" / "warnet.md"
 
 doc = ""
 

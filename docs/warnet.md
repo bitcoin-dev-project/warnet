@@ -4,11 +4,7 @@ The command-line interface tool for Warnet.
 
 Once `warnet` is running it can be interacted with using the cli tool `warnet`.
 
-Most `warnet` commands accept a `--network` option, which allows you to specify
-the network you want to control. This is set by default to `--network="warnet"`
-to simplify default operation.
-
-Execute `warnet --help` or `warnet help` to see a list of command categories.
+Execute `warnet --help` to see a list of command categories.
 
 Help text is provided, with optional parameters in [square brackets] and required
 parameters in <angle brackets>.

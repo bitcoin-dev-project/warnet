@@ -16,7 +16,7 @@ Examples of information provided:
 
 Commands: `warnet network logs` or `warnet network logs --follow`.
 
-See more details in [warcli](/docs/warcli.md#warcli-network-logs)
+See more details in [warnet](/docs/warnet.md#warnet-network-logs)
 
 ### Bitcoin Core logs
 
@@ -54,7 +54,7 @@ warnet_test_uhynisdj_tank_000007: 2023-10-11T17:44:52.173199Z [validation] Enque
 ... (etc)
 ```
 
-See more details in [warcli](/docs/warcli.md#warcli-bitcoin-grep-logs)
+See more details in [warnet](/docs/warnet.md#warnet-bitcoin-grep-logs)
 
 ## Monitoring and Metrics
 

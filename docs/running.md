@@ -3,7 +3,7 @@
 Warnet runs a server which can be used to manage multiple networks. On Kubernetes
 this runs as a `statefulSet` in the cluster.
 
-See more details in [warcli](/docs/warcli.md), examples:
+See more details in [warnet](/docs/warnet.md), examples:
 
 To start the server run:
 

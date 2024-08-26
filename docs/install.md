@@ -46,6 +46,11 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 If you have never used Docker before you may need to take a few more steps to run the Docker daemon on your system.
 The Docker daemon MUST be running before stating Warnet.
 
+#### Managing Kubernetes cluster
+
+The use of a k8s cluster management tool is highly recommended.
+We like to use `k9s`: https://k9scli.io/
+
 ##### Linux
 
 - [Check Docker user/group permissions](https://stackoverflow.com/a/48957722/1653320)

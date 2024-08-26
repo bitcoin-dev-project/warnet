@@ -5,50 +5,67 @@ with some modifications: most notably that `self.nodes[]` represents an array of
 containerized `bitcoind` nodes ("tanks"). Scenario files are run with a python interpreter
 inside the server and can control many nodes in the network simultaneously.
 
-See [`src/warnet/scenarios`](../src/warnet/scenarios) for examples of how these can be written.
+See [`resources/scenarios/`](../resources/scenarios/) for examples of how these can be written.
+When creating a new network default scenarios will be copied into your project directory for convenience.
 
-To see available scenarios (loaded from the default directory):
+A scenario can be run with `warnet run <path_to_scenario_file> [optional_params]`.
 
-```bash
-warnet scenarios available
-```
-
-Once a scenario is selected it can be run with `warnet scenarios run [--network=warnet] <scenario_name> [scenario_params]`.
-
-The [`miner_std`](../src/warnet/scenarios/miner_std.py) scenario is a good one to start with as it automates block generation:
+The [`miner_std`](../resources/scenarios/miner_std.py) scenario is a good one to start with as it automates block generation:
 
 ```bash
-# Have all nodes generate a block 5 seconds apart in a round-robin
-warnet scenarios run miner_std --allnodes --interval=5
-```
+₿ warnet run build55/scenarios/miner_std.py  --allnodes --interval=10
+configmap/warnetjson configured
+configmap/scenariopy configured
+pod/commander-minerstd-1724708498 created
+Successfully started scenario: miner_std
+Commander pod name: commander-minerstd-1724708498
 
-This will run the scenario in a background thread on the server until it exits or is stopped by the user.
+₿ warnet status
+╭──────────────────── Warnet Overview ────────────────────╮
+│                                                         │
+│                      Warnet Status                      │
+│ ┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓ │
+│ ┃ Component ┃ Name                          ┃ Status  ┃ │
+│ ┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩ │
+│ │ Tank      │ tank-0001                     │ running │ │
+│ │ Tank      │ tank-0002                     │ running │ │
+│ │ Tank      │ tank-0003                     │ running │ │
+│ │ Tank      │ tank-0004                     │ running │ │
+│ │ Tank      │ tank-0005                     │ running │ │
+│ │ Tank      │ tank-0006                     │ running │ │
+│ │           │                               │         │ │
+│ │ Scenario  │ commander-minerstd-1724708498 │ pending │ │
+│ └───────────┴───────────────────────────────┴─────────┘ │
+│                                                         │
+╰─────────────────────────────────────────────────────────╯
 
-Active scenarios can be listed and terminated by PID:
+Total Tanks: 6 | Active Scenarios: 1
 
-```bash
-$ warnet scenarios available
-miner_std      Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature]
-sens_relay     Send a transaction using sensitive relay
-tx_flood       Generate 100 blocks with 100 TXs each
+₿ warnet stop commander-minerstd-1724708498
+pod "commander-minerstd-1724708498" deleted
+Successfully stopped scenario: commander-minerstd-1724708498
 
-$ warnet scenarios run tx_flood
-Running scenario tx_flood with PID 14683 in the background...
+₿ warnet status
+╭─────────────── Warnet Overview ───────────────╮
+│                                               │
+│                 Warnet Status                 │
+│ ┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓ │
+│ ┃ Component ┃ Name                ┃ Status  ┃ │
+│ ┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩ │
+│ │ Tank      │ tank-0001           │ running │ │
+│ │ Tank      │ tank-0002           │ running │ │
+│ │ Tank      │ tank-0003           │ running │ │
+│ │ Tank      │ tank-0004           │ running │ │
+│ │ Tank      │ tank-0005           │ running │ │
+│ │ Tank      │ tank-0006           │ running │ │
+│ │ Scenario  │ No active scenarios │         │ │
+│ └───────────┴─────────────────────┴─────────┘ │
+│                                               │
+╰───────────────────────────────────────────────╯
 
-$ warnet scenarios active
-      ┃ Active ┃ Cmd       ┃ Network ┃ Pid   ┃ Return_code ┃
-      ┡━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━┩
-      │ True   │ tx_flood  │ warnet  │ 14683 │ None        ┃
-
-$ warnet scenarios stop 14683
-Stopped scenario with PID 14683.
+Total Tanks: 6 | Active Scenarios: 0
 ```
 
 ## Running a custom scenario
 
-You can write your own scenario file locally and upload it to the server with
-the [run-file](/docs/warcli.md#warcli-scenarios-run-file) command (example):
-
-```bash
-warnet scenarios run-file /home/me/bitcoin_attack.py
-```
+You can write your own scenario file and run it in the same way.

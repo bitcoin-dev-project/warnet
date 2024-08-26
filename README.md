@@ -19,7 +19,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 - [Quick Run](/docs/quickrun.md)
 - [Running Warnet](/docs/running.md)
 - [Network Topology](/docs/graph.md)
-- [CLI Commands](/docs/warcli.md)
+- [CLI Commands](/docs/warnet.md)
 - [Scenarios](/docs/scenarios.md)
 - [Monitoring](/docs/logging_monitoring.md)
 - [Lightning Network](/docs/lightning.md)

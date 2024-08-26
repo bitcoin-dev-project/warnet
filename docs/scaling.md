@@ -1,5 +1,8 @@
 # Running large networks
 
+> [NOTE]
+> These changes are not required on multi-host/managed clusters
+
 When running a large number of containers on a single host machine, the system may run out of various resources.
 We recommend setting the following values in /etc/sysctl.conf:
 
