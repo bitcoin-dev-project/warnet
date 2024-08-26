@@ -20,13 +20,13 @@ class DAGConnectionTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"deploy {self.network_dir}"))
+        self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
 
     def run_connect_dag_scenario(self):
         self.log.info("Running connect_dag scenario")
-        self.warcli("run test/data/scenario_connect_dag.py")
+        self.warnet("run test/data/scenario_connect_dag.py")
         self.wait_for_all_scenarios()
 
 

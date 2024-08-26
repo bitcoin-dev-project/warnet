@@ -24,7 +24,7 @@ class ConfTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"deploy {self.network_dir}"))
+        self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
 
     def check_uacomment(self):
@@ -34,7 +34,7 @@ class ConfTest(TestBase):
             for tank in tanks[::-1]:
                 try:
                     name = tank.metadata.name
-                    info = json.loads(self.warcli(f"bitcoin rpc {name} getnetworkinfo"))
+                    info = json.loads(self.warnet(f"bitcoin rpc {name} getnetworkinfo"))
                     subver = info["subversion"]
 
                     # Regex pattern to match the uacomment inside parentheses

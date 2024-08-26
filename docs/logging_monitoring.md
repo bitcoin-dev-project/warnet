@@ -14,7 +14,7 @@ Examples of information provided:
 - what scenarios are running
 - warnet RPC requests
 
-Commands: `warcli network logs` or `warcli network logs --follow`.
+Commands: `warnet network logs` or `warnet network logs --follow`.
 
 See more details in [warcli](/docs/warcli.md#warcli-network-logs)
 
@@ -25,7 +25,7 @@ These are tank level or pod level log output from a Bitcoin Core node, useful fo
 Example:
 
 ```sh
-$ warcli bitcoin debug-log 0
+$ warnet bitcoin debug-log 0
 
 
 2023-10-11T17:54:39.616974Z Bitcoin Core version v25.0.0 (release build)
@@ -38,12 +38,12 @@ For logs of lightning nodes, kubectl is required.
 
 ### Aggregated logs from all nodes
 
-Aggregated logs can be searched using `warcli bitcoin grep-logs` with regex patterns.
+Aggregated logs can be searched using `warnet bitcoin grep-logs` with regex patterns.
 
 Example:
 
 ```sh
-$ warcli bitcoin grep-logs 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d
+$ warnet bitcoin grep-logs 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d
 
 warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.716582Z [miner] AddToWallet 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d  newupdate
 warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.717787Z [miner] Submitting wtx 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d to mempool for relay
@@ -77,7 +77,7 @@ It might take a couple minutes to get the pod running. If you see `error: unable
 The Grafana dashboard (and API) will be accessible without requiring authentication
 at `http://localhost:3000`.
 
-The `install_logging` script will need to be installed before starting the network in order to collect the information for monitoring and metrics. Restart the network with `warcli network down && warcli network up` if necessary.
+The `install_logging` script will need to be installed before starting the network in order to collect the information for monitoring and metrics. Restart the network with `warnet network down && warnet network up` if necessary.
 
 ### Prometheus
 

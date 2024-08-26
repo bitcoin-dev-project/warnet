@@ -29,36 +29,36 @@ pip install -e .
 ## Running
 
 > [!TIP]
-> When developing locally add the `--dev` flag to `warcli cluster deploy` to enable dev mode with hot-reloading server.
+> When developing locally add the `--dev` flag to `warnet cluster deploy` to enable dev mode with hot-reloading server.
 
 ### Using minikube
 
 To run a local cluster using minikube:
 
 ```bash
-warcli cluster setup-minikube
+warnet cluster setup-minikube
 
-warcli cluster deploy
+warnet cluster deploy
 ```
 
 ### Other cluster types
 
-If not using minikube (e.g. using Docker Desktop or a managed cluster), `warcli` commands will operate natively on the current Kubernetes context, so you can simply run:
+If not using minikube (e.g. using Docker Desktop or a managed cluster), `warnet` commands will operate natively on the current Kubernetes context, so you can simply run:
 
 ```bash
-warcli cluster deploy
+warnet cluster deploy
 ```
 
 ...to deploy warnet to your cluster.
 
-`warcli cluster deploy` also automatically configures port forwarding to the Server in the cluster.
+`warnet cluster deploy` also automatically configures port forwarding to the Server in the cluster.
 
 ## Stopping
 
 To tear down the cluster:
 
 ```bash
-warcli cluster teardown
+warnet cluster teardown
 ```
 
 ## Log location

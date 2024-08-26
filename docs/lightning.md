@@ -42,22 +42,22 @@ data directory: [ln.graphml](../test/data/ln.graphml)
 
 ## Running the Lightning network
 
-When warnet is started with `warcli network start` the bitcoin containers will
+When warnet is started with `warnet network start` the bitcoin containers will
 be started first followed by the lightning node containers. It may require a few
 automatic restarts before the lightning nodes start up and connect to their
-corresponding bitcoin nodes. Use `warcli network status` to monitor container status
+corresponding bitcoin nodes. Use `warnet network status` to monitor container status
 and wait for all containers to be `running`.
 
 To create the lightning channels specified in the graph file, run the included
 scenario:
 
-`warcli scenarios run ln_init`
+`warnet scenarios run ln_init`
 
 This [scenario](../src/scenarios/ln_init.py) will generate blocks, fund the wallets
 in the bitcoin nodes, and open the channels from the graph. Each of these steps
 requires some waiting as transactions are confirmed in the warnet blockchain
 and lightning nodes gossip their channel announcements to each other.
-Use `warcli scenarios active` to monitor the status of the scenario. When it is
+Use `warnet scenarios active` to monitor the status of the scenario. When it is
 complete the subprocess will exit and it will indicate `Active: False`. At that
 point, the lightning network is ready for activity.
 
@@ -66,7 +66,7 @@ point, the lightning network is ready for activity.
 Warnet can export data required to run [sim-ln](https://github.com/bitcoin-dev-project/sim-ln)
 with a warnet network.
 
-With a network running, execute: `warcli network export` with optional argument
+With a network running, execute: `warnet network export` with optional argument
 `--network=<network name>` (default is "warnet"). This will copy all lightning
 node credentials like SSL certificates and macaroons into a local directory as
 well as generate a JSON file required by sim-ln.
@@ -74,7 +74,7 @@ well as generate a JSON file required by sim-ln.
 Example (see sim-ln docs for exact API):
 
 ```
-$ warcli network export
+$ warnet network export
 /Users/bitcoin-dev-project/.warnet/warnet/warnet/simln
 
 $ ls /Users/bitcoin-dev-project/.warnet/warnet/warnet/simln

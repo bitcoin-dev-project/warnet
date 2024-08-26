@@ -1,5 +1,5 @@
 users:
-  - name: warcli-user
+  - name: warnet-user
     roles:
       - pod-viewer
       - pod-manager

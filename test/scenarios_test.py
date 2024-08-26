@@ -24,7 +24,7 @@ class ScenariosTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"deploy {self.network_dir}"))
+        self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
 
@@ -47,20 +47,20 @@ class ScenariosTest(TestBase):
             return active[0]["status"] == "succeeded"
 
         self.log.info(f"Running scenario from: {scenario_file}")
-        self.warcli(f"run {scenario_file}")
+        self.warnet(f"run {scenario_file}")
         self.wait_for_predicate(lambda: check_scenario_clean_exit())
 
     def run_and_check_miner_scenario_from_file(self):
         scenario_file = "resources/scenarios/miner_std.py"
         self.log.info(f"Running scenario from file: {scenario_file}")
-        self.warcli(f"run {scenario_file} --allnodes --interval=1")
-        start = int(self.warcli("bitcoin rpc tank-0000 getblockcount"))
+        self.warnet(f"run {scenario_file} --allnodes --interval=1")
+        start = int(self.warnet("bitcoin rpc tank-0000 getblockcount"))
         self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
         self.stop_scenario()
 
     def check_blocks(self, target_blocks, start: int = 0):
-        count = int(self.warcli("bitcoin rpc tank-0000 getblockcount"))
+        count = int(self.warnet("bitcoin rpc tank-0000 getblockcount"))
         self.log.debug(f"Current block count: {count}, target: {start + target_blocks}")
 
         try:

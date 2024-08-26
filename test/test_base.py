@@ -46,7 +46,7 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                self.warcli("down")
+                self.warnet("down")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")
@@ -66,9 +66,9 @@ class TestBase:
         ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
         self.log_msg_assertions_passed = False
 
-    def warcli(self, cmd):
-        self.log.debug(f"Executing warcli command: {cmd}")
-        command = ["warcli"] + cmd.split()
+    def warnet(self, cmd):
+        self.log.debug(f"Executing warnet command: {cmd}")
+        command = ["warnet"] + cmd.split()
         proc = run(command, capture_output=True)
         if proc.stderr:
             raise Exception(proc.stderr.decode().strip())

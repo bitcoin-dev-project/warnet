@@ -1,23 +1,23 @@
-# `warcli`
+# `warnet`
 
 The command-line interface tool for Warnet.
 
-Once `warnet` is running it can be interacted with using the cli tool `warcli`.
+Once `warnet` is running it can be interacted with using the cli tool `warnet`.
 
-Most `warcli` commands accept a `--network` option, which allows you to specify
+Most `warnet` commands accept a `--network` option, which allows you to specify
 the network you want to control. This is set by default to `--network="warnet"`
 to simplify default operation.
 
-Execute `warcli --help` or `warcli help` to see a list of command categories.
+Execute `warnet --help` or `warnet help` to see a list of command categories.
 
 Help text is provided, with optional parameters in [square brackets] and required
 parameters in <angle brackets>.
 
-`warcli` commands are organized in a hierarchy of categories and subcommands.
+`warnet` commands are organized in a hierarchy of categories and subcommands.
 
 ## API Commands
 
-### `warcli auth`
+### `warnet auth`
 Authenticate with a warnet cluster using a kube config file
 
 options:
@@ -25,7 +25,7 @@ options:
 |-------------|--------|------------|-----------|
 | kube_config | String | yes        |           |
 
-### `warcli create`
+### `warnet create`
 Create a new warnet project in the specified directory
 
 options:
@@ -33,7 +33,7 @@ options:
 |-----------|--------|------------|-----------|
 | directory | Path   | yes        |           |
 
-### `warcli deploy`
+### `warnet deploy`
 Deploy a warnet with topology loaded from \<directory>
 
 options:
@@ -41,19 +41,19 @@ options:
 |-----------|--------|------------|-----------|
 | directory | Path   | yes        |           |
 
-### `warcli down`
+### `warnet down`
 Bring down a running warnet
 
 
-### `warcli init`
+### `warnet init`
 Initialize a warnet project in the current directory
 
 
-### `warcli quickstart`
+### `warnet quickstart`
 Setup warnet
 
 
-### `warcli run`
+### `warnet run`
 Run a scenario from a file
 
 options:
@@ -62,11 +62,11 @@ options:
 | scenario_file   | Path   | yes        |           |
 | additional_args | String |            |           |
 
-### `warcli status`
+### `warnet status`
 Display the unified status of the Warnet network and active scenarios
 
 
-### `warcli stop`
+### `warnet stop`
 Stop a running scenario or all scenarios
 
 options:
@@ -76,7 +76,7 @@ options:
 
 ## Admin
 
-### `warcli admin create`
+### `warnet admin create`
 Create a new warnet project in the specified directory
 
 options:
@@ -84,17 +84,17 @@ options:
 |-----------|--------|------------|-----------|
 | directory | Func   | yes        |           |
 
-### `warcli admin init`
+### `warnet admin init`
 Initialize a warnet project in the current directory
 
 
-### `warcli admin namespaces`
+### `warnet admin namespaces`
 Namespaces commands
 
 
 ## Bitcoin
 
-### `warcli bitcoin debug-log`
+### `warnet bitcoin debug-log`
 Fetch the Bitcoin Core debug log from \<tank pod name>
 
 options:
@@ -102,7 +102,7 @@ options:
 |--------|--------|------------|-----------|
 | tank   | String | yes        |           |
 
-### `warcli bitcoin grep-logs`
+### `warnet bitcoin grep-logs`
 Grep combined bitcoind logs using regex \<pattern>
 
 options:
@@ -112,7 +112,7 @@ options:
 | show_k8s_timestamps | Bool   |            | False     |
 | no_sort             | Bool   |            | False     |
 
-### `warcli bitcoin messages`
+### `warnet bitcoin messages`
 Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [chain]
 
 options:
@@ -122,7 +122,7 @@ options:
 | tank_b | String | yes        |           |
 | chain  | String |            | "regtest" |
 
-### `warcli bitcoin rpc`
+### `warnet bitcoin rpc`
 Call bitcoin-cli \<method> [params] on \<tank pod name>
 
 options:
@@ -134,7 +134,7 @@ options:
 
 ## Graph
 
-### `warcli graph import-json`
+### `warnet graph import-json`
 Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
     and additionally include 7 extra random outbounds per node. Include lightning
     channels and their policies as well.
@@ -143,7 +143,7 @@ Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
 
 ## Image
 
-### `warcli image build`
+### `warnet image build`
 Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> as \<registry>:\<tag>.
     Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
 

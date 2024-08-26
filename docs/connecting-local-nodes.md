@@ -7,8 +7,8 @@
 ### Run Warnet network
 
 ```shell
-warcli cluster deploy
-warcli network start
+warnet cluster deploy
+warnet network start
 ```
 
 ### Install Telepresence
@@ -71,9 +71,9 @@ telepresence intercept local-bitcoind --port 18444 -- bitcoind --regtest --datad
 ### Connect to local bitcoind from cluster
 
 ```shell
-warcli bitcoin rpc 0 addnode "local-bitcoind:18444" "onetry"
+warnet bitcoin rpc 0 addnode "local-bitcoind:18444" "onetry"
 # Check that the local node was added
-warcli bitcoin rpc 0 getpeerinfo
+warnet bitcoin rpc 0 getpeerinfo
 ```
 
 ### Disconnect and remove Telepresence

@@ -24,40 +24,40 @@ class RPCTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warcli(f"deploy {self.network_dir}"))
+        self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
 
     def test_rpc_commands(self):
         self.log.info("Testing basic RPC commands")
-        self.warcli("bitcoin rpc tank-0000 getblockcount")
-        self.warcli("bitcoin rpc tank-0001 createwallet miner")
-        self.warcli("bitcoin rpc tank-0001 -generate 101")
-        self.wait_for_predicate(lambda: "101" in self.warcli("bitcoin rpc tank-0000 getblockcount"))
+        self.warnet("bitcoin rpc tank-0000 getblockcount")
+        self.warnet("bitcoin rpc tank-0001 createwallet miner")
+        self.warnet("bitcoin rpc tank-0001 -generate 101")
+        self.wait_for_predicate(lambda: "101" in self.warnet("bitcoin rpc tank-0000 getblockcount"))
 
     def test_transaction_propagation(self):
         self.log.info("Testing transaction propagation")
         address = "bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46"
-        txid = self.warcli(f"bitcoin rpc tank-0001 sendtoaddress {address} 0.1")
-        self.wait_for_predicate(lambda: txid in self.warcli("bitcoin rpc tank-0000 getrawmempool"))
+        txid = self.warnet(f"bitcoin rpc tank-0001 sendtoaddress {address} 0.1")
+        self.wait_for_predicate(lambda: txid in self.warnet("bitcoin rpc tank-0000 getrawmempool"))
 
-        node_log = self.warcli("bitcoin debug-log tank-0001")
+        node_log = self.warnet("bitcoin debug-log tank-0001")
         assert txid in node_log, "Transaction ID not found in node log"
 
-        all_logs = self.warcli(f"bitcoin grep-logs {txid}")
+        all_logs = self.warnet(f"bitcoin grep-logs {txid}")
         count = all_logs.count("Enqueuing TransactionAddedToMempool")
         assert count > 1, f"Transaction not propagated to enough nodes (count: {count})"
 
     def test_message_exchange(self):
         self.log.info("Testing message exchange between nodes")
-        msgs = self.warcli("bitcoin messages tank-0000 tank-0001")
+        msgs = self.warnet("bitcoin messages tank-0000 tank-0001")
         assert "verack" in msgs, "VERACK message not found in exchange"
 
     def test_address_manager(self):
         self.log.info("Testing address manager")
 
         def got_addrs():
-            addrman = json.loads(self.warcli("bitcoin rpc tank-0000 getrawaddrman"))
+            addrman = json.loads(self.warnet("bitcoin rpc tank-0000 getrawaddrman"))
             for key in ["tried", "new"]:
                 obj = addrman[key]
                 keys = list(obj.keys())

@@ -8,31 +8,31 @@ See more details in [warcli](/docs/warcli.md), examples:
 To start the server run:
 
 ```bash
-warcli cluster deploy
+warnet cluster deploy
 ```
 
 Start a network from a graph file:
 
 ```bash
-warcli network start resources/graphs/default.graphml
+warnet network start resources/graphs/default.graphml
 ```
 
 Make sure all tanks are running with:
 
 ```bash
-warcli network status
+warnet network status
 ```
 
 Check if the edges of the graph (bitcoin p2p connections) are complete:
 
 ```bash
-warcli network connected
+warnet network connected
 ```
 
 _Optional_ Check out the logs with:
 
 ```bash
-warcli network logs -f
+warnet network logs -f
 ```
 
 If that looks all good, give [scenarios](/docs/scenarios.md) a try.

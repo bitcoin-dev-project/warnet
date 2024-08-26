@@ -16,7 +16,7 @@ doc = ""
 
 def print_cmd(cmd, super=""):
     global doc
-    doc += f"### `warcli{super} {cmd['name']}`" + "\n"
+    doc += f"### `warnet{super} {cmd['name']}`" + "\n"
     doc += cmd["help"].strip().replace("<", "\\<") + "\n"
     if len(cmd["params"]) > 1:
         doc += "\noptions:\n"

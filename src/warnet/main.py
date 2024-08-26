@@ -121,7 +121,7 @@ def quickstart():
         custom_graph(nodes, connections, version, custom_network_path)
         click.secho("\nSetup completed successfully!", fg="green", bold=True)
         click.echo("\nRun the following command to deploy this network:")
-        click.echo(f"warcli deploy {custom_network_path}")
+        click.echo(f"warnet deploy {custom_network_path}")
     except Exception as e:
         click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
         click.secho(
@@ -227,7 +227,7 @@ def auth(kube_config: str) -> None:
     with open(current_kubeconfig) as file:
         contents = yaml.safe_load(file)
         click.secho(
-            f"\nWarcli's current context is now set to: {contents['current-context']}", fg="green"
+            f"\nwarnet's current context is now set to: {contents['current-context']}", fg="green"
         )
 
 

@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-warcli = "warnet.main:cli"
+warnet = "warnet.main:cli"
 
 [project.urls]
 Homepage = "https://warnet.dev"
