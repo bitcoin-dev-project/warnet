@@ -47,6 +47,7 @@ cli.add_command(run)
 def quickstart():
     """Setup warnet"""
     try:
+        # Requirements checks
         process = subprocess.Popen(
             ["/bin/bash", str(QUICK_START_PATH)],
             stdout=subprocess.PIPE,
@@ -54,9 +55,10 @@ def quickstart():
             universal_newlines=True,
             env=dict(os.environ, TERM="xterm-256color"),
         )
-        for line in iter(process.stdout.readline, ""):
-            click.echo(line, nl=False)
-        process.stdout.close()
+        if process.stdout:
+            for line in iter(process.stdout.readline, ""):
+                click.echo(line, nl=False)
+            process.stdout.close()
         return_code = process.wait()
         if return_code != 0:
             click.secho(
@@ -65,67 +67,139 @@ def quickstart():
             click.secho("Install missing requirements before proceeding", fg="yellow")
             return False
 
-        create_project = click.confirm(
-            click.style("\nDo you want to create a new project?", fg="blue", bold=True),
-            default=True,
-        )
-        if not create_project:
+        # New project setup
+        questions = [
+            inquirer.Confirm(
+                "create_project",
+                message=click.style("Do you want to create a new project?", fg="blue", bold=True),
+                default=True,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        if answers is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+        if not answers["create_project"]:
             click.secho("\nSetup completed successfully!", fg="green", bold=True)
             return True
 
-        default_path = os.path.abspath(os.getcwd())
-        project_path = click.prompt(
-            click.style("\nEnter the project directory path", fg="blue", bold=True),
-            default=default_path,
-            type=click.Path(file_okay=False, dir_okay=True, resolve_path=True),
-        )
-
-        custom_network = click.confirm(
-            click.style("\nDo you want to create a custom network?", fg="blue", bold=True),
-            default=True,
-        )
-        if not custom_network:
-            create_warnet_project(Path(project_path))
+        # Custom project setup
+        questions = [
+            inquirer.Path(
+                "project_path",
+                message=click.style("Enter the project directory path", fg="blue", bold=True),
+                path_type=inquirer.Path.DIRECTORY,
+                exists=False,
+            ),
+            inquirer.Confirm(
+                "custom_network",
+                message=click.style(
+                    "Do you want to create a custom network?", fg="blue", bold=True
+                ),
+                default=True,
+            ),
+        ]
+        proj_answers = inquirer.prompt(questions)
+        if proj_answers is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+        if not proj_answers["custom_network"]:
+            create_warnet_project(Path(proj_answers["project_path"]))
             click.secho("\nSetup completed successfully!", fg="green", bold=True)
+            click.echo(
+                "\nRun the following command to deploy this network using the default demo network:"
+            )
+            click.echo(f"warcli deploy {proj_answers['project_path']}/networks/6_node_bitcoin")
             return True
+        answers.update(proj_answers)
 
-        network_name = click.prompt(
-            click.style("\nEnter the network name", fg="blue", bold=True),
-            type=str,
-        )
+        # Custom network configuration
+        questions = [
+            inquirer.Text(
+                "network_name", message=click.style("Enter your network name", fg="blue", bold=True)
+            ),
+            inquirer.List(
+                "nodes",
+                message=click.style("How many nodes would you like?", fg="blue", bold=True),
+                choices=["8", "12", "20", "50", "other"],
+                default="12",
+            ),
+            inquirer.List(
+                "connections",
+                message=click.style(
+                    "How many addnode connections would you like each node to have?",
+                    fg="blue",
+                    bold=True,
+                ),
+                choices=["0", "1", "2", "8", "12", "other"],
+                default="8",
+            ),
+            inquirer.List(
+                "version",
+                message=click.style(
+                    "Which version would you like nodes to be by default?", fg="blue", bold=True
+                ),
+                choices=SUPPORTED_TAGS,
+                default=DEFAULT_TAG,
+            ),
+        ]
 
-        nodes = click.prompt(
-            click.style("\nHow many nodes would you like?", fg="blue", bold=True),
-            type=int,
-            default=15,
-        )
-        connections = click.prompt(
-            click.style(
-                "\nHow many connections would you like each node to have?", fg="blue", bold=True
-            ),
-            type=int,
-            default=8,
-        )
-        version = click.prompt(
-            click.style(
-                "\nWhich version would you like nodes to be by default?", fg="blue", bold=True
-            ),
-            type=click.Choice(SUPPORTED_TAGS, case_sensitive=False),
-            default=DEFAULT_TAG,
-        )
+        net_answers = inquirer.prompt(questions)
+        if net_answers is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+
+        if net_answers["nodes"] == "other":
+            custom_nodes = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "nodes",
+                        message=click.style("Enter the number of nodes", fg="blue", bold=True),
+                        validate=lambda _, x: int(x) > 0,
+                    )
+                ]
+            )
+            if custom_nodes is None:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            net_answers["nodes"] = custom_nodes["nodes"]
+
+        if net_answers["connections"] == "other":
+            custom_connections = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "connections",
+                        message=click.style(
+                            "Enter the number of connections", fg="blue", bold=True
+                        ),
+                        validate=lambda _, x: int(x) >= 0,
+                    )
+                ]
+            )
+            if custom_connections is None:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            net_answers["connections"] = custom_connections["connections"]
+        answers.update(net_answers)
 
         click.secho("\nCreating project structure...", fg="yellow", bold=True)
-        create_warnet_project(Path(project_path))
+        create_warnet_project(Path(answers["project_path"]))
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
-        custom_network_path = Path(project_path) / "networks" / network_name
-        custom_graph(nodes, connections, version, custom_network_path)
+        custom_network_path = Path(answers["project_path"]) / "networks" / answers["network_name"]
+        custom_graph(
+            int(answers["nodes"]),
+            int(answers["connections"]),
+            answers["version"],
+            custom_network_path,
+        )
         click.secho("\nSetup completed successfully!", fg="green", bold=True)
         click.echo("\nRun the following command to deploy this network:")
         click.echo(f"warnet deploy {custom_network_path}")
     except Exception as e:
+        click.echo(f"{e}\n\n")
         click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
         click.secho(
-            "Please report this to https://github.com/bitcoin-dev-project/warnet/issues",
+            "Please report the above context to https://github.com/bitcoin-dev-project/warnet/issues",
             fg="yellow",
         )
         return False
