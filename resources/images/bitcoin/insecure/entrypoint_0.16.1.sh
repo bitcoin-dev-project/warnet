@@ -40,4 +40,4 @@ if [ -n "$BITCOIN_ARGS" ]; then
 fi
 
 echo
-exec "$@" -printtoconsol
+exec "$@" -printtoconsole

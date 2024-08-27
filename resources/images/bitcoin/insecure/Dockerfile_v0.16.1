@@ -103,7 +103,7 @@ RUN --mount=type=cache,target=/var/cache/apk sed -i 's/http\:\/\/dl-cdn.alpineli
     su-exec
 
 COPY --from=build /opt/bitcoin /usr/local
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint_0.16.1.sh /entrypoint.sh
 
 VOLUME ["/home/bitcoin/.bitcoin"]
 EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
