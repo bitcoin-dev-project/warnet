@@ -80,6 +80,8 @@ pyyaml==6.0.1
     # via
     #   -r requirements.in
     #   kubernetes
+pyzmq==26.0.3
+    # via -r requirements.in
 referencing==0.32.0
     # via
     #   jsonschema
