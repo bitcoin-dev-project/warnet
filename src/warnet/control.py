@@ -123,7 +123,7 @@ def down():
     tanks = get_mission("tank")
     with console.status("[yellow]Uninstalling tanks...[/yellow]"):
         for tank in tanks:
-            cmd = f"helm uninstall {tank.metadata.name}"
+            cmd = f"helm uninstall {tank.metadata.name} --namespace {get_default_namespace()}"
             if stream_command(cmd):
                 console.print(f"[green]Uninstalled tank: {tank.metadata.name}[/green]")
             else:
@@ -133,7 +133,7 @@ def down():
     pods = get_pods()
     with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
         for pod in pods.items:
-            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name}"
+            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name} -n {get_default_namespace()}"
             if stream_command(cmd):
                 console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
             else:
