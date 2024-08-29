@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import subprocess
@@ -6,7 +7,12 @@ from importlib.resources import files
 from pathlib import Path
 
 import click
+import inquirer
 import yaml
+from inquirer.themes import GreenPassion
+
+from warnet.k8s import get_default_namespace
+from warnet.process import run_command, stream_command
 
 from .admin import admin
 from .bitcoin import bitcoin
@@ -223,6 +229,53 @@ def auth(kube_config: str) -> None:
         click.secho(
             f"\nWarcli's current context is now set to: {contents['current-context']}", fg="green"
         )
+
+
+@cli.command()
+@click.argument("pod_name", type=str, default="")
+@click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
+def logs(pod_name: str, follow: bool):
+    """Show the logs of a pod"""
+    follow_flag = "--follow" if follow else ""
+    namespace = get_default_namespace()
+
+    if pod_name:
+        try:
+            command = f"kubectl logs pod/{pod_name} -n {namespace} {follow_flag}"
+            stream_command(command)
+            return
+        except Exception as e:
+            print(f"Could not find the pod {pod_name}: {e}")
+
+    try:
+        pods = run_command(f"kubectl get pods -n {namespace} -o json")
+        pods = json.loads(pods)
+        pod_list = [item["metadata"]["name"] for item in pods["items"]]
+    except Exception as e:
+        print(f"Could not fetch any pods in namespace {namespace}: {e}")
+        return
+
+    if not pod_list:
+        print(f"Could not fetch any pods in namespace {namespace}")
+        return
+
+    q = [
+        inquirer.List(
+            name="pod",
+            message="Please choose a pod",
+            choices=pod_list,
+        )
+    ]
+    selected = inquirer.prompt(q, theme=GreenPassion())
+    if selected:
+        pod_name = selected["pod"]
+        try:
+            command = f"kubectl logs pod/{pod_name} -n {namespace} {follow_flag}"
+            stream_command(command)
+        except Exception as e:
+            print(f"Please consider waiting for the pod to become available. Encountered: {e}")
+    else:
+        pass  # cancelled by user
 
 
 if __name__ == "__main__":
