@@ -24,3 +24,6 @@ image:
 config: |
   dns=1
   debug=rpc
+  rpcauth=forkobserver:ef3d61b7ffecd81ffaaa7ae43091543d$a10bc25b5ca8910ebbee9b1538d38242b09d0a165e220f9a47535eccc4c089a4
+  rpcwhitelist=forkobserver:getchaintips,getblockheader,getblockhash,getblock,getnetworkinfo
+  rpcwhitelistdefault=0

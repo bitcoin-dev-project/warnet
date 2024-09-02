@@ -183,6 +183,13 @@ def quickstart():
                 return False
             net_answers["connections"] = custom_connections["connections"]
         answers.update(net_answers)
+        fork_observer = click.prompt(
+            click.style(
+                "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
+            ),
+            type=bool,
+            default=True,
+        )
 
         click.secho("\nCreating project structure...", fg="yellow", bold=True)
         project_path = Path(os.path.expanduser(proj_answers["project_path"]))
@@ -194,6 +201,7 @@ def quickstart():
             int(answers["connections"]),
             answers["version"],
             custom_network_path,
+            fork_observer,
         )
         click.secho("\nSetup completed successfully!", fg="green", bold=True)
         click.echo("\nRun the following command to deploy this network:")
@@ -359,7 +367,9 @@ if __name__ == "__main__":
     cli()
 
 
-def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Path):
+def custom_graph(
+    num_nodes: int, num_connections: int, version: str, datadir: Path, fork_observer: bool
+):
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
     nodes = []
@@ -390,12 +400,13 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
         nodes.append(node)
 
     network_yaml_data = {"nodes": nodes}
+    network_yaml_data["fork_observer"] = fork_observer
 
     with open(os.path.join(datadir, "network.yaml"), "w") as f:
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
-    # Generate defaults.yaml
-    default_yaml_path = files("resources.networks").joinpath("6_node_bitcoin/node-defaults.yaml")
+    # Generate node-defaults.yaml
+    default_yaml_path = files("resources.networks").joinpath("node-defaults.yaml")
     with open(str(default_yaml_path)) as f:
         defaults_yaml_content = f.read()
 

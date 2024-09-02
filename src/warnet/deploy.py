@@ -23,6 +23,7 @@ from .network import (
 
 # Import necessary functions and variables from network.py and namespaces.py
 from .network import (
+    FORK_OBSERVER_CHART,
     NETWORK_FILE,
 )
 from .process import stream_command
@@ -53,12 +54,63 @@ def deploy(directory):
 
     if (directory / NETWORK_FILE).exists():
         deploy_network(directory)
+        deploy_fork_observer(directory)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
         )
+
+
+def deploy_fork_observer(directory: Path):
+    network_file_path = directory / NETWORK_FILE
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+
+    # Only start if configured in the network file
+    if not network_file.get("fork_observer", False):
+        return
+
+    namespace = get_default_namespace()
+    cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
+
+    temp_override_file_path = ""
+    override_string = ""
+
+    # Add an entry for each node in the graph
+    # TODO: should this be moved into a chart, and only have substituted name and rpc_host values
+    for i, node in enumerate(network_file["nodes"]):
+        node_name = node.get("name")
+        node_config = f"""
+[[networks.nodes]]
+id = {i}
+name = "{node_name}"
+description = "A node. Just A node."
+rpc_host = "{node_name}"
+rpc_port = 18443
+rpc_user = "forkobserver"
+rpc_password = "tabconf2024"
+"""
+
+        override_string += node_config
+        # End loop
+
+    # Create yaml string using multi-line string format
+    override_string = override_string.strip()
+    v = {"config": override_string}
+    yaml_string = yaml.dump(v, default_style="|", default_flow_style=False)
+
+    # Dump to yaml tempfile
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+        temp_file.write(yaml_string)
+        temp_override_file_path = Path(temp_file.name)
+
+    cmd = f"{cmd} -f {temp_override_file_path}"
+
+    if not stream_command(cmd):
+        click.echo(f"Failed to run Helm command: {cmd}")
+        return
 
 
 def deploy_network(directory: Path):
