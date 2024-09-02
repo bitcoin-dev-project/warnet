@@ -1,6 +1,6 @@
 [project]
 name = "warnet"
-version = "0.10.0"
+version = "1.0.0"
 description = "Monitor and analyze the emergent behaviours of bitcoin networks"
 readme = "README.md"
 requires-python = ">=3.11"
