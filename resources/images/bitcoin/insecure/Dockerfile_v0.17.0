@@ -64,7 +64,7 @@ RUN set -ex \
     && ./autogen.sh \
     && ./configure \
     LDFLAGS=-L`ls -d /opt/db*`/lib/ \
-    CPPFLAGS=-I`ls -d /opt/db*`/include/ \
+    CPPFLAGS="-g0 -I`ls -d /opt/db*`/include/ --param ggc-min-expand=1 --param ggc-min-heapsize=32768" \
     --prefix=${BITCOIN_PREFIX} \
     ${BUILD_ARGS} \
     && make -j$(nproc) \
