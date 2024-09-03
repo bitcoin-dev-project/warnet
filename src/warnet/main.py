@@ -127,7 +127,7 @@ def quickstart():
             inquirer.List(
                 "connections",
                 message=click.style(
-                    "How many addnode connections would you like each node to have?",
+                    "How many connections would you like each node to have?",
                     fg="blue",
                     bold=True,
                 ),
@@ -137,7 +137,7 @@ def quickstart():
             inquirer.List(
                 "version",
                 message=click.style(
-                    "Which version would you like nodes to be by default?", fg="blue", bold=True
+                    "Which version would you like nodes to run by default?", fg="blue", bold=True
                 ),
                 choices=SUPPORTED_TAGS,
                 default=DEFAULT_TAG,
@@ -360,6 +360,7 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
     nodes = []
+    connections = set()
 
     for i in range(num_nodes):
         node = {"name": f"tank-{i:04d}", "connect": [], "image": {"tag": version}}
@@ -367,6 +368,7 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
         # Add round-robin connection
         next_node = (i + 1) % num_nodes
         node["connect"].append(f"tank-{next_node:04d}")
+        connections.add((i, next_node))
 
         # Add random connections
         available_nodes = list(range(num_nodes))
@@ -376,8 +378,11 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
 
         for _ in range(min(num_connections - 1, len(available_nodes))):
             random_node = random.choice(available_nodes)
-            node["connect"].append(f"tank-{random_node:04d}")
-            available_nodes.remove(random_node)
+            # Avoid circular loops of A -> B -> A
+            if (random_node, i) not in connections:
+                node["connect"].append(f"tank-{random_node:04d}")
+                connections.add((i, random_node))
+                available_nodes.remove(random_node)
 
         nodes.append(node)
 
