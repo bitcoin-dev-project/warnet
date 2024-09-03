@@ -103,7 +103,8 @@ def quickstart():
             click.secho("Setup cancelled by user.", fg="yellow")
             return False
         if not proj_answers["custom_network"]:
-            create_warnet_project(Path(proj_answers["project_path"]))
+            project_path = Path(os.path.expanduser(proj_answers["project_path"]))
+            create_warnet_project(project_path)
             click.secho("\nSetup completed successfully!", fg="green", bold=True)
             click.echo(
                 "\nRun the following command to deploy this network using the default demo network:"
@@ -183,9 +184,10 @@ def quickstart():
         answers.update(net_answers)
 
         click.secho("\nCreating project structure...", fg="yellow", bold=True)
-        create_warnet_project(Path(answers["project_path"]))
+        project_path = Path(os.path.expanduser(proj_answers["project_path"]))
+        create_warnet_project(project_path)
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
-        custom_network_path = Path(answers["project_path"]) / "networks" / answers["network_name"]
+        custom_network_path = project_path / "networks" / answers["network_name"]
         custom_graph(
             int(answers["nodes"]),
             int(answers["connections"]),
