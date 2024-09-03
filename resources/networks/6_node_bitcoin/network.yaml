@@ -29,5 +29,4 @@ nodes:
       - tank-0006
   - name: tank-0006
 fork_observer:
-  enabled: true
-  configQueryInterval: 20
+  enabled: false
