@@ -116,8 +116,9 @@ def quickstart():
         # Custom network configuration
         questions = [
             inquirer.Text(
-                "network_name", message=click.style("Enter your network name", fg="blue", bold=True),
-                validate=lambda _, x: len(x) > 0
+                "network_name",
+                message=click.style("Enter your network name", fg="blue", bold=True),
+                validate=lambda _, x: len(x) > 0,
             ),
             inquirer.List(
                 "nodes",
