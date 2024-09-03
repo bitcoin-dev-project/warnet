@@ -48,24 +48,23 @@ def quickstart():
     """Setup warnet"""
     try:
         # Requirements checks
-        process = subprocess.Popen(
+        with subprocess.Popen(
             ["/bin/bash", str(QUICK_START_PATH)],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
             env=dict(os.environ, TERM="xterm-256color"),
-        )
-        if process.stdout:
-            for line in iter(process.stdout.readline, ""):
-                click.echo(line, nl=False)
-            process.stdout.close()
-        return_code = process.wait()
-        if return_code != 0:
-            click.secho(
-                f"Quick start script failed with return code {return_code}", fg="red", bold=True
-            )
-            click.secho("Install missing requirements before proceeding", fg="yellow")
-            return False
+        ) as process:
+            if process.stdout:
+                for line in iter(process.stdout.readline, ""):
+                    click.echo(line, nl=False)
+            return_code = process.wait()
+            if return_code != 0:
+                click.secho(
+                    f"Quick start script failed with return code {return_code}", fg="red", bold=True
+                )
+                click.secho("Install missing requirements before proceeding", fg="yellow")
+                return False
 
         # New project setup
         questions = [
