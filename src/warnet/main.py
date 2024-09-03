@@ -47,85 +47,162 @@ cli.add_command(run)
 def quickstart():
     """Setup warnet"""
     try:
-        process = subprocess.Popen(
+        # Requirements checks
+        with subprocess.Popen(
             ["/bin/bash", str(QUICK_START_PATH)],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
             env=dict(os.environ, TERM="xterm-256color"),
-        )
-        for line in iter(process.stdout.readline, ""):
-            click.echo(line, nl=False)
-        process.stdout.close()
-        return_code = process.wait()
-        if return_code != 0:
-            click.secho(
-                f"Quick start script failed with return code {return_code}", fg="red", bold=True
+        ) as process:
+            if process.stdout:
+                for line in iter(process.stdout.readline, ""):
+                    click.echo(line, nl=False)
+            return_code = process.wait()
+            if return_code != 0:
+                click.secho(
+                    f"Quick start script failed with return code {return_code}", fg="red", bold=True
+                )
+                click.secho("Install missing requirements before proceeding", fg="yellow")
+                return False
+
+        # New project setup
+        questions = [
+            inquirer.Confirm(
+                "create_project",
+                message=click.style("Do you want to create a new project?", fg="blue", bold=True),
+                default=True,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        if answers is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+        if not answers["create_project"]:
+            click.secho("\nSetup completed successfully!", fg="green", bold=True)
+            return True
+
+        # Custom project setup
+        questions = [
+            inquirer.Path(
+                "project_path",
+                message=click.style("Enter the project directory path", fg="blue", bold=True),
+                path_type=inquirer.Path.DIRECTORY,
+                exists=False,
+            ),
+            inquirer.Confirm(
+                "custom_network",
+                message=click.style(
+                    "Do you want to create a custom network?", fg="blue", bold=True
+                ),
+                default=True,
+            ),
+        ]
+        proj_answers = inquirer.prompt(questions)
+        if proj_answers is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+        if not proj_answers["custom_network"]:
+            project_path = Path(os.path.expanduser(proj_answers["project_path"]))
+            create_warnet_project(project_path)
+            click.secho("\nSetup completed successfully!", fg="green", bold=True)
+            click.echo(
+                "\nRun the following command to deploy this network using the default demo network:"
             )
-            click.secho("Install missing requirements before proceeding", fg="yellow")
+            click.echo(f"warcli deploy {proj_answers['project_path']}/networks/6_node_bitcoin")
+            return True
+        answers.update(proj_answers)
+
+        # Custom network configuration
+        questions = [
+            inquirer.Text(
+                "network_name",
+                message=click.style("Enter your network name", fg="blue", bold=True),
+                validate=lambda _, x: len(x) > 0,
+            ),
+            inquirer.List(
+                "nodes",
+                message=click.style("How many nodes would you like?", fg="blue", bold=True),
+                choices=["8", "12", "20", "50", "other"],
+                default="12",
+            ),
+            inquirer.List(
+                "connections",
+                message=click.style(
+                    "How many connections would you like each node to have?",
+                    fg="blue",
+                    bold=True,
+                ),
+                choices=["0", "1", "2", "8", "12", "other"],
+                default="8",
+            ),
+            inquirer.List(
+                "version",
+                message=click.style(
+                    "Which version would you like nodes to run by default?", fg="blue", bold=True
+                ),
+                choices=SUPPORTED_TAGS,
+                default=DEFAULT_TAG,
+            ),
+        ]
+
+        net_answers = inquirer.prompt(questions)
+        if net_answers is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
             return False
 
-        create_project = click.confirm(
-            click.style("\nDo you want to create a new project?", fg="blue", bold=True),
-            default=True,
-        )
-        if not create_project:
-            click.secho("\nSetup completed successfully!", fg="green", bold=True)
-            return True
+        if net_answers["nodes"] == "other":
+            custom_nodes = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "nodes",
+                        message=click.style("Enter the number of nodes", fg="blue", bold=True),
+                        validate=lambda _, x: int(x) > 0,
+                    )
+                ]
+            )
+            if custom_nodes is None:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            net_answers["nodes"] = custom_nodes["nodes"]
 
-        default_path = os.path.abspath(os.getcwd())
-        project_path = click.prompt(
-            click.style("\nEnter the project directory path", fg="blue", bold=True),
-            default=default_path,
-            type=click.Path(file_okay=False, dir_okay=True, resolve_path=True),
-        )
-
-        custom_network = click.confirm(
-            click.style("\nDo you want to create a custom network?", fg="blue", bold=True),
-            default=True,
-        )
-        if not custom_network:
-            create_warnet_project(Path(project_path))
-            click.secho("\nSetup completed successfully!", fg="green", bold=True)
-            return True
-
-        network_name = click.prompt(
-            click.style("\nEnter the network name", fg="blue", bold=True),
-            type=str,
-        )
-
-        nodes = click.prompt(
-            click.style("\nHow many nodes would you like?", fg="blue", bold=True),
-            type=int,
-            default=15,
-        )
-        connections = click.prompt(
-            click.style(
-                "\nHow many connections would you like each node to have?", fg="blue", bold=True
-            ),
-            type=int,
-            default=8,
-        )
-        version = click.prompt(
-            click.style(
-                "\nWhich version would you like nodes to be by default?", fg="blue", bold=True
-            ),
-            type=click.Choice(SUPPORTED_TAGS, case_sensitive=False),
-            default=DEFAULT_TAG,
-        )
+        if net_answers["connections"] == "other":
+            custom_connections = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "connections",
+                        message=click.style(
+                            "Enter the number of connections", fg="blue", bold=True
+                        ),
+                        validate=lambda _, x: int(x) >= 0,
+                    )
+                ]
+            )
+            if custom_connections is None:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            net_answers["connections"] = custom_connections["connections"]
+        answers.update(net_answers)
 
         click.secho("\nCreating project structure...", fg="yellow", bold=True)
-        create_warnet_project(Path(project_path))
+        project_path = Path(os.path.expanduser(proj_answers["project_path"]))
+        create_warnet_project(project_path)
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
-        custom_network_path = Path(project_path) / "networks" / network_name
-        custom_graph(nodes, connections, version, custom_network_path)
+        custom_network_path = project_path / "networks" / answers["network_name"]
+        custom_graph(
+            int(answers["nodes"]),
+            int(answers["connections"]),
+            answers["version"],
+            custom_network_path,
+        )
         click.secho("\nSetup completed successfully!", fg="green", bold=True)
         click.echo("\nRun the following command to deploy this network:")
         click.echo(f"warnet deploy {custom_network_path}")
     except Exception as e:
+        click.echo(f"{e}\n\n")
         click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
         click.secho(
-            "Please report this to https://github.com/bitcoin-dev-project/warnet/issues",
+            "Please report the above context to https://github.com/bitcoin-dev-project/warnet/issues",
             fg="yellow",
         )
         return False
@@ -286,6 +363,7 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
     nodes = []
+    connections = set()
 
     for i in range(num_nodes):
         node = {"name": f"tank-{i:04d}", "connect": [], "image": {"tag": version}}
@@ -293,6 +371,7 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
         # Add round-robin connection
         next_node = (i + 1) % num_nodes
         node["connect"].append(f"tank-{next_node:04d}")
+        connections.add((i, next_node))
 
         # Add random connections
         available_nodes = list(range(num_nodes))
@@ -302,8 +381,11 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
 
         for _ in range(min(num_connections - 1, len(available_nodes))):
             random_node = random.choice(available_nodes)
-            node["connect"].append(f"tank-{random_node:04d}")
-            available_nodes.remove(random_node)
+            # Avoid circular loops of A -> B -> A
+            if (random_node, i) not in connections:
+                node["connect"].append(f"tank-{random_node:04d}")
+                connections.add((i, random_node))
+                available_nodes.remove(random_node)
 
         nodes.append(node)
 
