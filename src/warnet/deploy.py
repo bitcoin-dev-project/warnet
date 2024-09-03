@@ -48,13 +48,14 @@ def validate_directory(ctx, param, value):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     callback=validate_directory,
 )
-def deploy(directory):
+@click.option("--debug", is_flag=True)
+def deploy(directory, debug):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
     if (directory / NETWORK_FILE).exists():
-        deploy_network(directory)
-        deploy_fork_observer(directory)
+        deploy_network(directory, debug)
+        deploy_fork_observer(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
@@ -63,7 +64,7 @@ def deploy(directory):
         )
 
 
-def deploy_fork_observer(directory: Path):
+def deploy_fork_observer(directory: Path, debug: bool):
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
@@ -74,6 +75,8 @@ def deploy_fork_observer(directory: Path):
 
     namespace = get_default_namespace()
     cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
+    if debug:
+        cmd += " --debug"
 
     temp_override_file_path = ""
     override_string = ""
@@ -114,7 +117,7 @@ rpc_password = "tabconf2024"
         return
 
 
-def deploy_network(directory: Path):
+def deploy_network(directory: Path, debug: bool = False):
     network_file_path = directory / NETWORK_FILE
     defaults_file_path = directory / NETWORK_DEFAULTS_FILE
 
@@ -131,6 +134,8 @@ def deploy_network(directory: Path):
             node_config_override = {k: v for k, v in node.items() if k != "name"}
 
             cmd = f"{HELM_COMMAND} {node_name} {NETWORK_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
+            if debug:
+                cmd += " --debug"
 
             if node_config_override:
                 with tempfile.NamedTemporaryFile(
