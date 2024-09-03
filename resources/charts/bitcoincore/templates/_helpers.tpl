@@ -61,8 +61,7 @@ Create the name of the service account to use
 Add network section heading in bitcoin.conf after v0.17.0
 */}}
 {{- define "bitcoincore.check_semver.regtest" -}}
-{{- $tag := .Values.image.tag | trimPrefix "v" -}}
-{{- $version := semverCompare ">=0.17.0" $tag -}}
+{{- $version := semverCompare ">=0.17.0" .Values.image.tag -}}
 {{- if $version -}}
 [regtest]
 {{- end -}}
