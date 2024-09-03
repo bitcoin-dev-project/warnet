@@ -69,7 +69,7 @@ def deploy_fork_observer(directory: Path):
         network_file = yaml.safe_load(f)
 
     # Only start if configured in the network file
-    if not network_file.get("fork_observer", False):
+    if not network_file.get("fork_observer", {}).get("enabled", False):
         return
 
     namespace = get_default_namespace()
@@ -99,6 +99,7 @@ rpc_password = "tabconf2024"
     # Create yaml string using multi-line string format
     override_string = override_string.strip()
     v = {"config": override_string}
+    v["configQueryinterval"] = network_file.get("fork_observer", {}).get("configQueryinterval", 20)
     yaml_string = yaml.dump(v, default_style="|", default_flow_style=False)
 
     # Dump to yaml tempfile

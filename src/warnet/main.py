@@ -190,10 +190,22 @@ def quickstart():
             type=bool,
             default=True,
         )
+        fork_observer_query_interval = 20
+        if fork_observer:
+            fork_observer_query_interval = click.prompt(
+                click.style(
+                    "\nHow often would you like fork-observer to query node status (seconds)?",
+                    fg="blue",
+                    bold=True,
+                ),
+                type=int,
+                default=20,
+            )
 
         click.secho("\nCreating project structure...", fg="yellow", bold=True)
         project_path = Path(os.path.expanduser(proj_answers["project_path"]))
         create_warnet_project(project_path)
+
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
         custom_network_path = project_path / "networks" / answers["network_name"]
         custom_graph(
@@ -202,10 +214,17 @@ def quickstart():
             answers["version"],
             custom_network_path,
             fork_observer,
+            fork_observer_query_interval,
         )
         click.secho("\nSetup completed successfully!", fg="green", bold=True)
-        click.echo("\nRun the following command to deploy this network:")
+
+        click.echo(
+            f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
+        )
+
+        click.echo("\nWhen you're ready, run the following command to deploy this network:")
         click.echo(f"warnet deploy {custom_network_path}")
+
     except Exception as e:
         click.echo(f"{e}\n\n")
         click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
@@ -368,7 +387,12 @@ if __name__ == "__main__":
 
 
 def custom_graph(
-    num_nodes: int, num_connections: int, version: str, datadir: Path, fork_observer: bool
+    num_nodes: int,
+    num_connections: int,
+    version: str,
+    datadir: Path,
+    fork_observer: bool,
+    fork_obs_query_interval: int,
 ):
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
@@ -400,7 +424,10 @@ def custom_graph(
         nodes.append(node)
 
     network_yaml_data = {"nodes": nodes}
-    network_yaml_data["fork_observer"] = fork_observer
+    network_yaml_data["fork_observer"] = {
+        "enabled": fork_observer,
+        "configQueryInterval": fork_obs_query_interval,
+    }
 
     with open(os.path.join(datadir, "network.yaml"), "w") as f:
         yaml.dump(network_yaml_data, f, default_flow_style=False)
