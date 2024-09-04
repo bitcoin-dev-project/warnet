@@ -4,7 +4,7 @@ from .admin import admin
 from .bitcoin import bitcoin
 from .control import down, logs, run, stop
 from .deploy import deploy
-from .graph import graph
+from .graph import create, graph
 from .image import image
 from .project import init, new, setup
 from .status import status
@@ -30,6 +30,7 @@ cli.add_command(run)
 cli.add_command(setup)
 cli.add_command(status)
 cli.add_command(stop)
+cli.add_command(create)
 
 
 if __name__ == "__main__":

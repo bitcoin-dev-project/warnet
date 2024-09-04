@@ -13,7 +13,7 @@ import click
 import inquirer
 import yaml
 
-from .constants import DEFAULT_TAG, SUPPORTED_TAGS
+from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_scenario_defaults
 
 
@@ -198,7 +198,7 @@ def setup():
 
     print("")
     print("                 ╭───────────────────────────────────╮")
-    print("                 │  Welcome to the Warnet Quickstart │")
+    print("                 │  Welcome to Warnet setup          │")
     print("                 ╰───────────────────────────────────╯")
     print("")
     print("    Let's find out if your system has what it takes to run Warnet...")
@@ -229,12 +229,12 @@ def setup():
                 check_results.append(check_installation(kubectl_info))
                 check_results.append(check_installation(helm_info))
         else:
-            click.secho("Please re-run Quickstart.", fg="yellow")
+            click.secho("Please re-run setup.", fg="yellow")
             sys.exit(1)
 
         if ToolStatus.Unsatisfied in check_results:
             click.secho(
-                "Please fix the installation issues above and try quickstart again.", fg="yellow"
+                "Please fix the installation issues above and try setup again.", fg="yellow"
             )
             sys.exit(1)
         else:
@@ -281,154 +281,36 @@ def new_internal(directory: Path, from_init=False):
         click.secho(f"Error: Directory {directory} already exists", fg="red")
         return
 
-    answers = {}
-
-    # Network name
-    network_name = inquirer.prompt(
-        [
-            inquirer.Text(
-                "network_name",
-                message=click.style("Choose a network name", fg="blue", bold=True),
-                validate=lambda _, x: len(x) > 0,
-            )
-        ]
-    )
-    if network_name is None:
-        click.secho("Setup cancelled by user.", fg="yellow")
-        return False
-    answers.update(network_name)
-
-    # Number of nodes
-    nodes_question = inquirer.prompt(
-        [
-            inquirer.List(
-                "nodes",
-                message=click.style(
-                    "How many nodes would you like in the network?", fg="blue", bold=True
-                ),
-                choices=["8", "12", "20", "50", "other"],
-                default="12",
-            )
-        ]
-    )
-    if nodes_question is None:
-        click.secho("Setup cancelled by user.", fg="yellow")
-        return False
-
-    if nodes_question["nodes"] == "other":
-        custom_nodes = inquirer.prompt(
-            [
-                inquirer.Text(
-                    "nodes",
-                    message=click.style("Enter the number of nodes", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) > 0,
-                )
-            ]
-        )
-        if custom_nodes is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        answers["nodes"] = custom_nodes["nodes"]
-    else:
-        answers["nodes"] = nodes_question["nodes"]
-
-    # Number of connections
-    connections_question = inquirer.prompt(
-        [
-            inquirer.List(
-                "connections",
-                message=click.style(
-                    "How many connections would you like each node to have?",
-                    fg="blue",
-                    bold=True,
-                ),
-                choices=["0", "1", "2", "8", "12", "other"],
-                default="8",
-            )
-        ]
-    )
-    if connections_question is None:
-        click.secho("Setup cancelled by user.", fg="yellow")
-        return False
-
-    if connections_question["connections"] == "other":
-        custom_connections = inquirer.prompt(
-            [
-                inquirer.Text(
-                    "connections",
-                    message=click.style("Enter the number of connections", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) >= 0,
-                )
-            ]
-        )
-        if custom_connections is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        answers["connections"] = custom_connections["connections"]
-    else:
-        answers["connections"] = connections_question["connections"]
-
-    # Version
-    version_question = inquirer.prompt(
-        [
-            inquirer.List(
-                "version",
-                message=click.style(
-                    "Which version would you like nodes to run by default?", fg="blue", bold=True
-                ),
-                choices=SUPPORTED_TAGS,
-                default=DEFAULT_TAG,
-            )
-        ]
-    )
-    if version_question is None:
-        click.secho("Setup cancelled by user.", fg="yellow")
-        return False
-    answers.update(version_question)
-    fork_observer = click.prompt(
-        click.style(
-            "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
-        ),
-        type=bool,
-        default=True,
-    )
-    fork_observer_query_interval = 20
-    if fork_observer:
-        fork_observer_query_interval = click.prompt(
-            click.style(
-                "\nHow often would you like fork-observer to query node status (seconds)?",
-                fg="blue",
-                bold=True,
-            ),
-            type=int,
-            default=20,
-        )
-
     click.secho("\nCreating project structure...", fg="yellow", bold=True)
     project_path = Path(os.path.expanduser(directory))
     create_warnet_project(project_path)
 
-    click.secho("\nGenerating custom network...", fg="yellow", bold=True)
-    custom_network_path = project_path / "networks" / answers["network_name"]
-    custom_graph(
-        int(answers["nodes"]),
-        int(answers["connections"]),
-        answers["version"],
-        custom_network_path,
-        fork_observer,
-        fork_observer_query_interval,
+    proj_answers = inquirer.prompt(
+        [
+            inquirer.Confirm(
+                "custom_network",
+                message=click.style(
+                    "Do you want to create a custom network?", fg="blue", bold=True
+                ),
+                default=True,
+            ),
+        ]
     )
-    click.secho("\nSetup completed successfully!", fg="green", bold=True)
+    if proj_answers is None:
+        click.secho("Setup cancelled by user.", fg="yellow")
+        return False
+    if proj_answers["custom_network"]:
+        click.secho("\nGenerating custom network...", fg="yellow", bold=True)
+        custom_network_path = inquirer_create_network(directory)
 
     click.echo(
         f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
     )
-    if fork_observer:
-        click.echo(
-            "If you enabled fork-observer you must forward the port from the cluster to your local machine:\n"
-            "`kubectl port-forward fork-observer 2323`\n"
-            "fork-observer will then be available at web address: localhost:2323"
-        )
+    click.echo(
+        "If you enabled fork-observer you must forward the port from the cluster to your local machine:\n"
+        "`kubectl port-forward fork-observer 2323`\n"
+        "fork-observer will then be available at web address: localhost:2323"
+    )
 
     click.echo("\nWhen you're ready, run the following command to deploy this network:")
     click.echo(f"  warnet deploy {custom_network_path}")
@@ -438,17 +320,7 @@ def new_internal(directory: Path, from_init=False):
 def init():
     """Initialize a warnet project in the current directory"""
     current_dir = Path.cwd()
-
-    custom_project = click.prompt(
-        click.style("\nWould you like to create a custom network?", fg="blue", bold=True),
-        type=bool,
-        default=True,
-    )
-    if not custom_project:
-        create_warnet_project(current_dir, check_empty=True)
-        return 0
-    else:
-        new_internal(directory=current_dir, from_init=True)
+    new_internal(directory=current_dir, from_init=True)
 
 
 def custom_graph(
