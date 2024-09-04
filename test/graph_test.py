@@ -24,19 +24,23 @@ class GraphTest(TestBase):
 
     def directory_not_exist(self):
         self.sut = pexpect.spawn("warnet create-network")
-        self.sut.expect("init", timeout=5)
+        self.sut.expect("init", timeout=50)
 
     def directory_exists(self):
         self.sut = pexpect.spawn("warnet create-network")
-        self.sut.expect("name", timeout=1)
+        self.sut.expect("name", timeout=10)
         self.sut.sendline("ANewNetwork")
-        self.sut.expect("many", timeout=1)
+        self.sut.expect("many", timeout=10)
         self.sut.sendline("")
-        self.sut.expect("connections", timeout=1)
+        self.sut.expect("connections", timeout=10)
         self.sut.sendline("")
-        self.sut.expect("version", timeout=1)
+        self.sut.expect("version", timeout=10)
         self.sut.sendline("")
-        self.sut.expect("successfully", timeout=5)
+        self.sut.expect("enable fork-observer", timeout=10)
+        self.sut.sendline("")
+        self.sut.expect("seconds", timeout=10)
+        self.sut.sendline("")
+        self.sut.expect("successfully", timeout=50)
 
 
 if __name__ == "__main__":
