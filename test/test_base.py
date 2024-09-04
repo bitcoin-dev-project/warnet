@@ -14,7 +14,7 @@ from warnet import SRC_DIR
 from warnet.control import get_active_scenarios
 from warnet.k8s import get_pod_exit_status
 from warnet.network import _connected as network_connected
-from warnet.network import _status as network_status
+from warnet.status import _get_tank_status as network_status
 
 
 class TestBase:
@@ -112,11 +112,9 @@ class TestBase:
             if len(tanks) == 0:
                 return True
             for tank in tanks:
-                for service in ["bitcoin", "lightning", "circuitbreaker"]:
-                    status = tank.get(f"{service}_status")
-                    if status:
-                        stats["total"] += 1
-                        stats[status] = stats.get(status, 0) + 1
+                status = tank["status"]
+                stats["total"] += 1
+                stats[status] = stats.get(status, 0) + 1
             self.log.info(f"Waiting for all tanks to reach '{target}': {stats}")
             return target in stats and stats[target] == stats["total"]
 

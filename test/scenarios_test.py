@@ -7,7 +7,7 @@ from test_base import TestBase
 
 from warnet.k8s import delete_pod
 from warnet.process import run_command
-from warnet.scenarios import _active as scenarios_active
+from warnet.status import _get_active_scenarios as scenarios_active
 
 
 class ScenariosTest(TestBase):
@@ -36,7 +36,7 @@ class ScenariosTest(TestBase):
         """Check that we are only running a single scenario of the correct name"""
         active = scenarios_active()
         assert len(active) == 1
-        return scenario_name in active[0]["commander"]
+        return scenario_name in active[0]["name"]
 
     def run_and_check_scenario_from_file(self):
         scenario_file = "test/data/scenario_p2p_interface.py"
@@ -80,7 +80,7 @@ class ScenariosTest(TestBase):
         running = scenarios_active()
         assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
         assert running[0]["status"] == "running", "Scenario should be running"
-        delete_pod(running[0]["commander"])
+        delete_pod(running[0]["name"])
         self.wait_for_predicate(self.check_scenario_stopped)
 
     def check_scenario_stopped(self):
