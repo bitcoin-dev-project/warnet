@@ -23,11 +23,11 @@ class GraphTest(TestBase):
             shutil.rmtree(NETWORKS_DIR) if os.path.exists(NETWORKS_DIR) else None
 
     def directory_not_exist(self):
-        self.sut = pexpect.spawn("warnet create-network")
+        self.sut = pexpect.spawn("warnet create")
         self.sut.expect("init", timeout=50)
 
     def directory_exists(self):
-        self.sut = pexpect.spawn("warnet create-network")
+        self.sut = pexpect.spawn("warnet create")
         self.sut.expect("name", timeout=10)
         self.sut.sendline("ANewNetwork")
         self.sut.expect("many", timeout=10)
