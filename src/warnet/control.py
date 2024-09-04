@@ -12,10 +12,10 @@ from rich.table import Table
 
 from .k8s import (
     apply_kubernetes_yaml,
+    delete_all_resources,
     delete_namespace,
     get_default_namespace,
     get_mission,
-    get_pods,
 )
 from .process import run_command, stream_command
 
@@ -112,33 +112,11 @@ def list_active_scenarios():
 @click.command()
 def down():
     """Bring down a running warnet"""
-    with console.status("[bold yellow]Bringing down the warnet...[/bold yellow]"):
-        # Delete warnet-logging namespace
-        if delete_namespace("warnet-logging"):
-            console.print("[green]Warnet logging deleted[/green]")
-        else:
-            console.print("[red]Warnet logging NOT deleted[/red]")
-
-    # Uninstall tanks
-    tanks = get_mission("tank")
-    with console.status("[yellow]Uninstalling tanks...[/yellow]"):
-        for tank in tanks:
-            cmd = f"helm uninstall {tank.metadata.name} --namespace {get_default_namespace()}"
-            if stream_command(cmd):
-                console.print(f"[green]Uninstalled tank: {tank.metadata.name}[/green]")
-            else:
-                console.print(f"[red]Failed to uninstall tank: {tank.metadata.name}[/red]")
-
-    # Clean up scenarios and other pods
-    pods = get_pods()
-    with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
-        for pod in pods.items:
-            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name} -n {get_default_namespace()}"
-            if stream_command(cmd):
-                console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
-            else:
-                console.print(f"[red]Failed to delete pod: {pod.metadata.name}[/red]")
-
+    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
+    # Delete warnet-logging namespace
+    delete_namespace("warnet-logging")
+    console.print("[green]Warnet logging cleaned up[/green]")
+    delete_all_resources()
     console.print("[bold green]Warnet has been brought down.[/bold green]")
 
 

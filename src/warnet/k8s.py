@@ -4,8 +4,16 @@ from pathlib import Path
 
 import yaml
 from kubernetes import client, config
-from kubernetes.client.models import CoreV1Event, V1PodList
+from kubernetes.client.models import (
+    CoreV1Event,
+    V1DeploymentList,
+    V1PodList,
+    V1ServiceList,
+    V1Status,
+)
+from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
+from rich.console import Console
 
 from .process import run_command, stream_command
 
@@ -15,6 +23,11 @@ DEFAULT_NAMESPACE = "warnet"
 def get_static_client() -> CoreV1Event:
     config.load_kube_config()
     return client.CoreV1Api()
+
+
+def get_apps_client() -> CoreV1Event:
+    config.load_kube_config()
+    return client.AppsV1Api()
 
 
 def get_dynamic_client() -> DynamicClient:
@@ -29,6 +42,83 @@ def get_pods() -> V1PodList:
     except Exception as e:
         raise e
     return pod_list
+
+
+def get_services() -> V1ServiceList:
+    sclient = get_static_client()
+    try:
+        service_list: V1ServiceList = sclient.list_namespaced_service(get_default_namespace())
+    except Exception as e:
+        raise e
+    return service_list
+
+
+def get_deployments() -> V1DeploymentList:
+    sclient = get_apps_client()
+    try:
+        deployment_list: V1DeploymentList = sclient.list_namespaced_deployment(
+            get_default_namespace()
+        )
+    except Exception as e:
+        raise e
+    return deployment_list
+
+
+def delete_pod(pod_name: str) -> V1Status:
+    sclient = get_static_client()
+    try:
+        status: V1Status = sclient.delete_namespaced_pod(pod_name, get_default_namespace())
+    except Exception as e:
+        raise e
+    return status
+
+
+def delete_service(service_name: str) -> V1Status:
+    sclient = get_static_client()
+    try:
+        status: V1Status = sclient.delete_namespaced_service(service_name, get_default_namespace())
+    except Exception as e:
+        raise e
+    return status
+
+
+def delete_deployment(deployment_name: str) -> V1Status:
+    sclient = get_apps_client()
+    try:
+        status: V1Status = sclient.delete_namespaced_deployment(
+            deployment_name, get_default_namespace()
+        )
+    except Exception as e:
+        raise e
+    return status
+
+
+def delete_all_resources():
+    namespace = get_default_namespace()
+    console = Console()
+
+    # Delete all deployments
+    deployments = get_deployments()
+    with console.status("[yellow]Cleaning up deployments...[/yellow]"):
+        aclient = get_apps_client()
+        for deployment in deployments.items:
+            aclient.delete_namespaced_deployment(deployment.metadata.name, namespace)
+            console.print(f"[green]deleted deployment: {deployment.metadata.name}[/green]")
+
+    # Delete all services
+    services = get_services()
+    with console.status("[yellow]Cleaning up services...[/yellow]"):
+        sclient = get_static_client()
+        for service in services.items:
+            sclient.delete_namespaced_service(service.metadata.name, namespace)
+            console.print(f"[green]deleted service: {service.metadata.name}[/green]")
+
+    # Delete any remaining pods
+    pods = get_pods()
+    with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
+        for pod in pods.items:
+            sclient.delete_namespaced_pod(pod.metadata.name, namespace)
+            console.print(f"[green]deleted pod: {pod.metadata.name}[/green]")
 
 
 def get_mission(mission: str) -> list[V1PodList]:
@@ -103,13 +193,18 @@ def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
 
 
 def delete_namespace(namespace: str) -> bool:
-    command = f"kubectl delete namespace {namespace} --ignore-not-found"
-    return run_command(command)
-
-
-def delete_pod(pod_name: str) -> bool:
-    command = f"kubectl delete pod {pod_name}"
-    return stream_command(command)
+    try:
+        sclient = get_static_client()
+        sclient.delete_namespace(name=namespace)
+        print(f"Namespace {namespace} deleted successfully")
+        return True
+    except ApiException as e:
+        if e.status == 404:
+            print(f"Namespace {namespace} not found")
+            return True  # Mimic the behavior of --ignore-not-found
+        else:
+            print(f"Exception when calling CoreV1Api->delete_namespace: {e}")
+            return False
 
 
 def get_default_namespace() -> str:
