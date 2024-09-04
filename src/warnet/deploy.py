@@ -23,6 +23,7 @@ from .network import (
 
 # Import necessary functions and variables from network.py and namespaces.py
 from .network import (
+    FORK_OBSERVER_CHART,
     NETWORK_FILE,
 )
 from .process import stream_command
@@ -47,12 +48,14 @@ def validate_directory(ctx, param, value):
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     callback=validate_directory,
 )
-def deploy(directory):
+@click.option("--debug", is_flag=True)
+def deploy(directory, debug):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
     if (directory / NETWORK_FILE).exists():
-        deploy_network(directory)
+        deploy_network(directory, debug)
+        deploy_fork_observer(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
@@ -61,7 +64,60 @@ def deploy(directory):
         )
 
 
-def deploy_network(directory: Path):
+def deploy_fork_observer(directory: Path, debug: bool):
+    network_file_path = directory / NETWORK_FILE
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+
+    # Only start if configured in the network file
+    if not network_file.get("fork_observer", {}).get("enabled", False):
+        return
+
+    namespace = get_default_namespace()
+    cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
+    if debug:
+        cmd += " --debug"
+
+    temp_override_file_path = ""
+    override_string = ""
+
+    # Add an entry for each node in the graph
+    # TODO: should this be moved into a chart, and only have substituted name and rpc_host values
+    for i, node in enumerate(network_file["nodes"]):
+        node_name = node.get("name")
+        node_config = f"""
+[[networks.nodes]]
+id = {i}
+name = "{node_name}"
+description = "A node. Just A node."
+rpc_host = "{node_name}"
+rpc_port = 18443
+rpc_user = "forkobserver"
+rpc_password = "tabconf2024"
+"""
+
+        override_string += node_config
+        # End loop
+
+    # Create yaml string using multi-line string format
+    override_string = override_string.strip()
+    v = {"config": override_string}
+    v["configQueryinterval"] = network_file.get("fork_observer", {}).get("configQueryinterval", 20)
+    yaml_string = yaml.dump(v, default_style="|", default_flow_style=False)
+
+    # Dump to yaml tempfile
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+        temp_file.write(yaml_string)
+        temp_override_file_path = Path(temp_file.name)
+
+    cmd = f"{cmd} -f {temp_override_file_path}"
+
+    if not stream_command(cmd):
+        click.echo(f"Failed to run Helm command: {cmd}")
+        return
+
+
+def deploy_network(directory: Path, debug: bool = False):
     network_file_path = directory / NETWORK_FILE
     defaults_file_path = directory / NETWORK_DEFAULTS_FILE
 
@@ -78,6 +134,8 @@ def deploy_network(directory: Path):
             node_config_override = {k: v for k, v in node.items() if k != "name"}
 
             cmd = f"{HELM_COMMAND} {node_name} {NETWORK_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
+            if debug:
+                cmd += " --debug"
 
             if node_config_override:
                 with tempfile.NamedTemporaryFile(

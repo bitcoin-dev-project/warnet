@@ -21,6 +21,7 @@ NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 BITCOIN_CHART_LOCATION = str(files("resources.charts").joinpath("bitcoincore"))
+FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
 
 
 def setup_logging_helm() -> bool:

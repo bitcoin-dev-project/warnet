@@ -183,10 +183,29 @@ def quickstart():
                 return False
             net_answers["connections"] = custom_connections["connections"]
         answers.update(net_answers)
+        fork_observer = click.prompt(
+            click.style(
+                "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
+            ),
+            type=bool,
+            default=True,
+        )
+        fork_observer_query_interval = 20
+        if fork_observer:
+            fork_observer_query_interval = click.prompt(
+                click.style(
+                    "\nHow often would you like fork-observer to query node status (seconds)?",
+                    fg="blue",
+                    bold=True,
+                ),
+                type=int,
+                default=20,
+            )
 
         click.secho("\nCreating project structure...", fg="yellow", bold=True)
         project_path = Path(os.path.expanduser(proj_answers["project_path"]))
         create_warnet_project(project_path)
+
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
         custom_network_path = project_path / "networks" / answers["network_name"]
         custom_graph(
@@ -194,10 +213,24 @@ def quickstart():
             int(answers["connections"]),
             answers["version"],
             custom_network_path,
+            fork_observer,
+            fork_observer_query_interval,
         )
         click.secho("\nSetup completed successfully!", fg="green", bold=True)
-        click.echo("\nRun the following command to deploy this network:")
+
+        click.echo(
+            f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
+        )
+        if fork_observer:
+            click.echo(
+                "If you enabled fork-observer you must forward the port from the cluster to your local machine:\n"
+                "`kubectl port-forward fork-observer 2323`\n"
+                "fork-observer will then be available at web address: localhost:2323"
+            )
+
+        click.echo("\nWhen you're ready, run the following command to deploy this network:")
         click.echo(f"warnet deploy {custom_network_path}")
+
     except Exception as e:
         click.echo(f"{e}\n\n")
         click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
@@ -359,7 +392,14 @@ if __name__ == "__main__":
     cli()
 
 
-def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Path):
+def custom_graph(
+    num_nodes: int,
+    num_connections: int,
+    version: str,
+    datadir: Path,
+    fork_observer: bool,
+    fork_obs_query_interval: int,
+):
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
     nodes = []
@@ -390,12 +430,16 @@ def custom_graph(num_nodes: int, num_connections: int, version: str, datadir: Pa
         nodes.append(node)
 
     network_yaml_data = {"nodes": nodes}
+    network_yaml_data["fork_observer"] = {
+        "enabled": fork_observer,
+        "configQueryInterval": fork_obs_query_interval,
+    }
 
     with open(os.path.join(datadir, "network.yaml"), "w") as f:
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
-    # Generate defaults.yaml
-    default_yaml_path = files("resources.networks").joinpath("6_node_bitcoin/node-defaults.yaml")
+    # Generate node-defaults.yaml
+    default_yaml_path = files("resources.networks").joinpath("node-defaults.yaml")
     with open(str(default_yaml_path)) as f:
         defaults_yaml_content = f.read()
 

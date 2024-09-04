@@ -1,23 +1,23 @@
-# Default values for bitcoincore.
+# Default values for fork-observer.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 namespace: warnet
 
-restartPolicy: Never
+restartPolicy: Always
 
 image:
-  repository: bitcoindevproject/bitcoin
+  repository: b10c/fork-observer
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "27.0"
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-podLabels: 
+podLabels:
   app: "warnet"
-  mission: "tank"
+  mission: "observer"
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -33,28 +33,6 @@ securityContext: {}
 service:
   type: ClusterIP
 
-regtest:
-  RPCPort: 18443
-  P2PPort: 18444
-  ZMQTxPort: 28333
-  ZMQBlockPort: 28332
-
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
-
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -67,12 +45,11 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-
 livenessProbe:
   exec:
     command:
     - pidof
-    - bitcoind
+    - fork-observer
   failureThreshold: 3
   initialDelaySeconds: 5
   periodSeconds: 5
@@ -83,9 +60,8 @@ readinessProbe:
   periodSeconds: 1
   successThreshold: 1
   tcpSocket:
-    port: 18443
+    port: 2323
   timeoutSeconds: 1
-
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -100,39 +76,40 @@ volumeMounts: []
 #   mountPath: "/etc/foo"
 #   readOnly: true
 
-nodeSelector: {}
+port: 2323
 
-tolerations: []
+configQueryInterval: |
+  # Interval for checking for new blocks
+  query_interval = 20
 
-affinity: {}
-
-chain: regtest
-
-collectLogs: false
-metricsExport: false
-prometheusMetricsPort: 9332
-
-regtestConfig: |
-  rpcuser=user
-  rpcpassword=password
-  rpcport=18443
-  rpcallowip=0.0.0.0/0
-  rpcbind=0.0.0.0
-  rest=1
+maxInterestingHeights: 100
 
 baseConfig: |
-  checkmempool=0
-  acceptnonstdtxn=1
-  debuglogfile=0
-  logips=1
-  logtimemicros=1
-  capturemessages=1
-  fallbackfee=0.00001000
-  listen=1
+  # Database path of the key value store. Will be created if non-existing.
+  database_path = "db"
 
-  zmqpubrawblock=tcp://0.0.0.0:28332
-  zmqpubrawtx=tcp://0.0.0.0:28333
+  # path to the location of the static www files
+  www_path = "./www"
+
+  # Webserver listen address
+  address = "0.0.0.0:2323"
+
+  # Custom footer for the site.
+  footer_html = """
+      <div class="my-2">
+        <div>
+          <span class="text-muted">Warnet fork-observer</span>
+        </div>
+      </div>
+    """
+
+  [[networks]]
+  id = 0xDEADBE
+  name = "Warnet"
+  description = "A Warnet"
+  min_fork_height = 0
+  max_interesting_heights = {{ .Values.maxInterestingHeights }}
+      [pool_identification]
+      enable = false
 
 config: ""
-
-connect: []

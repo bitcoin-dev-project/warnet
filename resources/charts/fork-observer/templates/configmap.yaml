@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fork-observer.fullname" . }}
+  labels:
+    {{- include "fork-observer.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    {{- .Values.configQueryInterval | nindent 4 }}
+    {{- tpl .Values.baseConfig . | nindent 4 }}
+    {{- .Values.config | nindent 8 }}

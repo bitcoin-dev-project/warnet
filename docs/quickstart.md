@@ -35,3 +35,13 @@ warnet quickstart
 ```
 
 This will check you have the required dependencies and guide you through setting up and deploying your first network.
+
+## fork-observer
+
+If you enabled [fork-observer](https://github.com/0xB10C/fork-observer), you must forward the port from the cluster to your local machine:
+
+```bash
+kubectl port-forward fork-observer 2323
+```
+
+And then the GUI can be accessed via `localhost:2323` in a web browser.
