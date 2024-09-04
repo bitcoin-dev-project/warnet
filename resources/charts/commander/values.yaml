@@ -71,7 +71,7 @@ volumeMounts: []
 
 port:
 
-scenario: ""
+command: ""
 
 warnet: ""
 

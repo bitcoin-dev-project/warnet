@@ -182,17 +182,19 @@ def get_active_network(namespace):
 
 
 @click.command(context_settings={"ignore_unknown_options": True})
-@click.argument("scenario_file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument("file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, additional_args: tuple[str]):
-    """Run a scenario from a file"""
-    scenario_path = Path(scenario_file).resolve()
-    scenario_name = scenario_path.stem
+def run(file: str, additional_args: tuple[str]):
+    """Run a scenario or other executable"""
+    file_path = os.path.abspath(file)
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
 
-    with open(scenario_path, "rb") as file:
-        scenario_data = base64.b64encode(file.read()).decode()
+    with open(file_path, "rb") as f:
+        b_64_file = base64.b64encode(f.read()).decode()
 
-    name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
+    pull_policy = "Never" if os.getenv("GITHUB_ACTIONS") else "IfNotPresent"
+
+    name = f"commander-{file_name.replace('_', '')}-{int(time.time())}"
     namespace = get_default_namespace()
     tankpods = get_mission("tank")
     tanks = [
@@ -222,9 +224,11 @@ def run(scenario_file: str, additional_args: tuple[str]):
             "--set",
             f"fullnameOverride={name}",
             "--set",
-            f"scenario={scenario_data}",
+            f"command={b_64_file}",
             "--set",
             f"warnet={warnet_data}",
+            "--set",
+            f"image.pullPolicy={pull_policy}",
         ]
 
         # Add additional arguments
@@ -232,19 +236,20 @@ def run(scenario_file: str, additional_args: tuple[str]):
             helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
 
         helm_command.extend([name, COMMANDER_CHART])
+        print(helm_command)
 
         # Execute Helm command
         result = subprocess.run(helm_command, check=True, capture_output=True, text=True)
 
         if result.returncode == 0:
-            print(f"Successfully started scenario: {scenario_name}")
+            print(f"Successfully started: {file_name}")
             print(f"Commander pod name: {name}")
         else:
-            print(f"Failed to start scenario: {scenario_name}")
+            print(f"Failed to start: {file_name}")
             print(f"Error: {result.stderr}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Failed to start scenario: {scenario_name}")
+        print(f"Failed to start: {file_name}")
         print(f"Error: {e.stderr}")
 
 

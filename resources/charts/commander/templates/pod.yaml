@@ -12,21 +12,19 @@ spec:
     - name: {{ .Chart.Name }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
-      command: ["/bin/sh", "-c"]
+      command: ["/entrypoint.sh"]
       args:
-        - |
-          python3 /scenario.py {{ .Values.args }}
+        - {{ .Values.args | default "" | quote }}
       volumeMounts:
-        - name: scenario
-          mountPath: /scenario.py
-          subPath: scenario.py
+        - name: command
+          mountPath: /wbin
         - name: warnet
           mountPath: /warnet.json
           subPath: warnet.json
   volumes:
-    - name: scenario
+    - name: command
       configMap:
-        name: {{ include "commander.fullname" . }}-scenario
+        name: {{ include "commander.fullname" . }}-command
     - name: warnet
       configMap:
         name: {{ include "commander.fullname" . }}-warnet

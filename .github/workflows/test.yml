@@ -35,7 +35,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and export
+      - name: Build docker image
         uses: docker/build-push-action@v5
         with:
           file: resources/images/commander/Dockerfile
@@ -43,7 +43,12 @@ jobs:
           tags: bitcoindevproject/warnet-commander:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/commander.tar
+          load: true
+
+      - name: Export docker image with tags
+        run: |
+          # This workaround should not be needed...
+          docker save bitcoindevproject/warnet-commander:latest -o /tmp/commander.tar bitcoindevproject/warnet-commander:latest
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -73,6 +78,10 @@ jobs:
         with:
           cpus: max
           memory: 4000m
+      - name: List images installed to minikube docker
+        run: |
+          eval $(minikube -p minikube docker-env)
+          docker image ls -a
       - name: Download commander artifact
         uses: actions/download-artifact@v4
         with:
@@ -112,6 +121,7 @@ jobs:
           name: kubernetes-logs-${{ matrix.test }}
           path: ./k8s-logs
           retention-days: 5
+
   test-without-mk:
     runs-on: ubuntu-latest
     strategy:

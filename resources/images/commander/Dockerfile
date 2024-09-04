@@ -4,8 +4,12 @@ FROM python:3.12-slim
 # Python dependencies
 #RUN pip install --no-cache-dir prometheus_client
 
+# The directory will contain the commander's executable
+RUN mkdir /wbin
+
 COPY resources/scenarios/commander.py /
 COPY src/test_framework /test_framework
+COPY resources/images/commander/entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 
-# -u: force the stdout and stderr streams to be unbuffered
-ENTRYPOINT ["python", "-u", "/scenario.py"]
+ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
