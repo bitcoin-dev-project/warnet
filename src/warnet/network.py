@@ -65,7 +65,12 @@ def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclud
 
 def copy_network_defaults(directory: Path):
     """Create the project structure for a warnet project's network"""
-    copy_defaults(directory, WAR_NETWORK_DIR, WAR_NETWORK_FILES.joinpath(), [])
+    copy_defaults(
+        directory,
+        WAR_NETWORK_DIR,
+        WAR_NETWORK_FILES.joinpath(),
+        ["node-defaults.yaml", "__pycache__", "__init__.py"],
+    )
 
 
 def copy_scenario_defaults(directory: Path):
