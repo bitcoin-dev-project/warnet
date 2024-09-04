@@ -4,31 +4,16 @@ from pathlib import Path
 import click
 import yaml
 
-from .k8s import get_default_namespace
-from .namespaces import (
-    BITCOIN_CHART_LOCATION as NAMESPACES_CHART_LOCATION,
-)
-from .namespaces import (
-    DEFAULTS_FILE as NAMESPACES_DEFAULTS_FILE,
-)
-from .namespaces import (
-    NAMESPACES_FILE,
-)
-from .network import (
-    BITCOIN_CHART_LOCATION as NETWORK_CHART_LOCATION,
-)
-from .network import (
-    DEFAULTS_FILE as NETWORK_DEFAULTS_FILE,
-)
-
-# Import necessary functions and variables from network.py and namespaces.py
-from .network import (
+from .constants import (
+    BITCOIN_CHART_LOCATION,
+    DEFAULTS_FILE,
     FORK_OBSERVER_CHART,
+    HELM_COMMAND,
+    NAMESPACES_FILE,
     NETWORK_FILE,
 )
+from .k8s import get_default_namespace
 from .process import stream_command
-
-HELM_COMMAND = "helm upgrade --install --create-namespace"
 
 
 def validate_directory(ctx, param, value):
@@ -82,7 +67,6 @@ def deploy_fork_observer(directory: Path, debug: bool):
     override_string = ""
 
     # Add an entry for each node in the graph
-    # TODO: should this be moved into a chart, and only have substituted name and rpc_host values
     for i, node in enumerate(network_file["nodes"]):
         node_name = node.get("name")
         node_config = f"""
@@ -97,7 +81,6 @@ rpc_password = "tabconf2024"
 """
 
         override_string += node_config
-        # End loop
 
     # Create yaml string using multi-line string format
     override_string = override_string.strip()
@@ -119,7 +102,7 @@ rpc_password = "tabconf2024"
 
 def deploy_network(directory: Path, debug: bool = False):
     network_file_path = directory / NETWORK_FILE
-    defaults_file_path = directory / NETWORK_DEFAULTS_FILE
+    defaults_file_path = directory / DEFAULTS_FILE
 
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
@@ -133,7 +116,7 @@ def deploy_network(directory: Path, debug: bool = False):
             node_name = node.get("name")
             node_config_override = {k: v for k, v in node.items() if k != "name"}
 
-            cmd = f"{HELM_COMMAND} {node_name} {NETWORK_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
+            cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
             if debug:
                 cmd += " --debug"
 
@@ -158,7 +141,7 @@ def deploy_network(directory: Path, debug: bool = False):
 
 def deploy_namespaces(directory: Path):
     namespaces_file_path = directory / NAMESPACES_FILE
-    defaults_file_path = directory / NAMESPACES_DEFAULTS_FILE
+    defaults_file_path = directory / DEFAULTS_FILE
 
     with namespaces_file_path.open() as f:
         namespaces_file = yaml.safe_load(f)
@@ -178,7 +161,9 @@ def deploy_namespaces(directory: Path):
             namespace_name = namespace.get("name")
             namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
 
-            cmd = f"{HELM_COMMAND} {namespace_name} {NAMESPACES_CHART_LOCATION} -f {defaults_file_path}"
+            cmd = (
+                f"{HELM_COMMAND} {namespace_name} {BITCOIN_CHART_LOCATION} -f {defaults_file_path}"
+            )
 
             if namespace_config_override:
                 with tempfile.NamedTemporaryFile(
