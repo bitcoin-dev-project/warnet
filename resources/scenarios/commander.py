@@ -131,6 +131,14 @@ class Commander(BitcoinTestFramework):
         self.success = TestStatus.PASSED
 
     def parse_args(self):
+        # Only print "outer" args from parent class when using --help
+        help_parser = argparse.ArgumentParser(usage="%(prog)s [options]")
+        self.add_options(help_parser)
+        help_args, _ = help_parser.parse_known_args()
+        if help_args.help:
+            help_parser.print_help()
+            sys.exit(0)
+
         previous_releases_path = ""
         parser = argparse.ArgumentParser(usage="%(prog)s [options]")
         parser.add_argument(
