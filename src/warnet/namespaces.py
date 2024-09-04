@@ -1,31 +1,24 @@
 import shutil
-from importlib.resources import files
 from pathlib import Path
 
 import click
 
+from .constants import (
+    DEFAULT_NAMESPACES,
+    DEFAULTS_FILE,
+    NAMESPACES_FILE,
+    NETWORK_DIR,
+)
 from .process import run_command, stream_command
-
-WARNET_NAMESPACES_DIR = files("resources").joinpath("namespaces")
-NAMESPACES_DIR = Path("namespaces")
-DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
-NAMESPACES_FILE = "namespaces.yaml"
-DEFAULTS_FILE = "namespace-defaults.yaml"
-HELM_COMMAND = "helm upgrade --install"
-BITCOIN_CHART_LOCATION = Path(str(files("resources.charts").joinpath("namespaces")))
 
 
 def copy_namespaces_defaults(directory: Path):
     """Create the project structure for a warnet project"""
-    (directory / NAMESPACES_DIR / DEFAULT_NAMESPACES).mkdir(parents=True, exist_ok=True)
-    target_namespaces_defaults = directory / NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE
-    target_namespaces_example = directory / NAMESPACES_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE
-    shutil.copy2(
-        WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE, target_namespaces_defaults
-    )
-    shutil.copy2(
-        WARNET_NAMESPACES_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE, target_namespaces_example
-    )
+    (directory / NETWORK_DIR / DEFAULT_NAMESPACES).mkdir(parents=True, exist_ok=True)
+    target_namespaces_defaults = directory / NETWORK_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE
+    target_namespaces_example = directory / NETWORK_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE
+    shutil.copy2(NETWORK_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE, target_namespaces_defaults)
+    shutil.copy2(NETWORK_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE, target_namespaces_example)
 
 
 @click.group(name="namespaces")
