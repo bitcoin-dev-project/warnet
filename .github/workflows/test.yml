@@ -25,7 +25,34 @@ jobs:
       - uses: eifinger/setup-uv@v1
       - run: uvx ruff format . --check
 
+  build-image:
+    needs: [ruff, ruff-format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and export
+        uses: docker/build-push-action@v5
+        with:
+          file: resources/images/commander/Dockerfile
+          context: .
+          tags: bitcoindevproject/warnet-commander:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/commander.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commander
+          path: /tmp/commander.tar
+
   test:
+    needs: [build-image]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -44,9 +71,20 @@ jobs:
         with:
           cpus: max
           memory: 4000m
+      - name: Download commander artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: commander
+          path: /tmp
       - uses: eifinger/setup-uv@v1
       - name: Install project
         run: uv sync --all-extras --dev
+      - name: Install commander image
+        run: |
+          echo loading commander image into minikube docker
+          eval $(minikube -p minikube docker-env)
+          docker load --input /tmp/commander.tar
+          docker image ls -a
       - name: Run tests
         run: |
           source .venv/bin/activate

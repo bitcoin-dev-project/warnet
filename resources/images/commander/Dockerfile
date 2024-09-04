@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # Python dependencies
 #RUN pip install --no-cache-dir prometheus_client
 
-COPY src/warnet/scenarios/commander.py /
+COPY resources/scenarios/commander.py /
 COPY src/test_framework /test_framework
 
 # -u: force the stdout and stderr streams to be unbuffered
