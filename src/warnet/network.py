@@ -1,41 +1,21 @@
 import json
 import shutil
-from importlib.resources import files
 from pathlib import Path
 
 from rich import print
 
 from .bitcoin import _rpc
+from .constants import (
+    LOGGING_HELM_COMMANDS,
+    NETWORK_DIR,
+    SCENARIOS_DIR,
+)
 from .k8s import get_mission
 from .process import stream_command
 
-WAR_MANIFESTS_FILES = files("resources.manifests")
-WAR_NETWORK_FILES = files("resources.networks")
-WAR_SCENARIOS_FILES = files("resources.scenarios")
-
-WAR_NETWORK_DIR = WAR_NETWORK_FILES.name
-WAR_SCENARIOS_DIR = WAR_SCENARIOS_FILES.name
-
-DEFAULT_NETWORK = Path("6_node_bitcoin")
-NETWORK_FILE = "network.yaml"
-DEFAULTS_FILE = "node-defaults.yaml"
-HELM_COMMAND = "helm upgrade --install --create-namespace"
-BITCOIN_CHART_LOCATION = str(files("resources.charts").joinpath("bitcoincore"))
-FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
-
 
 def setup_logging_helm() -> bool:
-    helm_commands = [
-        "helm repo add grafana https://grafana.github.io/helm-charts",
-        "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
-        "helm repo update",
-        f"helm upgrade --install --namespace warnet-logging --create-namespace --values {WAR_MANIFESTS_FILES}/loki_values.yaml loki grafana/loki --version 5.47.2",
-        "helm upgrade --install --namespace warnet-logging promtail grafana/promtail",
-        "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --set grafana.enabled=false",
-        f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {WAR_MANIFESTS_FILES}/grafana_values.yaml",
-    ]
-
-    for command in helm_commands:
+    for command in LOGGING_HELM_COMMANDS:
         if not stream_command(command):
             print(f"Failed to run Helm command: {command}")
             return False
@@ -67,8 +47,8 @@ def copy_network_defaults(directory: Path):
     """Create the project structure for a warnet project's network"""
     copy_defaults(
         directory,
-        WAR_NETWORK_DIR,
-        WAR_NETWORK_FILES.joinpath(),
+        NETWORK_DIR.name,
+        NETWORK_DIR,
         ["node-defaults.yaml", "__pycache__", "__init__.py"],
     )
 
@@ -77,8 +57,8 @@ def copy_scenario_defaults(directory: Path):
     """Create the project structure for a warnet project's scenarios"""
     copy_defaults(
         directory,
-        WAR_SCENARIOS_DIR,
-        WAR_SCENARIOS_FILES.joinpath(),
+        SCENARIOS_DIR.name,
+        SCENARIOS_DIR,
         ["__init__.py", "__pycache__", "commander.py"],
     )
 
