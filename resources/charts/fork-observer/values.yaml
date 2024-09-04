@@ -82,6 +82,8 @@ configQueryInterval: |
   # Interval for checking for new blocks
   query_interval = 20
 
+maxInterestingHeights: 100
+
 baseConfig: |
   # Database path of the key value store. Will be created if non-existing.
   database_path = "db"
@@ -106,7 +108,7 @@ baseConfig: |
   name = "Warnet"
   description = "A Warnet"
   min_fork_height = 0
-  max_interesting_heights = 100
+  max_interesting_heights = {{ .Values.maxInterestingHeights }}
       [pool_identification]
       enable = false
 

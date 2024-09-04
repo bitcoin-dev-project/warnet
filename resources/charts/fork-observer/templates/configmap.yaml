@@ -7,5 +7,5 @@ metadata:
 data:
   config.toml: |
     {{- .Values.configQueryInterval | nindent 4 }}
-    {{- .Values.baseConfig | nindent 4 }}
+    {{- tpl .Values.baseConfig . | nindent 4 }}
     {{- .Values.config | nindent 8 }}
