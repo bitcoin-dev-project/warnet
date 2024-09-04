@@ -1,15 +1,12 @@
 import json
 import shutil
-import tempfile
 from importlib.resources import files
 from pathlib import Path
 
-import click
-import yaml
 from rich import print
 
 from .bitcoin import _rpc
-from .k8s import delete_namespace, get_default_namespace, get_mission, get_pods
+from .k8s import get_mission
 from .process import stream_command
 
 WAR_MANIFESTS_FILES = files("resources.manifests")
@@ -24,30 +21,6 @@ NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 BITCOIN_CHART_LOCATION = str(files("resources.charts").joinpath("bitcoincore"))
-
-
-@click.group(name="network")
-def network():
-    """Network commands"""
-
-
-class Edge:
-    def __init__(self, src: str, dst: str, data: dict[str, any]):
-        self.src = src
-        self.dst = dst
-        self.data = data
-
-    def to_dict(self):
-        return {"src": self.src, "dst": self.dst, "data": self.data}
-
-
-def edges_from_network_file(network_file: dict[str, any]) -> list[Edge]:
-    edges = []
-    for node in network_file["nodes"]:
-        if "connect" in node:
-            for connection in node["connect"]:
-                edges.append(Edge(node["name"], connection, ""))
-    return edges
 
 
 def setup_logging_helm() -> bool:
@@ -104,76 +77,6 @@ def copy_scenario_defaults(directory: Path):
     )
 
 
-@network.command()
-@click.argument(
-    "network_dir",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
-)
-@click.option("--logging/--no-logging", default=False)
-def deploy(network_dir: Path, logging: bool):
-    """Deploy a warnet with topology loaded from <network_dir>"""
-    network_file_path = network_dir / NETWORK_FILE
-    defaults_file_path = network_dir / DEFAULTS_FILE
-
-    with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
-
-    namespace = get_default_namespace()
-
-    for node in network_file["nodes"]:
-        print(f"Deploying node: {node.get('name')}")
-        try:
-            temp_override_file_path = ""
-            node_name = node.get("name")
-            # all the keys apart from name
-            node_config_override = {k: v for k, v in node.items() if k != "name"}
-
-            cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
-
-            if node_config_override:
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".yaml", delete=False
-                ) as temp_file:
-                    yaml.dump(node_config_override, temp_file)
-                    temp_override_file_path = Path(temp_file.name)
-                cmd = f"{cmd} -f {temp_override_file_path}"
-
-            if not stream_command(cmd):
-                print(f"Failed to run Helm command: {cmd}")
-                return
-        except Exception as e:
-            print(f"Error: {e}")
-            return
-        finally:
-            if temp_override_file_path:
-                Path(temp_override_file_path).unlink()
-
-
-@network.command()
-def down():
-    """Bring down a running warnet"""
-    if delete_namespace("warnet-logging"):
-        print("Warnet logging deleted")
-    else:
-        print("Warnet logging NOT deleted")
-    tanks = get_mission("tank")
-    for tank in tanks:
-        cmd = f"helm uninstall {tank.metadata.name}"
-        stream_command(cmd)
-    # Clean up scenarios and other pods
-    # TODO: scenarios should be helm-ified as well
-    pods = get_pods()
-    for pod in pods.items:
-        cmd = f"kubectl delete pod {pod.metadata.name}"
-        stream_command(cmd)
-
-
-@network.command()
-def connected():
-    """Determine if all p2p connections defined in graph are established"""
-    print(_connected())
-
-
 def _connected():
     tanks = get_mission("tank")
     for tank in tanks:
@@ -193,22 +96,3 @@ def _connected():
             return False
     print("Network connected")
     return True
-
-
-@network.command()
-def status():
-    """Return pod status"""
-    # TODO: make it a pretty table
-    print(_status())
-
-
-def _status():
-    tanks = get_mission("tank")
-    stats = []
-    for tank in tanks:
-        status = {
-            "tank": tank.metadata.name,
-            "bitcoin_status": tank.status.phase.lower(),
-        }
-        stats.append(status)
-    return stats

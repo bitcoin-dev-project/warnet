@@ -1,10 +1,8 @@
 import shutil
-import tempfile
 from importlib.resources import files
 from pathlib import Path
 
 import click
-import yaml
 
 from .process import run_command, stream_command
 
@@ -35,58 +33,9 @@ def namespaces():
     """Namespaces commands"""
 
 
-@namespaces.command()
 @click.argument(
     "namespaces_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path)
 )
-def deploy(namespaces_dir: Path):
-    """Deploy namespaces with users from a <namespaces_file>"""
-    namespaces_file_path = namespaces_dir / NAMESPACES_FILE
-    defaults_file_path = namespaces_dir / DEFAULTS_FILE
-
-    with namespaces_file_path.open() as f:
-        namespaces_file = yaml.safe_load(f)
-
-    # validate names before deploying
-    names = [n.get("name") for n in namespaces_file["namespaces"]]
-    for n in names:
-        if not n.startswith("warnet-"):
-            print(
-                f"Failed to create namespace: {n}. Namespaces must start with a 'warnet-' prefix."
-            )
-
-    # deploy namespaces
-    for namespace in namespaces_file["namespaces"]:
-        print(f"Deploying namespace: {namespace.get('name')}")
-        try:
-            temp_override_file_path = Path()
-            namespace_name = namespace.get("name")
-            # all the keys apart from name
-            namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
-
-            cmd = (
-                f"{HELM_COMMAND} {namespace_name} {BITCOIN_CHART_LOCATION} -f {defaults_file_path}"
-            )
-
-            if namespace_config_override:
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".yaml", delete=False
-                ) as temp_file:
-                    yaml.dump(namespace_config_override, temp_file)
-                    temp_override_file_path = Path(temp_file.name)
-                cmd = f"{cmd} -f {temp_override_file_path}"
-
-            if not stream_command(cmd):
-                print(f"Failed to run Helm command: {cmd}")
-                return
-        except Exception as e:
-            print(f"Error: {e}")
-            return
-        finally:
-            if temp_override_file_path.exists():
-                temp_override_file_path.unlink()
-
-
 @namespaces.command()
 def list():
     """List all namespaces with 'warnet-' prefix"""
