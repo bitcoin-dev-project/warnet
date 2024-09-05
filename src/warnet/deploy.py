@@ -6,6 +6,7 @@ import yaml
 
 from .constants import (
     BITCOIN_CHART_LOCATION,
+    CADDY_CHART,
     DEFAULTS_FILE,
     DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
@@ -45,6 +46,7 @@ def deploy(directory, debug):
         deploy_logging_stack(directory, debug)
         deploy_network(directory, debug)
         deploy_fork_observer(directory, debug)
+        deploy_caddy(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
@@ -88,6 +90,25 @@ def deploy_logging_stack(directory: Path, debug: bool):
             print(f"Failed to run Helm command: {command}")
             return False
     return True
+
+
+def deploy_caddy(directory: Path, debug: bool):
+    network_file_path = directory / NETWORK_FILE
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+
+    # Only start if configured in the network file
+    if not network_file.get("fork_observer", {}).get("enabled", False):
+        return
+
+    namespace = get_default_namespace()
+    cmd = f"{HELM_COMMAND} 'caddy' {CADDY_CHART} --namespace {namespace}"
+    if debug:
+        cmd += " --debug"
+
+    if not stream_command(cmd):
+        click.echo(f"Failed to run Helm command: {cmd}")
+        return
 
 
 def deploy_fork_observer(directory: Path, debug: bool):
