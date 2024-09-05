@@ -33,6 +33,7 @@ def custom_graph(
     datadir: Path,
     fork_observer: bool,
     fork_obs_query_interval: int,
+    caddy: bool,
 ):
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
@@ -67,6 +68,9 @@ def custom_graph(
     network_yaml_data["fork_observer"] = {
         "enabled": fork_observer,
         "configQueryInterval": fork_obs_query_interval,
+    }
+    network_yaml_data["caddy"] = {
+        "enabled": caddy,
     }
 
     with open(os.path.join(datadir, "network.yaml"), "w") as f:
@@ -180,6 +184,7 @@ def inquirer_create_network(project_path: Path):
         custom_network_path,
         fork_observer,
         fork_observer_query_interval,
+        fork_observer, # This enables caddy whenever fork-observer is enabled
     )
     return custom_network_path
 

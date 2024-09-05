@@ -12,6 +12,7 @@ WEIGHTED_TAGS = [
 ]
 
 DEFAULT_NAMESPACE = "warnet"
+LOGGING_NAMESPACE = "warnet-logging"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs

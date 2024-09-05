@@ -15,6 +15,7 @@ from .constants import (
     FORK_OBSERVER_CHART,
     HELM_COMMAND,
     LOGGING_HELM_COMMANDS,
+    LOGGING_NAMESPACE,
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
@@ -100,12 +101,14 @@ def deploy_caddy(directory: Path, debug: bool):
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    namespace = LOGGING_NAMESPACE
+    # TODO: get this from the helm chart
+    name = "caddy"
+
     # Only start if configured in the network file
-    if not network_file.get("fork_observer", {}).get("enabled", False):
+    if not network_file.get(name, {}).get("enabled", False):
         return
 
-    namespace = get_default_namespace()
-    name = "caddy"
     cmd = f"{HELM_COMMAND} {name} {CADDY_CHART} --namespace {namespace}"
     if debug:
         cmd += " --debug"
@@ -115,7 +118,7 @@ def deploy_caddy(directory: Path, debug: bool):
         return
 
     wait_for_caddy_ready(name, namespace)
-    _port_start_internal()
+    _port_start_internal(name, namespace)
 
 
 def deploy_fork_observer(directory: Path, debug: bool):
@@ -127,7 +130,8 @@ def deploy_fork_observer(directory: Path, debug: bool):
     if not network_file.get("fork_observer", {}).get("enabled", False):
         return
 
-    namespace = get_default_namespace()
+    default_namespace = get_default_namespace()
+    namespace = LOGGING_NAMESPACE
     cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
     if debug:
         cmd += " --debug"
@@ -143,7 +147,7 @@ def deploy_fork_observer(directory: Path, debug: bool):
 id = {i}
 name = "{node_name}"
 description = "A node. Just A node."
-rpc_host = "{node_name}"
+rpc_host = "{node_name}.{default_namespace}.svc"
 rpc_port = 18443
 rpc_user = "forkobserver"
 rpc_password = "tabconf2024"
@@ -275,17 +279,17 @@ def run_detached_process(command):
     print(f"Started detached process: {command}")
 
 
-def _port_start_internal():
-    command = "kubectl port-forward service/caddy 2019:80"
+def _port_start_internal(name, namespace):
+    command = f"kubectl port-forward -n {namespace} service/{name} 2019:80"
     run_detached_process(command)
     click.echo(
         "Port forwarding on port 2019 started in the background. To access landing page visit localhost:2019."
     )
 
 
-def _port_stop_internal():
+def _port_stop_internal(name, namespace):
     if is_windows():
         os.system("taskkill /F /IM kubectl.exe")
     else:
-        os.system("pkill -f 'kubectl port-forward service/caddy-service 2019:80'")
+        os.system(f"pkill -f 'kubectl port-forward -n {namespace} service/{name} 2019:80'")
     click.echo("Port forwarding stopped.")
