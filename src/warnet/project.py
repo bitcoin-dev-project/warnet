@@ -273,7 +273,11 @@ def create_warnet_project(directory: Path, check_empty: bool = False):
 )
 def create(directory: Path):
     """Create a new warnet project in the specified directory"""
-    if directory.exists():
+    create_internal(directory)
+
+
+def create_internal(directory: Path, from_init=False):
+    if directory.exists() and not from_init:
         click.secho(f"Error: Directory {directory} already exists", fg="red")
         return
 
@@ -434,7 +438,17 @@ def create(directory: Path):
 def init():
     """Initialize a warnet project in the current directory"""
     current_dir = Path.cwd()
-    create_warnet_project(current_dir, check_empty=True)
+
+    custom_project = click.prompt(
+        click.style("\nWould you like to create a custom network?", fg="blue", bold=True),
+        type=bool,
+        default=True,
+    )
+    if not custom_project:
+        create_warnet_project(current_dir, check_empty=True)
+        return 0
+    else:
+        create_internal(directory=current_dir, from_init=True)
 
 
 def custom_graph(
