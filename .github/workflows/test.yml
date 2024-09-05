@@ -63,6 +63,7 @@ jobs:
       matrix:
         test:
           - conf_test.py
+          - commander_test.py
           - dag_connection_test.py
           - logging_test.py
           - rpc_test.py
