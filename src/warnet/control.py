@@ -15,6 +15,7 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 from .constants import COMMANDER_CHART
+from .deploy import _port_stop_internal
 from .k8s import (
     get_default_namespace,
     get_mission,
@@ -162,6 +163,8 @@ def down():
         for future in as_completed(futures):
             console.print(f"[yellow]{future.result()}[/yellow]")
 
+    # Shutdown any port forwarding
+    _port_stop_internal()
     console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
     console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
     console.print("[bold green]Warnet teardown process completed.[/bold green]")

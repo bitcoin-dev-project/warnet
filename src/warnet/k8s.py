@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 import yaml
-from kubernetes import client, config
+from kubernetes import client, config, watch
 from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -227,3 +227,21 @@ def snapshot_bitcoin_datadir(
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+
+
+def wait_for_caddy_ready(name, namespace, timeout=300):
+    sclient = get_static_client()
+    w = watch.Watch()
+    for event in w.stream(
+        sclient.list_namespaced_pod, namespace=namespace, timeout_seconds=timeout
+    ):
+        pod = event["object"]
+        if pod.metadata.name == name and pod.status.phase == "Running":
+            conditions = pod.status.conditions or []
+            ready_condition = next((c for c in conditions if c.type == "Ready"), None)
+            if ready_condition and ready_condition.status == "True":
+                print(f"Caddy pod {name} is ready.")
+                w.stop()
+                return True
+    print(f"Timeout waiting for Caddy pod {name} to be ready.")
+    return False

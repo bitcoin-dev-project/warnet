@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -16,7 +19,7 @@ from .constants import (
     NAMESPACES_FILE,
     NETWORK_FILE,
 )
-from .k8s import get_default_namespace
+from .k8s import get_default_namespace, wait_for_caddy_ready
 from .process import stream_command
 
 
@@ -102,13 +105,17 @@ def deploy_caddy(directory: Path, debug: bool):
         return
 
     namespace = get_default_namespace()
-    cmd = f"{HELM_COMMAND} 'caddy' {CADDY_CHART} --namespace {namespace}"
+    name = "caddy"
+    cmd = f"{HELM_COMMAND} {name} {CADDY_CHART} --namespace {namespace}"
     if debug:
         cmd += " --debug"
 
     if not stream_command(cmd):
         click.echo(f"Failed to run Helm command: {cmd}")
         return
+
+    wait_for_caddy_ready(name, namespace)
+    _port_start_internal()
 
 
 def deploy_fork_observer(directory: Path, debug: bool):
@@ -242,3 +249,43 @@ def deploy_namespaces(directory: Path):
         finally:
             if temp_override_file_path.exists():
                 temp_override_file_path.unlink()
+
+
+def is_windows():
+    return sys.platform.startswith("win")
+
+
+def run_detached_process(command):
+    if is_windows():
+        # For Windows, use CREATE_NEW_PROCESS_GROUP and DETACHED_PROCESS
+        subprocess.Popen(
+            command,
+            shell=True,
+            stdin=None,
+            stdout=None,
+            stderr=None,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+        )
+    else:
+        # For Unix-like systems, use nohup and redirect output
+        command = f"nohup {command} > /dev/null 2>&1 &"
+        subprocess.Popen(command, shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+
+    print(f"Started detached process: {command}")
+
+
+def _port_start_internal():
+    command = "kubectl port-forward service/caddy 2019:80"
+    run_detached_process(command)
+    click.echo(
+        "Port forwarding on port 2019 started in the background. To access landing page visit localhost:2019."
+    )
+
+
+def _port_stop_internal():
+    if is_windows():
+        os.system("taskkill /F /IM kubectl.exe")
+    else:
+        os.system("pkill -f 'kubectl port-forward service/caddy-service 2019:80'")
+    click.echo("Port forwarding stopped.")
