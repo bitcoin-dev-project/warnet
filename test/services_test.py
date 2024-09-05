@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from subprocess import PIPE, Popen
 
 import requests
 from test_base import TestBase
@@ -30,21 +29,14 @@ class ServicesTest(TestBase):
         self.log.info("Creating chain split")
         self.warnet("bitcoin rpc john createwallet miner")
         self.warnet("bitcoin rpc john -generate 1")
-        self.log.info("Forwarding port 2323...")
-        # Stays alive in background
-        self.fo_port_fwd_process = Popen(
-            ["kubectl", "port-forward", "fork-observer", "2323"],
-            stdout=PIPE,
-            stderr=PIPE,
-            bufsize=1,
-            universal_newlines=True,
-        )
+        # Port will be auto-forwarded by `warnet deploy`, routed through the enabled Caddy pod
 
         def call_fo_api():
+            fo_root = "http://localhost:2019/fork-observer"
             try:
-                fo_res = requests.get("http://localhost:2323/api/networks.json")
+                fo_res = requests.get(f"{fo_root}/api/networks.json")
                 network_id = fo_res.json()["networks"][0]["id"]
-                fo_data = requests.get(f"http://localhost:2323/api/{network_id}/data.json")
+                fo_data = requests.get(f"{fo_root}/api/{network_id}/data.json")
                 # fork observed!
                 return len(fo_data.json()["header_infos"]) == 2
             except Exception as e:
@@ -54,7 +46,6 @@ class ServicesTest(TestBase):
 
         self.wait_for_predicate(call_fo_api)
         self.log.info("Fork observed!")
-        self.fo_port_fwd_process.terminate()
 
 
 if __name__ == "__main__":
