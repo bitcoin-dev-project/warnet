@@ -54,7 +54,7 @@ cli.add_command(run)
 
 
 @cli.command()
-def quickstart():
+def setup():
     """Setup warnet"""
 
     class ToolStatus(Enum):
@@ -276,171 +276,6 @@ def quickstart():
         else:
             click.secho(" ⭐️ Warnet prerequisites look good.\n")
 
-        # New project setup
-        questions = [
-            inquirer.Confirm(
-                "create_project",
-                message=click.style("Do you want to create a new project?", fg="blue", bold=True),
-                default=True,
-            ),
-        ]
-        answers = inquirer.prompt(questions)
-        if answers is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        if not answers["create_project"]:
-            click.secho("\nSetup completed successfully!", fg="green", bold=True)
-            return True
-
-        # Custom project setup
-        questions = [
-            inquirer.Path(
-                "project_path",
-                message=click.style("Enter the project directory path", fg="blue", bold=True),
-                path_type=inquirer.Path.DIRECTORY,
-                exists=False,
-            ),
-            inquirer.Confirm(
-                "custom_network",
-                message=click.style(
-                    "Do you want to create a custom network?", fg="blue", bold=True
-                ),
-                default=True,
-            ),
-        ]
-        proj_answers = inquirer.prompt(questions)
-        if proj_answers is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        if not proj_answers["custom_network"]:
-            project_path = Path(os.path.expanduser(proj_answers["project_path"]))
-            create_warnet_project(project_path)
-            click.secho("\nSetup completed successfully!", fg="green", bold=True)
-            click.echo(
-                "\nRun the following command to deploy this network using the default demo network:"
-            )
-            click.echo(f"warcli deploy {proj_answers['project_path']}/networks/6_node_bitcoin")
-            return True
-        answers.update(proj_answers)
-
-        # Custom network configuration
-        questions = [
-            inquirer.Text(
-                "network_name",
-                message=click.style("Enter your network name", fg="blue", bold=True),
-                validate=lambda _, x: len(x) > 0,
-            ),
-            inquirer.List(
-                "nodes",
-                message=click.style("How many nodes would you like?", fg="blue", bold=True),
-                choices=["8", "12", "20", "50", "other"],
-                default="12",
-            ),
-            inquirer.List(
-                "connections",
-                message=click.style(
-                    "How many connections would you like each node to have?",
-                    fg="blue",
-                    bold=True,
-                ),
-                choices=["0", "1", "2", "8", "12", "other"],
-                default="8",
-            ),
-            inquirer.List(
-                "version",
-                message=click.style(
-                    "Which version would you like nodes to run by default?", fg="blue", bold=True
-                ),
-                choices=SUPPORTED_TAGS,
-                default=DEFAULT_TAG,
-            ),
-        ]
-
-        net_answers = inquirer.prompt(questions)
-        if net_answers is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-
-        if net_answers["nodes"] == "other":
-            custom_nodes = inquirer.prompt(
-                [
-                    inquirer.Text(
-                        "nodes",
-                        message=click.style("Enter the number of nodes", fg="blue", bold=True),
-                        validate=lambda _, x: int(x) > 0,
-                    )
-                ]
-            )
-            if custom_nodes is None:
-                click.secho("Setup cancelled by user.", fg="yellow")
-                return False
-            net_answers["nodes"] = custom_nodes["nodes"]
-
-        if net_answers["connections"] == "other":
-            custom_connections = inquirer.prompt(
-                [
-                    inquirer.Text(
-                        "connections",
-                        message=click.style(
-                            "Enter the number of connections", fg="blue", bold=True
-                        ),
-                        validate=lambda _, x: int(x) >= 0,
-                    )
-                ]
-            )
-            if custom_connections is None:
-                click.secho("Setup cancelled by user.", fg="yellow")
-                return False
-            net_answers["connections"] = custom_connections["connections"]
-        answers.update(net_answers)
-        fork_observer = click.prompt(
-            click.style(
-                "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
-            ),
-            type=bool,
-            default=True,
-        )
-        fork_observer_query_interval = 20
-        if fork_observer:
-            fork_observer_query_interval = click.prompt(
-                click.style(
-                    "\nHow often would you like fork-observer to query node status (seconds)?",
-                    fg="blue",
-                    bold=True,
-                ),
-                type=int,
-                default=20,
-            )
-
-        click.secho("\nCreating project structure...", fg="yellow", bold=True)
-        project_path = Path(os.path.expanduser(proj_answers["project_path"]))
-        create_warnet_project(project_path)
-
-        click.secho("\nGenerating custom network...", fg="yellow", bold=True)
-        custom_network_path = project_path / "networks" / answers["network_name"]
-        custom_graph(
-            int(answers["nodes"]),
-            int(answers["connections"]),
-            answers["version"],
-            custom_network_path,
-            fork_observer,
-            fork_observer_query_interval,
-        )
-        click.secho("\nSetup completed successfully!", fg="green", bold=True)
-
-        click.echo(
-            f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
-        )
-        if fork_observer:
-            click.echo(
-                "If you enabled fork-observer you must forward the port from the cluster to your local machine:\n"
-                "`kubectl port-forward fork-observer 2323`\n"
-                "fork-observer will then be available at web address: localhost:2323"
-            )
-
-        click.echo("\nWhen you're ready, run the following command to deploy this network:")
-        click.echo(f"warnet deploy {custom_network_path}")
-
     except Exception as e:
         click.echo(f"{e}\n\n")
         click.secho(f"An error occurred while running the quick start script:\n\n{e}\n\n", fg="red")
@@ -477,7 +312,158 @@ def create(directory: Path):
     if directory.exists():
         click.secho(f"Error: Directory {directory} already exists", fg="red")
         return
-    create_warnet_project(directory)
+
+    answers = {}
+
+    # Network name
+    network_name = inquirer.prompt(
+        [
+            inquirer.Text(
+                "network_name",
+                message=click.style("Choose a network name", fg="blue", bold=True),
+                validate=lambda _, x: len(x) > 0,
+            )
+        ]
+    )
+    if network_name is None:
+        click.secho("Setup cancelled by user.", fg="yellow")
+        return False
+    answers.update(network_name)
+
+    # Number of nodes
+    nodes_question = inquirer.prompt(
+        [
+            inquirer.List(
+                "nodes",
+                message=click.style(
+                    "How many nodes would you like in the network?", fg="blue", bold=True
+                ),
+                choices=["8", "12", "20", "50", "other"],
+                default="12",
+            )
+        ]
+    )
+    if nodes_question is None:
+        click.secho("Setup cancelled by user.", fg="yellow")
+        return False
+
+    if nodes_question["nodes"] == "other":
+        custom_nodes = inquirer.prompt(
+            [
+                inquirer.Text(
+                    "nodes",
+                    message=click.style("Enter the number of nodes", fg="blue", bold=True),
+                    validate=lambda _, x: int(x) > 0,
+                )
+            ]
+        )
+        if custom_nodes is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+        answers["nodes"] = custom_nodes["nodes"]
+    else:
+        answers["nodes"] = nodes_question["nodes"]
+
+    # Number of connections
+    connections_question = inquirer.prompt(
+        [
+            inquirer.List(
+                "connections",
+                message=click.style(
+                    "How many connections would you like each node to have?",
+                    fg="blue",
+                    bold=True,
+                ),
+                choices=["0", "1", "2", "8", "12", "other"],
+                default="8",
+            )
+        ]
+    )
+    if connections_question is None:
+        click.secho("Setup cancelled by user.", fg="yellow")
+        return False
+
+    if connections_question["connections"] == "other":
+        custom_connections = inquirer.prompt(
+            [
+                inquirer.Text(
+                    "connections",
+                    message=click.style("Enter the number of connections", fg="blue", bold=True),
+                    validate=lambda _, x: int(x) >= 0,
+                )
+            ]
+        )
+        if custom_connections is None:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+        answers["connections"] = custom_connections["connections"]
+    else:
+        answers["connections"] = connections_question["connections"]
+
+    # Version
+    version_question = inquirer.prompt(
+        [
+            inquirer.List(
+                "version",
+                message=click.style(
+                    "Which version would you like nodes to run by default?", fg="blue", bold=True
+                ),
+                choices=SUPPORTED_TAGS,
+                default=DEFAULT_TAG,
+            )
+        ]
+    )
+    if version_question is None:
+        click.secho("Setup cancelled by user.", fg="yellow")
+        return False
+    answers.update(version_question)
+    fork_observer = click.prompt(
+        click.style(
+            "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
+        ),
+        type=bool,
+        default=True,
+    )
+    fork_observer_query_interval = 20
+    if fork_observer:
+        fork_observer_query_interval = click.prompt(
+            click.style(
+                "\nHow often would you like fork-observer to query node status (seconds)?",
+                fg="blue",
+                bold=True,
+            ),
+            type=int,
+            default=20,
+        )
+
+    click.secho("\nCreating project structure...", fg="yellow", bold=True)
+    project_path = Path(os.path.expanduser(directory))
+    create_warnet_project(project_path)
+
+    click.secho("\nGenerating custom network...", fg="yellow", bold=True)
+    custom_network_path = project_path / "networks" / answers["network_name"]
+    custom_graph(
+        int(answers["nodes"]),
+        int(answers["connections"]),
+        answers["version"],
+        custom_network_path,
+        fork_observer,
+        fork_observer_query_interval,
+    )
+    click.secho("\nSetup completed successfully!", fg="green", bold=True)
+
+    click.echo(
+        f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
+    )
+    if fork_observer:
+        click.echo(
+            "If you enabled fork-observer you must forward the port from the cluster to your local machine:\n"
+            "`kubectl port-forward fork-observer 2323`\n"
+            "fork-observer will then be available at web address: localhost:2323"
+        )
+
+    click.echo("\nWhen you're ready, run the following command to deploy this network:")
+    click.echo(f"warnet deploy {custom_network_path}")
 
 
 @cli.command()
