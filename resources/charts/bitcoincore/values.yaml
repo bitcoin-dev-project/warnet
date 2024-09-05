@@ -112,14 +112,6 @@ collectLogs: false
 metricsExport: false
 prometheusMetricsPort: 9332
 
-regtestConfig: |
-  rpcuser=user
-  rpcpassword=password
-  rpcport=18443
-  rpcallowip=0.0.0.0/0
-  rpcbind=0.0.0.0
-  rest=1
-
 baseConfig: |
   checkmempool=0
   acceptnonstdtxn=1
@@ -132,6 +124,15 @@ baseConfig: |
 
   zmqpubrawblock=tcp://0.0.0.0:28332
   zmqpubrawtx=tcp://0.0.0.0:28333
+
+  rpcuser=user
+  rpcpassword=password
+  # use regtest port by default for all networks
+  rpcport=18443
+  rpcallowip=0.0.0.0/0
+  rpcbind=0.0.0.0
+  rest=1
+
 
 config: ""
 
