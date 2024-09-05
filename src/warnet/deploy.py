@@ -282,11 +282,11 @@ def run_detached_process(command):
 
 
 def _port_start_internal(name, namespace):
+    click.echo("Starting port-forwarding to warnet dashboard")
     command = f"kubectl port-forward -n {namespace} service/{name} 2019:80"
     run_detached_process(command)
-    click.echo(
-        "Port forwarding on port 2019 started in the background. To access landing page visit localhost:2019."
-    )
+    click.echo("Port forwarding on port 2019 started in the background.")
+    click.echo("\nTo access the warnet dashboard visit localhost:2019 or run:\n  warnet dashboard")
 
 
 def _port_stop_internal(name, namespace):
