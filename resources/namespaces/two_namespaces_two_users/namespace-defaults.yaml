@@ -12,5 +12,5 @@ roles:
   - name: pod-manager
     rules:
       - apiGroups: [""]
-        resources: ["pods"]
+        resources: ["pods", "configmaps"]
         verbs: ["get", "list", "watch", "create", "update", "delete"]
