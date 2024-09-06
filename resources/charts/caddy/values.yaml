@@ -99,7 +99,7 @@ caddyConfig: |
     }
 
     handle_path /grafana/* {
-      reverse_proxy grafana:3000
+      reverse_proxy loki-grafana:80
     }
 
   }

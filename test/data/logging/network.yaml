@@ -11,3 +11,5 @@ nodes:
   - name: tank-0002
     connect:
       - tank-0000
+caddy:
+  enabled: true

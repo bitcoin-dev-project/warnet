@@ -184,7 +184,7 @@ def inquirer_create_network(project_path: Path):
         custom_network_path,
         fork_observer,
         fork_observer_query_interval,
-        fork_observer, # This enables caddy whenever fork-observer is enabled
+        fork_observer,  # This enables caddy whenever fork-observer is enabled
     )
     return custom_network_path
 

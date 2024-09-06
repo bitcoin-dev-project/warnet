@@ -10,6 +10,8 @@ from subprocess import PIPE, Popen
 import requests
 from test_base import TestBase
 
+GRAFANA_URL = "http://localhost:2019/grafana/"
+
 
 class LoggingTest(TestBase):
     def __init__(self):
@@ -60,7 +62,7 @@ class LoggingTest(TestBase):
 
         def check_endpoint():
             try:
-                response = requests.get("http://localhost:3000/login")
+                response = requests.get(f"{GRAFANA_URL}login")
                 return response.status_code == 200
             except requests.RequestException:
                 return False
@@ -75,7 +77,7 @@ class LoggingTest(TestBase):
             "from": f"{start}",
             "to": "now",
         }
-        reply = requests.post("http://localhost:3000/api/ds/query", json=data)
+        reply = requests.post(f"{GRAFANA_URL}api/ds/query", json=data)
         if reply.status_code != 200:
             self.log.error(f"Grafana API request failed with status code {reply.status_code}")
             self.log.error(f"Response content: {reply.text}")
@@ -92,7 +94,7 @@ class LoggingTest(TestBase):
         self.warnet(f"run {miner_file} --allnodes --interval=5 --mature")
         self.warnet(f"run {tx_flood_file} --interval=1")
 
-        prometheus_ds = requests.get("http://localhost:3000/api/datasources/name/Prometheus")
+        prometheus_ds = requests.get(f"{GRAFANA_URL}api/datasources/name/Prometheus")
         assert prometheus_ds.status_code == 200
         prometheus_uid = prometheus_ds.json()["uid"]
         self.log.info(f"Got Prometheus data source uid from Grafana: {prometheus_uid}")
