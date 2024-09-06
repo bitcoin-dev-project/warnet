@@ -62,6 +62,7 @@ jobs:
           - logging_test.py
           - rpc_test.py
           - services_test.py
+          - signet_test.py
           - scenarios_test.py
     steps:
       - uses: actions/checkout@v4

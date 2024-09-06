@@ -1,0 +1,11 @@
+image:
+  repository: bitcoindevproject/bitcoin
+  pullPolicy: IfNotPresent
+  tag: "27.0"
+
+chain: signet
+
+config: |
+  debug=rpc
+  debug=net
+  signetchallenge=0014d33b6e11ca95c4edccd8e986434358d79e919730

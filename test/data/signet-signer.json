@@ -1,0 +1,52 @@
+{
+  "address":
+  {
+    "address": "tb1q6vakuyw2jhzwmnxcaxryxs6c670fr9esfvrrhj",
+    "scriptPubKey": "0014d33b6e11ca95c4edccd8e986434358d79e919730",
+    "ismine": true,
+    "solvable": true,
+    "desc": "wpkh([2e239023/84h/1h/0h/0/0]03d28a77a6ea884727049c72818c312d1f7fefb4aa5e62c9211403fd6218eaa6fa)#vp55uze6",
+    "parent_desc": "wpkh([2e239023/84h/1h/0h]tpubDDsmgRhtuNzhYbEiUbucryCNyjshjKf4fawmVWAAwej5HhSLmXVWD9z8U8QHgaSQmYmGBfTfab6nsM4bLQkRR1qdpazc258PGtcyVJeDLbj/0/*)#r5lwvzmj",
+    "iswatchonly": false,
+    "isscript": false,
+    "iswitness": true,
+    "witness_version": 0,
+    "witness_program": "d33b6e11ca95c4edccd8e986434358d79e919730",
+    "pubkey": "03d28a77a6ea884727049c72818c312d1f7fefb4aa5e62c9211403fd6218eaa6fa",
+    "ischange": false,
+    "timestamp": 1725633470,
+    "hdkeypath": "m/84h/1h/0h/0/0",
+    "hdseedid": "0000000000000000000000000000000000000000",
+    "hdmasterfingerprint": "2e239023",
+    "labels": [
+      "bech32"
+    ]
+  },
+  "descriptors":
+  [
+    {
+      "desc": "wpkh(tprv8ZgxMBicQKsPfH87iaMtrpzTkWiyFDW7SVWqfsKAhtyEBEqMV6ctPdtc5pNrb2FpSmPcDe8NrxEouUnWj1ud7LT1X1hB1XHKAgB2Z5Z4u2s/84h/1h/0h/0/*)#5j6mshps",
+      "timestamp": 0,
+      "active": true,
+      "internal": false,
+      "range": [
+        0,
+        999
+      ],
+      "next": 0,
+      "next_index": 0
+    },
+    {
+      "desc": "wpkh(tprv8ZgxMBicQKsPfH87iaMtrpzTkWiyFDW7SVWqfsKAhtyEBEqMV6ctPdtc5pNrb2FpSmPcDe8NrxEouUnWj1ud7LT1X1hB1XHKAgB2Z5Z4u2s/84h/1h/0h/1/*)#9xl6dz3g",
+      "timestamp": 0,
+      "active": true,
+      "internal": true,
+      "range": [
+        0,
+        999
+      ],
+      "next": 0,
+      "next_index": 0
+    }
+  ]
+}

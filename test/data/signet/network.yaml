@@ -1,0 +1,8 @@
+nodes:
+  - name: miner
+  - name: tank-0001
+    connect:
+      - miner
+  - name: tank-0002
+    connect:
+      - miner
