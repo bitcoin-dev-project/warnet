@@ -6,7 +6,6 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from enum import Enum, auto
-from importlib.resources import files
 from pathlib import Path
 from typing import Callable
 
@@ -15,6 +14,14 @@ import inquirer
 import yaml
 from inquirer.themes import GreenPassion
 
+from warnet.constants import (
+    DEFAULT_TAG,
+    DEFAULTS_FILE,
+    NETWORK_DIR,
+    NETWORK_FILE,
+    SRC_DIR,
+    SUPPORTED_TAGS,
+)
 from warnet.k8s import get_default_namespace
 from warnet.process import run_command, stream_command
 
@@ -26,9 +33,8 @@ from .graph import graph
 from .image import image
 from .network import copy_network_defaults, copy_scenario_defaults
 from .status import status as status_command
-from .util import DEFAULT_TAG, SUPPORTED_TAGS
 
-QUICK_START_PATH = files("resources.scripts").joinpath("quick_start.sh")
+QUICK_START_PATH = SRC_DIR.joinpath("resources", "scripts", "quick_start.sh")
 
 
 @click.group()
@@ -592,10 +598,6 @@ def logs(pod_name: str, follow: bool):
         pass  # cancelled by user
 
 
-if __name__ == "__main__":
-    cli()
-
-
 def custom_graph(
     num_nodes: int,
     num_connections: int,
@@ -639,17 +641,19 @@ def custom_graph(
         "configQueryInterval": fork_obs_query_interval,
     }
 
-    with open(os.path.join(datadir, "network.yaml"), "w") as f:
+    with open(os.path.join(datadir, NETWORK_FILE), "w") as f:
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
     # Generate node-defaults.yaml
-    default_yaml_path = files("resources.networks").joinpath("node-defaults.yaml")
+    default_yaml_path = NETWORK_DIR.joinpath(DEFAULTS_FILE)
     with open(str(default_yaml_path)) as f:
         defaults_yaml_content = f.read()
 
-    with open(os.path.join(datadir, "node-defaults.yaml"), "w") as f:
+    with open(os.path.join(datadir, DEFAULTS_FILE), "w") as f:
         f.write(defaults_yaml_content)
 
-    click.echo(
-        f"Project '{datadir}' has been created with 'network.yaml' and 'node-defaults.yaml'."
-    )
+    click.echo(f"Project '{datadir}' has been created with '{NETWORK_FILE}' and '{DEFAULTS_FILE}'.")
+
+
+if __name__ == "__main__":
+    cli()

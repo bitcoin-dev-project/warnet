@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 from rich import print as richprint
 
+from .constants import NETWORK_DIR
 from .namespaces import copy_namespaces_defaults, namespaces
 from .network import copy_network_defaults
 
@@ -18,22 +19,6 @@ admin.add_command(namespaces)
 
 
 @admin.command()
-@click.argument("directory", type=Path)
-def create(directory):
-    """Create a new warnet project in the specified directory"""
-    if os.path.exists(directory):
-        richprint(f"[red]Error: Directory {directory} already exists[/red]")
-        return
-
-    copy_network_defaults(directory)
-    copy_namespaces_defaults(directory)
-    richprint(
-        f"[green]Copied network and namespace example files to {directory / 'networks'}[/green]"
-    )
-    richprint(f"[green]Created warnet project structure in {directory}[/green]")
-
-
-@admin.command()
 def init():
     """Initialize a warnet project in the current directory"""
     current_dir = os.getcwd()
@@ -45,6 +30,6 @@ def init():
     copy_network_defaults(Path(current_dir))
     copy_namespaces_defaults(Path(current_dir))
     richprint(
-        f"[green]Copied network and namespace example files to {Path(current_dir) / 'networks'}[/green]"
+        f"[green]Copied network and namespace example files to {Path(current_dir) / NETWORK_DIR.name}[/green]"
     )
     richprint(f"[green]Created warnet project structure in {current_dir}[/green]")

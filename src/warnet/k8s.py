@@ -7,18 +7,17 @@ from kubernetes import client, config
 from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 
+from .constants import DEFAULT_NAMESPACE, KUBECONFIG
 from .process import run_command, stream_command
-
-DEFAULT_NAMESPACE = "warnet"
 
 
 def get_static_client() -> CoreV1Event:
-    config.load_kube_config()
+    config.load_kube_config(config_file=KUBECONFIG)
     return client.CoreV1Api()
 
 
 def get_dynamic_client() -> DynamicClient:
-    config.load_kube_config()
+    config.load_kube_config(config_file=KUBECONFIG)
     return DynamicClient(client.ApiClient())
 
 

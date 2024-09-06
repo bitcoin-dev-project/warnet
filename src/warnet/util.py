@@ -1,18 +1,5 @@
-import logging
-from importlib.resources import files
-
-logger = logging.getLogger("utils")
-
-SUPPORTED_TAGS = ["27.0", "26.0", "25.1", "24.2", "23.2", "22.2"]
-DEFAULT_TAG = SUPPORTED_TAGS[0]
-WEIGHTED_TAGS = [
-    tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
-]
-SRC_DIR = files("warnet")
-
-
 def create_cycle_graph(n: int, version: str, bitcoin_conf: str | None, random_version: bool):
-    raise Exception("Not Implemented")
+    raise NotImplementedError("create_cycle_graph function is not implemented")
 
 
 def parse_bitcoin_conf(file_content):
