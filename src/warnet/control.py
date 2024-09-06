@@ -173,9 +173,9 @@ def run(scenario_file: str, additional_args: tuple[str]):
     tanks = [
         {
             "tank": tank.metadata.name,
-            "chain": "regtest",
+            "chain": tank.metadata.labels["chain"],
             "rpc_host": tank.status.pod_ip,
-            "rpc_port": 18443,
+            "rpc_port": int(tank.metadata.labels["RPCPort"]),
             "rpc_user": "user",
             "rpc_password": "password",
             "init_peers": [],

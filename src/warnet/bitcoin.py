@@ -36,10 +36,12 @@ def rpc(tank: str, method: str, params: str):
 
 
 def _rpc(tank: str, method: str, params: str):
+    # bitcoin-cli should be able to read bitcoin.conf inside the container
+    # so no extra args like port, chain, username or password are needed
     if params:
-        cmd = f"kubectl exec {tank} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method} {' '.join(map(str, params))}"
+        cmd = f"kubectl exec {tank} -- bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
-        cmd = f"kubectl exec {tank} -- bitcoin-cli -regtest -rpcuser='user' -rpcpassword='password' {method}"
+        cmd = f"kubectl exec {tank} -- bitcoin-cli {method}"
     return run_command(cmd)
 
 

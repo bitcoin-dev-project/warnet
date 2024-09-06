@@ -7,6 +7,8 @@ metadata:
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
+    chain: {{ .Values.chain }}
+    RPCPort: "{{ index .Values .Values.chain "RPCPort" }}"
     app: {{ include "bitcoincore.fullname" . }}
     {{- if .Values.collectLogs }}
     collect_logs: "true"
