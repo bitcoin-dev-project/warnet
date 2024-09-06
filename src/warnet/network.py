@@ -88,16 +88,15 @@ def _connected():
     for tank in tanks:
         # Get actual
         peerinfo = json.loads(_rpc(tank.metadata.name, "getpeerinfo", ""))
-        manuals = 0
+        actual = 0
         for peer in peerinfo:
             if peer["connection_type"] == "manual":
-                manuals += 1
+                actual += 1
+        expected = int(tank.metadata.annotations["init_peers"])
+        print(f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}")
         # Even if more edges are specified, bitcoind only allows
         # 8 manual outbound connections
-
-        print("manual " + str(manuals))
-        print(tank.metadata.annotations["init_peers"])
-        if min(8, int(tank.metadata.annotations["init_peers"])) > manuals:
+        if min(8, expected) > actual:
             print("Network not connected")
             return False
     print("Network connected")
