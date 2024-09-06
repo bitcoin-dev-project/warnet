@@ -29,21 +29,23 @@ spec:
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       ports:
         - name: rpc
-          containerPort: {{ .Values.regtest.RPCPort }}
+          containerPort: {{ index .Values .Values.chain "RPCPort" }}
           protocol: TCP
         - name: p2p
-          containerPort: {{ .Values.regtest.P2PPort }}
+          containerPort: {{ index .Values .Values.chain "P2PPort" }}
           protocol: TCP
         - name: zmq-tx
-          containerPort: {{ .Values.regtest.ZMQTxPort }}
+          containerPort: {{ .Values.ZMQTxPort }}
           protocol: TCP
         - name: zmq-block
-          containerPort: {{ .Values.regtest.ZMQBlockPort }}
+          containerPort: {{ .Values.ZMQBlockPort }}
           protocol: TCP
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
         {{- toYaml .Values.readinessProbe | nindent 8 }}
+        tcpSocket:
+          port: {{ index .Values .Values.chain "RPCPort" }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
@@ -65,7 +67,7 @@ spec:
         - name: BITCOIN_RPC_HOST
           value: "127.0.0.1"
         - name: BITCOIN_RPC_PORT
-          value: "{{ .Values.regtest.RPCPort }}"
+          value: "{{ index .Values .Values.chain "RPCPort" }}"
         - name: BITCOIN_RPC_USER
           value: user
         - name: BITCOIN_RPC_PASSWORD

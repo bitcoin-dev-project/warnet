@@ -10,6 +10,9 @@ data:
 
     {{ template "bitcoincore.check_semver" . }}
     {{- .Values.baseConfig | nindent 4 }}
+    rpcport={{ index .Values .Values.chain "RPCPort" }}
+    zmqpubrawblock=tcp://0.0.0.0:{{ .Values.ZMQBlockPort }}
+    zmqpubrawtx=tcp://0.0.0.0:{{ .Values.ZMQTxPort }}
     {{- .Values.config | nindent 4 }}
     {{- range .Values.connect }}
       {{- print "connect=" . | nindent 4}}
