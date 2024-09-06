@@ -28,13 +28,23 @@ pip install -e .
 
 ## Running
 
-To get started simply run:
+To get started first check you have all the necessary requirements:
 
 ```bash
-warnet quickstart
+warnet setup
 ```
 
-This will check you have the required dependencies and guide you through setting up and deploying your first network.
+Then create your first network:
+
+```bash
+# Create a new network in the current directory
+warnet init
+
+# Or in a directory of choice
+warnet create <directory>
+```
+
+Follow the guide to configure network variables.
 
 ## fork-observer
 

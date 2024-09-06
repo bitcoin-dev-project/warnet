@@ -36,6 +36,7 @@ options:
 | name      | type   | required   | default   |
 |-----------|--------|------------|-----------|
 | directory | Path   | yes        |           |
+| debug     | Bool   |            | False     |
 
 ### `warnet down`
 Bring down a running warnet
@@ -43,10 +44,6 @@ Bring down a running warnet
 
 ### `warnet init`
 Initialize a warnet project in the current directory
-
-
-### `warnet quickstart`
-Setup warnet
 
 
 ### `warnet run`
@@ -57,6 +54,10 @@ options:
 |-----------------|--------|------------|-----------|
 | scenario_file   | Path   | yes        |           |
 | additional_args | String |            |           |
+
+### `warnet setup`
+Setup warnet
+
 
 ### `warnet status`
 Display the unified status of the Warnet network and active scenarios
