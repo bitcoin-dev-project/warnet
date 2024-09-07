@@ -271,12 +271,12 @@ def create_warnet_project(directory: Path, check_empty: bool = False):
 @click.argument(
     "directory", type=click.Path(file_okay=False, dir_okay=True, resolve_path=True, path_type=Path)
 )
-def create(directory: Path):
+def new(directory: Path):
     """Create a new warnet project in the specified directory"""
-    create_internal(directory)
+    new_internal(directory)
 
 
-def create_internal(directory: Path, from_init=False):
+def new_internal(directory: Path, from_init=False):
     if directory.exists() and not from_init:
         click.secho(f"Error: Directory {directory} already exists", fg="red")
         return
@@ -448,7 +448,7 @@ def init():
         create_warnet_project(current_dir, check_empty=True)
         return 0
     else:
-        create_internal(directory=current_dir, from_init=True)
+        new_internal(directory=current_dir, from_init=True)
 
 
 def custom_graph(

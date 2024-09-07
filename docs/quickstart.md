@@ -41,7 +41,7 @@ Then create your first network:
 warnet init
 
 # Or in a directory of choice
-warnet create <directory>
+warnet new <directory>
 ```
 
 Follow the guide to configure network variables.
