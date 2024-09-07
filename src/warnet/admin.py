@@ -1,5 +1,5 @@
 import os
-import subprocess
+import subprocess  # TODO: use run_command or similar; NOT subprocess
 from pathlib import Path
 
 import click
@@ -45,6 +45,7 @@ def get_kubectl_value(jsonpath):
 
 # Get all namespaces that start with "warnet-"
 def get_warnet_namespaces():
+    # TODO: paramaterize with prefix
     namespaces = (
         subprocess.check_output(
             ["kubectl", "get", "namespaces", "-o", "jsonpath={.items[*].metadata.name}"]
@@ -130,6 +131,7 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
             # Create a kubeconfig file for the user
             kubeconfig_file = os.path.join(kubeconfig_dir, f"{sa}-{namespace}-kubeconfig")
 
+            # TODO: move yaml  out of python code
             kubeconfig_content = f"""apiVersion: v1
 kind: Config
 clusters:
