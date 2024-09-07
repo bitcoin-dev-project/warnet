@@ -282,3 +282,27 @@ def get_ingress_ip_or_host():
     except Exception as e:
         print(f"Error getting ingress IP: {e}")
         return None
+
+
+def get_kubeconfig_value(jsonpath):
+    command = f"kubectl config view --minify -o jsonpath={jsonpath}"
+    return run_command(command)
+
+
+def get_namespaces_by_prefix(prefix: str):
+    """
+    Get all namespaces beginning with `prefix`. Returns empty list of no namespaces with the specified prefix are found.
+    """
+    command = "kubectl get namespaces -o jsonpath={.items[*].metadata.name}"
+    namespaces = run_command(command).split()
+    return [ns for ns in namespaces if ns.startswith(prefix)]
+
+
+def get_service_accounts_in_namespace(namespace):
+    """
+    Get all service accounts in a namespace. Returns an empty list if no service accounts are found in the specified namespace.
+    """
+    command = f"kubectl get serviceaccounts -n {namespace} -o jsonpath={{.items[*].metadata.name}}"
+    # skip the default service account created by k8s
+    service_accounts = run_command(command).split()
+    return [sa for sa in service_accounts if sa != "default"]
