@@ -5,20 +5,26 @@ import click
 
 from .constants import (
     DEFAULT_NAMESPACES,
-    DEFAULTS_FILE,
+    DEFAULTS_NAMESPACE_FILE,
+    NAMESPACES_DIR,
     NAMESPACES_FILE,
-    NETWORK_DIR,
 )
 from .process import run_command, stream_command
 
 
 def copy_namespaces_defaults(directory: Path):
     """Create the project structure for a warnet project"""
-    (directory / NETWORK_DIR / DEFAULT_NAMESPACES).mkdir(parents=True, exist_ok=True)
-    target_namespaces_defaults = directory / NETWORK_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE
-    target_namespaces_example = directory / NETWORK_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE
-    shutil.copy2(NETWORK_DIR / DEFAULT_NAMESPACES / DEFAULTS_FILE, target_namespaces_defaults)
-    shutil.copy2(NETWORK_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE, target_namespaces_example)
+    (directory / NAMESPACES_DIR.name / DEFAULT_NAMESPACES).mkdir(parents=True, exist_ok=True)
+    target_namespaces_defaults = (
+        directory / NAMESPACES_DIR.name / DEFAULT_NAMESPACES / DEFAULTS_NAMESPACE_FILE
+    )
+    target_namespaces_example = (
+        directory / NAMESPACES_DIR.name / DEFAULT_NAMESPACES / NAMESPACES_FILE
+    )
+    shutil.copy2(
+        NAMESPACES_DIR / DEFAULT_NAMESPACES / DEFAULTS_NAMESPACE_FILE, target_namespaces_defaults
+    )
+    shutil.copy2(NAMESPACES_DIR / DEFAULT_NAMESPACES / NAMESPACES_FILE, target_namespaces_example)
 
 
 @click.group(name="namespaces")

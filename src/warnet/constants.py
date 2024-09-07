@@ -18,12 +18,14 @@ HELM_COMMAND = "helm upgrade --install --create-namespace"
 SRC_DIR = files("warnet")
 RESOURCES_DIR = files("resources")
 NETWORK_DIR = RESOURCES_DIR.joinpath("networks")
+NAMESPACES_DIR = RESOURCES_DIR.joinpath("namespaces")
 SCENARIOS_DIR = RESOURCES_DIR.joinpath("scenarios")
 CHARTS_DIR = RESOURCES_DIR.joinpath("charts")
 MANIFESTS_DIR = RESOURCES_DIR.joinpath("manifests")
 NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 NAMESPACES_FILE = "namespaces.yaml"
+DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))

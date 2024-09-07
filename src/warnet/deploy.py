@@ -7,8 +7,10 @@ import yaml
 from .constants import (
     BITCOIN_CHART_LOCATION,
     DEFAULTS_FILE,
+    DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
     HELM_COMMAND,
+    NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
 )
@@ -141,7 +143,7 @@ def deploy_network(directory: Path, debug: bool = False):
 
 def deploy_namespaces(directory: Path):
     namespaces_file_path = directory / NAMESPACES_FILE
-    defaults_file_path = directory / DEFAULTS_FILE
+    defaults_file_path = directory / DEFAULTS_NAMESPACE_FILE
 
     with namespaces_file_path.open() as f:
         namespaces_file = yaml.safe_load(f)
@@ -161,9 +163,7 @@ def deploy_namespaces(directory: Path):
             namespace_name = namespace.get("name")
             namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
 
-            cmd = (
-                f"{HELM_COMMAND} {namespace_name} {BITCOIN_CHART_LOCATION} -f {defaults_file_path}"
-            )
+            cmd = f"{HELM_COMMAND} {namespace_name} {NAMESPACES_CHART_LOCATION} -f {defaults_file_path}"
 
             if namespace_config_override:
                 with tempfile.NamedTemporaryFile(
