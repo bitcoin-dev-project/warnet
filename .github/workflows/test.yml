@@ -91,6 +91,27 @@ jobs:
         run: |
           source .venv/bin/activate
           ./test/${{matrix.test}}
+      - name: Collect Kubernetes logs
+        if: always()
+        run: |
+          echo "Installing stern..."
+          STERN_VERSION="1.30.0"
+          curl -Lo stern.tar.gz https://github.com/stern/stern/releases/download/v${STERN_VERSION}/stern_${STERN_VERSION}_linux_amd64.tar.gz
+          tar zxvf stern.tar.gz
+          chmod +x stern
+          sudo mv stern /usr/local/bin/
+
+          # Run script
+          curl -O https://raw.githubusercontent.com/willcl-ark/warnet/main/resources/scripts/k8s-log-collector.sh
+          chmod +x k8s-log-collector.sh
+          ./k8s-log-collector.sh default
+      - name: Upload log artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubernetes-logs-${{ matrix.test }}
+          path: ./k8s-logs
+          retention-days: 5
   test-without-mk:
     runs-on: ubuntu-latest
     strategy:
