@@ -21,14 +21,6 @@ options:
 |-------------|--------|------------|-----------|
 | kube_config | String | yes        |           |
 
-### `warnet create`
-Create a new warnet project in the specified directory
-
-options:
-| name      | type   | required   | default   |
-|-----------|--------|------------|-----------|
-| directory | Path   | yes        |           |
-
 ### `warnet deploy`
 Deploy a warnet with topology loaded from \<directory>
 
@@ -36,6 +28,7 @@ options:
 | name      | type   | required   | default   |
 |-----------|--------|------------|-----------|
 | directory | Path   | yes        |           |
+| debug     | Bool   |            | False     |
 
 ### `warnet down`
 Bring down a running warnet
@@ -45,9 +38,13 @@ Bring down a running warnet
 Initialize a warnet project in the current directory
 
 
-### `warnet quickstart`
-Setup warnet
+### `warnet new`
+Create a new warnet project in the specified directory
 
+options:
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| directory | Path   | yes        |           |
 
 ### `warnet run`
 Run a scenario from a file
@@ -57,6 +54,10 @@ options:
 |-----------------|--------|------------|-----------|
 | scenario_file   | Path   | yes        |           |
 | additional_args | String |            |           |
+
+### `warnet setup`
+Setup warnet
+
 
 ### `warnet status`
 Display the unified status of the Warnet network and active scenarios
@@ -71,14 +72,6 @@ options:
 | scenario_name | String |            |           |
 
 ## Admin
-
-### `warnet admin create`
-Create a new warnet project in the specified directory
-
-options:
-| name      | type   | required   | default   |
-|-----------|--------|------------|-----------|
-| directory | Func   | yes        |           |
 
 ### `warnet admin init`
 Initialize a warnet project in the current directory
