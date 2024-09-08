@@ -2,6 +2,7 @@ import base64
 import json
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import click
@@ -123,35 +124,45 @@ def list_active_scenarios():
 
 @click.command()
 def down():
-    """Bring down a running warnet"""
+    """Bring down a running warnet quickly"""
     console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
-    # Uninstall tanks, commanders and logging components
+
     namespaces = [get_default_namespace(), "warnet-logging"]
-    for namespace in namespaces:
-        command = f"helm list --namespace {namespace} -o json"
-        result = run_command(command)
-        if result:
-            releases = json.loads(result)
-            with console.status("[yellow]Uninstalling components...[/yellow]"):
+
+    def uninstall_release(namespace, release_name):
+        cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Initiated uninstall for: {release_name} in namespace {namespace}"
+
+    def delete_pod(pod_name, namespace):
+        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = []
+
+        # Uninstall Helm releases
+        for namespace in namespaces:
+            command = f"helm list --namespace {namespace} -o json"
+            result = run_command(command)
+            if result:
+                releases = json.loads(result)
                 for release in releases:
-                    release_name = release["name"]
-                    cmd = f"helm uninstall {release_name} --namespace {namespace}"
-                    if stream_command(cmd):
-                        console.print(f"[green]Uninstalled: {release_name}[/green]")
-                    else:
-                        console.print(f"[red]Failed to uninstall: {release_name}[/red]")
+                    futures.append(executor.submit(uninstall_release, namespace, release["name"]))
 
-    # Clean up any remaining pods
-    pods = get_pods()
-    with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
+        # Delete remaining pods
+        pods = get_pods()
         for pod in pods.items:
-            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name} -n {namespace}"
-            if stream_command(cmd):
-                console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
-            else:
-                console.print(f"[red]Failed to delete pod: {pod.metadata.name}[/red]")
+            futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
 
-    console.print("[bold green]Warnet has been brought down.[/bold green]")
+        # Wait for all tasks to complete and print results
+        for future in as_completed(futures):
+            console.print(f"[yellow]{future.result()}[/yellow]")
+
+    console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
+    console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
+    console.print("[bold green]Warnet teardown process completed.[/bold green]")
 
 
 def get_active_network(namespace):
