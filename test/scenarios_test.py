@@ -5,7 +5,7 @@ from pathlib import Path
 
 from test_base import TestBase
 
-from warnet.k8s import delete_pod
+from warnet.control import stop_scenario
 from warnet.process import run_command
 from warnet.status import _get_active_scenarios as scenarios_active
 
@@ -80,7 +80,7 @@ class ScenariosTest(TestBase):
         running = scenarios_active()
         assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
         assert running[0]["status"] == "running", "Scenario should be running"
-        delete_pod(running[0]["name"])
+        stop_scenario(running[0]["name"])
         self.wait_for_predicate(self.check_scenario_stopped)
 
     def check_scenario_stopped(self):
