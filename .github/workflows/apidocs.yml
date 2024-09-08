@@ -2,7 +2,7 @@ name: Format-api-docs
 on:
   push:
     branches:
-      - dev
+      - main
 jobs:
   format-api-docs:
     runs-on: ubuntu-latest

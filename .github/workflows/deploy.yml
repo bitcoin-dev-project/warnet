@@ -3,7 +3,7 @@ name: Publish Commander Docker image
 on:
   push:
     branches:
-      - dev
+      - main
     paths:
       - resources/images/commander/Dockerfile
     tags-ignore:
