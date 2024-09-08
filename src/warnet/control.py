@@ -14,7 +14,6 @@ from rich.table import Table
 
 from .constants import COMMANDER_CHART
 from .k8s import (
-    delete_namespace,
     get_default_namespace,
     get_mission,
     get_pods,
@@ -77,16 +76,25 @@ def stop(scenario_name):
 
 
 def stop_scenario(scenario_name):
-    """Stop a single scenario"""
+    """Stop a single scenario using Helm"""
+    # Stop the pod (faster than uninstalling)
     cmd = f"kubectl delete pod {scenario_name}"
     if stream_command(cmd):
         console.print(f"[bold green]Successfully stopped scenario: {scenario_name}[/bold green]")
     else:
         console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
 
+    # Then uninstall via helm
+    namespace = get_default_namespace()
+    command = f"helm uninstall {scenario_name} --namespace {namespace}"
+    if stream_command(command):
+        console.print(f"[bold green]Successfully uninstalled release for scenario: {scenario_name}[/bold green]")
+    else:
+        console.print(f"[bold red]Failed to uninstall release for scenario: {scenario_name}[/bold red]")
+
 
 def stop_all_scenarios(scenarios):
-    """Stop all active scenarios"""
+    """Stop all active scenarios using Helm"""
     with console.status("[bold yellow]Stopping all scenarios...[/bold yellow]"):
         for scenario in scenarios:
             stop_scenario(scenario)
@@ -95,8 +103,8 @@ def stop_all_scenarios(scenarios):
 
 def list_active_scenarios():
     """List all active scenarios"""
-    commanders = get_mission("commander")
-    if not commanders:
+    active_scenarios = get_active_scenarios()
+    if not active_scenarios:
         print("No active scenarios found.")
         return
 
@@ -105,8 +113,8 @@ def list_active_scenarios():
     table.add_column("Name", style="cyan")
     table.add_column("Status", style="green")
 
-    for commander in commanders:
-        table.add_row(commander.metadata.name, commander.status.phase.lower())
+    for scenario in active_scenarios:
+        table.add_row(scenario, "deployed")
 
     console.print(table)
 
@@ -114,28 +122,28 @@ def list_active_scenarios():
 @click.command()
 def down():
     """Bring down a running warnet"""
-    with console.status("[bold yellow]Bringing down the warnet...[/bold yellow]"):
-        # Delete warnet-logging namespace
-        if delete_namespace("warnet-logging"):
-            console.print("[green]Warnet logging deleted[/green]")
-        else:
-            console.print("[red]Warnet logging NOT deleted[/red]")
+    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
+    # Uninstall tanks, commanders and logging components
+    namespaces = [get_default_namespace(), "warnet-logging"]
+    for namespace in namespaces:
+        command = f"helm list --namespace {namespace} -o json"
+        result = run_command(command)
+        if result:
+            releases = json.loads(result)
+            with console.status("[yellow]Uninstalling components...[/yellow]"):
+                for release in releases:
+                    release_name = release["name"]
+                    cmd = f"helm uninstall {release_name} --namespace {namespace}"
+                    if stream_command(cmd):
+                        console.print(f"[green]Uninstalled: {release_name}[/green]")
+                    else:
+                        console.print(f"[red]Failed to uninstall: {release_name}[/red]")
 
-    # Uninstall tanks
-    tanks = get_mission("tank")
-    with console.status("[yellow]Uninstalling tanks...[/yellow]"):
-        for tank in tanks:
-            cmd = f"helm uninstall {tank.metadata.name} --namespace {get_default_namespace()}"
-            if stream_command(cmd):
-                console.print(f"[green]Uninstalled tank: {tank.metadata.name}[/green]")
-            else:
-                console.print(f"[red]Failed to uninstall tank: {tank.metadata.name}[/red]")
-
-    # Clean up scenarios and other pods
+    # Clean up any remaining pods
     pods = get_pods()
     with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
         for pod in pods.items:
-            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name} -n {get_default_namespace()}"
+            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name} -n {namespace}"
             if stream_command(cmd):
                 console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
             else:
