@@ -1,6 +1,6 @@
 import click
 
-from .admin import admin, auth
+from .admin import admin
 from .bitcoin import bitcoin
 from .control import down, run, stop
 from .deploy import deploy
@@ -8,6 +8,7 @@ from .graph import graph
 from .image import image
 from .project import init, new, setup
 from .status import status
+from .users import auth
 
 
 @click.group()
