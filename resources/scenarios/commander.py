@@ -135,7 +135,8 @@ class Commander(BitcoinTestFramework):
         help_parser = argparse.ArgumentParser(usage="%(prog)s [options]")
         self.add_options(help_parser)
         help_args, _ = help_parser.parse_known_args()
-        if help_args.help:
+        # Check if 'help' attribute exists in help_args before accessing it
+        if hasattr(help_args, "help") and help_args.help:
             help_parser.print_help()
             sys.exit(0)
 
