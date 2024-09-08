@@ -1,19 +1,19 @@
+import base64
 import json
-import os
-import tempfile
+import subprocess
 import time
+from pathlib import Path
 
 import click
 import inquirer
-import yaml
 from inquirer.themes import GreenPassion
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from .constants import COMMANDER_CHART
 from .k8s import (
-    apply_kubernetes_yaml,
     delete_namespace,
     get_default_namespace,
     get_mission,
@@ -163,11 +163,11 @@ def get_active_network(namespace):
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 def run(scenario_file: str, additional_args: tuple[str]):
     """Run a scenario from a file"""
-    scenario_path = os.path.abspath(scenario_file)
-    scenario_name = os.path.splitext(os.path.basename(scenario_path))[0]
+    scenario_path = Path(scenario_file).resolve()
+    scenario_name = scenario_path.stem
 
-    with open(scenario_path) as file:
-        scenario_text = file.read()
+    with open(scenario_path, "rb") as file:
+        scenario_data = base64.b64encode(file.read()).decode()
 
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
     namespace = get_default_namespace()
@@ -184,72 +184,45 @@ def run(scenario_file: str, additional_args: tuple[str]):
         }
         for tank in tankpods
     ]
-    kubernetes_objects = [
-        {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-                "name": "warnetjson",
-                "namespace": namespace,
-            },
-            "data": {"warnet.json": json.dumps(tanks)},
-        },
-        {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-                "name": "scenariopy",
-                "namespace": namespace,
-            },
-            "data": {"scenario.py": scenario_text},
-        },
-        {
-            "apiVersion": "v1",
-            "kind": "Pod",
-            "metadata": {
-                "name": name,
-                "namespace": namespace,
-                "labels": {"mission": "commander"},
-            },
-            "spec": {
-                "restartPolicy": "Never",
-                "containers": [
-                    {
-                        "name": name,
-                        "image": "bitcoindevproject/warnet-commander:latest",
-                        "args": additional_args,
-                        "volumeMounts": [
-                            {
-                                "name": "warnetjson",
-                                "mountPath": "warnet.json",
-                                "subPath": "warnet.json",
-                            },
-                            {
-                                "name": "scenariopy",
-                                "mountPath": "scenario.py",
-                                "subPath": "scenario.py",
-                            },
-                        ],
-                    }
-                ],
-                "volumes": [
-                    {"name": "warnetjson", "configMap": {"name": "warnetjson"}},
-                    {"name": "scenariopy", "configMap": {"name": "scenariopy"}},
-                ],
-            },
-        },
-    ]
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
-        yaml.dump_all(kubernetes_objects, temp_file)
-        temp_file_path = temp_file.name
 
-    if apply_kubernetes_yaml(temp_file_path):
-        print(f"Successfully started scenario: {scenario_name}")
-        print(f"Commander pod name: {name}")
-    else:
+    # Encode warnet data
+    warnet_data = base64.b64encode(json.dumps(tanks).encode()).decode()
+
+    try:
+        # Construct Helm command
+        helm_command = [
+            "helm",
+            "upgrade",
+            "--install",
+            "--namespace",
+            namespace,
+            "--set",
+            f"fullnameOverride={name}",
+            "--set",
+            f"scenario={scenario_data}",
+            "--set",
+            f"warnet={warnet_data}",
+        ]
+
+        # Add additional arguments
+        if additional_args:
+            helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
+
+        helm_command.extend([name, COMMANDER_CHART])
+
+        # Execute Helm command
+        result = subprocess.run(helm_command, check=True, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            print(f"Successfully started scenario: {scenario_name}")
+            print(f"Commander pod name: {name}")
+        else:
+            print(f"Failed to start scenario: {scenario_name}")
+            print(f"Error: {result.stderr}")
+
+    except subprocess.CalledProcessError as e:
         print(f"Failed to start scenario: {scenario_name}")
-
-    os.unlink(temp_file_path)
+        print(f"Error: {e.stderr}")
 
 
 @click.command()

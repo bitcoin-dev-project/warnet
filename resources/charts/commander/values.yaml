@@ -1,0 +1,78 @@
+# Default values for commander.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+restartPolicy: Never
+
+image:
+  repository: bitcoindevproject/warnet-commander
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podLabels:
+  app: "warnet"
+  mission: "commander"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# livenessProbe:
+#   exec:
+#     command:
+#     - pidof
+#     - commander
+#   failureThreshold: 3
+#   initialDelaySeconds: 5
+#   periodSeconds: 5
+#   successThreshold: 1
+#   timeoutSeconds: 1
+# readinessProbe:
+#   failureThreshold: 1
+#   periodSeconds: 1
+#   successThreshold: 1
+#   tcpSocket:
+#     port: 2323
+#   timeoutSeconds: 1
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+port:
+
+scenario: ""
+
+warnet: ""
+
+args: ""
