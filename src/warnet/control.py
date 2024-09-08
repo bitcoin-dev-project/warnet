@@ -77,20 +77,22 @@ def stop(scenario_name):
 
 def stop_scenario(scenario_name):
     """Stop a single scenario using Helm"""
-    # Stop the pod (faster than uninstalling)
-    cmd = f"kubectl delete pod {scenario_name}"
+    # Stop the pod immediately (faster than uninstalling)
+    cmd = f"kubectl delete pod {scenario_name} --grace-period=0 --force"
     if stream_command(cmd):
         console.print(f"[bold green]Successfully stopped scenario: {scenario_name}[/bold green]")
     else:
         console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
 
-    # Then uninstall via helm
+    # Then uninstall via helm (non-blocking)
     namespace = get_default_namespace()
-    command = f"helm uninstall {scenario_name} --namespace {namespace}"
-    if stream_command(command):
-        console.print(f"[bold green]Successfully uninstalled release for scenario: {scenario_name}[/bold green]")
-    else:
-        console.print(f"[bold red]Failed to uninstall release for scenario: {scenario_name}[/bold red]")
+    command = f"helm uninstall {scenario_name} --namespace {namespace} --wait=false"
+
+    # Run the helm uninstall command in the background
+    subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    console.print(
+        f"[bold yellow]Initiated helm uninstall for release: {scenario_name}[/bold yellow]"
+    )
 
 
 def stop_all_scenarios(scenarios):
