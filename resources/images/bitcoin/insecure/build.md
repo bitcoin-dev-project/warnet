@@ -83,7 +83,7 @@ docker buildx build \
   --build-arg PRE_CONFIGURE_COMMANDS="sed -i '/AC_PREREQ/a\AR_FLAGS=cr' src/univalue/configure.ac && sed -i '/AX_PROG_CC_FOR_BUILD/a\AR_FLAGS=cr' src/secp256k1/configure.ac && sed -i 's:sys/fcntl.h:fcntl.h:' src/compat.h" \
   --build-arg EXTRA_RUNTIME_PACKAGES="boost boost-program_options libressl" \
   --build-arg REPO="josibake/bitcoin" \
-  --build-arg COMMIT_SHA="ffae728b7b926664a17b44428a3498be08c70844" \
+  --build-arg COMMIT_SHA="dc94c00e58c60412a4e1a540abdf0b56093179e8" \
   --tag bitcoindevproject/bitcoin:0.16.1 \
   resources/images/bitcoin/insecure
 ```
