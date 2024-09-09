@@ -5,6 +5,7 @@ from rich.table import Table
 from rich.text import Text
 
 from .k8s import get_mission
+from .network import _connected
 
 
 @click.command()
@@ -53,6 +54,7 @@ def status():
     summary.append(f"\nTotal Tanks: {len(tanks)}", style="bold cyan")
     summary.append(f" | Active Scenarios: {len(scenarios)}", style="bold green")
     console.print(summary)
+    _connected(end="\r")
 
 
 def _get_tank_status():
