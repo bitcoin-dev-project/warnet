@@ -2,3 +2,11 @@ image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
   tag: "27.0"
+
+resources:
+  limits:
+    cpu: 4000m
+    memory: 500Mi
+  requests:
+    cpu: 100m
+    memory: 200Mi
