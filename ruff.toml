@@ -1,7 +1,6 @@
 extend-exclude = [
     "resources/images/commander/src/test_framework",
     "resources/images/exporter/authproxy.py",
-    "resources/scenarios/signet_miner.py",
     "src/test_framework/*",
 ]
 line-length = 100
