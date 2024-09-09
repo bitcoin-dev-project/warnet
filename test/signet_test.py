@@ -20,7 +20,7 @@ class SignetTest(TestBase):
             self.setup_network()
             self.check_signet_miner()
         finally:
-            self.stop_server()
+            self.cleanup()
 
     def setup_network(self):
         self.log.info("Setting up network")

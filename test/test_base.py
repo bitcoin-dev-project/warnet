@@ -1,4 +1,3 @@
-import atexit
 import json
 import logging
 import logging.config
@@ -21,7 +20,6 @@ class TestBase:
     def __init__(self):
         self.setup_environment()
         self.setup_logging()
-        atexit.register(self.cleanup)
         self.log_expected_msgs: None | [str] = None
         self.log_unexpected_msgs: None | [str] = None
         self.log_msg_assertions_passed = False
@@ -79,9 +77,6 @@ class TestBase:
             line = pipe.readline().strip()
             if line:
                 func(line)
-
-    def stop_server(self):
-        self.cleanup()
 
     def wait_for_predicate(self, predicate, timeout=5 * 60, interval=5):
         self.log.debug(f"Waiting for predicate with timeout {timeout}s and interval {interval}s")

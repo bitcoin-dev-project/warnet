@@ -24,7 +24,7 @@ class LNTest(TestBase):
             self.test_ln_payment_2_to_0()
             self.test_simln()
         finally:
-            self.stop_server()
+            self.cleanup()
 
     def setup_network(self):
         self.log.info("Setting up network")

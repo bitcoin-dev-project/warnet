@@ -20,7 +20,7 @@ class ConfTest(TestBase):
             self.setup_network()
             self.check_uacomment()
         finally:
-            self.stop_server()
+            self.cleanup()
 
     def setup_network(self):
         self.log.info("Setting up network")
