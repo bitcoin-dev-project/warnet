@@ -134,3 +134,6 @@ baseConfig: |
 config: ""
 
 connect: []
+loadSnapshot:
+  enabled: false
+  url: ""
