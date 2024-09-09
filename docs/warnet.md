@@ -38,6 +38,15 @@ Bring down a running warnet
 Initialize a warnet project in the current directory
 
 
+### `warnet logs`
+Show the logs of a pod
+
+options:
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| pod_name | String |            |           |
+| follow   | Bool   |            | False     |
+
 ### `warnet new`
 Create a new warnet project in the specified directory
 
