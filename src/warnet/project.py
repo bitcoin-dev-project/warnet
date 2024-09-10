@@ -298,6 +298,7 @@ def new_internal(directory: Path, from_init=False):
             ),
         ]
     )
+    custom_network_path = ""
     if proj_answers is None:
         click.secho("Setup cancelled by user.", fg="yellow")
         return False
@@ -305,17 +306,12 @@ def new_internal(directory: Path, from_init=False):
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
         custom_network_path = inquirer_create_network(directory)
 
-    click.echo(
-        f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
-    )
-    click.echo(
-        "If you enabled fork-observer you must forward the port from the cluster to your local machine:\n"
-        "`kubectl port-forward fork-observer 2323`\n"
-        "fork-observer will then be available at web address: localhost:2323"
-    )
-
-    click.echo("\nWhen you're ready, run the following command to deploy this network:")
-    click.echo(f"  warnet deploy {custom_network_path}")
+    if custom_network_path:
+        click.echo(
+            f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
+        )
+        click.echo("\nWhen you're ready, run the following command to deploy this network:")
+        click.echo(f"  warnet deploy {custom_network_path}")
 
 
 @click.command()
