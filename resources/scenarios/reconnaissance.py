@@ -52,7 +52,10 @@ class Reconnaissance(Commander):
             dstaddr, dstport = victim["addr"].split(":")
         else:
             dstaddr = socket.gethostbyname(victim["addr"])
-            dstport = 18444
+            if self.chain == "regtest":
+                dstport = 18444
+            if self.chain == "signet":
+                dstport = 38333
 
         # Now we will use a python-based Bitcoin p2p node to send very specific,
         # unusual or non-standard messages to a "victim" node.
