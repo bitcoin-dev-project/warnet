@@ -308,7 +308,7 @@ def new_internal(directory: Path, from_init=False):
 
     if custom_network_path:
         click.echo(
-            f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
+            f"\nEdit the network files found under {custom_network_path}/ before deployment if you want to customise the network."
         )
         click.echo("\nWhen you're ready, run the following command to deploy this network:")
         click.echo(f"  warnet deploy {custom_network_path}")
