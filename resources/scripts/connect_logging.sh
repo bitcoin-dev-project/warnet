@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # NO `set -e` here so an error does not exit the script
 
 POD_NAME=$(kubectl get pods --namespace warnet-logging -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=loki-grafana" -o jsonpath="{.items[0].metadata.name}")
