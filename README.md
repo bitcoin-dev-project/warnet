@@ -15,6 +15,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 
 ## Documentation
 
+- [Design](/DESIGN.md)
 - [Installation](/docs/install.md)
 - [Quick Start](/docs/quickstart.md)
 - [CLI Commands](/docs/warnet.md)
