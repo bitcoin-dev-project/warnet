@@ -10,6 +10,7 @@ from .constants import (
     DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
     HELM_COMMAND,
+    LOGGING_HELM_COMMANDS,
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
@@ -41,6 +42,7 @@ def deploy(directory, debug):
     directory = Path(directory)
 
     if (directory / NETWORK_FILE).exists():
+        deploy_logging_stack(directory, debug)
         deploy_network(directory, debug)
         deploy_fork_observer(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
@@ -49,6 +51,43 @@ def deploy(directory, debug):
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
         )
+
+
+def check_logging_required(directory: Path):
+    # check if node-defaults has logging or metrics enabled
+    default_file_path = directory / DEFAULTS_FILE
+    with default_file_path.open() as f:
+        default_file = yaml.safe_load(f)
+    if default_file.get("collectLogs", False):
+        return True
+    if default_file.get("metricsExport", False):
+        return True
+
+    # check to see if individual nodes have logging enabled
+    network_file_path = directory / NETWORK_FILE
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+    nodes = network_file.get("nodes", [])
+    for node in nodes:
+        if node.get("collectLogs", False):
+            return True
+        if node.get("metricsExport", False):
+            return True
+
+    return False
+
+
+def deploy_logging_stack(directory: Path, debug: bool):
+    if not check_logging_required(directory):
+        return
+
+    click.echo("Found collectLogs or metricsExport in network definition, Deploying logging stack")
+
+    for command in LOGGING_HELM_COMMANDS:
+        if not stream_command(command):
+            print(f"Failed to run Helm command: {command}")
+            return False
+    return True
 
 
 def deploy_fork_observer(directory: Path, debug: bool):

@@ -5,7 +5,7 @@ import os
 import threading
 from datetime import datetime
 from pathlib import Path
-from subprocess import PIPE, Popen, run
+from subprocess import PIPE, Popen
 
 import requests
 from test_base import TestBase
@@ -22,8 +22,8 @@ class LoggingTest(TestBase):
 
     def run_test(self):
         try:
-            self.start_logging()
             self.setup_network()
+            self.start_logging()
             self.test_prometheus_and_grafana()
         finally:
             if self.connect_logging_process is not None:
@@ -32,10 +32,6 @@ class LoggingTest(TestBase):
             self.cleanup()
 
     def start_logging(self):
-        self.log.info("Running install_logging.sh")
-        # Block until complete
-        run([f"{self.scripts_dir / 'install_logging.sh'}"])
-        self.log.info("Running connect_logging.sh")
         # Stays alive in background
         self.connect_logging_process = Popen(
             [f"{self.scripts_dir / 'connect_logging.sh'}"],
@@ -51,13 +47,13 @@ class LoggingTest(TestBase):
         )
         self.connect_logging_thread.daemon = True
         self.connect_logging_thread.start()
+        self.wait_for_endpoint_ready()
 
     def setup_network(self):
         self.log.info("Setting up network")
         self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
-        self.wait_for_endpoint_ready()
 
     def wait_for_endpoint_ready(self):
         self.log.info("Waiting for Grafana to be ready to receive API calls...")
