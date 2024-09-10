@@ -209,7 +209,11 @@ def setup():
             inquirer.List(
                 "platform",
                 message=click.style("Which platform would you like to use?", fg="blue", bold=True),
-                choices=["Minikube", "Docker Desktop"],
+                choices=[
+                    "Minikube",
+                    "Docker Desktop",
+                    "No Backend (Interacting with remote cluster, see `warnet auth --help`)",
+                ],
             )
         ]
         answers = inquirer.prompt(questions)
@@ -219,15 +223,13 @@ def setup():
             if answers["platform"] == "Docker Desktop":
                 check_results.append(check_installation(docker_info))
                 check_results.append(check_installation(docker_desktop_info))
-                check_results.append(check_installation(kubectl_info))
-                check_results.append(check_installation(helm_info))
             elif answers["platform"] == "Minikube":
                 check_results.append(check_installation(docker_info))
                 check_results.append(check_installation(minikube_info))
                 if is_platform_darwin():
                     check_results.append(check_installation(minikube_version_info))
-                check_results.append(check_installation(kubectl_info))
-                check_results.append(check_installation(helm_info))
+            check_results.append(check_installation(kubectl_info))
+            check_results.append(check_installation(helm_info))
         else:
             click.secho("Please re-run setup.", fg="yellow")
             sys.exit(1)
