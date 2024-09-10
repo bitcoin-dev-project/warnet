@@ -38,8 +38,8 @@ class SignetTest(TestBase):
         )
 
         def block_one():
-            for tank in ["tank-0001", "tank-0002"]:
-                height = int(self.warnet(f"bitcoin rpc {tank} getblockcount"))
+            for n in range(1, 11):
+                height = int(self.warnet(f"bitcoin rpc tank-{n} getblockcount"))
                 if height != 1:
                     return False
             return True

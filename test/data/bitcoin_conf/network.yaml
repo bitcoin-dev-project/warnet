@@ -1,35 +1,35 @@
 nodes:
   - name: tank-0016
     image:
-      tag: "v0.16.1"
+      tag: "0.16.1"
     connect:
       - tank-0017
     config:
       uacomment=tank-0016
   - name: tank-0017
     image:
-      tag: "v0.17.0"
+      tag: "0.17.0"
     connect:
       - tank-0019
     config:
       uacomment=tank-0017
   - name: tank-0019
     image:
-      tag: "v0.19.2"
+      tag: "0.19.2"
     connect:
       - tank-0020
     config:
       uacomment=tank-0019
   - name: tank-0020
     image:
-      tag: "v0.20.0"
+      tag: "0.20.0"
     connect:
       - tank-0021
     config:
       uacomment=tank-0020
   - name: tank-0021
     image:
-      tag: "v0.21.1"
+      tag: "0.21.1"
     connect:
       - tank-0024
     config:
