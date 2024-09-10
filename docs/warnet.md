@@ -21,6 +21,10 @@ options:
 |-------------|--------|------------|-----------|
 | kube_config | String | yes        |           |
 
+### `warnet create`
+Create a new warnet network
+
+
 ### `warnet deploy`
 Deploy a warnet with topology loaded from \<directory>
 
