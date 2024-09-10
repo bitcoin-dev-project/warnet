@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "commander.fullname" . }}-scenario
+  labels:
+    {{- include "commander.labels" . | nindent 4 }}
+binaryData:
+  scenario.py: {{ .Values.scenario }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "commander.fullname" . }}-warnet
+  labels:
+    {{- include "commander.labels" . | nindent 4 }}
+binaryData:
+  warnet.json: {{ .Values.warnet }}

@@ -1,20 +1,20 @@
+import base64
 import json
-import os
-import tempfile
+import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import click
 import inquirer
-import yaml
 from inquirer.themes import GreenPassion
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from .constants import COMMANDER_CHART
 from .k8s import (
-    apply_kubernetes_yaml,
-    delete_namespace,
     get_default_namespace,
     get_mission,
     get_pods,
@@ -77,16 +77,27 @@ def stop(scenario_name):
 
 
 def stop_scenario(scenario_name):
-    """Stop a single scenario"""
-    cmd = f"kubectl delete pod {scenario_name}"
+    """Stop a single scenario using Helm"""
+    # Stop the pod immediately (faster than uninstalling)
+    cmd = f"kubectl delete pod {scenario_name} --grace-period=0 --force"
     if stream_command(cmd):
         console.print(f"[bold green]Successfully stopped scenario: {scenario_name}[/bold green]")
     else:
         console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
 
+    # Then uninstall via helm (non-blocking)
+    namespace = get_default_namespace()
+    command = f"helm uninstall {scenario_name} --namespace {namespace} --wait=false"
+
+    # Run the helm uninstall command in the background
+    subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    console.print(
+        f"[bold yellow]Initiated helm uninstall for release: {scenario_name}[/bold yellow]"
+    )
+
 
 def stop_all_scenarios(scenarios):
-    """Stop all active scenarios"""
+    """Stop all active scenarios using Helm"""
     with console.status("[bold yellow]Stopping all scenarios...[/bold yellow]"):
         for scenario in scenarios:
             stop_scenario(scenario)
@@ -95,8 +106,8 @@ def stop_all_scenarios(scenarios):
 
 def list_active_scenarios():
     """List all active scenarios"""
-    commanders = get_mission("commander")
-    if not commanders:
+    active_scenarios = get_active_scenarios()
+    if not active_scenarios:
         print("No active scenarios found.")
         return
 
@@ -105,43 +116,53 @@ def list_active_scenarios():
     table.add_column("Name", style="cyan")
     table.add_column("Status", style="green")
 
-    for commander in commanders:
-        table.add_row(commander.metadata.name, commander.status.phase.lower())
+    for scenario in active_scenarios:
+        table.add_row(scenario, "deployed")
 
     console.print(table)
 
 
 @click.command()
 def down():
-    """Bring down a running warnet"""
-    with console.status("[bold yellow]Bringing down the warnet...[/bold yellow]"):
-        # Delete warnet-logging namespace
-        if delete_namespace("warnet-logging"):
-            console.print("[green]Warnet logging deleted[/green]")
-        else:
-            console.print("[red]Warnet logging NOT deleted[/red]")
+    """Bring down a running warnet quickly"""
+    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
 
-    # Uninstall tanks
-    tanks = get_mission("tank")
-    with console.status("[yellow]Uninstalling tanks...[/yellow]"):
-        for tank in tanks:
-            cmd = f"helm uninstall {tank.metadata.name} --namespace {get_default_namespace()}"
-            if stream_command(cmd):
-                console.print(f"[green]Uninstalled tank: {tank.metadata.name}[/green]")
-            else:
-                console.print(f"[red]Failed to uninstall tank: {tank.metadata.name}[/red]")
+    namespaces = [get_default_namespace(), "warnet-logging"]
 
-    # Clean up scenarios and other pods
-    pods = get_pods()
-    with console.status("[yellow]Cleaning up remaining pods...[/yellow]"):
+    def uninstall_release(namespace, release_name):
+        cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Initiated uninstall for: {release_name} in namespace {namespace}"
+
+    def delete_pod(pod_name, namespace):
+        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = []
+
+        # Uninstall Helm releases
+        for namespace in namespaces:
+            command = f"helm list --namespace {namespace} -o json"
+            result = run_command(command)
+            if result:
+                releases = json.loads(result)
+                for release in releases:
+                    futures.append(executor.submit(uninstall_release, namespace, release["name"]))
+
+        # Delete remaining pods
+        pods = get_pods()
         for pod in pods.items:
-            cmd = f"kubectl delete pod --ignore-not-found=true {pod.metadata.name} -n {get_default_namespace()}"
-            if stream_command(cmd):
-                console.print(f"[green]Deleted pod: {pod.metadata.name}[/green]")
-            else:
-                console.print(f"[red]Failed to delete pod: {pod.metadata.name}[/red]")
+            futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
 
-    console.print("[bold green]Warnet has been brought down.[/bold green]")
+        # Wait for all tasks to complete and print results
+        for future in as_completed(futures):
+            console.print(f"[yellow]{future.result()}[/yellow]")
+
+    console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
+    console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
+    console.print("[bold green]Warnet teardown process completed.[/bold green]")
 
 
 def get_active_network(namespace):
@@ -163,11 +184,11 @@ def get_active_network(namespace):
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 def run(scenario_file: str, additional_args: tuple[str]):
     """Run a scenario from a file"""
-    scenario_path = os.path.abspath(scenario_file)
-    scenario_name = os.path.splitext(os.path.basename(scenario_path))[0]
+    scenario_path = Path(scenario_file).resolve()
+    scenario_name = scenario_path.stem
 
-    with open(scenario_path) as file:
-        scenario_text = file.read()
+    with open(scenario_path, "rb") as file:
+        scenario_data = base64.b64encode(file.read()).decode()
 
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
     namespace = get_default_namespace()
@@ -184,72 +205,45 @@ def run(scenario_file: str, additional_args: tuple[str]):
         }
         for tank in tankpods
     ]
-    kubernetes_objects = [
-        {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-                "name": "warnetjson",
-                "namespace": namespace,
-            },
-            "data": {"warnet.json": json.dumps(tanks)},
-        },
-        {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-                "name": "scenariopy",
-                "namespace": namespace,
-            },
-            "data": {"scenario.py": scenario_text},
-        },
-        {
-            "apiVersion": "v1",
-            "kind": "Pod",
-            "metadata": {
-                "name": name,
-                "namespace": namespace,
-                "labels": {"mission": "commander"},
-            },
-            "spec": {
-                "restartPolicy": "Never",
-                "containers": [
-                    {
-                        "name": name,
-                        "image": "bitcoindevproject/warnet-commander:latest",
-                        "args": additional_args,
-                        "volumeMounts": [
-                            {
-                                "name": "warnetjson",
-                                "mountPath": "warnet.json",
-                                "subPath": "warnet.json",
-                            },
-                            {
-                                "name": "scenariopy",
-                                "mountPath": "scenario.py",
-                                "subPath": "scenario.py",
-                            },
-                        ],
-                    }
-                ],
-                "volumes": [
-                    {"name": "warnetjson", "configMap": {"name": "warnetjson"}},
-                    {"name": "scenariopy", "configMap": {"name": "scenariopy"}},
-                ],
-            },
-        },
-    ]
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
-        yaml.dump_all(kubernetes_objects, temp_file)
-        temp_file_path = temp_file.name
 
-    if apply_kubernetes_yaml(temp_file_path):
-        print(f"Successfully started scenario: {scenario_name}")
-        print(f"Commander pod name: {name}")
-    else:
+    # Encode warnet data
+    warnet_data = base64.b64encode(json.dumps(tanks).encode()).decode()
+
+    try:
+        # Construct Helm command
+        helm_command = [
+            "helm",
+            "upgrade",
+            "--install",
+            "--namespace",
+            namespace,
+            "--set",
+            f"fullnameOverride={name}",
+            "--set",
+            f"scenario={scenario_data}",
+            "--set",
+            f"warnet={warnet_data}",
+        ]
+
+        # Add additional arguments
+        if additional_args:
+            helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
+
+        helm_command.extend([name, COMMANDER_CHART])
+
+        # Execute Helm command
+        result = subprocess.run(helm_command, check=True, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            print(f"Successfully started scenario: {scenario_name}")
+            print(f"Commander pod name: {name}")
+        else:
+            print(f"Failed to start scenario: {scenario_name}")
+            print(f"Error: {result.stderr}")
+
+    except subprocess.CalledProcessError as e:
         print(f"Failed to start scenario: {scenario_name}")
-
-    os.unlink(temp_file_path)
+        print(f"Error: {e.stderr}")
 
 
 @click.command()
