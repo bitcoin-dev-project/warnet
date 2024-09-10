@@ -29,7 +29,7 @@ class LoggingTest(TestBase):
             if self.connect_logging_process is not None:
                 self.log.info("Terminating background connect_logging.sh process...")
                 self.connect_logging_process.terminate()
-            self.stop_server()
+            self.cleanup()
 
     def start_logging(self):
         self.log.info("Running install_logging.sh")

@@ -20,7 +20,7 @@ class RPCTest(TestBase):
             self.test_message_exchange()
             self.test_address_manager()
         finally:
-            self.stop_server()
+            self.cleanup()
 
     def setup_network(self):
         self.log.info("Setting up network")

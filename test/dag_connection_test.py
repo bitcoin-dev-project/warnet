@@ -16,7 +16,7 @@ class DAGConnectionTest(TestBase):
             self.setup_network()
             self.run_connect_dag_scenario()
         finally:
-            self.stop_server()
+            self.cleanup()
 
     def setup_network(self):
         self.log.info("Setting up network")

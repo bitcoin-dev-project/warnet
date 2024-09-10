@@ -91,3 +91,18 @@ jobs:
         run: |
           source .venv/bin/activate
           ./test/${{matrix.test}}
+  test-without-mk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test:
+          - graph_test.py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: eifinger/setup-uv@v1
+      - name: Install project
+        run: uv sync --all-extras --dev
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          ./test/${{matrix.test}}
