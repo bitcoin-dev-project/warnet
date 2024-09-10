@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 from importlib.resources import files
 from pathlib import Path
 
@@ -34,7 +35,13 @@ def custom_graph(
     fork_observer: bool,
     fork_obs_query_interval: int,
 ):
-    datadir.mkdir(parents=False, exist_ok=False)
+    try:
+        datadir.mkdir(parents=False, exist_ok=False)
+    except FileExistsError as e:
+        print(e)
+        print("Exiting network builder without overwriting")
+        sys.exit(1)
+
     # Generate network.yaml
     nodes = []
     connections = set()
