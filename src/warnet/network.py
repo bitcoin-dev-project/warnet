@@ -63,7 +63,7 @@ def copy_scenario_defaults(directory: Path):
     )
 
 
-def _connected():
+def _connected(end="\n"):
     tanks = get_mission("tank")
     for tank in tanks:
         # Get actual
@@ -73,11 +73,11 @@ def _connected():
             if peer["connection_type"] == "manual":
                 actual += 1
         expected = int(tank.metadata.annotations["init_peers"])
-        print(f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}")
+        print(f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}", end=end)
         # Even if more edges are specified, bitcoind only allows
         # 8 manual outbound connections
         if min(8, expected) > actual:
-            print("Network not connected")
+            print("\nNetwork not connected")
             return False
-    print("Network connected")
+    print("Network connected                                                           ")
     return True
