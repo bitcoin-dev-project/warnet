@@ -35,7 +35,7 @@ options:
 | debug     | Bool   |            | False     |
 
 ### `warnet down`
-Bring down a running warnet
+Bring down a running warnet quickly
 
 
 ### `warnet init`
