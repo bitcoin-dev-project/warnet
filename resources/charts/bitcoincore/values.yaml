@@ -78,16 +78,16 @@ livenessProbe:
     command:
     - pidof
     - bitcoind
-  failureThreshold: 3
+  failureThreshold: 12
   initialDelaySeconds: 5
   periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 1
+  timeoutSeconds: 10
 readinessProbe:
-  failureThreshold: 1
-  periodSeconds: 1
+  failureThreshold: 12
+  periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 1
+  timeoutSeconds: 10
 
 
 # Additional volumes on the output Deployment definition.
