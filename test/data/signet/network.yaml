@@ -1,8 +1,52 @@
 nodes:
   - name: miner
-  - name: tank-0001
+  - name: tank-1
+    image:
+      tag: "0.16.1"
     connect:
       - miner
-  - name: tank-0002
+  - name: tank-2
+    image:
+      tag: "0.17.0"
+    connect:
+      - miner
+  - name: tank-3
+    image:
+      tag: "0.19.2"
+    connect:
+      - miner
+  - name: tank-4
+    image:
+      tag: "0.20.0"
+    connect:
+      - miner
+  - name: tank-5
+    image:
+      tag: "0.21.1"
+    connect:
+      - miner
+  - name: tank-6
+    image:
+      tag: "24.2"
+    connect:
+      - miner
+  - name: tank-7
+    image:
+      tag: "25.1"
+    connect:
+      - miner
+  - name: tank-8
+    image:
+      tag: "26.0"
+    connect:
+      - miner
+  - name: tank-9
+    image:
+      tag: "27.0"
+    connect:
+      - miner
+  - name: tank-10
+    image:
+      tag: "0.16.1"
     connect:
       - miner

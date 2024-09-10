@@ -5,6 +5,9 @@ image:
 
 chain: signet
 
+spec:
+  restartPolicy: Always
+
 config: |
   debug=rpc
   debug=net

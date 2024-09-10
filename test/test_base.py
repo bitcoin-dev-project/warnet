@@ -81,8 +81,11 @@ class TestBase:
     def wait_for_predicate(self, predicate, timeout=5 * 60, interval=5):
         self.log.debug(f"Waiting for predicate with timeout {timeout}s and interval {interval}s")
         while timeout > 0:
-            if predicate():
-                return
+            try:
+                if predicate():
+                    return
+            except Exception:
+                pass
             sleep(interval)
             timeout -= interval
         import inspect

@@ -63,6 +63,11 @@ def copy_scenario_defaults(directory: Path):
     )
 
 
+def is_connection_manual(peer):
+    # newer nodes specify a "connection_type"
+    return bool(peer.get("connection_type") == "manual" or peer.get("addnode") is True)
+
+
 def _connected(end="\n"):
     tanks = get_mission("tank")
     for tank in tanks:
@@ -70,7 +75,7 @@ def _connected(end="\n"):
         peerinfo = json.loads(_rpc(tank.metadata.name, "getpeerinfo", ""))
         actual = 0
         for peer in peerinfo:
-            if peer["connection_type"] == "manual":
+            if is_connection_manual(peer):
                 actual += 1
         expected = int(tank.metadata.annotations["init_peers"])
         print(f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}", end=end)
