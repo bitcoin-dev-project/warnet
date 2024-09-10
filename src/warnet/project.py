@@ -212,7 +212,7 @@ def setup():
                 choices=[
                     "Minikube",
                     "Docker Desktop",
-                    "No Backend (Interacting with remote cluster already deployed)",
+                    "No Backend (Interacting with remote cluster, see `warnet auth --help`)",
                 ],
             )
         ]
