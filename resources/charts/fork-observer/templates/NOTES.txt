@@ -1,1 +1,5 @@
-Fork-observer is watching you
+To view forkobserver you must forward the port from the cluster to your local machine
+
+kubectl port-forward fork-observer 2323
+
+fork-observer will then be available at web address: http://localhost:2323
