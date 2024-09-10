@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,6 +19,7 @@ from .k8s import (
     get_default_namespace,
     get_mission,
     get_pods,
+    snapshot_bitcoin_datadir,
 )
 from .process import run_command, stream_command
 
@@ -291,3 +293,104 @@ def logs(pod_name: str, follow: bool):
             print(f"Please consider waiting for the pod to become available. Encountered: {e}")
     else:
         pass  # cancelled by user
+
+
+@click.command()
+@click.argument("tank_name", required=False)
+@click.option("--all", "-a", "snapshot_all", is_flag=True, help="Snapshot all running tanks")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default="./warnet-snapshots",
+    help="Output directory for snapshots",
+)
+@click.option(
+    "--filter",
+    "-f",
+    type=str,
+    help="Comma-separated list of directories and/or files to include in the snapshot",
+)
+def snapshot(tank_name, snapshot_all, output, filter):
+    """Create a snapshot of a tank's Bitcoin data or snapshot all tanks"""
+    tanks = get_mission("tank")
+
+    if not tanks:
+        console.print("[bold red]No active tanks found.[/bold red]")
+        return
+
+    # Create the output directory if it doesn't exist
+    os.makedirs(output, exist_ok=True)
+
+    filter_list = [f.strip() for f in filter.split(",")] if filter else None
+    if snapshot_all:
+        snapshot_all_tanks(tanks, output, filter_list)
+    elif tank_name:
+        snapshot_single_tank(tank_name, tanks, output, filter_list)
+    else:
+        select_and_snapshot_tank(tanks, output, filter_list)
+
+
+def find_tank_by_name(tanks, tank_name):
+    for tank in tanks:
+        if tank.metadata.name == tank_name:
+            return tank
+    return None
+
+
+def snapshot_all_tanks(tanks, output_dir, filter_list):
+    with console.status("[bold yellow]Snapshotting all tanks...[/bold yellow]"):
+        for tank in tanks:
+            tank_name = tank.metadata.name
+            chain = tank.metadata.labels["chain"]
+            snapshot_tank(tank_name, chain, output_dir, filter_list)
+    console.print("[bold green]All tank snapshots completed.[/bold green]")
+
+
+def snapshot_single_tank(tank_name, tanks, output_dir, filter_list):
+    tank = find_tank_by_name(tanks, tank_name)
+    if tank:
+        chain = tank.metadata.labels["chain"]
+        snapshot_tank(tank_name, chain, output_dir, filter_list)
+    else:
+        console.print(f"[bold red]No active tank found with name: {tank_name}[/bold red]")
+
+
+def select_and_snapshot_tank(tanks, output_dir, filter_list):
+    table = Table(title="Active Tanks", show_header=True, header_style="bold magenta")
+    table.add_column("Number", style="cyan", justify="right")
+    table.add_column("Tank Name", style="green")
+
+    for idx, tank in enumerate(tanks, 1):
+        table.add_row(str(idx), tank.metadata.name)
+
+    console.print(table)
+
+    choices = [str(i) for i in range(1, len(tanks) + 1)] + ["q"]
+    choice = Prompt.ask(
+        "[bold yellow]Enter the number of the tank to snapshot, or 'q' to quit[/bold yellow]",
+        choices=choices,
+        show_choices=False,
+    )
+
+    if choice == "q":
+        console.print("[bold blue]Operation cancelled.[/bold blue]")
+        return
+
+    selected_tank = tanks[int(choice) - 1]
+    tank_name = selected_tank.metadata.name
+    chain = selected_tank.metadata.labels["chain"]
+    snapshot_tank(tank_name, chain, output_dir, filter_list)
+
+
+def snapshot_tank(tank_name, chain, output_dir, filter_list):
+    try:
+        output_path = Path(output_dir).resolve()
+        snapshot_bitcoin_datadir(tank_name, chain, str(output_path), filter_list)
+        console.print(
+            f"[bold green]Successfully created snapshot for tank: {tank_name}[/bold green]"
+        )
+    except Exception as e:
+        console.print(
+            f"[bold red]Failed to create snapshot for tank {tank_name}: {str(e)}[/bold red]"
+        )
