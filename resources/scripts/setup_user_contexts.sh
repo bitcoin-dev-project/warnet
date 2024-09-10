@@ -30,6 +30,11 @@ KUBECONFIG_DIR=${2:-"kubeconfigs"}
 TOKEN_DURATION=${3:-600}
 
 CLUSTER_NAME=$(kubectl config view --minify -o jsonpath='{.clusters[0].name}')
+if ! [ $? -eq 0 ]; then
+  echo "First kubectl call failed, aborting."
+  exit 1
+fi
+
 CLUSTER_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 CLUSTER_CA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
 
