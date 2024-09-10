@@ -146,7 +146,7 @@ Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
 ## Image
 
 ### `warnet image build`
-Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> as \<registry>:\<tag>.
+Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> with the specified \<tags>.
     Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
 
 options:
@@ -155,7 +155,7 @@ options:
 | repo       | String | yes        |           |
 | commit_sha | String | yes        |           |
 | registry   | String | yes        |           |
-| tag        | String | yes        |           |
+| tags       | String | yes        |           |
 | build_args | String |            |           |
 | arches     | String |            |           |
 | action     | String |            | "load"    |
