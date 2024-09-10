@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import yaml
 from kubernetes import client, config
 from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
+from kubernetes.stream import stream
 
 from .constants import DEFAULT_NAMESPACE, KUBECONFIG
 from .process import run_command, stream_command
@@ -115,3 +117,113 @@ def get_default_namespace() -> str:
     command = "kubectl config view --minify -o jsonpath='{..namespace}'"
     kubectl_namespace = run_command(command)
     return kubectl_namespace if kubectl_namespace else DEFAULT_NAMESPACE
+
+
+def snapshot_bitcoin_datadir(
+    pod_name: str, chain: str, local_path: str = "./", filters: list[str] = None
+) -> None:
+    namespace = get_default_namespace()
+    sclient = get_static_client()
+
+    try:
+        sclient.read_namespaced_pod(name=pod_name, namespace=namespace)
+
+        # Filter down to the specified list of directories and files
+        # This allows for creating snapshots of only the relevant data, e.g.,
+        # we may want to snapshot the blocks but not snapshot peers.dat or the node
+        # wallets.
+        #
+        # TODO: never snapshot bitcoin.conf, as this is managed by the helm config
+        if filters:
+            find_command = [
+                "find",
+                f"/root/.bitcoin/{chain}",
+                "(",
+                "-type",
+                "f",
+                "-o",
+                "-type",
+                "d",
+                ")",
+                "(",
+                "-name",
+                filters[0],
+            ]
+            for f in filters[1:]:
+                find_command.extend(["-o", "-name", f])
+            find_command.append(")")
+        else:
+            # If no filters, get everything in the Bitcoin directory (TODO: exclude bitcoin.conf)
+            find_command = ["find", f"/root/.bitcoin/{chain}"]
+
+        resp = stream(
+            sclient.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            command=find_command,
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            _preload_content=False,
+        )
+
+        file_list = []
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                file_list.extend(resp.read_stdout().strip().split("\n"))
+            if resp.peek_stderr():
+                print(f"Error: {resp.read_stderr()}")
+
+        resp.close()
+        if not file_list:
+            print("No matching files or directories found.")
+            return
+        tar_command = ["tar", "-czf", "/tmp/bitcoin_data.tar.gz", "-C", f"/root/.bitcoin/{chain}"]
+        tar_command.extend(
+            [os.path.relpath(f, f"/root/.bitcoin/{chain}") for f in file_list if f.strip()]
+        )
+        resp = stream(
+            sclient.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            command=tar_command,
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            _preload_content=False,
+        )
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                print(f"Tar output: {resp.read_stdout()}")
+            if resp.peek_stderr():
+                print(f"Error: {resp.read_stderr()}")
+        resp.close()
+        local_file_path = Path(local_path) / f"{pod_name}_bitcoin_data.tar.gz"
+        copy_command = (
+            f"kubectl cp {namespace}/{pod_name}:/tmp/bitcoin_data.tar.gz {local_file_path}"
+        )
+        if not stream_command(copy_command):
+            raise Exception("Failed to copy tar file from pod to local machine")
+
+        print(f"Bitcoin data exported successfully to {local_file_path}")
+        cleanup_command = ["rm", "/tmp/bitcoin_data.tar.gz"]
+        stream(
+            sclient.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            command=cleanup_command,
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+        )
+
+        print("To untar and repopulate the directory, use the following command:")
+        print(f"tar -xzf {local_file_path} -C /path/to/destination/.bitcoin/{chain}")
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
