@@ -117,7 +117,7 @@ prometheusMetricsPort: 9332
 
 baseConfig: |
   checkmempool=0
-  debuglogfile=0
+  debuglogfile=debug.log
   logips=1
   logtimemicros=1
   capturemessages=1
