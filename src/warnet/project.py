@@ -53,6 +53,36 @@ def setup():
         except FileNotFoundError as err:
             return False, str(err)
 
+    def is_minikube_running() -> tuple[bool, str]:
+        try:
+            result = subprocess.run(
+                ["minikube", "status"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0 and "Running" in result.stdout:
+                return True, "minikube is running"
+            else:
+                return False, ""
+        except FileNotFoundError:
+            # Minikube command not found
+            return False, ""
+
+    def is_docker_running() -> tuple[bool, str]:
+        try:
+            result = subprocess.run(
+                ["docker", "info"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                return True, "docker is running"
+            else:
+                return False, ""
+        except FileNotFoundError:
+            # Docker command not found
+            return False, ""
+
     def is_minikube_version_valid_on_darwin() -> tuple[bool, str]:
         try:
             version_result = subprocess.run(
@@ -171,6 +201,18 @@ def setup():
         install_instruction="Make sure Docker Desktop is installed and running.",
         install_url="https://docs.docker.com/desktop/",
     )
+    docker_running_info = ToolInfo(
+        tool_name="Running Docker",
+        is_installed_func=is_docker_running,
+        install_instruction="Please make sure docker is running",
+        install_url="https://docs.docker.com/engine/install/",
+    )
+    minikube_running_info = ToolInfo(
+        tool_name="Running Minikube",
+        is_installed_func=is_minikube_running,
+        install_instruction="Please make sure minikube is running",
+        install_url="https://minikube.sigs.k8s.io/docs/start/",
+    )
     kubectl_info = ToolInfo(
         tool_name="Kubectl",
         is_installed_func=is_kubectl_installed,
@@ -223,11 +265,14 @@ def setup():
             if answers["platform"] == "Docker Desktop":
                 check_results.append(check_installation(docker_info))
                 check_results.append(check_installation(docker_desktop_info))
+                check_results.append(check_installation(docker_running_info))
             elif answers["platform"] == "Minikube":
                 check_results.append(check_installation(docker_info))
+                check_results.append(check_installation(docker_running_info))
                 check_results.append(check_installation(minikube_info))
                 if is_platform_darwin():
                     check_results.append(check_installation(minikube_version_info))
+                check_results.append(check_installation(minikube_running_info))
             check_results.append(check_installation(kubectl_info))
             check_results.append(check_installation(helm_info))
         else:
