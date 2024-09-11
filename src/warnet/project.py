@@ -181,7 +181,7 @@ def setup():
             url_label = click.style("    URL: ", fg="yellow", bold=True)
             url_text = click.style(f"{tool_info.install_url}", fg="yellow")
 
-            click.secho(f" 💥 {tool_info.tool_name} is not installed. {location}", fg="yellow")
+            click.secho(f" 💥 {tool_info.tool_name} is not satisfied. {location}", fg="yellow")
             click.echo(instruction_label + instruction_text)
             click.echo(url_label + url_text)
             return ToolStatus.Unsatisfied
