@@ -6,6 +6,8 @@ from pathlib import Path
 
 from test_base import TestBase
 
+from warnet.status import _get_active_scenarios as scenarios_active
+
 
 class SignetTest(TestBase):
     def __init__(self):
@@ -19,6 +21,7 @@ class SignetTest(TestBase):
         try:
             self.setup_network()
             self.check_signet_miner()
+            self.check_signet_recon()
         finally:
             self.cleanup()
 
@@ -45,6 +48,17 @@ class SignetTest(TestBase):
             return True
 
         self.wait_for_predicate(block_one)
+
+    def check_signet_recon(self):
+        scenario_file = "resources/scenarios/reconnaissance.py"
+        self.log.info(f"Running scenario from file: {scenario_file}")
+        self.warnet(f"run {scenario_file}")
+
+        def check_scenario_clean_exit():
+            active = scenarios_active()
+            return all(scenario["status"] == "succeeded" for scenario in active)
+
+        self.wait_for_predicate(check_scenario_clean_exit)
 
 
 if __name__ == "__main__":

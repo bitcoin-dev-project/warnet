@@ -31,6 +31,7 @@ class ScenariosTest(TestBase):
     def test_scenarios(self):
         self.run_and_check_miner_scenario_from_file()
         self.run_and_check_scenario_from_file()
+        self.check_regtest_recon()
 
     def scenario_running(self, scenario_name: str):
         """Check that we are only running a single scenario of the correct name"""
@@ -40,15 +41,9 @@ class ScenariosTest(TestBase):
 
     def run_and_check_scenario_from_file(self):
         scenario_file = "test/data/scenario_p2p_interface.py"
-
-        def check_scenario_clean_exit():
-            active = scenarios_active()
-            assert len(active) == 1
-            return active[0]["status"] == "succeeded"
-
         self.log.info(f"Running scenario from: {scenario_file}")
         self.warnet(f"run {scenario_file}")
-        self.wait_for_predicate(lambda: check_scenario_clean_exit())
+        self.wait_for_predicate(self.check_scenario_clean_exit)
 
     def run_and_check_miner_scenario_from_file(self):
         scenario_file = "resources/scenarios/miner_std.py"
@@ -58,6 +53,16 @@ class ScenariosTest(TestBase):
         self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
         self.stop_scenario()
+
+    def check_regtest_recon(self):
+        scenario_file = "resources/scenarios/reconnaissance.py"
+        self.log.info(f"Running scenario from file: {scenario_file}")
+        self.warnet(f"run {scenario_file}")
+        self.wait_for_predicate(self.check_scenario_clean_exit)
+
+    def check_scenario_clean_exit(self):
+        active = scenarios_active()
+        return all(scenario["status"] == "succeeded" for scenario in active)
 
     def check_blocks(self, target_blocks, start: int = 0):
         count = int(self.warnet("bitcoin rpc tank-0000 getblockcount"))
