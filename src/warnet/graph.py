@@ -34,6 +34,7 @@ def custom_graph(
     fork_observer: bool,
     fork_obs_query_interval: int,
     caddy: bool,
+    logging: bool,
 ):
     datadir.mkdir(parents=False, exist_ok=False)
     # Generate network.yaml
@@ -79,10 +80,13 @@ def custom_graph(
     # Generate node-defaults.yaml
     default_yaml_path = files("resources.networks").joinpath("node-defaults.yaml")
     with open(str(default_yaml_path)) as f:
-        defaults_yaml_content = f.read()
+        defaults_yaml_content = yaml.safe_load(f)
+
+    # Configure logging
+    defaults_yaml_content["collectLogs"] = logging
 
     with open(os.path.join(datadir, "node-defaults.yaml"), "w") as f:
-        f.write(defaults_yaml_content)
+        yaml.dump(defaults_yaml_content, f, default_flow_style=False, sort_keys=False)
 
     click.echo(
         f"Project '{datadir}' has been created with 'network.yaml' and 'node-defaults.yaml'."
@@ -175,6 +179,15 @@ def inquirer_create_network(project_path: Path):
             type=int,
             default=20,
         )
+
+    logging = click.prompt(
+        click.style(
+            "\nWould you like to enable grafana logging on the network?", fg="blue", bold=True
+        ),
+        type=bool,
+        default=False,
+    )
+    caddy = fork_observer | logging
     custom_network_path = project_path / "networks" / net_answers["network_name"]
     click.secho("\nGenerating custom network...", fg="yellow", bold=True)
     custom_graph(
@@ -184,7 +197,8 @@ def inquirer_create_network(project_path: Path):
         custom_network_path,
         fork_observer,
         fork_observer_query_interval,
-        fork_observer,  # This enables caddy whenever fork-observer is enabled
+        caddy,
+        logging,
     )
     return custom_network_path
 

@@ -40,6 +40,8 @@ class GraphTest(TestBase):
         self.sut.sendline("")
         self.sut.expect("seconds", timeout=10)
         self.sut.sendline("")
+        self.sut.expect("enable grafana", timeout=10)
+        self.sut.sendline("")
         self.sut.expect("successfully", timeout=50)
 
 
