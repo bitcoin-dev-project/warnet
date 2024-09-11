@@ -9,10 +9,6 @@ except ImportError:
     from resources.scenarios.commander import Commander
 
 
-def cli_help():
-    return "Generate blocks over time. Options: [--allnodes | --interval=<number> | --mature ]"
-
-
 class Miner:
     def __init__(self, node, mature):
         self.node = node
@@ -28,6 +24,8 @@ class MinerStd(Commander):
         self.miners = []
 
     def add_options(self, parser):
+        parser.description = "Generate blocks over time"
+        parser.usage = "warnet run /path/to/miner_std.py [options]"
         parser.add_argument(
             "--allnodes",
             dest="allnodes",

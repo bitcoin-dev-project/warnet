@@ -10,10 +10,6 @@ except ImportError:
     from resources.scenarios.commander import Commander
 
 
-def cli_help():
-    return "Make a big transaction mess. Options: [--interval=<number>]"
-
-
 class TXFlood(Commander):
     def set_test_params(self):
         self.num_nodes = 1
@@ -21,6 +17,10 @@ class TXFlood(Commander):
         self.threads = []
 
     def add_options(self, parser):
+        parser.description = (
+            "Sends random transactions between all nodes with available balance in their wallet"
+        )
+        parser.usage = "warnet run /path/to/tx_flood.py [options]"
         parser.add_argument(
             "--interval",
             dest="interval",

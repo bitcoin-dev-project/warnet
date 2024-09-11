@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import subprocess
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -185,7 +186,10 @@ def get_active_network(namespace):
 @click.argument("scenario_file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 def run(scenario_file: str, additional_args: tuple[str]):
-    """Run a scenario from a file"""
+    """
+    Run a scenario from a file.
+    Pass `-- --help` to get individual scenario help
+    """
     scenario_path = Path(scenario_file).resolve()
     scenario_name = scenario_path.stem
 
@@ -230,6 +234,8 @@ def run(scenario_file: str, additional_args: tuple[str]):
         # Add additional arguments
         if additional_args:
             helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
+            if "--help" in additional_args or "-h" in additional_args:
+                return subprocess.run([sys.executable, scenario_path, "--help"])
 
         helm_command.extend([name, COMMANDER_CHART])
 

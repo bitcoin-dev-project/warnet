@@ -46,6 +46,8 @@ class SignetMinerScenario(Commander):
         self.num_nodes = 1
 
     def add_options(self, parser):
+        parser.description = "Generate blocks on a signet network"
+        parser.usage = "warnet run /path/to/signet_miner.py [options]"
         parser.add_argument(
             "--tank",
             dest="tank",
