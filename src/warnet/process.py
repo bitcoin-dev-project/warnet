@@ -2,9 +2,7 @@ import subprocess
 
 
 def run_command(command: str) -> str:
-    result = subprocess.run(
-        command, shell=True, capture_output=True, text=True, executable="/bin/bash"
-    )
+    result = subprocess.run(command, shell=True, capture_output=True, text=True, executable="bash")
     if result.returncode != 0:
         raise Exception(result.stderr)
     return result.stdout
@@ -12,7 +10,7 @@ def run_command(command: str) -> str:
 
 def stream_command(command: str) -> bool:
     process = subprocess.Popen(
-        ["/bin/bash", "-c", command],
+        ["bash", "-c", command],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

@@ -189,7 +189,7 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
                 import subprocess
 
                 blob = subprocess.run(
-                    cmd, shell=True, capture_output=True, executable="/bin/bash"
+                    cmd, shell=True, capture_output=True, executable="bash"
                 ).stdout
 
                 # Parse the blob
