@@ -1,31 +1,23 @@
 # Logging and Monitoring
 
-Warnet allows different granularity of logging.
-
 ## Logging
 
-### Warnet network level logging
+### Pod logs
 
-Fetch logs from the warnet RPC server `rpc-0`, which is in charge of orchestrating the network.
+The command `warnet logs` will bring up a menu of pods to print log output from,
+such as Bitcoin tanks, or scenario commanders. Follow the output with the `-f` option.
 
-Examples of information provided:
-
-- how many tanks are running
-- what scenarios are running
-- warnet RPC requests
-
-Commands: `warnet network logs` or `warnet network logs --follow`.
-
-See more details in [warnet](/docs/warnet.md#warnet-network-logs)
+See command [`warnet logs`](/docs/warnet.md#warnet-logs)
 
 ### Bitcoin Core logs
 
-These are tank level or pod level log output from a Bitcoin Core node, useful for things like net logging and transaction propagation, retrieved by RPC `debug-log` using its network name and graph node index.
+Entire debug log files from a Bitcoin tank can be dumped by using the tank's
+pod name.
 
 Example:
 
 ```sh
-$ warnet bitcoin debug-log 0
+$ warnet bitcoin debug-log tank-0000
 
 
 2023-10-11T17:54:39.616974Z Bitcoin Core version v25.0.0 (release build)
@@ -34,50 +26,46 @@ $ warnet bitcoin debug-log 0
 ... (etc)
 ```
 
-For logs of lightning nodes, kubectl is required.
+See command [`warnet bitcoin debug-log`](/docs/warnet.md#warnet-bitcoin-debug-log)
 
-### Aggregated logs from all nodes
+### Aggregated logs from all Bitcoin nodes
 
 Aggregated logs can be searched using `warnet bitcoin grep-logs` with regex patterns.
+
+See more details in [`warnet bitcoin grep-logs`](/docs/warnet.md#warnet-bitcoin-grep-logs)
 
 Example:
 
 ```sh
 $ warnet bitcoin grep-logs 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d
 
-warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.716582Z [miner] AddToWallet 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d  newupdate
-warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.717787Z [miner] Submitting wtx 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d to mempool for relay
-warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.717929Z [validation] Enqueuing TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
-warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.718040Z [validation] TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
-warnet_test_uhynisdj_tank_000001: 2023-10-11T17:44:48.723017Z [miner] AddToWallet 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d
-warnet_test_uhynisdj_tank_000007: 2023-10-11T17:44:52.173199Z [validation] Enqueuing TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
+tank-0001: 2023-10-11T17:44:48.716582Z [miner] AddToWallet 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d  newupdate
+tank-0001: 2023-10-11T17:44:48.717787Z [miner] Submitting wtx 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d to mempool for relay
+tank-0001: 2023-10-11T17:44:48.717929Z [validation] Enqueuing TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
+tank-0001: 2023-10-11T17:44:48.718040Z [validation] TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
+tank-0001: 2023-10-11T17:44:48.723017Z [miner] AddToWallet 94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d
+tank-0002: 2023-10-11T17:44:52.173199Z [validation] Enqueuing TransactionAddedToMempool: txid=94cacabc09b024b56dcbed9ccad15c90340c596e883159bcb5f1d2152997322d wtxid=0cc875e73bb0bd8f892b70b8d1e5154aab64daace8d571efac94c62b8c1da3cf
 ... (etc)
 ```
 
-See more details in [warnet](/docs/warnet.md#warnet-bitcoin-grep-logs)
 
 ## Monitoring and Metrics
 
 ## Install logging infrastructure
 
-Ensure that [`helm`](https://helm.sh/docs/intro/install/) is installed, then simply run the following scripts:
+If any tank in a network is configured with `collectLogs: true` or `metricsExport: true`
+then the logging stack will be installed automatically when `warnet deploy` is executed.
 
-```bash
-./resources/scripts/install_logging.sh
-```
+The logging stack includes Loki, Prometheus, and Grafana. Together these programs
+aggregate logs and data from Bitcoin RPC queries into a web-based dashboard.
 
-To forward port `3000` and view the [Grafana](#grafana) dashboard run the `connect_logging` script:
+## Connect to logging dashboard
 
-```bash
-./resources/scripts/connect_logging.sh
-```
+The logging stack including the user interface web server runs inside the kubernetes cluster.
+To access that from a local web browser, you must use kubernetes port-forwarding.
 
-It might take a couple minutes to get the pod running. If you see `error: unable to forward port because pod is not running. Current status=Pending`, hang tight.
-
-The Grafana dashboard (and API) will be accessible without requiring authentication
-at `http://localhost:3000`.
-
-The `install_logging` script will need to be installed before starting the network in order to collect the information for monitoring and metrics. Restart the network with `warnet network down && warnet network up` if necessary.
+Run the script `./resources/scripts/connect_logging.sh` to forward port 3000.
+The Grafana dashboard will then be available locally at `localhost:3000`.
 
 ### Prometheus
 
@@ -86,14 +74,7 @@ to any Bitcoin Tank and configured to scrape any available RPC results.
 
 The `bitcoin-exporter` image is defined in `resources/images/exporter` and
 maintained in the BitcoinDevProject dockerhub organization. To add the exporter
-in the Tank pod with Bitcoin Core add the `"exporter"` key to the node in the graphml file:
-
-```xml
-    <node id="0">
-        <data key="version">27.0</data>
-        <data key="exporter">true</data>
-    </node>
-```
+in the Tank pod with Bitcoin Core add the `metricsExport: true` value to the node in the yaml file.
 
 The default metrics are defined in the `bitcoin-exporter` image:
 - Block count
@@ -101,25 +82,23 @@ The default metrics are defined in the `bitcoin-exporter` image:
 - Number of outbound peers
 - Mempool size (# of TXs)
 
-Metrics can be configured by setting a `"metrics"` key to the node in the graphml file.
-The metrics value is a space-separated list of labels, RPC commands with arguments, and
+Metrics can be configured by setting an additional `metrics` value to the node in the yaml file. The metrics value is a space-separated list of labels, RPC commands with arguments, and
 JSON keys to resolve the desired data:
 
 ```
 label=method(arguments)[JSON result key][...]
 ```
 
-For example, the default metrics listed above are defined as:
+For example, the default metrics listed above would be explicitly configured as follows:
 
-```xml
-    <node id="0">
-        <data key="version">27.0</data>
-        <data key="exporter">true</data>
-        <data key="metrics">blocks=getblockcount() inbounds=getnetworkinfo()["connections_in"] outbounds=getnetworkinfo()["connections_in"] mempool_size=getmempoolinfo()["size"]</data>
-    </node>
+```yaml
+nodes:
+  - name: tank-0000
+    metricsExport: true
+    metrics: blocks=getblockcount() inbounds=getnetworkinfo()["connections_in"] outbounds=getnetworkinfo()["connections_in"] mempool_size=getmempoolinfo()["size"]
 ```
 
-The data can be retrieved from the Prometheus exporter on port `9332`, example:
+The data can be retrieved directly from the Prometheus exporter container in the tank pod via port `9332`, example:
 
 ```
 # HELP blocks getblockcount()
@@ -138,7 +117,7 @@ mempool_size 0.0
 
 ### Grafana
 
-Data from Prometheus exporters can be collected and fed into Grafana for a
+Data from Prometheus exporters is collected and fed into Grafana for a
 web-based interface.
 
 #### Dashboards

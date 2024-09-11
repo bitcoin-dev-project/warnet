@@ -5,24 +5,22 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 
 ## Major Features
 
-* Launch a bitcoin network with a specified number of nodes connected to each other according to a network topology from a graphml file.
-* Scenarios can be run across the network which can be programmed using the Bitcoin Core functional [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
-* Nodes can have traffic shaping parameters assigned to them via the graph using [tc-netem](https://manpages.ubuntu.com/manpages/trusty/man8/tc-netem.8.html) tool.
-* Data from nodes can be collected and searched including log files and p2p messages.
-* Performance data from containers can be monitored and visualized.
-* Lightning Network nodes can be deployed and operated.
-* Networks can be deployed using Kubernetes, e.g. via MiniKube (small network graphs) or a managed cluster for larger network graphs.
+* Launch a bitcoin network with a specified number of nodes connected to each other according to a network topology.
+* Run scenarios of network behavior across the network which can be programmed using the Bitcoin Core functional [test_framework language](https://github.com/bitcoin/bitcoin/tree/master/test/functional).
+* Collect and search data from nodes including log files and p2p messages.
+* Monitor and visualize performance data from Bitcoin nodes.
+* Connect to a large network running in a remote cluster, or a smaller network running locally.
 
 ## Documentation
 
 - [Installation](/docs/install.md)
 - [CLI Commands](/docs/warnet.md)
+- [Network configuration with yaml files](/docs/config.md)
 - [Scenarios](/docs/scenarios.md)
 - [Monitoring](/docs/logging_monitoring.md)
-- [Lightning Network](/docs/lightning.md)
+- [Snapshots](/docs/snapshots.md)
+- [Connecting to local nodes outside the cluster](/docs/connecting-local-nodes.md)
 - [Scaling](/docs/scaling.md)
-- [Connecting to local nodes](/docs/connecting-local-nodes.md)
-- [Understanding network configuration](/docs/config.md)
-- [Contributing](CONTRIBUTING.md)
+- [Contributing](/docs/developer-notes.md)
 
 ![warnet-art](https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/docs/machines.webp)

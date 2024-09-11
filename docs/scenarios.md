@@ -2,8 +2,11 @@
 
 Scenarios are written using the Bitcoin Core test framework for functional testing,
 with some modifications: most notably that `self.nodes[]` represents an array of
-containerized `bitcoind` nodes ("tanks"). Scenario files are run with a python interpreter
-inside the server and can control many nodes in the network simultaneously.
+containerized `bitcoind` nodes ("tanks").
+
+Scenario files are run with a python interpreter inside their own pod called a "commander"
+in kubernetes and many can be run simultaneously. The Commander is provided with
+a JSON file describing the Bitcoin nodes it has access to via RPC.
 
 See [`resources/scenarios/`](../resources/scenarios/) for examples of how these can be written.
 When creating a new network default scenarios will be copied into your project directory for convenience.
