@@ -255,7 +255,7 @@ def setup():
 def create_warnet_project(directory: Path, check_empty: bool = False):
     """Common function to create a warnet project"""
     if check_empty and any(directory.iterdir()):
-        click.secho("Warning: Directory is not empty", fg="yellow")
+        click.secho(f"Warning: Directory {directory} is not empty", fg="yellow")
         if not click.confirm("Do you want to continue?", default=True):
             return
 
@@ -308,7 +308,7 @@ def new_internal(directory: Path, from_init=False):
 
     if custom_network_path:
         click.echo(
-            f"\nEdit the network files found in {custom_network_path} before deployment if you want to customise the network."
+            f"\nEdit the network files found under {custom_network_path}/ before deployment if you want to customise the network."
         )
         click.echo("\nWhen you're ready, run the following command to deploy this network:")
         click.echo(f"  warnet deploy {custom_network_path}")
