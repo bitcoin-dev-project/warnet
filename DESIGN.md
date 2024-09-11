@@ -30,13 +30,16 @@ Warnet is designed for Bitcoin developers, researchers, and enthusiasts who want
 - Kubernetes-based deployment for scalability and ease of management
 - User interaction capabilities through custom scenarios
 - Infrastructure as Code (IaC) approach for reproducibility
-- Stateless Configuration and Externalized Configuration for flexibility
 
 ## Target Audience:
 - Bitcoin core developers
 - Bitcoin researchers
 - Network security specialists
 - Bitcoin protocol testers
+- Bitcoin application developers
+- Lightning developers
+- Students of bitcoin
+- And more!
 
 ## Benefits:
 1. Scalability: Simulate networks of various sizes to understand behaviour at scale
@@ -55,7 +58,7 @@ For example, a new logging component could be added in multiple possible ways to
 
 1. Run a process on the local host which connects in to the cluster via a forwarded port and performs customised logging.
 
-2. Launch a standardised logging application (e.g. Grafana) via executing a `kubectl` command on a .yaml file.
+2. Launch a standardised logging application (e.g. Grafana) via executing a `kubectl` command on a *.yaml* file.
 
   ```python
   subprocess.run("kubectl apply -f grafana.yaml --namespace=grafana")
@@ -76,7 +79,7 @@ Out of these three options, the third should be preferred where possible, follow
   <img src="/img/helm.svg" alt="Helm logo" style="width: 100px; height: 100px;" />
 </div>
 
-Warnet leverages [Kubernetes](https://kubernetes.io/) for deploying and managing simulated Bitcoin networks, with [Helm](https://helm.sh/) serving as the preferred method for managing Kubernetes resources. Understanding the relationship between these technologies is crucial for grasping Warnet's architecture and deployment strategy.
+Warnet leverages [Kubernetes](https://kubernetes.io/) for deploying and managing simulated Bitcoin networks, with [Helm](https://helm.sh/) serving as the preferred method for managing Kubernetes resources. Understanding the relationship between these technologies is helpful for grasping Warnet's architecture and deployment strategy.
 
 ### Kubernetes
 [Kubernetes](https://kubernetes.io/) is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications. In Warnet, Kubernetes provides the underlying infrastructure for running simulated Bitcoin nodes and related services.
@@ -91,7 +94,6 @@ Key benefits of using Kubernetes in Warnet:
 
 Advantages of using Helm in Warnet:
 - Templating: Define reusable Kubernetes resource templates
-- Versioning: Manage different versions of deployed resources
 - Packaging: Bundle related Kubernetes resources into a single unit (chart)
 - Simplified deployment: Use a single command to deploy complex applications
 
@@ -106,17 +108,17 @@ By leveraging Kubernetes with Helm, Warnet achieves a flexible, scalable, and ea
 ## Project structure
 The Warnet code base has four main sections:
 
-1. resources - these items are available during runtime and relate to configuration (crucially, Kubernetes configuration)
-2. src/warnet - python source code lives here
-3. test - CI testing files live here
-4. docs - stores documentation available in the github repository
+1. *resources* - these items are available during runtime and relate to configuration (crucially, Kubernetes configuration)
+2. *src/warnet* - python source code lives here
+3. *test* - CI testing files live here
+4. *docs* - stores documentation available in the github repository
 
 ### Overview of resources
 There are four main kinds of *resources*:
 
 1. Kubernetes configuration files - they are the backbone of Stateless Configuration; they are *yaml* files.
   > [!NOTE]
-  > Whilst Kubernetes *yaml* configuration files can and do exist here, Helm charts are the preferred way to configure Kubernetes resources.
+  > Whilst native Kubernetes *yaml* configuration files can and do exist here, Helm charts are the preferred way to configure Kubernetes resources.
 2. scenarios - these are python programs that users can load into the cluster to interact with the simulated Bitcoin network
 3. images - the logic for creating bitcoin nodes and also containers for running scenarios are found here; this includes Dockerfiles
 4. scripts and other configs - these are like "assets" or "one off" items which appear in Warnet.
@@ -127,28 +129,28 @@ The python source code found in *src/warnet* serves to give users a way to creat
 There are eight categories of python program files in Warnet:
 
 1. Bitcoin images
-  * image.py and image_build.py - the logic that helps the user create bitcoin node images
+  * *image.py* and *image_build.py* - the logic that helps the user create bitcoin node images
 2. Bitcoin interaction
-  * bitcoin.py - make it easy to interact with bitcoin nodes in the simulated network
+  * *bitcoin.py* - make it easy to interact with bitcoin nodes in the simulated network
 3. Scenario interaction
-  * control.py - launch scenarios in order to interact with the simulated Bitcoin network
+  * *control.py* - launch scenarios in order to interact with the simulated Bitcoin network
 4. Kubernetes
-  * k8s.py - gather Kubernetes configuration data; retrieve Kubernetes resources
-  * status.py - make it easy for the user to see the status of the simulated bitcoin network
+  * *k8s.py* - gather Kubernetes configuration data; retrieve Kubernetes resources
+  * *status.py* - make it easy for the user to see the status of the simulated bitcoin network
 5. Resource configuration pipeline
-  * admin.py - copy configurations for *resources* such as namespaces and put them in the user's directory
-  * deploy.py - take configurations for *resources* and put them into the Kubernetes cluster
-  * network.py - copy *resources* to the users Warnet directory
-  * namespaces.py - copy *resources* to the users Warnet directory; interact with namespaces in the cluster
+  * *admin.py* - copy configurations for *resources* such as namespaces and put them in the user's directory
+  * *deploy.py* - take configurations for *resources* and put them into the Kubernetes cluster
+  * *network.py* - copy *resources* to the users Warnet directory
+  * *namespaces.py* - copy *resources* to the users Warnet directory; interact with namespaces in the cluster
 6. User interaction
-  * main.py - provide the interface for the `warnet` command line program
+  * *main.py* - provide the interface for the `warnet` command line program
 7. Host computer
-  * process.py - provides a way to run commands on the user's host computer
+  * *process.py* - provides a way to run commands on the user's host computer
 8. Externalized configuration
-  * constants.py - this holds values which occur repeatedly in the code base
+  * *constants.py* - this holds values which occur repeatedly in the code base
 
 ### Overview of test
-The test_base.py file forms the basis of the *test* section. Each test uses *TestBase* which controls the test running framework.
+The *test_base.py* file forms the basis of the *test* section. Each test uses *TestBase* which controls the test running framework.
 
 ### Operating in the network with "scenarios"/Commanders
 Warnet includes the capability to run "scenarios" on the network. These are python files which can be found in *resources/scenarios*, or copied by default into a new project directory.
@@ -160,10 +162,15 @@ Once a scenario has been written, it can be loaded into the cluster and run usin
 ### The resources configuration pipeline - an example
 It is important to focus on the pipeline that takes *resources*, copies them into user directories, and translates them into Kubernetes objects. To make this possible and to achieve a more stateless configuration, Warnet uses Helm which provides templating for Kubernetes configuration files.
 
-Looking more closely at the *resources* section, for example, we can focus in on the *namespaces* directory. Inside, there is an example *namespaces.yaml* and *namespace-defaults.yaml* file. These configuration files are provided to the user when the `warnet admin init` command is invoked. This provides the user the opportunity to change those configuration files by specifying a set of participants who will have access to the simulated Bitcoin network. When `warnet deploy [namespaces_folder]` command is run by the user, it will apply the configuration data to the Helm chart found in the *charts* directory of the *resources* section. The Helm chart acts as a template through which the user's configuration data is applied. In this way, there is a pipeline which starts with the user's Stateful Data which is then piped through the Helm templating system, and then is applied to the Kubernetes cluster.
+Looking more closely at the *resources/charts* section, for example, we can focus in on the *bitcoincore* directory. Inside, there is an example *namespaces.yaml* and *namespace-defaults.yaml* file. These configuration files are provided to the user in their project directory when the `warnet init` command is invoked.
+
+This provides the user the opportunity to change those configuration files and modify both configuration defaults for all nodes, along with specific node settings. When `warnet deploy [project-dir]` command is run by the user, it will apply the configuration data to the Helm chart found in the *charts* directory of the *resources* section. The Helm chart acts as a template through which the user's configuration data is applied.
+
+In this way, there is a pipeline which starts with the user's Stateful Data which is then piped through the Helm templating system, and then is applied to the Kubernetes cluster.
 
 > [!TIP]
 > Along with the python source code, all resources found in the *resources* directory are also included in the `warnet` python package.
 > In this way default resources such as helm charts are available to the CLI application via the `importlib.resources` module.
 
-To learn more about the resources configuration pipeline used in Warnet see the [configuration](docs/config.md) overview.
+> [!TIP]
+> To learn more about the resources configuration pipeline used in Warnet see the [configuration](docs/config.md) overview.
