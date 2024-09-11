@@ -6,20 +6,10 @@ from rich import print
 
 from .bitcoin import _rpc
 from .constants import (
-    LOGGING_HELM_COMMANDS,
     NETWORK_DIR,
     SCENARIOS_DIR,
 )
 from .k8s import get_mission
-from .process import stream_command
-
-
-def setup_logging_helm() -> bool:
-    for command in LOGGING_HELM_COMMANDS:
-        if not stream_command(command):
-            print(f"Failed to run Helm command: {command}")
-            return False
-    return True
 
 
 def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclude_list: list[str]):
