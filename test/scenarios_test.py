@@ -60,12 +60,9 @@ class ScenariosTest(TestBase):
         self.warnet(f"run {scenario_file}")
         self.wait_for_predicate(self.check_scenario_clean_exit)
 
-    def check_scenario_clean_exit():
+    def check_scenario_clean_exit(self):
         active = scenarios_active()
-        for scenario in active:
-            if scenario["status"] != "succeeded":
-                return False
-        return True
+        return all(scenario["status"] == "succeeded" for scenario in active)
 
     def check_blocks(self, target_blocks, start: int = 0):
         count = int(self.warnet("bitcoin rpc tank-0000 getblockcount"))

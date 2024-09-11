@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 
 from test_base import TestBase
+
 from warnet.status import _get_active_scenarios as scenarios_active
+
 
 class SignetTest(TestBase):
     def __init__(self):
@@ -54,11 +56,10 @@ class SignetTest(TestBase):
 
         def check_scenario_clean_exit():
             active = scenarios_active()
-            for scenario in active:
-                if scenario["status"] != "succeeded":
-                    return False
-            return True
+            return all(scenario["status"] == "succeeded" for scenario in active)
+
         self.wait_for_predicate(check_scenario_clean_exit)
+
 
 if __name__ == "__main__":
     test = SignetTest()

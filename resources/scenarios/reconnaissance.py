@@ -6,12 +6,12 @@ import socket
 # but requires a relative path inside the python source code for other functions.
 try:
     from commander import Commander
-except Exception:
+except ImportError:
     from resources.scenarios.commander import Commander
 
 # The entire Bitcoin Core test_framework directory is available as a library
-from test_framework.messages import MSG_TX, CInv, msg_getdata, hash256
-from test_framework.p2p import P2PInterface, MAGIC_BYTES
+from test_framework.messages import MSG_TX, CInv, hash256, msg_getdata
+from test_framework.p2p import MAGIC_BYTES, P2PInterface
 
 
 # This message is provided to the user when they describe the scenario
