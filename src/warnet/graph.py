@@ -199,7 +199,7 @@ def create():
         # Check if the project has a networks directory
         if not (project_path / "networks").exists():
             click.secho(
-                "The current directory does not have a 'networks' directory. Please run 'warnet init' or 'warnet create' first.",
+                "The current directory does not have a 'networks' directory. Please run 'warnet init' or 'warnet new' first.",
                 fg="red",
                 bold=True,
             )
