@@ -6,8 +6,6 @@ from rich import print
 
 from .bitcoin import _rpc
 from .constants import (
-    CHARTS_DIR,
-    DEFAULT_NETWORK,
     NETWORK_DIR,
     SCENARIOS_DIR,
 )
@@ -43,15 +41,6 @@ def copy_network_defaults(directory: Path):
         NETWORK_DIR,
         ["node-defaults.yaml", "__pycache__", "__init__.py"],
     )
-    # Copy caddy files to the network directory
-    networks_dir = directory / NETWORK_DIR.name
-    copy_caddy_files(networks_dir / DEFAULT_NETWORK)
-
-
-def copy_caddy_files(directory: Path):
-    """Copy caddy files to the specified directory"""
-    copy_defaults(directory, "caddy", CHARTS_DIR.joinpath("caddy"), [])
-    print(f"Copied caddy files to {directory / 'caddy'}")
 
 
 def copy_scenario_defaults(directory: Path):
