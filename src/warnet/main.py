@@ -2,7 +2,7 @@ import click
 
 from .admin import admin
 from .bitcoin import bitcoin
-from .control import down, logs, run, stop
+from .control import down, logs, run, snapshot, stop
 from .deploy import deploy
 from .graph import create, graph
 from .image import image
@@ -28,6 +28,7 @@ cli.add_command(logs)
 cli.add_command(new)
 cli.add_command(run)
 cli.add_command(setup)
+cli.add_command(snapshot)
 cli.add_command(status)
 cli.add_command(stop)
 cli.add_command(create)
