@@ -47,10 +47,11 @@ def deploy(directory, debug):
     directory = Path(directory)
 
     if (directory / NETWORK_FILE).exists():
-        deploy_logging_stack(directory, debug)
+        dl = deploy_logging_stack(directory, debug)
         deploy_network(directory, debug)
-        deploy_fork_observer(directory, debug)
-        deploy_caddy(directory, debug)
+        df = deploy_fork_observer(directory, debug)
+        if dl | df:
+            deploy_caddy(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
@@ -83,9 +84,9 @@ def check_logging_required(directory: Path):
     return False
 
 
-def deploy_logging_stack(directory: Path, debug: bool):
+def deploy_logging_stack(directory: Path, debug: bool) -> bool:
     if not check_logging_required(directory):
-        return
+        return False
 
     click.echo("Found collectLogs or metricsExport in network definition, Deploying logging stack")
 
@@ -121,14 +122,14 @@ def deploy_caddy(directory: Path, debug: bool):
     _port_start_internal(name, namespace)
 
 
-def deploy_fork_observer(directory: Path, debug: bool):
+def deploy_fork_observer(directory: Path, debug: bool) -> bool:
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
     # Only start if configured in the network file
     if not network_file.get("fork_observer", {}).get("enabled", False):
-        return
+        return False
 
     default_namespace = get_default_namespace()
     namespace = LOGGING_NAMESPACE
@@ -170,7 +171,8 @@ rpc_password = "tabconf2024"
 
     if not stream_command(cmd):
         click.echo(f"Failed to run Helm command: {cmd}")
-        return
+        return False
+    return True
 
 
 def deploy_network(directory: Path, debug: bool = False):
