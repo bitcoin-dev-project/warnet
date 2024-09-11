@@ -1,93 +1,92 @@
-# Install Warnet
+# Installing Warnet
 
-Warnet requires Kubernetes in order to run the network. Kubernetes can be run
-remotely or locally (with minikube or Docker Desktop). `kubectl` must be run
-locally to administer the network.
+Warnet requires Kubernetes (k8s) and helm in order to run the network. Kubernetes can be run remotely or locally (with minikube or Docker Desktop). `kubectl` and `helm` must be run locally to administer the network.
 
 ## Dependencies
 
-### Kubernetes
+### Remote (cloud) cluster
 
-Install [`kubectl`](https://kubernetes.io/docs/setup/) (or equivalent) and
-configure your cluster. This can be done locally with `minikube` (or Docker Desktop)
-or using a managed cluster.
+The only two dependencies of Warnet are `helm` and `kubectl` configured to talk to your cloud cluster.
 
-#### Docker engine with minikube
+### Running Warnet Locally
 
-If using Minikube to run a smaller-sized local cluster, you will require docker engine.
-To install docker engine, see: https://docs.docker.com/engine/install/
+If the number of nodes you are running can run on one machine (think a dozen or so) then Warnet can happily run on a local Kubernetes. Two supported k8s implementations are Minikube and K8s as part of Docker Desktop.
 
-e.g. For Ubuntu:
+#### Docker Desktop
 
-```bash
-# First uninstall any old versions
-for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
+[Docker desktop](https://www.docker.com/products/docker-desktop/) includes the docker engine itself and has an option to enable Kubernetes. Simply installing it and enabling Kubernetes should be enough.
 
-# Add Docker's official GPG key:
-sudo apt-get update
-sudo apt-get install ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+[Helm](https://helm.sh/docs/intro/install/) is also required to be installed.
 
-# Add the repository to Apt sources:
-echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
+#### Minikube
 
-# Install the docker packages
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+Minikube requires a backend to run on with the supported backend being Docker. So if installing Minikube, you may need to install docker first. Please see [Installing Docker](https://docs.docker.com/engine/install/) and [Installing Minkube](https://minikube.sigs.k8s.io/docs/start/).
+
+After installing Minikube don't forget to start it with:
+
+```shell
+minikube start
 ```
 
-#### Using Docker
+Minikube has a [guide](https://kubernetes.io/docs/tutorials/hello-minikube/) on getting started which could be useful to validate that your minikube is running correctly.
 
-If you have never used Docker before you may need to take a few more steps to run the Docker daemon on your system.
-The Docker daemon MUST be running before stating Warnet.
+### Testing kubectl and helm
+
+The following commands should run on both local and remote clusters. Do not proceed unless kubectl and helm are working.
+
+```shell
+helm repo add examples https://helm.github.io/examples
+helm install hello examples/hello-world
+helm list
+kubectl get pods
+helm uninstall hello
+```
 
 #### Managing Kubernetes cluster
 
 The use of a k8s cluster management tool is highly recommended.
 We like to use `k9s`: https://k9scli.io/
 
-##### Linux
-
-- [Check Docker user/group permissions](https://stackoverflow.com/a/48957722/1653320)
-- or [`chmod` the Docker UNIX socket](https://stackoverflow.com/a/51362528/1653320)
-
 ## Install Warnet
 
-### Recommended: use a virtual Python environment such as `venv`
+Either install warnet via pip, or clone the source and install:
+
+### via pip
+
+You can install warnet via `pip` into a virtual environment with
 
 ```bash
-python3 -m venv .venv # Use alternative venv manager if desired
+python3 -m venv .venv
 source .venv/bin/activate
-```
-
-```bash
-pip install --upgrade pip
 pip install warnet
 ```
 
-## Contributing / Local Warnet Development
+### via cloned source
 
-### Download the code repository
+You can install warnet from source into a virtual environment with
 
 ```bash
-git clone https://github.com/bitcoin-dev-project/warnet
+git clone https://github.com/bitcoin-dev-project/warnet.git
 cd warnet
-```
-
-### Recommended: use a virtual Python environment such as `venv`
-
-```bash
-python3 -m venv .venv # Use alternative venv manager if desired
+python3 -m venv .venv
 source .venv/bin/activate
-```
-
-```bash
-pip install --upgrade pip
 pip install -e .
 ```
 
+## Running
+
+To get started first check you have all the necessary requirements:
+
+```bash
+warnet setup
+```
+
+Then create your first network:
+
+```bash
+# Create a new network in the current directory
+warnet init
+
+# Or in a directory of choice
+warnet new <directory>
+```

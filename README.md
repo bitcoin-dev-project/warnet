@@ -16,7 +16,6 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 ## Documentation
 
 - [Installation](/docs/install.md)
-- [Quick Start](/docs/quickstart.md)
 - [CLI Commands](/docs/warnet.md)
 - [Scenarios](/docs/scenarios.md)
 - [Monitoring](/docs/logging_monitoring.md)
@@ -24,5 +23,6 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 - [Scaling](/docs/scaling.md)
 - [Connecting to local nodes](https://github.com/bitcoin-dev-project/warnet/blob/main/docs/)
 - [Understanding network configuration](/docs/config.md)
+- [Contributing](/docs/contributing.md)
 
 ![warnet-art](https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/docs/machines.webp)
