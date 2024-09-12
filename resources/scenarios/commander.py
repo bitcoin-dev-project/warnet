@@ -9,6 +9,7 @@ import signal
 import sys
 import tempfile
 from pathlib import Path
+from typing import Dict
 
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
@@ -80,6 +81,9 @@ class Commander(BitcoinTestFramework):
         ch.setFormatter(formatter)
         self.log.addHandler(ch)
 
+        # Keep a separate index of tanks by pod name
+        self.tanks: Dict[str, TestNode] = {}
+
         for i, tank in enumerate(WARNET):
             self.log.info(
                 f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
@@ -106,6 +110,7 @@ class Commander(BitcoinTestFramework):
             node.rpc_connected = True
             node.init_peers = tank["init_peers"]
             self.nodes.append(node)
+            self.tanks[tank["tank"]] = node
 
         self.num_nodes = len(self.nodes)
 
