@@ -7,7 +7,8 @@ on:
       - main
 
 env:
-  UV_SYSTEM_PYTHON: 1
+  PYTHON_VERSION: "3.12"
+  STERN_VERSION: "1.30.0"
 
 jobs:
 
@@ -22,7 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: eifinger/setup-uv@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "latest"
+          enable-cache: true
       - run: uvx ruff format . --check
 
   build-image:
@@ -78,7 +83,13 @@ jobs:
         with:
           name: commander
           path: /tmp
-      - uses: eifinger/setup-uv@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "latest"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install $PYTHON_VERSION
       - name: Install project
         run: uv sync --all-extras --dev
       - name: Install commander image
@@ -95,14 +106,13 @@ jobs:
         if: always()
         run: |
           echo "Installing stern..."
-          STERN_VERSION="1.30.0"
           curl -Lo stern.tar.gz https://github.com/stern/stern/releases/download/v${STERN_VERSION}/stern_${STERN_VERSION}_linux_amd64.tar.gz
           tar zxvf stern.tar.gz
           chmod +x stern
           sudo mv stern /usr/local/bin/
 
           # Run script
-          curl -O https://raw.githubusercontent.com/willcl-ark/warnet/main/resources/scripts/k8s-log-collector.sh
+          curl -O https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/resources/scripts/k8s-log-collector.sh
           chmod +x k8s-log-collector.sh
           ./k8s-log-collector.sh default
       - name: Upload log artifacts
@@ -120,7 +130,13 @@ jobs:
           - graph_test.py
     steps:
       - uses: actions/checkout@v4
-      - uses: eifinger/setup-uv@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "latest"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install $PYTHON_VERSION
       - name: Install project
         run: uv sync --all-extras --dev
       - name: Run tests
