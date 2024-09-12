@@ -23,29 +23,39 @@ The process is similar for other modules (e.g. fork-observer), but may differ sl
 - Kubernetes processes these manifests and creates or updates the corresponding resources in the cluster.
 - The process ends with the resources being deployed or updated in the Kubernetes cluster.
 
+In the flowchart below, boxes with a red outline represent default or user-supplied configuration files, blue signifies files operated on by Helm or Helm operations, and green by Kubernetes.
+
 ```mermaid
-    graph TD
-        A[Start] --> B[values.yaml]
-        subgraph User Configuration [user config: bottom overrides top]
-            C[node-defaults.yaml]
-            D[network.yaml]
-        end
-        B --> C
-        C --> D
-        D --> F[Final values]
-        F --> I[Templates]
-        I --> J[configmap.yaml]
-        I --> K[service.yaml]
-        I --> L[servicemonitor.yaml]
-        I --> M[pod.yaml]
-        J --> N[Helm renders templates]
-        K --> N
-        L --> N
-        M --> N
-        N --> O[Rendered Kubernetes manifests]
-        O --> P[Helm applies manifests to Kubernetes]
-        P --> Q[Kubernetes creates/updates resources]
-        Q --> R[Resources deployed/updated in cluster]
+graph TD
+    A[Start]:::start --> B[values.yaml]:::config
+    subgraph User Configuration [User configuration]
+        C[node-defaults.yaml]:::config
+        D[network.yaml]:::config
+    end
+    B --> C
+    C -- Bottom overrides top ---D
+    D --> F[Final values]:::config
+    F --> I[Templates]:::helm
+    I --> J[configmap.yaml]:::helm
+    I --> K[service.yaml]:::helm
+    I --> L[servicemonitor.yaml]:::helm
+    I --> M[pod.yaml]:::helm
+    J --> N[Helm renders templates]:::helm
+    K & L & M --> N
+    N --> O[Rendered kubernetes
+    manifests]:::helm
+    O --> P[Helm applies manifests to 
+    kubernetes]:::helm
+    P --> Q["Kubernetes 
+    creates/updates resources"]:::k8s
+    Q --> R["Resources 
+    deployed/updated in cluster"]:::finish
+
+    classDef start fill:#f9f,stroke:#333,stroke-width:4px
+    classDef finish fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
+    classDef config stroke:#f00
+    classDef k8s stroke:#0f0
+    classDef helm stroke:#00f
 ```
 
 Users should only concern themselves therefore with setting configuration in the `<network_name>/[network|node-defaults].yaml` files.
