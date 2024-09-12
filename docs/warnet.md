@@ -25,6 +25,10 @@ options:
 Create a new warnet network
 
 
+### `warnet dashboard`
+Open the Warnet dashboard in default browser
+
+
 ### `warnet deploy`
 Deploy a warnet with topology loaded from \<directory>
 
