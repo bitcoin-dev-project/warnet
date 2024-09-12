@@ -34,7 +34,7 @@ class GetdataTest(Commander):
         self.log.info("Adding the p2p connection")
 
         p2p_block_store = self.nodes[0].add_p2p_connection(
-            P2PStoreBlock(), dstaddr=self.nodes[0].rpchost, dstport=18444
+            P2PStoreBlock(), dstaddr=self.tanks["tank-0000"].rpchost, dstport=18444
         )
 
         self.log.info("test that an invalid GETDATA doesn't prevent processing of future messages")
