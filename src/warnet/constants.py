@@ -95,5 +95,6 @@ LOGGING_HELM_COMMANDS = [
     f"helm upgrade --install --namespace warnet-logging --create-namespace --values {MANIFESTS_DIR}/loki_values.yaml loki grafana/loki --version 5.47.2",
     "helm upgrade --install --namespace warnet-logging promtail grafana/promtail",
     "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --set grafana.enabled=false",
+    f"helm upgrade --install grafana-dashboards {CHARTS_DIR}/grafana-dashboards --namespace warnet-logging",
     f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {MANIFESTS_DIR}/grafana_values.yaml",
 ]

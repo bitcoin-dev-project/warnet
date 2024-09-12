@@ -24,7 +24,8 @@
       ],
       "title": "Outbound connections",
       "type": "timeseries",
-      "gridPos": {
+      "gridPos":
+      {
         "h": 8,
         "w": 24,
         "x": 0,
@@ -52,7 +53,8 @@
       ],
       "title": "Inbound connections",
       "type": "timeseries",
-      "gridPos": {
+      "gridPos":
+      {
         "h": 8,
         "w": 24,
         "x": 0,
@@ -80,7 +82,8 @@
       ],
       "title": "Mempool size",
       "type": "timeseries",
-      "gridPos": {
+      "gridPos":
+      {
         "h": 8,
         "w": 24,
         "x": 0,
@@ -108,7 +111,8 @@
       ],
       "title": "Blocks",
       "type": "timeseries",
-      "gridPos": {
+      "gridPos":
+      {
         "h": 8,
         "w": 24,
         "x": 0,

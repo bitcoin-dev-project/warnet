@@ -118,6 +118,10 @@ class LoggingTest(TestBase):
         self.wait_for_predicate(lambda: get_five_values_for_metric("blocks"))
         self.wait_for_predicate(lambda: get_five_values_for_metric("txrate"))
 
+        # Verify default dashboard exists
+        dbs = requests.get(f"{GRAFANA_URL}api/search").json()
+        assert dbs[0]["title"] == "Default Warnet Dashboard"
+
 
 if __name__ == "__main__":
     test = LoggingTest()
