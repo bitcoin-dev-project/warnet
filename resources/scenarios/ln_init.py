@@ -9,13 +9,13 @@ except ImportError:
     from resources.scenarios.commander import Commander
 
 
-def cli_help():
-    return "Fund LN wallets and open channels"
-
-
 class LNInit(Commander):
     def set_test_params(self):
         self.num_nodes = None
+
+    def add_options(self, parser):
+        parser.description = "Fund LN wallets and open channels"
+        parser.usage = "warnet run /path/to/ln_init.py"
 
     def run_test(self):
         self.log.info("Lock out of IBD")

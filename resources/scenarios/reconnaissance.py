@@ -14,11 +14,6 @@ from test_framework.messages import MSG_TX, CInv, hash256, msg_getdata
 from test_framework.p2p import MAGIC_BYTES, P2PInterface
 
 
-# This message is provided to the user when they describe the scenario
-def cli_help():
-    return "Demonstrate network reconnaissance using a scenario and P2PInterface"
-
-
 def get_signet_network_magic_from_node(node):
     template = node.getblocktemplate({"rules": ["segwit", "signet"]})
     challenge = template["signet_challenge"]
@@ -36,6 +31,10 @@ class Reconnaissance(Commander):
         # This setting is ignored but still required as
         # a sub-class of BitcoinTestFramework
         self.num_nodes = 1
+
+    def add_options(self, parser):
+        parser.description = "Demonstrate network reconnaissance using a scenario and P2PInterface"
+        parser.usage = "warnet run /path/to/reconnaissance.py"
 
     # Scenario entrypoint
     def run_test(self):
