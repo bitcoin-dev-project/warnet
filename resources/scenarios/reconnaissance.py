@@ -38,12 +38,17 @@ class Reconnaissance(Commander):
 
     # Scenario entrypoint
     def run_test(self):
+        # Demonstrate how to enable debug logs from a scenario
+        # This could be any logs, or "all" for all logs
+        self.log("Turning on mempool logging for node 0")
+        self.nodes[0].logging(include=["mempool"])
+
         self.log.info("Getting peer info")
 
         # Just like a typical Bitcoin Core functional test, this executes an
         # RPC on a node in the network. The actual node at self.nodes[0] may
         # be different depending on the user deploying the scenario. Users in
-        # Warnet may have different namepsace access but everyone should always
+        # Warnet may have different namespace access but everyone should always
         # have access to at least one node.
         peerinfo = self.nodes[0].getpeerinfo()
         for peer in peerinfo:
