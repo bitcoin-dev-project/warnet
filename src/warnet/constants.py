@@ -12,6 +12,7 @@ WEIGHTED_TAGS = [
 ]
 
 DEFAULT_NAMESPACE = "warnet"
+LOGGING_NAMESPACE = "warnet-logging"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
@@ -32,6 +33,9 @@ BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
 FORK_OBSERVER_CHART = str(CHARTS_DIR.joinpath("fork-observer"))
 COMMANDER_CHART = str(CHARTS_DIR.joinpath("commander"))
 NAMESPACES_CHART_LOCATION = CHARTS_DIR.joinpath("namespaces")
+FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
+CADDY_CHART = str(files("resources.charts").joinpath("caddy"))
+
 DEFAULT_NETWORK = Path("6_node_bitcoin")
 DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
 

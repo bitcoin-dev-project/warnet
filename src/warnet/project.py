@@ -1,17 +1,14 @@
 import os
 import platform
-import random
 import subprocess
 import sys
 from dataclasses import dataclass
 from enum import Enum, auto
-from importlib.resources import files
 from pathlib import Path
 from typing import Callable
 
 import click
 import inquirer
-import yaml
 
 from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_scenario_defaults
@@ -364,62 +361,3 @@ def init():
     """Initialize a warnet project in the current directory"""
     current_dir = Path.cwd()
     new_internal(directory=current_dir, from_init=True)
-
-
-def custom_graph(
-    num_nodes: int,
-    num_connections: int,
-    version: str,
-    datadir: Path,
-    fork_observer: bool,
-    fork_obs_query_interval: int,
-):
-    datadir.mkdir(parents=False, exist_ok=False)
-    # Generate network.yaml
-    nodes = []
-    connections = set()
-
-    for i in range(num_nodes):
-        node = {"name": f"tank-{i:04d}", "connect": [], "image": {"tag": version}}
-
-        # Add round-robin connection
-        next_node = (i + 1) % num_nodes
-        node["connect"].append(f"tank-{next_node:04d}")
-        connections.add((i, next_node))
-
-        # Add random connections
-        available_nodes = list(range(num_nodes))
-        available_nodes.remove(i)
-        if next_node in available_nodes:
-            available_nodes.remove(next_node)
-
-        for _ in range(min(num_connections - 1, len(available_nodes))):
-            random_node = random.choice(available_nodes)
-            # Avoid circular loops of A -> B -> A
-            if (random_node, i) not in connections:
-                node["connect"].append(f"tank-{random_node:04d}")
-                connections.add((i, random_node))
-                available_nodes.remove(random_node)
-
-        nodes.append(node)
-
-    network_yaml_data = {"nodes": nodes}
-    network_yaml_data["fork_observer"] = {
-        "enabled": fork_observer,
-        "configQueryInterval": fork_obs_query_interval,
-    }
-
-    with open(os.path.join(datadir, "network.yaml"), "w") as f:
-        yaml.dump(network_yaml_data, f, default_flow_style=False)
-
-    # Generate node-defaults.yaml
-    default_yaml_path = files("resources.networks").joinpath("node-defaults.yaml")
-    with open(str(default_yaml_path)) as f:
-        defaults_yaml_content = f.read()
-
-    with open(os.path.join(datadir, "node-defaults.yaml"), "w") as f:
-        f.write(defaults_yaml_content)
-
-    click.echo(
-        f"Project '{datadir}' has been created with 'network.yaml' and 'node-defaults.yaml'."
-    )

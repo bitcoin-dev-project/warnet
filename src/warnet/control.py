@@ -14,7 +14,8 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from .constants import COMMANDER_CHART
+from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
+from .deploy import _port_stop_internal
 from .k8s import (
     get_default_namespace,
     get_mission,
@@ -129,7 +130,7 @@ def down():
     """Bring down a running warnet quickly"""
     console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
 
-    namespaces = [get_default_namespace(), "warnet-logging"]
+    namespaces = [get_default_namespace(), LOGGING_NAMESPACE]
 
     def uninstall_release(namespace, release_name):
         cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
@@ -162,6 +163,8 @@ def down():
         for future in as_completed(futures):
             console.print(f"[yellow]{future.result()}[/yellow]")
 
+    # Shutdown any port forwarding
+    _port_stop_internal("caddy", namespaces[1])
     console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
     console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
     console.print("[bold green]Warnet teardown process completed.[/bold green]")

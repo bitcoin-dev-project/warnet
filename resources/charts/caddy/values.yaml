@@ -1,0 +1,123 @@
+# Default values for caddy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+restartPolicy: Always
+
+image:
+  repository: caddy
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "2.8.4"
+
+imagePullSecrets: []
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+podLabels:
+  app: "warnet"
+  mission: "proxy"
+
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  type: ClusterIP
+
+resources: {}
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /live
+    port: 80
+  failureThreshold: 3
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 1
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 80
+  failureThreshold: 1
+  periodSeconds: 1
+  successThreshold: 1
+  timeoutSeconds: 1
+
+volumes:
+  - name: caddy-config
+    configMap:
+      name: caddy
+      items:
+        - key: Caddyfile
+          path: Caddyfile
+        - key: index
+          path: index
+
+volumeMounts:
+  - name: caddy-config
+    mountPath: /etc/caddy/Caddyfile
+    subPath: Caddyfile
+  - name: caddy-config
+    mountPath: /usr/share/caddy/index.html
+    subPath: index
+
+port: 80
+
+caddyConfig: |
+  :80 {
+    respond /live 200
+    respond /ready 200
+
+    root * /usr/share/caddy
+    file_server
+
+    handle_path /fork-observer/* {
+      reverse_proxy fork-observer:2323
+    }
+
+    handle_path /grafana/* {
+      reverse_proxy loki-grafana:80
+    }
+
+  }
+
+htmlConfig: |
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Welcome</title>
+  </head>
+  <body>
+      <h1>Welcome to the Warnet dashboard</h1>
+      <p>You can access the following services:</p>
+      <ul>
+          <li><a href="/grafana/">Grafana</a></li>
+          <li><a href="/fork-observer/">Fork Observer</a></li>
+      </ul>
+  </body>
+  </html>

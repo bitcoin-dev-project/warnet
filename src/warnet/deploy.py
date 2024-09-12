@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -6,16 +9,18 @@ import yaml
 
 from .constants import (
     BITCOIN_CHART_LOCATION,
+    CADDY_CHART,
     DEFAULTS_FILE,
     DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
     HELM_COMMAND,
     LOGGING_HELM_COMMANDS,
+    LOGGING_NAMESPACE,
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
 )
-from .k8s import get_default_namespace
+from .k8s import get_default_namespace, wait_for_caddy_ready
 from .process import stream_command
 
 
@@ -42,9 +47,11 @@ def deploy(directory, debug):
     directory = Path(directory)
 
     if (directory / NETWORK_FILE).exists():
-        deploy_logging_stack(directory, debug)
+        dl = deploy_logging_stack(directory, debug)
         deploy_network(directory, debug)
-        deploy_fork_observer(directory, debug)
+        df = deploy_fork_observer(directory, debug)
+        if dl | df:
+            deploy_caddy(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
@@ -77,9 +84,9 @@ def check_logging_required(directory: Path):
     return False
 
 
-def deploy_logging_stack(directory: Path, debug: bool):
+def deploy_logging_stack(directory: Path, debug: bool) -> bool:
     if not check_logging_required(directory):
-        return
+        return False
 
     click.echo("Found collectLogs or metricsExport in network definition, Deploying logging stack")
 
@@ -90,16 +97,42 @@ def deploy_logging_stack(directory: Path, debug: bool):
     return True
 
 
-def deploy_fork_observer(directory: Path, debug: bool):
+def deploy_caddy(directory: Path, debug: bool):
+    network_file_path = directory / NETWORK_FILE
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+
+    namespace = LOGGING_NAMESPACE
+    # TODO: get this from the helm chart
+    name = "caddy"
+
+    # Only start if configured in the network file
+    if not network_file.get(name, {}).get("enabled", False):
+        return
+
+    cmd = f"{HELM_COMMAND} {name} {CADDY_CHART} --namespace {namespace}"
+    if debug:
+        cmd += " --debug"
+
+    if not stream_command(cmd):
+        click.echo(f"Failed to run Helm command: {cmd}")
+        return
+
+    wait_for_caddy_ready(name, namespace)
+    _port_start_internal(name, namespace)
+
+
+def deploy_fork_observer(directory: Path, debug: bool) -> bool:
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
     # Only start if configured in the network file
     if not network_file.get("fork_observer", {}).get("enabled", False):
-        return
+        return False
 
-    namespace = get_default_namespace()
+    default_namespace = get_default_namespace()
+    namespace = LOGGING_NAMESPACE
     cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
     if debug:
         cmd += " --debug"
@@ -115,7 +148,7 @@ def deploy_fork_observer(directory: Path, debug: bool):
 id = {i}
 name = "{node_name}"
 description = "A node. Just A node."
-rpc_host = "{node_name}"
+rpc_host = "{node_name}.{default_namespace}.svc"
 rpc_port = 18443
 rpc_user = "forkobserver"
 rpc_password = "tabconf2024"
@@ -138,7 +171,8 @@ rpc_password = "tabconf2024"
 
     if not stream_command(cmd):
         click.echo(f"Failed to run Helm command: {cmd}")
-        return
+        return False
+    return True
 
 
 def deploy_network(directory: Path, debug: bool = False):
@@ -221,3 +255,43 @@ def deploy_namespaces(directory: Path):
         finally:
             if temp_override_file_path.exists():
                 temp_override_file_path.unlink()
+
+
+def is_windows():
+    return sys.platform.startswith("win")
+
+
+def run_detached_process(command):
+    if is_windows():
+        # For Windows, use CREATE_NEW_PROCESS_GROUP and DETACHED_PROCESS
+        subprocess.Popen(
+            command,
+            shell=True,
+            stdin=None,
+            stdout=None,
+            stderr=None,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+        )
+    else:
+        # For Unix-like systems, use nohup and redirect output
+        command = f"nohup {command} > /dev/null 2>&1 &"
+        subprocess.Popen(command, shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+
+    print(f"Started detached process: {command}")
+
+
+def _port_start_internal(name, namespace):
+    click.echo("Starting port-forwarding to warnet dashboard")
+    command = f"kubectl port-forward -n {namespace} service/{name} 2019:80"
+    run_detached_process(command)
+    click.echo("Port forwarding on port 2019 started in the background.")
+    click.echo("\nTo access the warnet dashboard visit localhost:2019 or run:\n  warnet dashboard")
+
+
+def _port_stop_internal(name, namespace):
+    if is_windows():
+        os.system("taskkill /F /IM kubectl.exe")
+    else:
+        os.system(f"pkill -f 'kubectl port-forward -n {namespace} service/{name} 2019:80'")
+    click.echo("Port forwarding stopped.")

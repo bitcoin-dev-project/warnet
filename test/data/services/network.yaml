@@ -33,3 +33,5 @@ nodes:
       rpcwhitelistdefault=0
 fork_observer:
   enabled: true
+caddy:
+  enabled: true

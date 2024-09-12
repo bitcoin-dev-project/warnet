@@ -16,6 +16,9 @@ grafana.ini:
   auth:
     disable_login_form: true
     disable_signout_menu: true
+  server:
+    # this is required to use Grafana behind a reverse proxy (caddy)
+    root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
   auth.anonymous:
     enabled: true
     org_name: Main Org.
