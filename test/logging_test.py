@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import logging
 import os
-import threading
 from datetime import datetime
 from pathlib import Path
-from subprocess import PIPE, Popen
 
 import requests
 from test_base import TestBase
@@ -18,38 +15,14 @@ class LoggingTest(TestBase):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "logging"
         self.scripts_dir = Path(os.path.dirname(__file__)) / ".." / "resources" / "scripts"
-        self.connect_logging_process = None
-        self.connect_logging_thread = None
-        self.connect_logging_logger = logging.getLogger("cnct_log")
 
     def run_test(self):
         try:
             self.setup_network()
-            self.start_logging()
+            self.wait_for_endpoint_ready()
             self.test_prometheus_and_grafana()
         finally:
-            if self.connect_logging_process is not None:
-                self.log.info("Terminating background connect_logging.sh process...")
-                self.connect_logging_process.terminate()
             self.cleanup()
-
-    def start_logging(self):
-        # Stays alive in background
-        self.connect_logging_process = Popen(
-            [f"{self.scripts_dir / 'connect_logging.sh'}"],
-            stdout=PIPE,
-            stderr=PIPE,
-            bufsize=1,
-            universal_newlines=True,
-        )
-        self.log.info("connect_logging.sh started...")
-        self.connect_logging_thread = threading.Thread(
-            target=self.output_reader,
-            args=(self.connect_logging_process.stdout, self.connect_logging_logger.info),
-        )
-        self.connect_logging_thread.daemon = True
-        self.connect_logging_thread.start()
-        self.wait_for_endpoint_ready()
 
     def setup_network(self):
         self.log.info("Setting up network")

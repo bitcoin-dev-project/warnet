@@ -62,10 +62,11 @@ aggregate logs and data from Bitcoin RPC queries into a web-based dashboard.
 ## Connect to logging dashboard
 
 The logging stack including the user interface web server runs inside the kubernetes cluster.
-To access that from a local web browser, you must use kubernetes port-forwarding.
+Warnet will forward port `2019` locally from the cluster, and the landing page for all
+web based interfaces will be available at `localhost:2019`.
 
-Run the script `./resources/scripts/connect_logging.sh` to forward port 3000.
-The Grafana dashboard will then be available locally at `localhost:3000`.
+This page can also be opened quickly with the command [`warnet dashboard`](/docs/warnet.md#warnet-dashboard)
+
 
 ### Prometheus
 
