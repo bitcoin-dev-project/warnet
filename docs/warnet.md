@@ -151,13 +151,6 @@ options:
 
 ## Graph
 
-### `warnet graph import-json`
-Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
-and additionally include 7 extra random outbounds per node. Include lightning
-channels and their policies as well.
-Returns XML file as string with or without --outfile option.
-
-
 ## Image
 
 ### `warnet image build`
