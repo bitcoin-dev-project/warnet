@@ -102,7 +102,7 @@ jobs:
           sudo mv stern /usr/local/bin/
 
           # Run script
-          curl -O https://raw.githubusercontent.com/willcl-ark/warnet/main/resources/scripts/k8s-log-collector.sh
+          curl -O https://raw.githubusercontent.com/bitcoin-dev-project/warnet/main/resources/scripts/k8s-log-collector.sh
           chmod +x k8s-log-collector.sh
           ./k8s-log-collector.sh default
       - name: Upload log artifacts
