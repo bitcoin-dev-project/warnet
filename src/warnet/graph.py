@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 from importlib.resources import files
 from pathlib import Path
 
@@ -36,7 +37,13 @@ def custom_graph(
     caddy: bool,
     logging: bool,
 ):
-    datadir.mkdir(parents=False, exist_ok=False)
+    try:
+        datadir.mkdir(parents=False, exist_ok=False)
+    except FileExistsError as e:
+        print(e)
+        print("Exiting network builder without overwriting")
+        sys.exit(1)
+
     # Generate network.yaml
     nodes = []
     connections = set()
@@ -211,7 +218,7 @@ def create():
         # Check if the project has a networks directory
         if not (project_path / "networks").exists():
             click.secho(
-                "The current directory does not have a 'networks' directory. Please run 'warnet init' or 'warnet create' first.",
+                "The current directory does not have a 'networks' directory. Please run 'warnet init' or 'warnet new' first.",
                 fg="red",
                 bold=True,
             )
