@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -15,7 +16,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
+from .constants import BINARY_CHART, COMMANDER_CHART, LOGGING_NAMESPACE
 from .deploy import _port_stop_internal
 from .k8s import (
     get_default_namespace,
@@ -230,6 +231,74 @@ def run(scenario_file: str, additional_args: tuple[str]):
 
     except subprocess.CalledProcessError as e:
         print(f"Failed to start scenario: {scenario_name}")
+        print(f"Error: {e.stderr}")
+
+
+@click.command(context_settings={"ignore_unknown_options": True})
+@click.argument("file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
+def run_binary(file: str, additional_args: tuple[str]):
+    """
+    Run a file in warnet
+    Pass `-- --help` to get individual scenario help
+    """
+    file_path = Path(file).resolve()
+    file_name = file_path.stem
+
+    name = f"binary-{file_name.replace('_', '')}-{int(time.time())}"
+    namespace = get_default_namespace()
+
+    try:
+        # Construct Helm command
+        helm_command = [
+            "helm",
+            "upgrade",
+            "--install",
+            "--namespace",
+            namespace,
+            "--set",
+            f"fullnameOverride={name}",
+            "--set",
+            f"pod.name={name}",
+        ]
+
+        # Add additional arguments
+        if additional_args:
+            helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
+            if "--help" in additional_args or "-h" in additional_args:
+                return subprocess.run([sys.executable, file_path, "--help"])
+
+        helm_command.extend([name, BINARY_CHART])
+
+        # Execute Helm command to start the pod
+        result = subprocess.run(helm_command, check=True, capture_output=True, text=True)
+
+        # Wait for the pod to be ready
+        wait_command = [
+            "kubectl",
+            "wait",
+            "--for=condition=PodReadyToStartContainers",
+            "pod",
+            "--namespace",
+            namespace,
+            "--timeout=30s",
+            name,
+        ]
+        subprocess.run(wait_command, check=True)
+
+        # Copy the binary into the container using k8s
+        command = f"kubectl cp {file_path} -n {namespace} {name}:/data/binary -c {name}-runner"
+        subprocess.run(shlex.split(command))
+
+        if result.returncode == 0:
+            print(f"Successfully started binary: {file_name}")
+            print(f"Pod name: {name}")
+        else:
+            print(f"Failed to start binary: {file_name}")
+            print(f"Error: {result.stderr}")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to start binary: {file_name}")
         print(f"Error: {e.stderr}")
 
 

@@ -73,6 +73,16 @@ options:
 | scenario_file   | Path   | yes        |           |
 | additional_args | String |            |           |
 
+### `warnet run-binary`
+Run a file in warnet
+    Pass `-- --help` to get individual scenario help
+
+options:
+| name            | type   | required   | default   |
+|-----------------|--------|------------|-----------|
+| file            | Path   | yes        |           |
+| additional_args | String |            |           |
+
 ### `warnet setup`
 Setup warnet
 

@@ -2,7 +2,7 @@ import click
 
 from .admin import admin
 from .bitcoin import bitcoin
-from .control import down, logs, run, snapshot, stop
+from .control import down, logs, run, run_binary, snapshot, stop
 from .dashboard import dashboard
 from .deploy import deploy
 from .graph import create, graph
@@ -29,6 +29,7 @@ cli.add_command(init)
 cli.add_command(logs)
 cli.add_command(new)
 cli.add_command(run)
+cli.add_command(run_binary)
 cli.add_command(setup)
 cli.add_command(snapshot)
 cli.add_command(status)
