@@ -48,7 +48,7 @@ Show the logs of a pod
 options:
 | name     | type   | required   | default   |
 |----------|--------|------------|-----------|
-| pod_name | String |            |           |
+| pod_name | String |            | ""        |
 | follow   | Bool   |            | False     |
 
 ### `warnet new`
@@ -71,6 +71,17 @@ options:
 ### `warnet setup`
 Setup warnet
 
+
+### `warnet snapshot`
+Create a snapshot of a tank's Bitcoin data or snapshot all tanks
+
+options:
+| name         | type   | required   | default            |
+|--------------|--------|------------|--------------------|
+| tank_name    | String |            |                    |
+| snapshot_all | Bool   |            | False              |
+| output       | Path   |            | ./warnet-snapshots |
+| filter       | String |            |                    |
 
 ### `warnet status`
 Display the unified status of the Warnet network and active scenarios
@@ -138,16 +149,16 @@ options:
 
 ### `warnet graph import-json`
 Create a cycle graph with nodes imported from lnd `describegraph` JSON file,
-and additionally include 7 extra random outbounds per node. Include lightning
-channels and their policies as well.
-Returns XML file as string with or without --outfile option.
+    and additionally include 7 extra random outbounds per node. Include lightning
+    channels and their policies as well.
+    Returns XML file as string with or without --outfile option.
 
 
 ## Image
 
 ### `warnet image build`
 Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> with the specified \<tags>.
-Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
+    Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
 
 options:
 | name       | type   | required   | default   |
