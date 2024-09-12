@@ -64,7 +64,8 @@ options:
 | directory | Path   | yes        |           |
 
 ### `warnet run`
-Run a scenario from a file
+Run a scenario from a file.
+Pass `-- --help` to get individual scenario help
 
 options:
 | name            | type   | required   | default   |
