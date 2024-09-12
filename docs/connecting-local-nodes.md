@@ -7,8 +7,7 @@
 ### Run Warnet network
 
 ```shell
-warnet cluster deploy
-warnet network start
+warnet deploy path/to/network/directory
 ```
 
 ### Install Telepresence
