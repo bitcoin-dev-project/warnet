@@ -235,14 +235,6 @@ def deploy_namespaces(directory: Path):
     with namespaces_file_path.open() as f:
         namespaces_file = yaml.safe_load(f)
 
-    names = [n.get("name") for n in namespaces_file["namespaces"]]
-    for n in names:
-        if not n.startswith("warnet-"):
-            click.echo(
-                f"Failed to create namespace: {n}. Namespaces must start with a 'warnet-' prefix."
-            )
-            return
-
     for namespace in namespaces_file["namespaces"]:
         click.echo(f"Deploying namespace: {namespace.get('name')}")
         try:
