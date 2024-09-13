@@ -12,10 +12,6 @@ from test_framework.messages import CInv, msg_getdata
 from test_framework.p2p import P2PInterface
 
 
-def cli_help():
-    return "Run P2P GETDATA test"
-
-
 class P2PStoreBlock(P2PInterface):
     def __init__(self):
         super().__init__()
@@ -29,6 +25,10 @@ class P2PStoreBlock(P2PInterface):
 class GetdataTest(Commander):
     def set_test_params(self):
         self.num_nodes = 1
+
+    def add_options(self, parser):
+        parser.description = "Run P2P GETDATA test"
+        parser.usage = "warnet run /path/to/scenario_p2p_interface.py"
 
     def run_test(self):
         self.log.info("Adding the p2p connection")

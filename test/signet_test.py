@@ -6,7 +6,7 @@ from pathlib import Path
 
 from test_base import TestBase
 
-from warnet.status import _get_active_scenarios as scenarios_active
+from warnet.status import _get_deployed_scenarios as scenarios_deployed
 
 
 class SignetTest(TestBase):
@@ -55,8 +55,8 @@ class SignetTest(TestBase):
         self.warnet(f"run {scenario_file}")
 
         def check_scenario_clean_exit():
-            active = scenarios_active()
-            return all(scenario["status"] == "succeeded" for scenario in active)
+            deployed = scenarios_deployed()
+            return all(scenario["status"] == "succeeded" for scenario in deployed)
 
         self.wait_for_predicate(check_scenario_clean_exit)
 
