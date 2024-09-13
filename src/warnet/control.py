@@ -25,33 +25,38 @@ from .k8s import (
     snapshot_bitcoin_datadir,
 )
 from .process import run_command, stream_command
+from .status import _get_active_binaries, _get_deployed_scenarios
 
 console = Console()
 
 
 @click.command()
-@click.argument("scenario_name", required=False)
-def stop(scenario_name):
-    """Stop a running scenario or all scenarios"""
-    active_scenarios = [sc.metadata.name for sc in get_mission("commander")]
+@click.argument("name", required=False)
+def stop(name):
+    """Stop one or all running scenarios or binaries"""
+    all_running = [c["name"] for c in _get_deployed_scenarios()] + [
+        b["name"] for b in _get_active_binaries()
+    ]
 
-    if not active_scenarios:
-        console.print("[bold red]No active scenarios found.[/bold red]")
+    if not all_running:
+        console.print("[bold red]No active scenarios  or binaries found.[/bold red]")
         return
 
-    if not scenario_name:
-        table = Table(title="Active Scenarios", show_header=True, header_style="bold magenta")
+    if not name:
+        table = Table(
+            title="Active Scenarios & binaries", show_header=True, header_style="bold magenta"
+        )
         table.add_column("Number", style="cyan", justify="right")
-        table.add_column("Scenario Name", style="green")
+        table.add_column("Name", style="green")
 
-        for idx, name in enumerate(active_scenarios, 1):
+        for idx, name in enumerate(all_running, 1):
             table.add_row(str(idx), name)
 
         console.print(table)
 
-        choices = [str(i) for i in range(1, len(active_scenarios) + 1)] + ["a", "q"]
+        choices = [str(i) for i in range(1, len(all_running) + 1)] + ["a", "q"]
         choice = Prompt.ask(
-            "[bold yellow]Enter the number of the scenario to stop, 'a' to stop all, or 'q' to quit[/bold yellow]",
+            "[bold yellow]Enter the number you want to stop, 'a' to stop all, or 'q' to quit[/bold yellow]",
             choices=choices,
             show_choices=False,
         )
@@ -61,18 +66,18 @@ def stop(scenario_name):
             return
         elif choice == "a":
             if Confirm.ask("[bold red]Are you sure you want to stop all scenarios?[/bold red]"):
-                stop_all_scenarios(active_scenarios)
+                stop_all_scenarios(all_running)
             else:
                 console.print("[bold blue]Operation cancelled.[/bold blue]")
             return
 
-        scenario_name = active_scenarios[int(choice) - 1]
+        name = all_running[int(choice) - 1]
 
-    if scenario_name not in active_scenarios:
-        console.print(f"[bold red]No active scenario found with name: {scenario_name}[/bold red]")
+    if name not in all_running:
+        console.print(f"[bold red]No active scenario or binary found with name: {name}[/bold red]")
         return
 
-    stop_scenario(scenario_name)
+    stop_scenario(name)
 
 
 def stop_scenario(scenario_name):
@@ -101,6 +106,24 @@ def stop_all_scenarios(scenarios):
         for scenario in scenarios:
             stop_scenario(scenario)
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
+
+
+def list_active_scenarios():
+    """List all active scenarios"""
+    active_scenarios = [c["name"] for c in _get_deployed_scenarios()]
+    if not active_scenarios:
+        print("No active scenarios found.")
+        return
+
+    console = Console()
+    table = Table(title="Active Scenarios", show_header=True, header_style="bold magenta")
+    table.add_column("Name", style="cyan")
+    table.add_column("Status", style="green")
+
+    for scenario in active_scenarios:
+        table.add_row(scenario, "deployed")
+
+    console.print(table)
 
 
 @click.command()
