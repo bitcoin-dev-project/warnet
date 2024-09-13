@@ -62,10 +62,11 @@ aggregate logs and data from Bitcoin RPC queries into a web-based dashboard.
 ## Connect to logging dashboard
 
 The logging stack including the user interface web server runs inside the kubernetes cluster.
-To access that from a local web browser, you must use kubernetes port-forwarding.
+Warnet will forward port `2019` locally from the cluster, and the landing page for all
+web based interfaces will be available at `localhost:2019`.
 
-Run the script `./resources/scripts/connect_logging.sh` to forward port 3000.
-The Grafana dashboard will then be available locally at `localhost:3000`.
+This page can also be opened quickly with the command [`warnet dashboard`](/docs/warnet.md#warnet-dashboard)
+
 
 ### Prometheus
 
@@ -122,21 +123,7 @@ web-based interface.
 
 #### Dashboards
 
-To view the default metrics in the included default dashboard, upload the dashboard
-JSON file to the Grafana server:
-
-```sh
-curl localhost:3000/api/dashboards/db \
-  -H "Content-Type: application/json" \
-  --data "{\"dashboard\": $(cat resources/configs/grafana/default_dashboard.json)}"
-```
-
-Note the URL in the reply from the server (example):
-
-```sh
-{"folderUid":"","id":2,"slug":"default-warnet-dashboard","status":"success","uid":"fdu0pda1z6a68b","url":"/d/fdu0pda1z6a68b/default-warnet-dashboard","version":1}(
-```
-
-Open the dashboard in your browser (example):
-
-`http://localhost:3000/d/fdu0pda1z6a68b/default-warnet-dashboard`
+Grafana dashboards are described in JSON files. A default Warnet dashboard
+is included and any other json files in the `/resources/charts/grafana-dashboards/files` directory
+will also be deployed to the web server. The Grafana UI itself also has an API
+for creating, exporting, and importing other dashboard files.

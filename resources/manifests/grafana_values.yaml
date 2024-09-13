@@ -12,6 +12,25 @@ datasources:
     - name: Loki
       type: loki
       url: http://loki-gateway.warnet-logging:80
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+extraVolumeMounts:
+  - name: grafana-dashboards-volume
+    mountPath: /var/lib/grafana/dashboards/default
+extraVolumes:
+  - name: grafana-dashboards-volume
+    configMap:
+      name: grafana-dashboards-config
 grafana.ini:
   auth:
     disable_login_form: true

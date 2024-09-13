@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-config
+data:
+{{- $files := .Files.Glob "files/*.json" }}
+{{- range $path, $file := $files }}
+  {{ base $path }}: |-
+{{ $file | toString | indent 4 }}
+{{- end }}
