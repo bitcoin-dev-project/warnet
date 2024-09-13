@@ -1,5 +1,5 @@
 namespaces:
-  - name: warnet-red-team
+  - name: wargames-red-team
     users:
       - name: alice
         roles:
@@ -8,42 +8,7 @@ namespaces:
         roles:
           - pod-viewer
           - pod-manager
-    roles:
-      - name: pod-viewer
-        rules:
-          - apiGroups: [""]
-            resources: ["pods"]
-            verbs: ["get", "list", "watch"]
-          - apiGroups: [""]
-            resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]
-            verbs: ["get"]
-          - apiGroups: [""]
-            resources: ["configmaps", "secrets"]
-            verbs: ["get"]
-          - apiGroups: [""]
-            resources: ["persistentvolumeclaims"]
-            verbs: ["get", "list"]
-          - apiGroups: [""]
-            resources: ["events"]
-            verbs: ["get"]
-      - name: pod-manager
-        rules:
-          - apiGroups: [""]
-            resources: ["pods"]
-            verbs: ["get", "list", "watch", "create", "delete", "update"]
-          - apiGroups: [""]
-            resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]
-            verbs: ["get", "create"]
-          - apiGroups: [""]
-            resources: ["configmaps", "secrets"]
-            verbs: ["get", "create"]
-          - apiGroups: [""]
-            resources: ["persistentvolumeclaims"]
-            verbs: ["get", "list"]
-          - apiGroups: [""]
-            resources: ["events"]
-            verbs: ["get"]
-  - name: warnet-blue-team
+  - name: wargames-blue-team
     users:
       - name: mallory
         roles:
@@ -52,38 +17,3 @@ namespaces:
         roles:
           - pod-viewer
           - pod-manager
-    roles:
-      - name: pod-viewer
-        rules:
-          - apiGroups: [""]
-            resources: ["pods"]
-            verbs: ["get", "list", "watch"]
-          - apiGroups: [""]
-            resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]
-            verbs: ["get"]
-          - apiGroups: [""]
-            resources: ["configmaps", "secrets"]
-            verbs: ["get"]
-          - apiGroups: [""]
-            resources: ["persistentvolumeclaims"]
-            verbs: ["get", "list"]
-          - apiGroups: [""]
-            resources: ["events"]
-            verbs: ["get"]
-      - name: pod-manager
-        rules:
-          - apiGroups: [""]
-            resources: ["pods"]
-            verbs: ["get", "list", "watch", "create", "delete", "update"]
-          - apiGroups: [""]
-            resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]
-            verbs: ["get", "create"]
-          - apiGroups: [""]
-            resources: ["configmaps", "secrets"]
-            verbs: ["get", "create"]
-          - apiGroups: [""]
-            resources: ["persistentvolumeclaims"]
-            verbs: ["get", "list"]
-          - apiGroups: [""]
-            resources: ["events"]
-            verbs: ["get"]
