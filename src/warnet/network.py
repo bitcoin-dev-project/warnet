@@ -62,17 +62,22 @@ def _connected(end="\n"):
     tanks = get_mission("tank")
     for tank in tanks:
         # Get actual
-        peerinfo = json.loads(_rpc(tank.metadata.name, "getpeerinfo", ""))
-        actual = 0
-        for peer in peerinfo:
-            if is_connection_manual(peer):
-                actual += 1
-        expected = int(tank.metadata.annotations["init_peers"])
-        print(f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}", end=end)
-        # Even if more edges are specified, bitcoind only allows
-        # 8 manual outbound connections
-        if min(8, expected) > actual:
-            print("\nNetwork not connected")
+        try:
+            peerinfo = json.loads(_rpc(tank.metadata.name, "getpeerinfo", ""))
+            actual = 0
+            for peer in peerinfo:
+                if is_connection_manual(peer):
+                    actual += 1
+            expected = int(tank.metadata.annotations["init_peers"])
+            print(
+                f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}", end=end
+            )
+            # Even if more edges are specified, bitcoind only allows
+            # 8 manual outbound connections
+            if min(8, expected) > actual:
+                print("\nNetwork not connected")
+                return False
+        except Exception:
             return False
     print("Network connected                                                           ")
     return True
