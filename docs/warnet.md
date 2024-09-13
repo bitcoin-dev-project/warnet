@@ -65,7 +65,7 @@ options:
 
 ### `warnet run`
 Run a scenario from a file.
-Pass `-- --help` to get individual scenario help
+    Pass `-- --help` to get individual scenario help
 
 options:
 | name            | type   | required   | default   |
@@ -156,7 +156,7 @@ options:
 
 ### `warnet image build`
 Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> with the specified \<tags>.
-Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
+    Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
 
 options:
 | name       | type   | required   | default   |
