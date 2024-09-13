@@ -12,8 +12,8 @@ from time import sleep
 from warnet import SRC_DIR
 from warnet.k8s import get_pod_exit_status
 from warnet.network import _connected as network_connected
-from warnet.status import _get_tank_status as network_status
 from warnet.status import _get_deployed_scenarios as scenarios_deployed
+from warnet.status import _get_tank_status as network_status
 
 
 class TestBase:
@@ -130,8 +130,8 @@ class TestBase:
             if len(scns) == 0:
                 return True
             for s in scns:
-                exit_status = get_pod_exit_status(s)
-                self.log.debug(f"Scenario {s} exited with code {exit_status}")
+                exit_status = get_pod_exit_status(s["name"])
+                self.log.debug(f"Scenario {s['name']} exited with code {exit_status}")
                 if exit_status != 0:
                     return False
             return True

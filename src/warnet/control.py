@@ -27,6 +27,7 @@ from .process import run_command, stream_command
 
 console = Console()
 
+
 @click.command()
 @click.argument("scenario_name", required=False)
 def stop(scenario_name):

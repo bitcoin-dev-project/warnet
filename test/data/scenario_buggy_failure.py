@@ -7,6 +7,7 @@ try:
 except Exception:
     from resources.scenarios.commander import Commander
 
+
 class Failure(Commander):
     def set_test_params(self):
         self.num_nodes = 1

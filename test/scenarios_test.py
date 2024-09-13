@@ -102,9 +102,8 @@ class ScenariosTest(TestBase):
             deployed = scenarios_deployed()
             if len([s for s in deployed if s["status"] == "succeeded"]) != 2:
                 return False
-            if len([s for s in deployed if s["status"] == "failed"]) != 1:
-                return False
-            return True
+            return len([s for s in deployed if s["status"] == "failed"]) == 1
+
         self.wait_for_predicate(two_pass_one_fail)
         table = self.warnet("status")
         assert "Active Scenarios: 0" in table
