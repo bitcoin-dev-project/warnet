@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - resources/images/commander/Dockerfile
+      - resources/scenarios/commander.py
     tags-ignore:
       - "*"
 
