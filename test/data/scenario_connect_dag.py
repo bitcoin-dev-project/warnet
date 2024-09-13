@@ -7,10 +7,6 @@ from enum import Enum, auto, unique
 from commander import Commander
 
 
-def cli_help():
-    return "Connect a complete DAG from a set of unconnected nodes"
-
-
 @unique
 class ConnectionType(Enum):
     IP = auto()
@@ -21,6 +17,10 @@ class ConnectDag(Commander):
     def set_test_params(self):
         # This is just a minimum
         self.num_nodes = 10
+
+    def add_options(self, parser):
+        parser.description = "Connect a complete DAG from a set of unconnected nodes"
+        parser.usage = "warnet run /path/to/scenario_connect_dag.py"
 
     def run_test(self):
         # All permutations of a directed acyclic graph with zero, one, or two inputs/outputs

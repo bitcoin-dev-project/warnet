@@ -31,9 +31,12 @@ def status():
         table.add_row("", "", "")
 
     # Add scenarios to the table
+    active = 0
     if scenarios:
         for scenario in scenarios:
             table.add_row("Scenario", scenario["name"], scenario["status"])
+            if scenario["status"] == "running" or scenario["status"] == "pending":
+                active += 1
     else:
         table.add_row("Scenario", "No active scenarios", "")
 
@@ -52,7 +55,7 @@ def status():
     # Print summary
     summary = Text()
     summary.append(f"\nTotal Tanks: {len(tanks)}", style="bold cyan")
-    summary.append(f" | Active Scenarios: {len(scenarios)}", style="bold green")
+    summary.append(f" | Active Scenarios: {active}", style="bold green")
     console.print(summary)
     _connected(end="\r")
 

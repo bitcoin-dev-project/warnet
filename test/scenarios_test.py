@@ -21,6 +21,7 @@ class ScenariosTest(TestBase):
             self.run_and_check_miner_scenario_from_file()
             self.run_and_check_scenario_from_file()
             self.check_regtest_recon()
+            self.check_active_count()
         finally:
             self.cleanup()
 
@@ -76,6 +77,8 @@ class ScenariosTest(TestBase):
         start = int(self.warnet("bitcoin rpc tank-0000 getblockcount"))
         self.wait_for_predicate(lambda: self.scenario_running("commander-minerstd"))
         self.wait_for_predicate(lambda: self.check_blocks(2, start=start))
+        table = self.warnet("status")
+        assert "Active Scenarios: 1" in table
         self.stop_scenario()
 
     def run_and_check_scenario_from_file(self):
@@ -89,6 +92,22 @@ class ScenariosTest(TestBase):
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warnet(f"run {scenario_file}")
         self.wait_for_predicate(self.check_scenario_clean_exit)
+
+    def check_active_count(self):
+        scenario_file = "test/data/scenario_buggy_failure.py"
+        self.log.info(f"Running scenario from: {scenario_file}")
+        self.warnet(f"run {scenario_file}")
+
+        def two_pass_one_fail():
+            deployed = scenarios_deployed()
+            if len([s for s in deployed if s["status"] == "succeeded"]) != 2:
+                return False
+            if len([s for s in deployed if s["status"] == "failed"]) != 1:
+                return False
+            return True
+        self.wait_for_predicate(two_pass_one_fail)
+        table = self.warnet("status")
+        assert "Active Scenarios: 0" in table
 
 
 if __name__ == "__main__":
