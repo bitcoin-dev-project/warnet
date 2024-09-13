@@ -14,7 +14,7 @@ def status():
     console = Console()
 
     tanks = _get_tank_status()
-    scenarios = _get_active_scenarios()
+    scenarios = _get_deployed_scenarios()
 
     # Create a unified table
     table = Table(title="Warnet Status", show_header=True, header_style="bold magenta")
@@ -62,6 +62,6 @@ def _get_tank_status():
     return [{"name": tank.metadata.name, "status": tank.status.phase.lower()} for tank in tanks]
 
 
-def _get_active_scenarios():
+def _get_deployed_scenarios():
     commanders = get_mission("commander")
     return [{"name": c.metadata.name, "status": c.status.phase.lower()} for c in commanders]

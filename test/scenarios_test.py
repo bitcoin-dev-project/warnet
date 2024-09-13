@@ -7,7 +7,7 @@ from test_base import TestBase
 
 from warnet.control import stop_scenario
 from warnet.process import run_command
-from warnet.status import _get_active_scenarios as scenarios_active
+from warnet.status import _get_deployed_scenarios as scenarios_deployed
 
 
 class ScenariosTest(TestBase):
@@ -32,22 +32,22 @@ class ScenariosTest(TestBase):
 
     def scenario_running(self, scenario_name: str):
         """Check that we are only running a single scenario of the correct name"""
-        active = scenarios_active()
-        assert len(active) == 1
-        return scenario_name in active[0]["name"]
+        deployed = scenarios_deployed()
+        assert len(deployed) == 1
+        return scenario_name in deployed[0]["name"]
 
     def check_scenario_stopped(self):
-        running = scenarios_active()
+        running = scenarios_deployed()
         self.log.debug(f"Checking if scenario stopped. Running scenarios: {len(running)}")
         return len(running) == 0
 
     def check_scenario_clean_exit(self):
-        active = scenarios_active()
-        return all(scenario["status"] == "succeeded" for scenario in active)
+        deployed = scenarios_deployed()
+        return all(scenario["status"] == "succeeded" for scenario in deployed)
 
     def stop_scenario(self):
         self.log.info("Stopping running scenario")
-        running = scenarios_active()
+        running = scenarios_deployed()
         assert len(running) == 1, f"Expected one running scenario, got {len(running)}"
         assert running[0]["status"] == "running", "Scenario should be running"
         stop_scenario(running[0]["name"])
@@ -58,8 +58,8 @@ class ScenariosTest(TestBase):
         self.log.debug(f"Current block count: {count}, target: {start + target_blocks}")
 
         try:
-            active = scenarios_active()
-            commander = active[0]["commander"]
+            deployed = scenarios_deployed()
+            commander = deployed[0]["commander"]
             command = f"kubectl logs {commander}"
             print("\ncommander output:")
             print(run_command(command))

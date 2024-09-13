@@ -10,10 +10,10 @@ from tempfile import mkdtemp
 from time import sleep
 
 from warnet import SRC_DIR
-from warnet.control import get_active_scenarios
 from warnet.k8s import get_pod_exit_status
 from warnet.network import _connected as network_connected
 from warnet.status import _get_tank_status as network_status
+from warnet.status import _get_deployed_scenarios as scenarios_deployed
 
 
 class TestBase:
@@ -126,7 +126,7 @@ class TestBase:
 
     def wait_for_all_scenarios(self):
         def check_scenarios():
-            scns = get_active_scenarios()
+            scns = scenarios_deployed()
             if len(scns) == 0:
                 return True
             for s in scns:

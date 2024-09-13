@@ -27,18 +27,11 @@ from .process import run_command, stream_command
 
 console = Console()
 
-
-def get_active_scenarios():
-    """Get list of active scenarios"""
-    commanders = get_mission("commander")
-    return [c.metadata.name for c in commanders]
-
-
 @click.command()
 @click.argument("scenario_name", required=False)
 def stop(scenario_name):
     """Stop a running scenario or all scenarios"""
-    active_scenarios = get_active_scenarios()
+    active_scenarios = [sc.metadata.name for sc in get_mission("commander")]
 
     if not active_scenarios:
         console.print("[bold red]No active scenarios found.[/bold red]")
@@ -106,24 +99,6 @@ def stop_all_scenarios(scenarios):
         for scenario in scenarios:
             stop_scenario(scenario)
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
-
-
-def list_active_scenarios():
-    """List all active scenarios"""
-    active_scenarios = get_active_scenarios()
-    if not active_scenarios:
-        print("No active scenarios found.")
-        return
-
-    console = Console()
-    table = Table(title="Active Scenarios", show_header=True, header_style="bold magenta")
-    table.add_column("Name", style="cyan")
-    table.add_column("Status", style="green")
-
-    for scenario in active_scenarios:
-        table.add_row(scenario, "deployed")
-
-    console.print(table)
 
 
 @click.command()
