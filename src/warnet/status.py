@@ -1,8 +1,12 @@
+import sys
+
 import click
+from kubernetes.config.config_exception import ConfigException
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+from urllib3.exceptions import MaxRetryError
 
 from .k8s import get_mission
 from .network import _connected
@@ -13,8 +17,28 @@ def status():
     """Display the unified status of the Warnet network and active scenarios"""
     console = Console()
 
-    tanks = _get_tank_status()
-    scenarios = _get_deployed_scenarios()
+    try:
+        tanks = _get_tank_status()
+        scenarios = _get_deployed_scenarios()
+    except ConfigException as e:
+        print(e)
+        print(
+            "The kubeconfig file has not been properly set. This may mean that you need to "
+            "authorize with a cluster such as by starting minikube, starting docker-desktop, or "
+            "authorizing with a configuration file provided by a cluster administrator."
+        )
+        sys.exit(1)
+    except MaxRetryError as e:
+        print(e)
+        print(
+            "Warnet cannot get the status of a Warnet network. To resolve this, you may need to "
+            "confirm you have access to a Warnet cluster. Start by checking your network "
+            "connection. Then, if running a local cluster, check that minikube or docker-desktop "
+            "is running properly. If you are trying to connect to a remote cluster, check that "
+            "the relevant authorization file has been configured properly as instructed by a "
+            "cluster administrator."
+        )
+        sys.exit(1)
 
     # Create a unified table
     table = Table(title="Warnet Status", show_header=True, header_style="bold magenta")
