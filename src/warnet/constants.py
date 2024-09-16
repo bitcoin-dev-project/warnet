@@ -32,6 +32,7 @@ DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
 FORK_OBSERVER_CHART = str(CHARTS_DIR.joinpath("fork-observer"))
 COMMANDER_CHART = str(CHARTS_DIR.joinpath("commander"))
+BINARY_CHART = str(CHARTS_DIR.joinpath("binary-runner"))
 NAMESPACES_CHART_LOCATION = CHARTS_DIR.joinpath("namespaces")
 FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
 CADDY_CHART = str(files("resources.charts").joinpath("caddy"))

@@ -1,0 +1,5 @@
+nodes:
+  - name: tank-0000
+    connect:
+      - tank-0001
+  - name: tank-0001

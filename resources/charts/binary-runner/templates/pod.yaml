@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "binary-runner.fullname" . }}
+  labels:
+    {{- include "binary-runner.labels" . | nindent 4 }}
+    app: {{ include "binary-runner.name" . }}
+    mission: binary
+spec:
+  restartPolicy: Never
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+  containers:
+    - name: {{ .Values.pod.name }}-runner
+      image: alpine
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Waiting for binary file..."
+          while [ ! -f /data/binary ]; do
+            sleep 1
+          done
+          echo "Binary found!"
+          chmod +x /data/binary
+          /data/binary
+          exit 0
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data

@@ -1,0 +1,11 @@
+---
+nameOverride: ""
+fullnameOverride: ""
+
+pod:
+  name: bin-runner
+  namespace: warnet
+
+podLabels:
+  app: "warnet"
+  mission: "binary"

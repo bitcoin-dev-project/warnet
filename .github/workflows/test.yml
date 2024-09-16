@@ -69,6 +69,7 @@ jobs:
           - services_test.py
           - signet_test.py
           - scenarios_test.py
+          - binary_test.py
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.2.0
