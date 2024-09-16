@@ -235,11 +235,11 @@ def setup():
         install_url="https://minikube.sigs.k8s.io/docs/start/",
     )
 
-    print("")
-    print("                 ╭───────────────────────────────────╮")
-    print("                 │  Welcome to Warnet setup          │")
-    print("                 ╰───────────────────────────────────╯")
-    print("")
+    print("                                                                    ")
+    print("                    ╭───────────────────────────╮                   ")
+    print("                    │  Welcome to Warnet Setup  │                   ")
+    print("                    ╰───────────────────────────╯                   ")
+    print("                                                                    ")
     print("    Let's find out if your system has what it takes to run Warnet...")
     print("")
 
