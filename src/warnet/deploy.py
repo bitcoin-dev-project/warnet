@@ -42,19 +42,23 @@ def validate_directory(ctx, param, value):
     callback=validate_directory,
 )
 @click.option("--debug", is_flag=True)
-def deploy(directory, debug):
+@click.option("--namespace", "-n", type=str, help="Namespace to deploy network into (overrides the current namespace in kubectl)")
+def deploy(directory, debug, namespace):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
     if (directory / NETWORK_FILE).exists():
         dl = deploy_logging_stack(directory, debug)
-        deploy_network(directory, debug)
+        deploy_network(directory, namespace, debug)
         df = deploy_fork_observer(directory, debug)
         if dl | df:
             deploy_ingress(debug)
             deploy_caddy(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
-        deploy_namespaces(directory)
+        if namespace:
+            click.echo("Cannot specify a --namespace when deploying a namespaces chart.")
+        else:
+            deploy_namespaces(directory)
     else:
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
@@ -189,14 +193,14 @@ rpc_password = "tabconf2024"
     return True
 
 
-def deploy_network(directory: Path, debug: bool = False):
+def deploy_network(directory: Path, namespace_override: str, debug: bool = False):
     network_file_path = directory / NETWORK_FILE
     defaults_file_path = directory / DEFAULTS_FILE
 
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
-    namespace = get_default_namespace()
+    namespace = namespace_override if namespace_override else get_default_namespace()
 
     for node in network_file["nodes"]:
         click.echo(f"Deploying node: {node.get('name')}")
