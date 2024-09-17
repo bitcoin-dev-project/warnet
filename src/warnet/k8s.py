@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -115,7 +116,16 @@ def delete_pod(pod_name: str) -> bool:
 
 def get_default_namespace() -> str:
     command = "kubectl config view --minify -o jsonpath='{..namespace}'"
-    kubectl_namespace = run_command(command)
+    try:
+        kubectl_namespace = run_command(command)
+    except Exception as e:
+        print(e)
+        if str(e).find("command not found"):
+            print(
+                "It looks like kubectl is not installed. Please install it to continue: "
+                "https://kubernetes.io/docs/tasks/tools/"
+            )
+        sys.exit(1)
     return kubectl_namespace if kubectl_namespace else DEFAULT_NAMESPACE
 
 
