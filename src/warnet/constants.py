@@ -13,6 +13,7 @@ WEIGHTED_TAGS = [
 
 DEFAULT_NAMESPACE = "warnet"
 LOGGING_NAMESPACE = "warnet-logging"
+INGRESS_NAMESPACE = "ingress"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
@@ -35,6 +36,7 @@ COMMANDER_CHART = str(CHARTS_DIR.joinpath("commander"))
 NAMESPACES_CHART_LOCATION = CHARTS_DIR.joinpath("namespaces")
 FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
 CADDY_CHART = str(files("resources.charts").joinpath("caddy"))
+CADDY_INGRESS_NAME = "caddy-ingress"
 
 DEFAULT_NETWORK = Path("6_node_bitcoin")
 DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
@@ -97,4 +99,11 @@ LOGGING_HELM_COMMANDS = [
     "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --set grafana.enabled=false",
     f"helm upgrade --install grafana-dashboards {CHARTS_DIR}/grafana-dashboards --namespace warnet-logging",
     f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {MANIFESTS_DIR}/grafana_values.yaml",
+]
+
+
+INGRESS_HELM_COMMANDS = [
+    "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx",
+    "helm repo update",
+    f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace",
 ]
