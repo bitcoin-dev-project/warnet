@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Setup
-cd resources/flatpak || exit
-rm -Rf .flatpak-builder
-rm -Rf repo
+# Pre-clean
+rm -Rf resources/flatpak/.flatpak-builder
+rm -Rf resources/flatpak/repo
 
 # Build python wheel
-rm -i -Rf build/ dist/; python3 -m build ../..
+rm -i -Rf build/ dist/; python3 -m build
+mv "dist/warnet-${WARNET_VERSION}-py3-none-any.whl" dist/warnet.whl
+cd resources/flatpak || exit
+
 # Dump all dependencies to wheels
 python -m pip wheel --wheel-dir=wheels warnet
 

@@ -34,19 +34,21 @@ modules:
         url: https://github.com/astral-sh/uv/releases/download/0.4.11/uv-x86_64-unknown-linux-musl.tar.gz
         sha256: c3c6eb97198a29c6ca51bed673941ffbe7d97d481e74eec034fd8ad8d59b187c
 
-  - name: python3
+  - name: warnet
     buildsystem: simple
+    build-options:
+      env:
+        WARNET_VERSION: 1.1.2
     build-commands:
-      - /app/bin/uv venv /app/.venv
-      - source /app/.venv/bin/activate && uv pip install --no-index --find-links=wheels warnet-1.1.2-py3-none-any.whl
-      - install -D /app/.venv/bin/warnet /app/bin/warnet
-      - install -Dm755 warnet-wrapper.sh /app/bin/warnet-wrapper
+      - chmod +x build-warnet.sh
+      - ./build-warnet.sh
     sources:
+      - type: file
+        path: build-warnet.sh
       - type: file
         path: warnet-wrapper.sh
       - type: file
-        path: ../../dist/warnet-1.1.2-py3-none-any.whl
-        dest-filename: warnet-1.1.2-py3-none-any.whl
+        path: ../../dist/warnet.whl
       - type: dir
         path: wheels
         dest: wheels
