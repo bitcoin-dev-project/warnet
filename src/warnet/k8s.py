@@ -220,15 +220,13 @@ def snapshot_bitcoin_datadir(
             if resp.peek_stderr():
                 print(f"Error: {resp.read_stderr()}")
         resp.close()
+
         local_file_path = Path(local_path) / f"{pod_name}_bitcoin_data.tar.gz"
-        copy_command = (
-            f"kubectl cp {namespace}/{pod_name}:/tmp/bitcoin_data.tar.gz {local_file_path}"
-        )
-        if not stream_command(copy_command):
-            raise Exception("Failed to copy tar file from pod to local machine")
+        temp_bitcoin_data_path = "/tmp/bitcoin_data.tar.gz"
+        copy_file_from_pod(namespace, pod_name, temp_bitcoin_data_path, local_file_path)
 
         print(f"Bitcoin data exported successfully to {local_file_path}")
-        cleanup_command = ["rm", "/tmp/bitcoin_data.tar.gz"]
+        cleanup_command = ["rm", temp_bitcoin_data_path]
         stream(
             sclient.connect_get_namespaced_pod_exec,
             pod_name,
@@ -245,6 +243,36 @@ def snapshot_bitcoin_datadir(
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+
+
+def copy_file_from_pod(namespace, pod_name, pod_path, local_path):
+    exec_command = ["cat", pod_path]
+
+    v1 = client.CoreV1Api()
+
+    # Note: We do not specify the container name here; if we pack multiple containers in a pod
+    # we will need to change this
+    resp = stream(
+        v1.connect_get_namespaced_pod_exec,
+        pod_name,
+        namespace,
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+
+    with open(local_path, "wb") as local_file:
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                local_file.write(resp.read_stdout().encode("utf-8"))
+            if resp.peek_stderr():
+                print("Error:", resp.read_stderr())
+
+    resp.close()
 
 
 def wait_for_pod_ready(name, namespace, timeout=300):
