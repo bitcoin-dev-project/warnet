@@ -1,0 +1,40 @@
+name: Build flatpak
+
+on: push
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  build:
+    name: Build flatpak 📦
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up flatpak-builder
+      run: |
+        sudo apt update
+        sudo apt install -y flatpak flatpak-builder
+        flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+        enable-cache: true
+    - name: Install Python
+      run: |
+        uv python install $PYTHON_VERSION
+    - name: Build the flatpak itself
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e .[build]
+        uv pip install pip
+        env
+        ./resources/flatpak/make_flatpak.sh
+        flatpak build-bundle warnet_flatpak/repo warnet.flatpak com.bitcoindevproject.Warnet
+    - name: Upload flatpak artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: warnet-flatpak
+        path: warnet.flatpak
