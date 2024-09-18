@@ -28,7 +28,7 @@ from .k8s import (
     wait_for_pod,
     write_file_to_container,
 )
-from .process import run_command, stream_command
+from .process import run_command
 
 console = Console()
 
@@ -83,8 +83,8 @@ def stop_scenario(scenario_name):
     """Stop a single scenario using Helm"""
     # Stop the pod immediately (faster than uninstalling)
     namespace = get_default_namespace()
-    cmd = f"kubectl --namespace {namespace} delete pod {scenario_name} --grace-period=0 --force"
-    if stream_command(cmd):
+    resp = delete_pod(scenario_name, namespace, grace_period=0, force=True)
+    if resp.status == "Success":
         console.print(f"[bold green]Successfully stopped scenario: {scenario_name}[/bold green]")
     else:
         console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
@@ -119,11 +119,6 @@ def down():
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"Initiated uninstall for: {release_name} in namespace {namespace}"
 
-    def delete_pod(pod_name, namespace):
-        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
-
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
 
@@ -139,7 +134,16 @@ def down():
         # Delete remaining pods
         pods = get_pods()
         for pod in pods.items:
-            futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
+            futures.append(
+                executor.submit(
+                    delete_pod,
+                    pod.metadata.name,
+                    pod.metadata.namespace,
+                    grace_period=0,
+                    force=True,
+                    ignore_not_found=True,
+                )
+            )
 
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
