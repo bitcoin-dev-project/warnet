@@ -107,3 +107,8 @@ INGRESS_HELM_COMMANDS = [
     "helm repo update",
     f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace",
 ]
+
+# Helm binary
+HELM_LATEST_URL = "https://get.helm.sh/helm-latest-version"
+HELM_DOWNLOAD_URL_STUB = "https://get.helm.sh/"
+HELM_BINARY_NAME = "helm"
