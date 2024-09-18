@@ -9,6 +9,7 @@ from kubernetes import client, config, watch
 from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
+from kubernetes.client.rest import ApiException
 
 from .constants import (
     CADDY_INGRESS_NAME,
@@ -282,3 +283,17 @@ def get_ingress_ip_or_host():
     except Exception as e:
         print(f"Error getting ingress IP: {e}")
         return None
+
+
+def pod_log(pod_name, container_name=None, follow=False):
+    sclient = get_static_client()
+    try:
+        return sclient.read_namespaced_pod_log(
+            name=pod_name,
+            namespace=get_default_namespace(),
+            container=container_name,
+            follow=follow,
+            _preload_content=False
+        )
+    except ApiException as e:
+        raise Exception(json.loads(e.body.decode('utf-8'))["message"])
