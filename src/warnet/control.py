@@ -17,11 +17,13 @@ from rich.table import Table
 
 from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
 from .k8s import (
+    delete_pod,
     get_default_namespace,
     get_mission,
     get_pods,
+    pod_log,
     snapshot_bitcoin_datadir,
-    pod_log
+    wait_for_pod,
 )
 from .process import run_command, stream_command
 
@@ -161,8 +163,14 @@ def get_active_network(namespace):
 
 @click.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario_file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Stream scenario output and delete container when stopped",
+)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, additional_args: tuple[str]):
+def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
@@ -230,11 +238,22 @@ def run(scenario_file: str, additional_args: tuple[str]):
         print(f"Failed to start scenario: {scenario_name}")
         print(f"Error: {e.stderr}")
 
+    if debug:
+        print("Waiting for commander pod to start...")
+        wait_for_pod(name)
+        _logs(pod_name=name, follow=True)
+        print("Deleting pod...")
+        delete_pod(name)
+
 
 @click.command()
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
 def logs(pod_name: str, follow: bool):
+    return _logs(pod_name, follow)
+
+
+def _logs(pod_name: str, follow: bool):
     """Show the logs of a pod"""
     namespace = get_default_namespace()
 
@@ -266,9 +285,11 @@ def logs(pod_name: str, follow: bool):
     try:
         stream = pod_log(pod_name, container_name=None, follow=follow)
         for line in stream.stream():
-            print(line.decode('utf-8'), end=None)
+            print(line.decode("utf-8"), end=None)
     except Exception as e:
         print(e)
+    except KeyboardInterrupt:
+        print("Interrupted streaming log!")
 
 
 @click.command()

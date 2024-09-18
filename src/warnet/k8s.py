@@ -3,13 +3,14 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from time import sleep
 
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client.models import CoreV1Event, V1PodList
+from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
-from kubernetes.client.rest import ApiException
 
 from .constants import (
     CADDY_INGRESS_NAME,
@@ -293,7 +294,17 @@ def pod_log(pod_name, container_name=None, follow=False):
             namespace=get_default_namespace(),
             container=container_name,
             follow=follow,
-            _preload_content=False
+            _preload_content=False,
         )
     except ApiException as e:
-        raise Exception(json.loads(e.body.decode('utf-8'))["message"])
+        raise Exception(json.loads(e.body.decode("utf-8"))["message"]) from None
+
+
+def wait_for_pod(pod_name, timeout_seconds=10):
+    sclient = get_static_client()
+    while timeout_seconds > 0:
+        pod = sclient.read_namespaced_pod_status(name=pod_name, namespace=get_default_namespace())
+        if pod.status.phase != "Pending":
+            return
+        sleep(1)
+        timeout_seconds -= 1
