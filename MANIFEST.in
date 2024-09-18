@@ -1,2 +1,4 @@
 include src/warnet/*.json
 graft resources
+prune resources/flatpak/*
+prune */__pycache__

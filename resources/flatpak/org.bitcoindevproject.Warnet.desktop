@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Warnet
+Exec=warnet-flatpak
+Type=Application
+Terminal=true
+Categories=Development;

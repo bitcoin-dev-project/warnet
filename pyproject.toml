@@ -56,3 +56,6 @@ include = ["warnet*", "test_framework*", "resources*"]
 
 [tool.setuptools.package-data]
 "resources" = ["**/*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["flatpak/**/*"]

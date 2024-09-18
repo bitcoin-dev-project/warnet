@@ -1,0 +1,58 @@
+app-id: com.bitcoindevproject.Warnet
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: /app/bin/warnet-wrapper
+finish-args:
+  - --share=network
+  - --filesystem=host
+modules:
+  - name: kubectl
+    buildsystem: simple
+    build-commands:
+      - install -D kubectl /app/bin/kubectl
+    sources:
+      - type: file
+        url: https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
+        sha256: 7c27adc64a84d1c0cc3dcf7bf4b6e916cc00f3f576a2dbac51b318d926032437
+
+  - name: helm
+    buildsystem: simple
+    build-commands:
+      - install -D helm /app/bin/helm
+    sources:
+      - type: archive
+        url: https://get.helm.sh/helm-v3.16.1-linux-amd64.tar.gz
+        sha256: e57e826410269d72be3113333dbfaac0d8dfdd1b0cc4e9cb08bdf97722731ca9
+
+  - name: uv
+    buildsystem: simple
+    build-commands:
+      - install -D uv /app/bin/uv
+    sources:
+      - type: archive
+        url: https://github.com/astral-sh/uv/releases/download/0.4.11/uv-x86_64-unknown-linux-musl.tar.gz
+        sha256: c3c6eb97198a29c6ca51bed673941ffbe7d97d481e74eec034fd8ad8d59b187c
+
+  - name: python3
+    buildsystem: simple
+    build-commands:
+      - /app/bin/uv venv /app/.venv
+      - source /app/.venv/bin/activate && uv pip install --no-index --find-links=wheels warnet-1.1.2-py3-none-any.whl
+      - install -D /app/.venv/bin/warnet /app/bin/warnet
+      - install -Dm755 warnet-wrapper.sh /app/bin/warnet-wrapper
+    sources:
+      - type: file
+        path: warnet-wrapper.sh
+      - type: file
+        path: ../../dist/warnet-1.1.2-py3-none-any.whl
+        dest-filename: warnet-1.1.2-py3-none-any.whl
+      - type: dir
+        path: wheels
+        dest: wheels
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - '*.a'
+  - '*.la'
