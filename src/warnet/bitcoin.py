@@ -74,7 +74,7 @@ def debug_log(tank: str):
     """
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
-    cmd = f"kubectl logs {tank}"
+    cmd = f"warnet logs {tank}"
     try:
         print(run_command(cmd))
     except Exception as e:
