@@ -7,8 +7,8 @@ from time import sleep
 
 import yaml
 from kubernetes import client, config, watch
-from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.client.api import CoreV1Api
+from kubernetes.client.models import V1DeleteOptions, V1PodList, V1Status
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -154,9 +154,27 @@ def delete_namespace(namespace: str) -> V1Status:
     return resp
 
 
-def delete_pod(pod_name: str) -> bool:
-    command = f"kubectl -n {get_default_namespace()} delete pod {pod_name}"
-    return stream_command(command)
+def delete_pod(
+    pod_name: str,
+    namespace: str,
+    grace_period: int = 30,
+    force: bool = False,
+    ignore_not_found: bool = True,
+) -> Optional[V1Status]:
+    v1: CoreV1Api = get_static_client()
+    delete_options = V1DeleteOptions(
+        grace_period_seconds=grace_period,
+        propagation_policy="Foreground" if force else "Background",
+    )
+    try:
+        resp = v1.delete_namespaced_pod(name=pod_name, namespace=namespace, body=delete_options)
+        return resp
+    except ApiException as e:
+        if e.status == 404 and ignore_not_found:
+            print(f"Pod {pod_name} in namespace {namespace} not found, but ignoring as requested.")
+            return None
+        else:
+            raise
 
 
 def get_default_namespace() -> str:
