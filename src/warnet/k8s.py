@@ -210,7 +210,9 @@ def get_default_namespace() -> str:
     if not context_entry:
         raise ValueError(f"Context '{current_context_name}' not found in kubeconfig.")
 
-    namespace = context_entry["context"]["namespace"]
+    # TODO: need to setting on Warnet's "default" namespace
+    namespace = context_entry["context"].get("namespace", "warnet")
+
     return namespace
 
 
