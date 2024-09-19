@@ -93,9 +93,6 @@ class ConnectDag(Commander):
         self.assert_connection(eight_peers, 9, ConnectionType.DNS)
         self.assert_connection(nine_peers, 8, ConnectionType.IP)
 
-        # TODO: This needs to cause the test to fail
-        # assert False
-
         self.log.info(
             f"Successfully ran the connect_dag.py scenario using a temporary file: "
             f"{os.path.basename(__file__)} "
