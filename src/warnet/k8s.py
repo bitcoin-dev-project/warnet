@@ -8,6 +8,7 @@ from time import sleep
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client.models import CoreV1Event, V1PodList
+from kubernetes.client.api import CoreV1Api
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -22,7 +23,7 @@ from .constants import (
 from .process import run_command, stream_command
 
 
-def get_static_client() -> CoreV1Event:
+def get_static_client() -> CoreV1Api:
     config.load_kube_config(config_file=KUBECONFIG)
     return client.CoreV1Api()
 
