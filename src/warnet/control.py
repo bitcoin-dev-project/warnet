@@ -144,7 +144,9 @@ def down():
 
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
-            console.print(f"[yellow]{future.result()}[/yellow]")
+            result = future.result()
+            msg = result if isinstance(result, str) else result.metadata.name
+            console.print(f"[yellow]Deletion: {msg} [/yellow]")
 
     console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
     console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
