@@ -1,9 +1,9 @@
 import json
 import os
-import sys
 import tempfile
 from pathlib import Path
 from time import sleep
+from typing import Optional
 
 import yaml
 from kubernetes import client, config, watch
@@ -12,6 +12,7 @@ from kubernetes.client.models import V1DeleteOptions, V1PodList, V1Status
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
+from kubernetes.utils import create_from_yaml
 
 from .constants import (
     CADDY_INGRESS_NAME,
