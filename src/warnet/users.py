@@ -1,3 +1,4 @@
+import os
 import sys
 
 import click
@@ -10,24 +11,33 @@ from warnet.constants import KUBECONFIG
 @click.argument("auth_config", type=str)
 def auth(auth_config):
     """Authenticate with a Warnet cluster using a kubernetes config file"""
-    base_config = yaml_try_with_open(KUBECONFIG)
+    # TODO: use os.replace for more atomic file writing
     auth_config = yaml_try_with_open(auth_config)
 
-    clusters = "clusters"
-    if clusters in auth_config:
-        merge_entries(
-            base_config.setdefault(clusters, []), auth_config[clusters], "name", "cluster"
-        )
+    is_first_config = False
+    if not os.path.exists(KUBECONFIG):
+        with open(KUBECONFIG, "w") as file:
+            yaml.safe_dump(auth_config, file)
+            is_first_config = True
 
-    users = "users"
-    if users in auth_config:
-        merge_entries(base_config.setdefault(users, []), auth_config[users], "name", "user")
+    base_config = yaml_try_with_open(KUBECONFIG)
 
-    contexts = "contexts"
-    if contexts in auth_config:
-        merge_entries(
-            base_config.setdefault(contexts, []), auth_config[contexts], "name", "context"
-        )
+    if not is_first_config:
+        clusters = "clusters"
+        if clusters in auth_config:
+            merge_entries(
+                base_config.setdefault(clusters, []), auth_config[clusters], "name", "cluster"
+            )
+
+        users = "users"
+        if users in auth_config:
+            merge_entries(base_config.setdefault(users, []), auth_config[users], "name", "user")
+
+        contexts = "contexts"
+        if contexts in auth_config:
+            merge_entries(
+                base_config.setdefault(contexts, []), auth_config[contexts], "name", "context"
+            )
 
     new_current_context = auth_config.get("current-context")
     base_config["current-context"] = new_current_context
@@ -42,15 +52,23 @@ def auth(auth_config):
             fg="yellow",
         )
 
-    with open(KUBECONFIG, "w") as file:
-        yaml.safe_dump(base_config, file)
-        click.secho(f"Updated kubeconfig with authorization data: {KUBECONFIG}", fg="green")
+    try:
+        with open(KUBECONFIG, "w") as file:
+            yaml.safe_dump(base_config, file)
+            click.secho(f"Updated kubeconfig with authorization data: {KUBECONFIG}", fg="green")
+    except OSError as e:
+        click.secho(f"Error writing to {KUBECONFIG}: {e}", fg="red")
+        sys.exit(1)
 
-    with open(KUBECONFIG) as file:
-        contents = yaml.safe_load(file)
-        click.secho(
-            f"Warnet's current context is now set to: {contents['current-context']}", fg="green"
-        )
+    try:
+        with open(KUBECONFIG) as file:
+            contents = yaml.safe_load(file)
+            click.secho(
+                f"Warnet's current context is now set to: {contents['current-context']}", fg="green"
+            )
+    except (OSError, yaml.YAMLError) as e:
+        click.secho(f"Error reading from {KUBECONFIG}: {e}", fg="red")
+        sys.exit(1)
 
 
 def merge_entries(base_list, auth_list, key, entry_type):
