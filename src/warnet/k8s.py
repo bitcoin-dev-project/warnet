@@ -33,6 +33,22 @@ def get_dynamic_client() -> DynamicClient:
     return DynamicClient(client.ApiClient())
 
 
+def kexec(pod: str, namespace: str, cmd: [str]) -> str:
+    """It's `kubectl exec` but with a k at the beginning so as not to conflict with python's `exec`"""
+    sclient = get_static_client()
+    resp = stream(
+        sclient.connect_get_namespaced_pod_exec,
+        pod,
+        namespace,
+        command=cmd,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    return resp
+
+
 def get_pods() -> V1PodList:
     sclient = get_static_client()
     try:
