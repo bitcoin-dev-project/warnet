@@ -244,12 +244,6 @@ def setup():
         install_instruction="Please make sure minikube is running",
         install_url="https://minikube.sigs.k8s.io/docs/start/",
     )
-    kubectl_info = ToolInfo(
-        tool_name="Kubectl",
-        is_installed_func=is_kubectl_installed,
-        install_instruction="Install kubectl.",
-        install_url="https://kubernetes.io/docs/tasks/tools/install-kubectl/",
-    )
     helm_info = ToolInfo(
         tool_name="Helm",
         is_installed_func=is_helm_installed_and_offer_if_not,
@@ -275,7 +269,7 @@ def setup():
     print("                    ╰───────────────────────────╯                   ")
     print("                                                                    ")
     print("    Let's find out if your system has what it takes to run Warnet...")
-    print("")
+    print("                                                                    ")
 
     try:
         questions = [
@@ -304,7 +298,6 @@ def setup():
                 if is_platform_darwin():
                     check_results.append(check_installation(minikube_version_info))
                 check_results.append(check_installation(minikube_running_info))
-            check_results.append(check_installation(kubectl_info))
             check_results.append(check_installation(helm_info))
         else:
             click.secho("Please re-run setup.", fg="yellow")
