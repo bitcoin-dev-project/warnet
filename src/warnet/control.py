@@ -83,11 +83,8 @@ def stop_scenario(scenario_name):
     """Stop a single scenario using Helm"""
     # Stop the pod immediately (faster than uninstalling)
     namespace = get_default_namespace()
-    resp = delete_pod(scenario_name, namespace, grace_period=0, force=True)
-    if resp.status == "Success":
-        console.print(f"[bold green]Successfully stopped scenario: {scenario_name}[/bold green]")
-    else:
-        console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
+    delete_pod(scenario_name, namespace, grace_period=0, force=True)
+    console.print(f"[bold yellow]Requested scenario stop: {scenario_name}[/bold yellow]")
 
     # Then uninstall via helm (non-blocking)
     command = f"helm uninstall {scenario_name} --namespace {namespace} --wait=false"
