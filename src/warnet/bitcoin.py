@@ -89,6 +89,7 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     """
     Grep combined bitcoind logs using regex <pattern>
     """
+    sclient = get_static_client()
 
     try:
         tanks = get_mission("tank")
@@ -111,8 +112,12 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             continue
 
         # Get logs from the specific container
-        command = f"kubectl logs {pod_name} -c {container_name} --timestamps"
-        logs = run_command(command)
+        logs = sclient.read_namespaced_pod_log(
+            name=pod_name,
+            namespace=get_default_namespace(),
+            container=container_name,
+            timestamps=True,
+        )
 
         if logs is not False:
             # Process logs
