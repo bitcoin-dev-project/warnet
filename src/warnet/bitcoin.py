@@ -7,14 +7,21 @@ from datetime import datetime
 from io import BytesIO
 
 import click
-from kubernetes.client.models import V1Pod, V1Service
 from kubernetes.stream import stream
 from urllib3.exceptions import MaxRetryError
 
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
-from .k8s import get_default_namespace, get_mission, get_static_client, kexec, pod_log
+from .k8s import (
+    get_default_namespace,
+    get_mission,
+    get_pod,
+    get_service,
+    get_static_client,
+    kexec,
+    pod_log,
+)
 from .process import run_command
 
 
@@ -207,19 +214,15 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
     """
     Fetch messages from the message capture files
     """
-    sclient = get_static_client()
-
     subdir = "" if chain == "main" else f"{chain}/"
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
     # Get the IP of node_b
-    tank_b_pod: V1Pod = sclient.read_namespaced_pod(name=tank_b, namespace=get_default_namespace())
+    tank_b_pod = get_pod(tank_b)
     tank_b_ip = tank_b_pod.status.pod_ip
 
     # Get the service IP of node_b
-    tank_b_service: V1Service = sclient.read_namespaced_service(
-        name=tank_b, namespace=get_default_namespace()
-    )
+    tank_b_service = get_service(tank_b)
     tank_b_service_ip = tank_b_service.spec.cluster_ip
 
     # List directories in the message capture folder
