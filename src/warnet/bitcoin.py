@@ -1,3 +1,6 @@
+import ast
+import base64
+import json
 import os
 import re
 import sys
@@ -5,12 +8,14 @@ from datetime import datetime
 from io import BytesIO
 
 import click
+from kubernetes.client.models import V1Pod, V1Service
+from kubernetes.stream import stream
 from urllib3.exceptions import MaxRetryError
 
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
-from .k8s import get_default_namespace, get_mission
+from .k8s import get_default_namespace, get_mission, get_static_client, kexec
 from .process import run_command
 
 
