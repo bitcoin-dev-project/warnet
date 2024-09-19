@@ -1,7 +1,5 @@
-import ast
 import base64
 import codecs
-import json
 import os
 import re
 import sys
@@ -62,16 +60,19 @@ def _rpc(tank: str, method: str, params: tuple[str, ...]) -> str:
         stdin=False,
         stdout=True,
         tty=False,
+        _preload_content=False,
     )
-    # The k8s lib seems to convert json into its python representation. The following dance seems to
-    # avoid the worst of it.
-    if resp.startswith("{") or resp.startswith("["):
-        literal = ast.literal_eval(resp)
-        json_string = json.dumps(literal)
-        return json_string
-    else:
-        # When bitcoin-cli responds with a txid or similar, don't try to `literal_eval` it.
-        return resp
+    stdout = ""
+    stderr = ""
+    while resp.is_open():
+        resp.update(timeout=1)
+        if resp.peek_stdout():
+            stdout_chunk = resp.read_stdout()
+            stdout += stdout_chunk
+        if resp.peek_stderr():
+            stderr_chunk = resp.read_stderr()
+            stderr += stderr_chunk
+    return stdout + stderr
 
 
 @bitcoin.command()
