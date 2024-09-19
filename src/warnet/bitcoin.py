@@ -190,21 +190,26 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
     """
     Fetch messages from the message capture files
     """
+    sclient = get_static_client()
+
     subdir = "" if chain == "main" else f"{chain}/"
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
     # Get the IP of node_b
-    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}'"
-    tank_b_ip = run_command(cmd).strip()
+    tank_b_pod: V1Pod = sclient.read_namespaced_pod(name=tank_b, namespace=get_default_namespace())
+    tank_b_ip = tank_b_pod.status.pod_ip
 
     # Get the service IP of node_b
-    cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}'"
-    tank_b_service_ip = run_command(cmd).strip()
+    tank_b_service: V1Service = sclient.read_namespaced_service(
+        name=tank_b, namespace=get_default_namespace()
+    )
+    tank_b_service_ip = tank_b_service.spec.cluster_ip
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec {tank_a} -- ls {base_dir}"
 
-    dirs = run_command(cmd).splitlines()
+    resp = kexec(tank_a, get_default_namespace(), ["ls", base_dir])
+
+    dirs = resp.splitlines()
 
     messages = []
 
@@ -213,18 +218,15 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec {tank_a} -- cat {file_path}"
-                import subprocess
 
-                blob = subprocess.run(
-                    cmd, shell=True, capture_output=True, executable="bash"
-                ).stdout
-
+                resp = kexec(tank_a, get_default_namespace(), ["base64", file_path])
+                resp_bytes = base64.b64decode(resp)
                 # Parse the blob
-                json = parse_raw_messages(blob, outbound)
+                json = parse_raw_messages(resp_bytes, outbound)
                 messages = messages + json
 
     messages.sort(key=lambda x: x["time"])
+
     return messages
 
 
