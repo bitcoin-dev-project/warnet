@@ -332,8 +332,10 @@ def _logs(pod_name: str, follow: bool):
         else:
             return  # cancelled by user
 
+    container_name = "bitcoincore" if pod_name.startswith("tank") else None
+
     try:
-        stream = pod_log(pod_name, container_name=None, follow=follow)
+        stream = pod_log(pod_name, container_name=container_name, follow=follow)
         for line in stream.stream():
             print(line.decode("utf-8"), end=None)
     except Exception as e:
