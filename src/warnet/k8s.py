@@ -128,8 +128,13 @@ def set_context_namespace(namespace: str):
 
 
 def apply_kubernetes_yaml(yaml_file: str) -> bool:
-    command = f"kubectl apply -f {yaml_file}"
-    return stream_command(command)
+    v1 = get_static_client()
+    path = os.path.abspath(yaml_file)
+    try:
+        create_from_yaml(v1, path)
+        return True
+    except Exception as e:
+        raise e
 
 
 def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
