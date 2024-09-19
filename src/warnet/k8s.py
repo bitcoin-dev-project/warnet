@@ -13,6 +13,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
 from kubernetes.utils import create_from_yaml
+from urllib3 import HTTPResponse
 
 from .constants import (
     CADDY_INGRESS_NAME,
@@ -394,7 +395,7 @@ def get_ingress_ip_or_host():
         return None
 
 
-def pod_log(pod_name, container_name=None, follow=False):
+def pod_log(pod_name, container_name=None, follow=False, timestamps=False) -> HTTPResponse:
     sclient = get_static_client()
     try:
         return sclient.read_namespaced_pod_log(
@@ -402,6 +403,7 @@ def pod_log(pod_name, container_name=None, follow=False):
             namespace=get_default_namespace(),
             container=container_name,
             follow=follow,
+            timestamps=timestamps,
             _preload_content=False,
         )
     except ApiException as e:
