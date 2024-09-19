@@ -8,7 +8,7 @@ from typing import Optional
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client.api import CoreV1Api
-from kubernetes.client.models import V1DeleteOptions, V1PodList, V1Status
+from kubernetes.client.models import V1DeleteOptions, V1Pod, V1PodList, V1Status
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -61,7 +61,7 @@ def get_pods() -> V1PodList:
     return pod_list
 
 
-def get_mission(mission: str) -> list[V1PodList]:
+def get_mission(mission: str) -> list[V1Pod]:
     pods = get_pods()
     crew = []
     for pod in pods.items:

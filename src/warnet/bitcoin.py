@@ -1,5 +1,6 @@
 import ast
 import base64
+import codecs
 import json
 import os
 import re
@@ -15,7 +16,7 @@ from urllib3.exceptions import MaxRetryError
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 
-from .k8s import get_default_namespace, get_mission, get_static_client, kexec
+from .k8s import get_default_namespace, get_mission, get_static_client, kexec, pod_log
 from .process import run_command
 
 
@@ -94,15 +95,13 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     """
     Grep combined bitcoind logs using regex <pattern>
     """
-    sclient = get_static_client()
-
     try:
         tanks = get_mission("tank")
     except MaxRetryError as e:
         print(f"{e}")
         sys.exit(1)
 
-    matching_logs = []
+    matching_logs: list[tuple[str, any]] = []
 
     for tank in tanks:
         pod_name = tank.metadata.name
@@ -117,18 +116,14 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             continue
 
         # Get logs from the specific container
-        logs = sclient.read_namespaced_pod_log(
-            name=pod_name,
-            namespace=get_default_namespace(),
-            container=container_name,
-            timestamps=True,
-        )
+        log_stream = pod_log(pod_name, container_name, timestamps=True)
 
-        if logs is not False:
-            # Process logs
-            for log_entry in logs.splitlines():
-                if re.search(pattern, log_entry):
-                    matching_logs.append((log_entry, pod_name))
+        compiled_pattern = re.compile(pattern)
+
+        for log_line in iter_lines_from_stream(log_stream):
+            log_entry = log_line.rstrip("\n")
+            if compiled_pattern.search(log_entry):
+                matching_logs.append((log_entry, pod_name))
 
     # Sort logs if needed
     if not no_sort:
@@ -151,6 +146,22 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             print(f"{pod_name}: {log_entry}")
 
     return matching_logs
+
+
+def iter_lines_from_stream(log_stream, encoding="utf-8"):
+    decoder = codecs.getincrementaldecoder(encoding)()
+    buffer = ""
+    for chunk in log_stream.stream():
+        # Decode the chunk incrementally
+        text = decoder.decode(chunk)
+        buffer += text
+        # Split the buffer into lines
+        lines = buffer.split("\n")
+        buffer = lines.pop()  # Last item is incomplete line or empty
+        yield from lines
+    # Yield any remaining text in the buffer
+    if buffer:
+        yield buffer
 
 
 @bitcoin.command()
