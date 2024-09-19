@@ -178,18 +178,24 @@ def delete_pod(
 
 
 def get_default_namespace() -> str:
-    command = "kubectl config view --minify -o jsonpath='{..namespace}'"
-    try:
-        kubectl_namespace = run_command(command)
-    except Exception as e:
-        print(e)
-        if str(e).find("command not found"):
-            print(
-                "It looks like kubectl is not installed. Please install it to continue: "
-                "https://kubernetes.io/docs/tasks/tools/"
-            )
-        sys.exit(1)
-    return kubectl_namespace if kubectl_namespace else DEFAULT_NAMESPACE
+    with open(KUBECONFIG) as file:
+        kubeconfig_data = yaml.safe_load(file)
+
+    current_context_name = kubeconfig_data.get("current-context")
+    if not current_context_name:
+        raise ValueError("No current context set in kubeconfig.")
+
+    context_entry = None
+    for context in kubeconfig_data.get("contexts", []):
+        if context["name"] == current_context_name:
+            context_entry = context
+            break
+
+    if not context_entry:
+        raise ValueError(f"Context '{current_context_name}' not found in kubeconfig.")
+
+    namespace = context_entry["context"]["namespace"]
+    return namespace
 
 
 def snapshot_bitcoin_datadir(
