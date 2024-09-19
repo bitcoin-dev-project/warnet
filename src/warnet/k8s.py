@@ -8,7 +8,7 @@ from typing import Optional
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client.api import CoreV1Api
-from kubernetes.client.models import V1DeleteOptions, V1Pod, V1PodList, V1Status
+from kubernetes.client.models import V1DeleteOptions, V1Pod, V1PodList, V1Service, V1Status
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -50,6 +50,20 @@ def kexec(pod: str, namespace: str, cmd: [str]) -> str:
         tty=False,
     )
     return resp
+
+
+def get_service(name: str, namespace: Optional[str] = None) -> V1Service:
+    sclient = get_static_client()
+    if not namespace:
+        namespace = get_default_namespace()
+    return sclient.read_namespaced_service(name=name, namespace=namespace)
+
+
+def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
+    sclient = get_static_client()
+    if not namespace:
+        namespace = get_default_namespace()
+    return sclient.read_namespaced_pod(name=name, namespace=namespace)
 
 
 def get_pods() -> V1PodList:
