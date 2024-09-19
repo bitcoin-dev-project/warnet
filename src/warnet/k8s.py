@@ -148,9 +148,10 @@ def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
         Path(temp_file_path).unlink()
 
 
-def delete_namespace(namespace: str) -> bool:
-    command = f"kubectl delete namespace {namespace} --ignore-not-found"
-    return run_command(command)
+def delete_namespace(namespace: str) -> V1Status:
+    v1: CoreV1Api = get_static_client()
+    resp = v1.delete_namespace(namespace)
+    return resp
 
 
 def delete_pod(pod_name: str) -> bool:
