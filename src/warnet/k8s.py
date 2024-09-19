@@ -10,7 +10,13 @@ from kubernetes.client.models import CoreV1Event, V1PodList
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
 
-from .constants import DEFAULT_NAMESPACE, KUBECONFIG
+from .constants import (
+    CADDY_INGRESS_NAME,
+    DEFAULT_NAMESPACE,
+    INGRESS_NAMESPACE,
+    KUBECONFIG,
+    LOGGING_NAMESPACE,
+)
 from .process import run_command, stream_command
 
 
@@ -239,7 +245,7 @@ def snapshot_bitcoin_datadir(
         print(f"An error occurred: {str(e)}")
 
 
-def wait_for_caddy_ready(name, namespace, timeout=300):
+def wait_for_pod_ready(name, namespace, timeout=300):
     sclient = get_static_client()
     w = watch.Watch()
     for event in w.stream(
@@ -250,8 +256,29 @@ def wait_for_caddy_ready(name, namespace, timeout=300):
             conditions = pod.status.conditions or []
             ready_condition = next((c for c in conditions if c.type == "Ready"), None)
             if ready_condition and ready_condition.status == "True":
-                print(f"Caddy pod {name} is ready.")
                 w.stop()
                 return True
-    print(f"Timeout waiting for Caddy pod {name} to be ready.")
+    print(f"Timeout waiting for pod {name} to be ready.")
     return False
+
+
+def wait_for_ingress_controller(timeout=300):
+    # get name of ingress controller pod
+    sclient = get_static_client()
+    pods = sclient.list_namespaced_pod(namespace=INGRESS_NAMESPACE)
+    for pod in pods.items:
+        if "ingress-nginx-controller" in pod.metadata.name:
+            return wait_for_pod_ready(pod.metadata.name, INGRESS_NAMESPACE, timeout)
+
+
+def get_ingress_ip_or_host():
+    config.load_kube_config()
+    networking_v1 = client.NetworkingV1Api()
+    try:
+        ingress = networking_v1.read_namespaced_ingress(CADDY_INGRESS_NAME, LOGGING_NAMESPACE)
+        if ingress.status.load_balancer.ingress[0].hostname:
+            return ingress.status.load_balancer.ingress[0].hostname
+        return ingress.status.load_balancer.ingress[0].ip
+    except Exception as e:
+        print(f"Error getting ingress IP: {e}")
+        return None

@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 from test_base import TestBase
 
-GRAFANA_URL = "http://localhost:2019/grafana/"
+from warnet.k8s import get_ingress_ip_or_host
 
 
 class LoggingTest(TestBase):
@@ -29,13 +29,17 @@ class LoggingTest(TestBase):
         self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running", timeout=10 * 60)
         self.wait_for_all_edges()
+        self.wait_for_predicate(lambda: get_ingress_ip_or_host())
+        ingress_ip = get_ingress_ip_or_host()
+        self.grafana_url = f"http://{ingress_ip}/grafana"
+        self.log.info(f"Grafana URL: {self.grafana_url}")
 
     def wait_for_endpoint_ready(self):
         self.log.info("Waiting for Grafana to be ready to receive API calls...")
 
         def check_endpoint():
             try:
-                response = requests.get(f"{GRAFANA_URL}login")
+                response = requests.get(f"{self.grafana_url}/login")
                 return response.status_code == 200
             except requests.RequestException:
                 return False
@@ -50,7 +54,7 @@ class LoggingTest(TestBase):
             "from": f"{start}",
             "to": "now",
         }
-        reply = requests.post(f"{GRAFANA_URL}api/ds/query", json=data)
+        reply = requests.post(f"{self.grafana_url}/api/ds/query", json=data)
         if reply.status_code != 200:
             self.log.error(f"Grafana API request failed with status code {reply.status_code}")
             self.log.error(f"Response content: {reply.text}")
@@ -67,7 +71,7 @@ class LoggingTest(TestBase):
         self.warnet(f"run {miner_file} --allnodes --interval=5 --mature")
         self.warnet(f"run {tx_flood_file} --interval=1")
 
-        prometheus_ds = requests.get(f"{GRAFANA_URL}api/datasources/name/Prometheus")
+        prometheus_ds = requests.get(f"{self.grafana_url}/api/datasources/name/Prometheus")
         assert prometheus_ds.status_code == 200
         prometheus_uid = prometheus_ds.json()["uid"]
         self.log.info(f"Got Prometheus data source uid from Grafana: {prometheus_uid}")
@@ -92,7 +96,7 @@ class LoggingTest(TestBase):
         self.wait_for_predicate(lambda: get_five_values_for_metric("txrate"))
 
         # Verify default dashboard exists
-        dbs = requests.get(f"{GRAFANA_URL}api/search").json()
+        dbs = requests.get(f"{self.grafana_url}/api/search").json()
         assert dbs[0]["title"] == "Default Warnet Dashboard"
 
 

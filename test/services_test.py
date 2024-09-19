@@ -6,6 +6,8 @@ from pathlib import Path
 import requests
 from test_base import TestBase
 
+from warnet.k8s import get_ingress_ip_or_host
+
 
 class ServicesTest(TestBase):
     def __init__(self):
@@ -32,7 +34,9 @@ class ServicesTest(TestBase):
         # Port will be auto-forwarded by `warnet deploy`, routed through the enabled Caddy pod
 
         def call_fo_api():
-            fo_root = "http://localhost:2019/fork-observer"
+            # if on minikube remember to run `minikube tunnel` for this test to run
+            ingress_ip = get_ingress_ip_or_host()
+            fo_root = f"http://{ingress_ip}/fork-observer"
             try:
                 fo_res = requests.get(f"{fo_root}/api/networks.json")
                 network_id = fo_res.json()["networks"][0]["id"]

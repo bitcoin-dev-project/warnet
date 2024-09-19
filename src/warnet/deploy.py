@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import tempfile
@@ -14,13 +13,14 @@ from .constants import (
     DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
     HELM_COMMAND,
+    INGRESS_HELM_COMMANDS,
     LOGGING_HELM_COMMANDS,
     LOGGING_NAMESPACE,
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
 )
-from .k8s import get_default_namespace, wait_for_caddy_ready
+from .k8s import get_default_namespace, wait_for_ingress_controller, wait_for_pod_ready
 from .process import stream_command
 
 
@@ -51,6 +51,7 @@ def deploy(directory, debug):
         deploy_network(directory, debug)
         df = deploy_fork_observer(directory, debug)
         if dl | df:
+            deploy_ingress(debug)
             deploy_caddy(directory, debug)
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
@@ -118,8 +119,21 @@ def deploy_caddy(directory: Path, debug: bool):
         click.echo(f"Failed to run Helm command: {cmd}")
         return
 
-    wait_for_caddy_ready(name, namespace)
-    _port_start_internal(name, namespace)
+    wait_for_pod_ready(name, namespace)
+    click.echo("\nTo access the warnet dashboard run:\n  warnet dashboard")
+
+
+def deploy_ingress(debug: bool):
+    click.echo("Deploying ingress controller")
+
+    for command in INGRESS_HELM_COMMANDS:
+        if not stream_command(command):
+            print(f"Failed to run Helm command: {command}")
+            return False
+
+    wait_for_ingress_controller()
+
+    return True
 
 
 def deploy_fork_observer(directory: Path, debug: bool) -> bool:
@@ -279,19 +293,3 @@ def run_detached_process(command):
         subprocess.Popen(command, shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
     print(f"Started detached process: {command}")
-
-
-def _port_start_internal(name, namespace):
-    click.echo("Starting port-forwarding to warnet dashboard")
-    command = f"kubectl port-forward -n {namespace} service/{name} 2019:80"
-    run_detached_process(command)
-    click.echo("Port forwarding on port 2019 started in the background.")
-    click.echo("\nTo access the warnet dashboard visit localhost:2019 or run:\n  warnet dashboard")
-
-
-def _port_stop_internal(name, namespace):
-    if is_windows():
-        os.system("taskkill /F /IM kubectl.exe")
-    else:
-        os.system(f"pkill -f 'kubectl port-forward -n {namespace} service/{name} 2019:80'")
-    click.echo("Port forwarding stopped.")

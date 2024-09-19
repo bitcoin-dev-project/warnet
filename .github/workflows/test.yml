@@ -78,6 +78,8 @@ jobs:
         with:
           cpus: max
           memory: 4000m
+      - name: Start minikube's loadbalancer tunnel
+        run: minikube tunnel &> /dev/null &
       - name: Download commander artifact
         uses: actions/download-artifact@v4
         with:
