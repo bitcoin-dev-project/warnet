@@ -21,6 +21,7 @@ from .constants import (
     LOGGING_NAMESPACE,
 )
 from .process import run_command, stream_command
+from .constants import KUBECONFIG
 
 
 def get_static_client() -> CoreV1Api:
@@ -100,17 +101,30 @@ def create_kubernetes_object(
     return obj
 
 
-def set_kubectl_context(namespace: str) -> bool:
+def set_context_namespace(namespace: str):
     """
-    Set the default kubectl context to the specified namespace.
+    Set the default kubeconfig context to the specified namespace.
     """
-    command = f"kubectl config set-context --current --namespace={namespace}"
-    result = stream_command(command)
-    if result:
-        print(f"Kubectl context set to namespace: {namespace}")
-    else:
-        print(f"Failed to set kubectl context to namespace: {namespace}")
-    return result
+    with open(KUBECONFIG) as file:
+        kubeconfig_data = yaml.safe_load(file)
+
+    current_context_name = kubeconfig_data.get("current-context")
+    if not current_context_name:
+        raise ValueError("No current context set in kubeconfig.")
+
+    context_entry = None
+    for context in kubeconfig_data.get("contexts", []):
+        if context["name"] == current_context_name:
+            context_entry = context
+            break
+
+    if not context_entry:
+        raise ValueError(f"Context '{current_context_name}' not found in kubeconfig.")
+
+    context_entry["context"]["namespace"] = namespace
+
+    with open(KUBECONFIG, "w") as file:
+        yaml.safe_dump(kubeconfig_data, file)
 
 
 def apply_kubernetes_yaml(yaml_file: str) -> bool:
