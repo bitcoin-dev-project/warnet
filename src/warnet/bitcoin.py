@@ -23,7 +23,7 @@ def bitcoin():
 @click.argument("tank", type=str)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(tank: str, method: str, params: str):
+def rpc(tank: str, method: str, params: tuple[str, ...]):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
@@ -35,15 +35,37 @@ def rpc(tank: str, method: str, params: str):
     print(result)
 
 
-def _rpc(tank: str, method: str, params: str):
+def _rpc(tank: str, method: str, params: tuple[str, ...]) -> str:
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace()
+
+    sclient = get_static_client()
     if params:
-        cmd = f"kubectl -n {namespace} exec {tank} -- bitcoin-cli {method} {' '.join(map(str, params))}"
+        cmd = ["bitcoin-cli", method]
+        cmd.extend(params)
     else:
-        cmd = f"kubectl -n {namespace} exec {tank} -- bitcoin-cli {method}"
-    return run_command(cmd)
+        cmd = ["bitcoin-cli", method]
+    resp = stream(
+        sclient.connect_get_namespaced_pod_exec,
+        tank,
+        namespace,
+        container="bitcoincore",
+        command=cmd,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    # The k8s lib seems to convert json into its python representation. The following dance seems to
+    # avoid the worst of it.
+    if resp.startswith("{") or resp.startswith("["):
+        literal = ast.literal_eval(resp)
+        json_string = json.dumps(literal)
+        return json_string
+    else:
+        # When bitcoin-cli responds with a txid or similar, don't try to `literal_eval` it.
+        return resp
 
 
 @bitcoin.command()
