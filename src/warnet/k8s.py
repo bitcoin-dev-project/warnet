@@ -17,13 +17,10 @@ from urllib3 import HTTPResponse
 
 from .constants import (
     CADDY_INGRESS_NAME,
-    DEFAULT_NAMESPACE,
     INGRESS_NAMESPACE,
     KUBECONFIG,
     LOGGING_NAMESPACE,
 )
-from .process import run_command, stream_command
-from .constants import KUBECONFIG
 
 
 def get_static_client() -> CoreV1Api:
