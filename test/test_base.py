@@ -3,6 +3,7 @@ import logging
 import logging.config
 import os
 import re
+import shlex
 import threading
 from pathlib import Path
 from subprocess import run
@@ -66,7 +67,7 @@ class TestBase:
 
     def warnet(self, cmd):
         self.log.debug(f"Executing warnet command: {cmd}")
-        command = ["warnet"] + cmd.split()
+        command = ["warnet"] + shlex.split(cmd)  # shlex handles escape sequences nicely
         proc = run(command, capture_output=True)
         if proc.stderr:
             raise Exception(proc.stderr.decode().strip())
