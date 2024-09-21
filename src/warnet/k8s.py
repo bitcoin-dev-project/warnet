@@ -118,30 +118,63 @@ def create_kubernetes_object(
     return obj
 
 
-def set_context_namespace(namespace: str):
-    """
-    Set the default kubeconfig context to the specified namespace.
-    """
-    with open(KUBECONFIG) as file:
-        kubeconfig_data = yaml.safe_load(file)
-
+def get_context_entry(kubeconfig_data: dict) -> dict:
     current_context_name = kubeconfig_data.get("current-context")
     if not current_context_name:
-        raise ValueError("No current context set in kubeconfig.")
+        raise K8sError(f"Could not determine current context from config data: {kubeconfig_data}")
 
-    context_entry = None
-    for context in kubeconfig_data.get("contexts", []):
-        if context["name"] == current_context_name:
-            context_entry = context
-            break
+    context_entry = next(
+        (
+            ctx
+            for ctx in kubeconfig_data.get("contexts", [])
+            if ctx.get("name") == current_context_name
+        ),
+        None,
+    )
 
     if not context_entry:
-        raise ValueError(f"Context '{current_context_name}' not found in kubeconfig.")
+        raise K8sError(f"Context '{current_context_name}' not found in kubeconfig.")
+
+    return context_entry
+
+
+def set_context_namespace(namespace: str) -> None:
+    """
+    Set the namespace within the KUBECONFIG's current context
+    """
+    try:
+        kubeconfig_data = open_kubeconfig()
+    except K8sError as e:
+        raise K8sError(f"Could not open KUBECONFIG: {KUBECONFIG}") from e
+
+    try:
+        context_entry = get_context_entry(kubeconfig_data)
+    except K8sError as e:
+        raise K8sError(f"Could not get context entry for {KUBECONFIG}") from e
 
     context_entry["context"]["namespace"] = namespace
 
-    with open(KUBECONFIG, "w") as file:
-        yaml.safe_dump(kubeconfig_data, file)
+    try:
+        write_kubeconfig(kubeconfig_data)
+    except Exception as e:
+        raise K8sError(f"Could not write to KUBECONFIG: {KUBECONFIG}") from e
+
+
+def get_default_namespace() -> str:
+    try:
+        kubeconfig_data = open_kubeconfig()
+    except K8sError as e:
+        raise K8sError(f"Could not open KUBECONFIG: {KUBECONFIG}") from e
+
+    try:
+        context_entry = get_context_entry(kubeconfig_data)
+    except K8sError as e:
+        raise K8sError(f"Could not get context entry for {KUBECONFIG}") from e
+
+    # TODO: need to settle on Warnet's "default" namespace
+    namespace = context_entry["context"].get("namespace", "warnet")
+
+    return namespace
 
 
 def apply_kubernetes_yaml(yaml_file: str) -> bool:
@@ -192,29 +225,6 @@ def delete_pod(
             return None
         else:
             raise
-
-
-def get_default_namespace() -> str:
-    with open(KUBECONFIG) as file:
-        kubeconfig_data = yaml.safe_load(file)
-
-    current_context_name = kubeconfig_data.get("current-context")
-    if not current_context_name:
-        raise ValueError("No current context set in kubeconfig.")
-
-    context_entry = None
-    for context in kubeconfig_data.get("contexts", []):
-        if context["name"] == current_context_name:
-            context_entry = context
-            break
-
-    if not context_entry:
-        raise ValueError(f"Context '{current_context_name}' not found in kubeconfig.")
-
-    # TODO: need to setting on Warnet's "default" namespace
-    namespace = context_entry["context"].get("namespace", "warnet")
-
-    return namespace
 
 
 def snapshot_bitcoin_datadir(
