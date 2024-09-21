@@ -112,3 +112,50 @@ INGRESS_HELM_COMMANDS = [
 HELM_LATEST_URL = "https://get.helm.sh/helm-latest-version"
 HELM_DOWNLOAD_URL_STUB = "https://get.helm.sh/"
 HELM_BINARY_NAME = "helm"
+HELM_BLESSED_VERSION = "v3.16.1"
+HELM_BLESSED_NAME_AND_CHECKSUMS = [
+    {
+        "name": "helm-v3.16.1-darwin-amd64.tar.gz",
+        "checksum": "1b194824e36da3e3889920960a93868b541c7888c905a06757e88666cfb562c9",
+    },
+    {
+        "name": "helm-v3.16.1-darwin-arm64.tar.gz",
+        "checksum": "405a3b13f0e194180f7b84010dfe86689d7703e80612729882ad71e2a4ef3504",
+    },
+    {
+        "name": "helm-v3.16.1-linux-amd64.tar.gz",
+        "checksum": "e57e826410269d72be3113333dbfaac0d8dfdd1b0cc4e9cb08bdf97722731ca9",
+    },
+    {
+        "name": "helm-v3.16.1-linux-arm.tar.gz",
+        "checksum": "a15a8ddfc373628b13cd2a987206756004091a1f6a91c3b9ee8de6f0b1e2ce90",
+    },
+    {
+        "name": "helm-v3.16.1-linux-arm64.tar.gz",
+        "checksum": "780b5b86f0db5546769b3e9f0204713bbdd2f6696dfdaac122fbe7f2f31541d2",
+    },
+    {
+        "name": "helm-v3.16.1-linux-386.tar.gz",
+        "checksum": "92d7a47a90734b50528ffffc99cd1b2d4b9fc0f4291bac92c87ef03406a5a7b2",
+    },
+    {
+        "name": "helm-v3.16.1-linux-ppc64le.tar.gz",
+        "checksum": "9f0178957c94516eff9a3897778edb93d78fab1f76751bd282883f584ea81c23",
+    },
+    {
+        "name": "helm-v3.16.1-linux-s390x.tar.gz",
+        "checksum": "357f8b441cc535240f1b0ba30a42b44571d4c303dab004c9e013697b97160360",
+    },
+    {
+        "name": "helm-v3.16.1-linux-riscv64.tar.gz",
+        "checksum": "9a2cab45b7d9282e9be7b42f86d8034dcaa2e81ab338642884843676c2f6929f",
+    },
+    {
+        "name": "helm-v3.16.1-windows-amd64.zip",
+        "checksum": "89952ea1bace0a9498053606296ea03cf743c48294969dfc731e7f78d1dc809a",
+    },
+    {
+        "name": "helm-v3.16.1-windows-arm64.zip",
+        "checksum": "fc370a291ed926da5e77acf42006de48e7fd5ff94d20c3f6aa10c04fea66e53c",
+    },
+]
