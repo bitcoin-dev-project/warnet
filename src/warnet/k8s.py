@@ -105,7 +105,7 @@ def get_edges() -> any:
 
 
 def create_kubernetes_object(
-    kind: str, metadata: dict[str, any], spec: dict[str, any] = None
+    kind: str, metadata: dict[str, any], spec: Optional[dict[str, any]] = None
 ) -> dict[str, any]:
     metadata["namespace"] = get_default_namespace()
     obj = {
