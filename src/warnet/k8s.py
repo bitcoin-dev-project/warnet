@@ -23,6 +23,10 @@ from .constants import (
 )
 
 
+class K8sError(Exception):
+    pass
+
+
 def get_static_client() -> CoreV1Api:
     config.load_kube_config(config_file=KUBECONFIG)
     return client.CoreV1Api()
