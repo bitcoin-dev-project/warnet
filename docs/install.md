@@ -1,12 +1,12 @@
 # Installing Warnet
 
-Warnet requires Kubernetes (k8s) and helm in order to run the network. Kubernetes can be run remotely or locally (with minikube or Docker Desktop). `kubectl` and `helm` must be run locally to administer the network.
+Warnet requires Kubernetes (k8s) and Helm in order to run the network. Kubernetes can be run remotely or locally (with minikube or Docker Desktop). `helm` must be run locally to administer the network.
 
 ## Dependencies
 
 ### Remote (cloud) cluster
 
-The only two dependencies of Warnet are `helm` and `kubectl` configured to talk to your cloud cluster.
+The only dependency of Warnet is `helm`.
 
 ### Running Warnet Locally
 
@@ -30,15 +30,14 @@ minikube start
 
 Minikube has a [guide](https://kubernetes.io/docs/tutorials/hello-minikube/) on getting started which could be useful to validate that your minikube is running correctly.
 
-### Testing kubectl and helm
+### Testing helm
 
-The following commands should run on both local and remote clusters. Do not proceed unless kubectl and helm are working.
+The following commands should run on both local and remote clusters. Do not proceed unless helm is working.
 
 ```shell
 helm repo add examples https://helm.github.io/examples
 helm install hello examples/hello-world
 helm list
-kubectl get pods
 helm uninstall hello
 ```
 
