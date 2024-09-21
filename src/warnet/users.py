@@ -2,25 +2,38 @@ import os
 import sys
 
 import click
-import yaml
 
 from warnet.constants import KUBECONFIG
+from warnet.k8s import K8sError, open_kubeconfig, write_kubeconfig
 
 
 @click.command()
 @click.argument("auth_config", type=str)
 def auth(auth_config):
     """Authenticate with a Warnet cluster using a kubernetes config file"""
-    # TODO: use os.replace for more atomic file writing
-    auth_config = yaml_try_with_open(auth_config)
+    try:
+        auth_config = open_kubeconfig(auth_config)
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not open auth_config: {auth_config}", fg="red")
+        sys.exit(1)
 
     is_first_config = False
     if not os.path.exists(KUBECONFIG):
-        with open(KUBECONFIG, "w") as file:
-            yaml.safe_dump(auth_config, file)
+        try:
+            write_kubeconfig(auth_config)
             is_first_config = True
+        except K8sError as e:
+            click.secho(e, fg="yellow")
+            click.secho(f"Could not write KUBECONFIG: {KUBECONFIG}", fg="red")
+            sys.exit(1)
 
-    base_config = yaml_try_with_open(KUBECONFIG)
+    try:
+        base_config = open_kubeconfig(KUBECONFIG)
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not open KUBECONFIG: {KUBECONFIG}", fg="red")
+        sys.exit(1)
 
     if not is_first_config:
         clusters = "clusters"
@@ -53,20 +66,19 @@ def auth(auth_config):
         )
 
     try:
-        with open(KUBECONFIG, "w") as file:
-            yaml.safe_dump(base_config, file)
-            click.secho(f"Updated kubeconfig with authorization data: {KUBECONFIG}", fg="green")
-    except OSError as e:
-        click.secho(f"Error writing to {KUBECONFIG}: {e}", fg="red")
+        write_kubeconfig(base_config)
+        click.secho(f"Updated kubeconfig with authorization data: {KUBECONFIG}", fg="green")
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not write KUBECONFIG: {KUBECONFIG}", fg="red")
         sys.exit(1)
 
     try:
-        with open(KUBECONFIG) as file:
-            contents = yaml.safe_load(file)
-            click.secho(
-                f"Warnet's current context is now set to: {contents['current-context']}", fg="green"
-            )
-    except (OSError, yaml.YAMLError) as e:
+        base_config = open_kubeconfig(KUBECONFIG)
+        click.secho(
+            f"Warnet's current context is now set to: {base_config['current-context']}", fg="green"
+        )
+    except K8sError as e:
         click.secho(f"Error reading from {KUBECONFIG}: {e}", fg="red")
         sys.exit(1)
 
@@ -86,18 +98,3 @@ def merge_entries(base_list, auth_list, key, entry_type):
         else:
             base_list.append(entry)
             click.secho(f"Added new {entry_type} '{entry[key]}'", fg="green")
-
-
-def yaml_try_with_open(filename: str):
-    try:
-        with open(filename) as f:
-            return yaml.safe_load(f)
-    except FileNotFoundError:
-        click.secho(f"Could not find: {KUBECONFIG}", fg="red")
-        sys.exit(1)
-    except OSError as e:
-        click.secho(f"An I/O error occurred: {e}", fg="red")
-        sys.exit(1)
-    except Exception as e:
-        click.secho(f"An unexpected error occurred: {e}", fg="red")
-        sys.exit(1)
