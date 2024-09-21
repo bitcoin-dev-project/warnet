@@ -15,7 +15,13 @@ import click
 import inquirer
 import requests
 
-from .constants import HELM_BINARY_NAME, HELM_DOWNLOAD_URL_STUB, HELM_LATEST_URL
+from .constants import (
+    HELM_BINARY_NAME,
+    HELM_BLESSED_NAME_AND_CHECKSUMS,
+    HELM_BLESSED_VERSION,
+    HELM_DOWNLOAD_URL_STUB,
+    HELM_LATEST_URL,
+)
 from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_scenario_defaults
 
@@ -431,6 +437,17 @@ def get_latest_version_of_helm() -> Optional[str]:
         return None
 
 
+def write_blessed_checksum(helm_filename: str, dest_path: str):
+    checksum = next(
+        (b["checksum"] for b in HELM_BLESSED_NAME_AND_CHECKSUMS if b["name"] == helm_filename), None
+    )
+    if checksum:
+        with open(dest_path, "w") as f:
+            f.write(checksum)
+    else:
+        click.secho("Could not find a matching helm binary and checksum", fg="red")
+
+
 def verify_checksum(file_path, checksum_path):
     click.secho("    Verifying checksum...", fg="blue")
     sha256_hash = hashlib.sha256()
@@ -462,13 +479,7 @@ def install_helm_rootlessly_to_venv():
         )
         sys.exit(1)
 
-    version = get_latest_version_of_helm()
-    if version is None:
-        click.secho(
-            "Error: Could not fetch the latest version of Helm. Please check your internet connection.",
-            fg="yellow",
-        )
-        sys.exit(1)
+    version = HELM_BLESSED_VERSION
 
     os_name = get_os_name_for_helm()
     if os_name is None:
@@ -497,7 +508,6 @@ def install_helm_rootlessly_to_venv():
 
     helm_filename = f"{HELM_BINARY_NAME}-{version}-{os_name}-{arch}.tar.gz"
     helm_url = f"{HELM_DOWNLOAD_URL_STUB}{helm_filename}"
-    checksum_url = f"{helm_url}.sha256"
 
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -505,7 +515,7 @@ def install_helm_rootlessly_to_venv():
             checksum_path = os.path.join(temp_dir, f"{helm_filename}.sha256")
 
             download_file(helm_url, helm_archive_path)
-            download_file(checksum_url, checksum_path)
+            write_blessed_checksum(helm_filename, checksum_path)
             verify_checksum(helm_archive_path, checksum_path)
 
             # Extract Helm and install it in the virtual environment's bin folder
