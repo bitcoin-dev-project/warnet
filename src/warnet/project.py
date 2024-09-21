@@ -478,8 +478,22 @@ def install_helm_rootlessly_to_venv():
         sys.exit(1)
 
     arch = os.uname().machine
-    arch_map = {"x86_64": "amd64", "i386": "386", "aarch64": "arm64", "armv7l": "arm"}
-    arch = arch_map.get(arch, arch)
+    arch_map = {
+        "x86_64": "amd64",  # Maps 'x86_64' to 'amd64'
+        "i686": "i386",  # Maps 'i686' to 'i386'
+        "i386": "i386",  # Maps 'i386' to 'i386'
+        "aarch64": "arm64",  # Maps 'aarch64' (common on newer ARM) to 'arm64'
+        "armv7l": "arm",  # Maps 'armv7l' to 'arm' (32-bit ARM)
+        "armv6l": "arm",  # Maps 'armv6l' to 'arm' (32-bit ARM)
+        "ppc64le": "ppc64le",  # PowerPC Little Endian
+        "s390x": "s390x",  # IBM s390x architecture
+        "riscv64": "riscv64",  # RISC-V 64-bit
+    }
+    if arch in arch_map:
+        arch = arch_map[arch]
+    else:
+        click.secho(f"No Helm binary candidate for arch: {arch}", fg="red")
+        sys.exit(1)
 
     helm_filename = f"{HELM_BINARY_NAME}-{version}-{os_name}-{arch}.tar.gz"
     helm_url = f"{HELM_DOWNLOAD_URL_STUB}{helm_filename}"
