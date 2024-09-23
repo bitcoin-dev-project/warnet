@@ -437,6 +437,25 @@ def get_latest_version_of_helm() -> Optional[str]:
         return None
 
 
+def query_arch_from_uname(arch: str) -> Optional[str]:
+    if arch.startswith("armv5"):
+        return "armv5"
+    elif arch.startswith("armv6"):
+        return "armv6"
+    elif arch.startswith("armv7"):
+        return "arm"
+    elif arch == "aarch64":
+        return "arm64"
+    elif arch == "x86":
+        return "386"
+    elif arch == "x86_64":
+        return "amd64"
+    elif arch == "i686" or arch == "i386":
+        return "386"
+    else:
+        return None
+
+
 def write_blessed_checksum(helm_filename: str, dest_path: str):
     checksum = next(
         (b["checksum"] for b in HELM_BLESSED_NAME_AND_CHECKSUMS if b["name"] == helm_filename), None
@@ -488,21 +507,9 @@ def install_helm_rootlessly_to_venv():
         )
         sys.exit(1)
 
-    arch = os.uname().machine
-    arch_map = {
-        "x86_64": "amd64",  # Maps 'x86_64' to 'amd64'
-        "i686": "i386",  # Maps 'i686' to 'i386'
-        "i386": "i386",  # Maps 'i386' to 'i386'
-        "aarch64": "arm64",  # Maps 'aarch64' (common on newer ARM) to 'arm64'
-        "armv7l": "arm",  # Maps 'armv7l' to 'arm' (32-bit ARM)
-        "armv6l": "arm",  # Maps 'armv6l' to 'arm' (32-bit ARM)
-        "ppc64le": "ppc64le",  # PowerPC Little Endian
-        "s390x": "s390x",  # IBM s390x architecture
-        "riscv64": "riscv64",  # RISC-V 64-bit
-    }
-    if arch in arch_map:
-        arch = arch_map[arch]
-    else:
+    uname_arch = os.uname().machine
+    arch = query_arch_from_uname(uname_arch)
+    if not arch:
         click.secho(f"No Helm binary candidate for arch: {arch}", fg="red")
         sys.exit(1)
 
