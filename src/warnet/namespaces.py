@@ -32,9 +32,6 @@ def namespaces():
     """Namespaces commands"""
 
 
-@click.argument(
-    "namespaces_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path)
-)
 @namespaces.command()
 def list():
     """List all namespaces with 'warnet-' prefix"""
