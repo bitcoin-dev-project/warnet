@@ -109,7 +109,6 @@ INGRESS_HELM_COMMANDS = [
 ]
 
 # Helm binary
-HELM_LATEST_URL = "https://get.helm.sh/helm-latest-version"
 HELM_DOWNLOAD_URL_STUB = "https://get.helm.sh/"
 HELM_BINARY_NAME = "helm"
 HELM_BLESSED_VERSION = "v3.16.1"

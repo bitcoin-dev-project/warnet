@@ -20,7 +20,6 @@ from .constants import (
     HELM_BLESSED_NAME_AND_CHECKSUMS,
     HELM_BLESSED_VERSION,
     HELM_DOWNLOAD_URL_STUB,
-    HELM_LATEST_URL,
 )
 from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_scenario_defaults
@@ -31,7 +30,6 @@ def setup():
     """Setup warnet"""
 
     class ToolStatus(Enum):
-        NeedsHelm = auto()
         Satisfied = auto()
         Unsatisfied = auto()
 
@@ -427,14 +425,6 @@ def download_file(url, destination):
                 f.write(chunk)
     else:
         raise Exception(f"Failed to download {url} (status code {response.status_code})")
-
-
-def get_latest_version_of_helm() -> Optional[str]:
-    response = requests.get(HELM_LATEST_URL)
-    if response.status_code == 200:
-        return response.text.strip()
-    else:
-        return None
 
 
 def query_arch_from_uname(arch: str) -> Optional[str]:
