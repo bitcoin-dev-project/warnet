@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
+
 import threading
 from random import choice, randrange
 from time import sleep
-
-# The base class exists inside the commander container
-try:
-    from commander import Commander
-except ImportError:
-    from resources.scenarios.commander import Commander
+from commander import Commander
 
 
 class TXFlood(Commander):
