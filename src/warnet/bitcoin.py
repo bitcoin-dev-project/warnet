@@ -22,7 +22,6 @@ from .k8s import (
     kexec,
     pod_log,
 )
-from .process import run_command
 
 
 @click.group(name="bitcoin")
@@ -80,19 +79,6 @@ def _rpc(tank: str, method: str, params: tuple[str, ...]) -> str:
             stderr_chunk = resp.read_stderr()
             stderr += stderr_chunk
     return stdout + stderr
-
-
-@bitcoin.command()
-@click.argument("tank", type=str, required=True)
-def debug_log(tank: str):
-    """
-    Fetch the Bitcoin Core debug log from <tank pod name>
-    """
-    cmd = f"warnet logs {tank}"
-    try:
-        print(run_command(cmd))
-    except Exception as e:
-        print(f"{e}")
 
 
 @bitcoin.command()
