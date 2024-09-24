@@ -178,6 +178,9 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     scenario_path = Path(scenario_file).resolve()
     scenario_name = scenario_path.stem
 
+    if additional_args and ("--help" in additional_args or "-h" in additional_args):
+        return subprocess.run([sys.executable, scenario_path, "--help"])
+
     with open(scenario_path, "rb") as file:
         scenario_data = base64.b64encode(file.read()).decode()
 
@@ -219,8 +222,6 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
         # Add additional arguments
         if additional_args:
             helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
-            if "--help" in additional_args or "-h" in additional_args:
-                return subprocess.run([sys.executable, scenario_path, "--help"])
 
         helm_command.extend([name, COMMANDER_CHART])
 
