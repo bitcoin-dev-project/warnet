@@ -17,6 +17,7 @@ from urllib3 import HTTPResponse
 
 from .constants import (
     CADDY_INGRESS_NAME,
+    DEFAULT_NAMESPACE,
     INGRESS_NAMESPACE,
     KUBECONFIG,
     LOGGING_NAMESPACE,
@@ -171,8 +172,7 @@ def get_default_namespace() -> str:
     except K8sError as e:
         raise K8sError(f"Could not get context entry for {KUBECONFIG}") from e
 
-    # TODO: need to settle on Warnet's "default" namespace
-    namespace = context_entry["context"].get("namespace", "warnet")
+    namespace = context_entry["context"].get("namespace", DEFAULT_NAMESPACE)
 
     return namespace
 
