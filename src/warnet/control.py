@@ -307,18 +307,16 @@ def logs(pod_name: str, follow: bool):
 
 
 def _logs(pod_name: str, follow: bool):
-    namespace = get_default_namespace()
-
     if pod_name == "":
         try:
             pods = get_pods()
             pod_list = [item.metadata.name for item in pods.items]
         except Exception as e:
-            print(f"Could not fetch any pods in namespace {namespace}: {e}")
+            print(f"Could not fetch any pods: {e}")
             return
 
         if not pod_list:
-            print(f"Could not fetch any pods in namespace {namespace}")
+            print("Could not fetch any pods")
             return
 
         q = [
