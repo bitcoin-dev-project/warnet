@@ -7,14 +7,14 @@ roles:
   - name: pod-viewer
     rules:
       - apiGroups: [""]
-        resources: ["pods"]
+        resources: ["pods", "services"]
         verbs: ["get", "list", "watch"]
       - apiGroups: [""]
         resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]
         verbs: ["get"]
       - apiGroups: [""]
         resources: ["configmaps", "secrets"]
-        verbs: ["get"]
+        verbs: ["get", "list"]
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list"]
@@ -24,14 +24,14 @@ roles:
   - name: pod-manager
     rules:
       - apiGroups: [""]
-        resources: ["pods"]
+        resources: ["pods", "services"]
         verbs: ["get", "list", "watch", "create", "delete", "update"]
       - apiGroups: [""]
         resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]
         verbs: ["get", "create"]
       - apiGroups: [""]
         resources: ["configmaps", "secrets"]
-        verbs: ["get", "create"]
+        verbs: ["get", "list", "create"]
       - apiGroups: [""]
         resources: ["persistentvolumeclaims"]
         verbs: ["get", "list"]
