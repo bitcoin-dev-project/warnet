@@ -178,10 +178,11 @@ def get_default_namespace() -> str:
 
 
 def apply_kubernetes_yaml(yaml_file: str) -> bool:
+    namespace = get_default_namespace()
     v1 = get_static_client()
     path = os.path.abspath(yaml_file)
     try:
-        create_from_yaml(v1, path)
+        create_from_yaml(v1, path, namespace=namespace)
         return True
     except Exception as e:
         raise e
