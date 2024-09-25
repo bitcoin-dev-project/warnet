@@ -5,12 +5,6 @@ namespace: warnet
 
 restartPolicy: Never
 
-image:
-  repository: bitcoindevproject/warnet-commander
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
-
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -70,8 +64,6 @@ volumeMounts: []
 #   readOnly: true
 
 port:
-
-scenario: ""
 
 warnet: ""
 

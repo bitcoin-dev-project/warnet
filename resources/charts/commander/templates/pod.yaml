@@ -10,23 +10,17 @@ spec:
   restartPolicy: {{ .Values.restartPolicy }}
   containers:
     - name: {{ .Chart.Name }}
-      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      image: python:3.12-slim
+      imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "-c"]
       args:
         - |
-          python3 /scenario.py {{ .Values.args }}
+          python3 /archive.pyz {{ .Values.args }}
       volumeMounts:
-        - name: scenario
-          mountPath: /scenario.py
-          subPath: scenario.py
         - name: warnet
           mountPath: /warnet.json
           subPath: warnet.json
   volumes:
-    - name: scenario
-      configMap:
-        name: {{ include "commander.fullname" . }}-scenario
     - name: warnet
       configMap:
         name: {{ include "commander.fullname" . }}-warnet
