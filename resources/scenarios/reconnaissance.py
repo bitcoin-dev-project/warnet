@@ -80,5 +80,5 @@ class Reconnaissance(Commander):
         self.log.info(f"Got notfound message from {dstaddr}:{dstport}")
 
 
-if __name__ == "__main__":
+def main():
     Reconnaissance().main()

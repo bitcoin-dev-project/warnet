@@ -180,5 +180,5 @@ class LNInit(Commander):
         )
 
 
-if __name__ == "__main__":
+def main():
     LNInit().main()

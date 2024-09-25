@@ -66,5 +66,5 @@ class TXFlood(Commander):
             sleep(30)
 
 
-if __name__ == "__main__":
+def main():
     TXFlood().main()

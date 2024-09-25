@@ -562,5 +562,5 @@ def get_args(parser):
 
     return args
 
-if __name__ == "__main__":
+def main():
     SignetMinerScenario().main()
