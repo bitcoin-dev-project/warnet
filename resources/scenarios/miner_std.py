@@ -67,5 +67,5 @@ class MinerStd(Commander):
                 sleep(self.options.interval)
 
 
-if __name__ == "__main__":
+def main():
     MinerStd().main()
