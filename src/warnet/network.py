@@ -1,5 +1,4 @@
 import json
-import re
 import shutil
 from pathlib import Path
 
@@ -23,7 +22,7 @@ def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclud
         src=source_path,
         dst=target_dir,
         dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(*exclude_list)
+        ignore=shutil.ignore_patterns(*exclude_list),
     )
 
     print(f"Finished copying files to {target_dir}")

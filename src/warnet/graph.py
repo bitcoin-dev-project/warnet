@@ -74,7 +74,9 @@ def custom_graph(
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
     # Generate node-defaults.yaml
-    default_yaml_path = files("resources.networks").joinpath("fork_observer").joinpath("node-defaults.yaml")
+    default_yaml_path = (
+        files("resources.networks").joinpath("fork_observer").joinpath("node-defaults.yaml")
+    )
     with open(str(default_yaml_path)) as f:
         defaults_yaml_content = yaml.safe_load(f)
 
