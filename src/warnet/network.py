@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -18,17 +19,12 @@ def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclud
     target_dir.mkdir(parents=True, exist_ok=True)
     print(f"Creating directory: {target_dir}")
 
-    def should_copy(item: Path) -> bool:
-        return item.name not in exclude_list
-
-    for item in source_path.iterdir():
-        if should_copy(item):
-            if item.is_file():
-                shutil.copy2(item, target_dir)
-                print(f"Copied file: {item.name}")
-            elif item.is_dir():
-                shutil.copytree(item, target_dir / item.name, dirs_exist_ok=True)
-                print(f"Copied directory: {item.name}")
+    shutil.copytree(
+        src=source_path,
+        dst=target_dir,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(*exclude_list)
+    )
 
     print(f"Finished copying files to {target_dir}")
 
@@ -39,7 +35,7 @@ def copy_network_defaults(directory: Path):
         directory,
         NETWORK_DIR.name,
         NETWORK_DIR,
-        ["node-defaults.yaml", "__pycache__", "__init__.py"],
+        ["__pycache__", "__init__.py"],
     )
 
 
@@ -49,7 +45,7 @@ def copy_scenario_defaults(directory: Path):
         directory,
         SCENARIOS_DIR.name,
         SCENARIOS_DIR,
-        ["__init__.py", "__pycache__", "commander.py"],
+        ["__pycache__", "TEST_*.py"],
     )
 
 
