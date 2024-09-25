@@ -26,7 +26,7 @@ class DAGConnectionTest(TestBase):
 
     def run_connect_dag_scenario(self):
         self.log.info("Running connect_dag scenario")
-        self.warnet("run test/data/scenario_connect_dag.py")
+        self.warnet("run resources/scenarios/test_connect_dag.py")
         self.wait_for_all_scenarios()
 
 

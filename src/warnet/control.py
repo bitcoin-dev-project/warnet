@@ -207,9 +207,27 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     # Create in-memory buffer to store python archive instead of writing to disk
     archive_buffer = io.BytesIO()
 
+    # No need to copy the entire scenarios/ directory into the archive
+    def filter(path):
+        if any(
+            needle in str(path) for needle in [
+                ".pyc",
+                ".csv",
+                ".DS_Store"
+            ]
+        ):
+            return False
+        return any(
+            needle in str(path) for needle in [
+                "commander.py",
+                "test_framework",
+                scenario_name
+            ]
+        )
+
     # Compile python archive
     zipapp.create_archive(
-        source=scenario_dir, target=archive_buffer, main=f"{scenario_name}:main", compressed=True
+        source=scenario_dir, target=archive_buffer, main=f"{scenario_name}:main", compressed=True, filter=filter
     )
 
     # Encode the binary data as Base64

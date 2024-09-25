@@ -20,5 +20,5 @@ class Failure(Commander):
         raise Exception("Failed execution!")
 
 
-if __name__ == "__main__":
+def main():
     Failure().main()
