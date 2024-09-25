@@ -1,9 +1,11 @@
 import base64
+import io
 import json
 import os
 import subprocess
 import sys
 import time
+import zipapp
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -176,14 +178,13 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     Pass `-- --help` to get individual scenario help
     """
     scenario_path = Path(scenario_file).resolve()
+    scenario_dir = scenario_path.parent
     scenario_name = scenario_path.stem
 
     if additional_args and ("--help" in additional_args or "-h" in additional_args):
         return subprocess.run([sys.executable, scenario_path, "--help"])
 
-    with open(scenario_path, "rb") as file:
-        scenario_data = base64.b64encode(file.read()).decode()
-
+    # Collect tank data for warnet.json
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
     namespace = get_default_namespace()
     tankpods = get_mission("tank")
@@ -200,8 +201,20 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
         for tank in tankpods
     ]
 
-    # Encode warnet data
+    # Encode tank data for warnet.json
     warnet_data = base64.b64encode(json.dumps(tanks).encode()).decode()
+
+    # Create in-memory buffer to store python archive instead of writing to disk
+    archive_buffer = io.BytesIO()
+
+    # Compile python archive
+    zipapp.create_archive(
+        source=scenario_dir, target=archive_buffer, main=f"{scenario_name}:main", compressed=True
+    )
+
+    # Encode the binary data as Base64
+    archive_buffer.seek(0)
+    archive_data = base64.b64encode(archive_buffer.read()).decode()
 
     try:
         # Construct Helm command
@@ -213,8 +226,6 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
             namespace,
             "--set",
             f"fullnameOverride={name}",
-            "--set",
-            f"scenario={scenario_data}",
             "--set",
             f"warnet={warnet_data}",
         ]
