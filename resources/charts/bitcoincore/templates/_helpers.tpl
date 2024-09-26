@@ -58,11 +58,13 @@ Create the name of the service account to use
 
 
 {{/*
-Add network section heading in bitcoin.conf after v0.17.0
+Add network section heading in bitcoin.conf
+Always add for custom semver, check version for valid semver
 */}}
 {{- define "bitcoincore.check_semver" -}}
-{{- $version := semverCompare ">=0.17.0" .Values.image.tag -}}
-{{- if $version -}}
+{{- $custom := contains "-" .Values.image.tag -}}
+{{- $newer := semverCompare ">=0.17.0" .Values.image.tag -}}
+{{- if or $newer $custom -}}
 [{{ .Values.chain }}]
 {{- end -}}
 {{- end -}}
