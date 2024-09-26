@@ -132,8 +132,9 @@ def down():
 
         # Delete remaining pods
         pods = get_pods()
-        for pod in pods.items:
-            futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
+        for pod_list in pods:
+            for pod in pod_list.items:
+                futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
 
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
@@ -159,9 +160,10 @@ def get_active_network(namespace):
 
 
 @click.command(context_settings={"ignore_unknown_options": True})
+@click.option("--namespace", "-n", type=str, help="Namespace to run scenario in (overrides the current namespace in kubectl)")
 @click.argument("scenario_file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, additional_args: tuple[str]):
+def run(namespace: str, scenario_file: str, additional_args: tuple[str]):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
@@ -173,7 +175,7 @@ def run(scenario_file: str, additional_args: tuple[str]):
         scenario_data = base64.b64encode(file.read()).decode()
 
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
-    namespace = get_default_namespace()
+    ns = namespace if namespace else get_default_namespace()
     tankpods = get_mission("tank")
     tanks = [
         {
@@ -198,7 +200,7 @@ def run(scenario_file: str, additional_args: tuple[str]):
             "upgrade",
             "--install",
             "--namespace",
-            namespace,
+            ns,
             "--set",
             f"fullnameOverride={name}",
             "--set",

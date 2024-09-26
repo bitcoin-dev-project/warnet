@@ -15,6 +15,7 @@ DEFAULT_NAMESPACE = "warnet"
 LOGGING_NAMESPACE = "warnet-logging"
 INGRESS_NAMESPACE = "ingress"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
+WARNET_ASSETS = "assets"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")

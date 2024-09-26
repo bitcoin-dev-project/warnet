@@ -1,3 +1,4 @@
+type: "assets"
 users:
   - name: warnet-user
     roles:

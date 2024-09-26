@@ -6,7 +6,8 @@ from pathlib import Path
 
 import yaml
 from kubernetes import client, config, watch
-from kubernetes.client.models import CoreV1Event, V1PodList
+from kubernetes.client.models import CoreV1Event, V1PodList, V1NamespaceList, V1Pod
+from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
 
@@ -16,6 +17,7 @@ from .constants import (
     INGRESS_NAMESPACE,
     KUBECONFIG,
     LOGGING_NAMESPACE,
+    WARNET_ASSETS,
 )
 from .process import run_command, stream_command
 
@@ -32,19 +34,23 @@ def get_dynamic_client() -> DynamicClient:
 
 def get_pods() -> V1PodList:
     sclient = get_static_client()
-    try:
-        pod_list: V1PodList = sclient.list_namespaced_pod(get_default_namespace())
-    except Exception as e:
-        raise e
-    return pod_list
+    pods = []
+    namespaces: V1NamespaceList = get_namespaces_by_warnet_type(WARNET_ASSETS)
+    for ns in namespaces.items:
+        try:
+            pods.append(sclient.list_namespaced_pod(ns.metadata.name))
+        except Exception as e:
+            raise e
+    return pods
 
 
 def get_mission(mission: str) -> list[V1PodList]:
     pods = get_pods()
     crew = []
-    for pod in pods.items:
-        if "mission" in pod.metadata.labels and pod.metadata.labels["mission"] == mission:
-            crew.append(pod)
+    for pod_list in pods:
+        for pod in pod_list.items:
+            if "mission" in pod.metadata.labels and pod.metadata.labels["mission"] == mission:
+                crew.append(pod)
     return crew
 
 
@@ -306,3 +312,9 @@ def get_service_accounts_in_namespace(namespace):
     # skip the default service account created by k8s
     service_accounts = run_command(command).split()
     return [sa for sa in service_accounts if sa != "default"]
+
+
+def get_namespaces_by_warnet_type(warnet_type: str) -> list[V1NamespaceList]:
+    sclient = get_static_client()
+    namespaces = sclient.list_namespace(label_selector=f"type={warnet_type}")
+    return namespaces
