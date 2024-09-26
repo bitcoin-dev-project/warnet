@@ -264,6 +264,24 @@ def wait_for_pod_ready(name, namespace, timeout=300):
     return False
 
 
+def wait_for_init(pod_name, timeout=300):
+    sclient = get_static_client()
+    namespace = get_default_namespace()
+    w = watch.Watch()
+    for event in w.stream(
+        sclient.list_namespaced_pod, namespace=namespace, timeout_seconds=timeout
+    ):
+        pod = event["object"]
+        if pod.metadata.name == pod_name:
+            for init_container_status in pod.status.init_container_statuses:
+                if init_container_status.state.running:
+                    print(f"initContainer in pod {pod_name} is ready")
+                    w.stop()
+                    return True
+    print(f"Timeout waiting for initContainer in {pod_name} to be ready.")
+    return False
+
+
 def wait_for_ingress_controller(timeout=300):
     # get name of ingress controller pod
     sclient = get_static_client()
@@ -308,3 +326,28 @@ def wait_for_pod(pod_name, timeout_seconds=10):
             return
         sleep(1)
         timeout_seconds -= 1
+
+
+def write_file_to_container(pod_name, container_name, dst_path, data):
+    sclient = get_static_client()
+    namespace = get_default_namespace()
+    exec_command = ["sh", "-c", f"cat > {dst_path}"]
+    try:
+        res = stream(
+            sclient.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            command=exec_command,
+            container=container_name,
+            stdin=True,
+            stderr=True,
+            stdout=True,
+            tty=False,
+            _preload_content=False,
+        )
+        res.write_stdin(data)
+        res.close()
+        print(f"Successfully copied data to {pod_name}({container_name}):{dst_path}")
+        return True
+    except Exception as e:
+        print(f"Failed to copy data to {pod_name}({container_name}):{dst_path}:\n{e}")

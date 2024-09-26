@@ -14,6 +14,7 @@ class ScenariosTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "12_node_ring"
+        self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
 
     def run_test(self):
         try:
@@ -71,7 +72,7 @@ class ScenariosTest(TestBase):
         return count >= start + target_blocks
 
     def run_and_check_miner_scenario_from_file(self):
-        scenario_file = "resources/scenarios/miner_std.py"
+        scenario_file = self.scen_dir / "miner_std.py"
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warnet(f"run {scenario_file} --allnodes --interval=1")
         start = int(self.warnet("bitcoin rpc tank-0000 getblockcount"))
@@ -82,19 +83,19 @@ class ScenariosTest(TestBase):
         self.stop_scenario()
 
     def run_and_check_scenario_from_file(self):
-        scenario_file = "resources/scenarios/TEST_p2p_interface.py"
+        scenario_file = self.scen_dir / "testscenario_p2p_interface.py"
         self.log.info(f"Running scenario from: {scenario_file}")
         self.warnet(f"run {scenario_file}")
         self.wait_for_predicate(self.check_scenario_clean_exit)
 
     def check_regtest_recon(self):
-        scenario_file = "resources/scenarios/reconnaissance.py"
+        scenario_file = self.scen_dir / "reconnaissance.py"
         self.log.info(f"Running scenario from file: {scenario_file}")
         self.warnet(f"run {scenario_file}")
         self.wait_for_predicate(self.check_scenario_clean_exit)
 
     def check_active_count(self):
-        scenario_file = "resources/scenarios/TEST_buggy_failure.py"
+        scenario_file = self.scen_dir / "testscenario_buggy_failure.py"
         self.log.info(f"Running scenario from: {scenario_file}")
         self.warnet(f"run {scenario_file}")
 

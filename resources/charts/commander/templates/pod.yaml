@@ -8,6 +8,19 @@ metadata:
     mission: commander
 spec:
   restartPolicy: {{ .Values.restartPolicy }}
+  initContainers:
+    - name: init
+      image: busybox
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          while [ ! -f /shared/archive.pyz ]; do
+            echo "Waiting for /shared/archive.pyz to exist..."
+            sleep 2
+          done
+      volumeMounts:
+        - name: shared-volume
+          mountPath: /shared
   containers:
     - name: {{ .Chart.Name }}
       image: python:3.12-slim
@@ -15,12 +28,10 @@ spec:
       command: ["/bin/sh", "-c"]
       args:
         - |
-          python3 /archive.pyz {{ .Values.args }}
+          python3 /shared/archive.pyz {{ .Values.args }}
       volumeMounts:
-        - name: warnet
-          mountPath: /warnet.json
-          subPath: warnet.json
+        - name: shared-volume
+          mountPath: /shared
   volumes:
-    - name: warnet
-      configMap:
-        name: {{ include "commander.fullname" . }}-warnet
+    - name: shared-volume
+      emptyDir: {}

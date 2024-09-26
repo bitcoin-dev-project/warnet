@@ -1,4 +1,3 @@
-import base64
 import io
 import json
 import os
@@ -26,6 +25,8 @@ from .k8s import (
     pod_log,
     snapshot_bitcoin_datadir,
     wait_for_pod,
+    wait_for_init,
+    write_file_to_container,
 )
 from .process import run_command, stream_command
 
@@ -202,7 +203,7 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     ]
 
     # Encode tank data for warnet.json
-    warnet_data = base64.b64encode(json.dumps(tanks).encode()).decode()
+    warnet_data = json.dumps(tanks).encode()
 
     # Create in-memory buffer to store python archive instead of writing to disk
     archive_buffer = io.BytesIO()
@@ -226,8 +227,9 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
 
     # Encode the binary data as Base64
     archive_buffer.seek(0)
-    archive_data = base64.b64encode(archive_buffer.read()).decode()
+    archive_data = archive_buffer.read()
 
+    # Start the commander pod with python and init containers
     try:
         # Construct Helm command
         helm_command = [
@@ -238,8 +240,6 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
             namespace,
             "--set",
             f"fullnameOverride={name}",
-            "--set",
-            f"warnet={warnet_data}",
         ]
 
         # Add additional arguments
@@ -252,19 +252,24 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
         result = subprocess.run(helm_command, check=True, capture_output=True, text=True)
 
         if result.returncode == 0:
-            print(f"Successfully started scenario: {scenario_name}")
+            print(f"Successfully deployed scenario commander: {scenario_name}")
             print(f"Commander pod name: {name}")
         else:
-            print(f"Failed to start scenario: {scenario_name}")
+            print(f"Failed to deploy scenario commander: {scenario_name}")
             print(f"Error: {result.stderr}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Failed to start scenario: {scenario_name}")
+        print(f"Failed to deploy scenario commander: {scenario_name}")
         print(f"Error: {e.stderr}")
 
+    # upload scenario files and network data to the init container
+    wait_for_init(name)
+    if write_file_to_container(
+        name, "init", "/shared/warnet.json", warnet_data
+    ) and write_file_to_container(name, "init", "/shared/archive.pyz", archive_data):
+        print(f"Successfully uploaded scenario data to commander: {scenario_name}")
+
     if debug:
-        print("Waiting for commander pod to start...")
-        wait_for_pod(name)
         _logs(pod_name=name, follow=True)
         print("Deleting pod...")
         delete_pod(name)

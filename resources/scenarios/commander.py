@@ -8,7 +8,6 @@ import random
 import signal
 import sys
 import tempfile
-from pathlib import Path
 from typing import Dict
 
 from test_framework.authproxy import AuthServiceProxy
@@ -21,7 +20,7 @@ from test_framework.test_framework import (
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
-WARNET_FILE = Path("/warnet.json")
+WARNET_FILE = "/shared/warnet.json"
 
 try:
     with open(WARNET_FILE) as file:

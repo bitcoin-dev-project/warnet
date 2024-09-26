@@ -10,6 +10,7 @@ class DAGConnectionTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ten_semi_unconnected"
+        self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
 
     def run_test(self):
         try:
@@ -25,8 +26,9 @@ class DAGConnectionTest(TestBase):
         self.wait_for_all_edges()
 
     def run_connect_dag_scenario(self):
-        self.log.info("Running connect_dag scenario")
-        self.warnet("run resources/scenarios/TEST_connect_dag.py")
+        scenario_file = self.scen_dir / "testscenario_connect_dag.py"
+        self.log.info(f"Running scenario from: {scenario_file}")
+        self.warnet(f"run {scenario_file}")
         self.wait_for_all_scenarios()
 
 
