@@ -20,12 +20,12 @@ from .constants import (
     BITCOINCORE_CONTAINER,
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
-    LOGGING_NAMESPACE,
 )
 from .k8s import (
     delete_pod,
     get_default_namespace,
     get_mission,
+    get_namespaces,
     get_pod,
     get_pods,
     pod_log,
@@ -118,8 +118,6 @@ def down():
     """Bring down a running warnet quickly"""
     console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
 
-    namespaces = [get_default_namespace(), LOGGING_NAMESPACE]
-
     def uninstall_release(namespace, release_name):
         cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -134,13 +132,15 @@ def down():
         futures = []
 
         # Uninstall Helm releases
-        for namespace in namespaces:
-            command = f"helm list --namespace {namespace} -o json"
+        for namespace in get_namespaces():
+            command = f"helm list --namespace {namespace.metadata.name} -o json"
             result = run_command(command)
             if result:
                 releases = json.loads(result)
                 for release in releases:
-                    futures.append(executor.submit(uninstall_release, namespace, release["name"]))
+                    futures.append(
+                        executor.submit(uninstall_release, namespace.metadata.name, release["name"])
+                    )
 
         # Delete remaining pods
         pods = get_pods()
