@@ -250,11 +250,11 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
 def logs(pod_name: str, follow: bool):
+    """Show the logs of a pod"""
     return _logs(pod_name, follow)
 
 
 def _logs(pod_name: str, follow: bool):
-    """Show the logs of a pod"""
     namespace = get_default_namespace()
 
     if pod_name == "":
