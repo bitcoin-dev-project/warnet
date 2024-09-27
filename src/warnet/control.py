@@ -17,10 +17,13 @@ from rich.table import Table
 
 from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
 from .k8s import (
+    delete_pod,
     get_default_namespace,
     get_mission,
     get_pods,
+    pod_log,
     snapshot_bitcoin_datadir,
+    wait_for_pod,
 )
 from .process import run_command, stream_command
 
@@ -160,8 +163,14 @@ def get_active_network(namespace):
 
 @click.command(context_settings={"ignore_unknown_options": True})
 @click.argument("scenario_file", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Stream scenario output and delete container when stopped",
+)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, additional_args: tuple[str]):
+def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
@@ -229,52 +238,58 @@ def run(scenario_file: str, additional_args: tuple[str]):
         print(f"Failed to start scenario: {scenario_name}")
         print(f"Error: {e.stderr}")
 
+    if debug:
+        print("Waiting for commander pod to start...")
+        wait_for_pod(name)
+        _logs(pod_name=name, follow=True)
+        print("Deleting pod...")
+        delete_pod(name)
+
 
 @click.command()
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
 def logs(pod_name: str, follow: bool):
+    return _logs(pod_name, follow)
+
+
+def _logs(pod_name: str, follow: bool):
     """Show the logs of a pod"""
-    follow_flag = "--follow" if follow else ""
     namespace = get_default_namespace()
 
-    if pod_name:
+    if pod_name == "":
         try:
-            command = f"kubectl logs pod/{pod_name} -n {namespace} {follow_flag}"
-            stream_command(command)
-            return
+            pods = get_pods()
+            pod_list = [item.metadata.name for item in pods.items]
         except Exception as e:
-            print(f"Could not find the pod {pod_name}: {e}")
+            print(f"Could not fetch any pods in namespace {namespace}: {e}")
+            return
+
+        if not pod_list:
+            print(f"Could not fetch any pods in namespace {namespace}")
+            return
+
+        q = [
+            inquirer.List(
+                name="pod",
+                message="Please choose a pod",
+                choices=pod_list,
+            )
+        ]
+        selected = inquirer.prompt(q, theme=GreenPassion())
+        if selected:
+            pod_name = selected["pod"]
+        else:
+            return  # cancelled by user
 
     try:
-        pods = run_command(f"kubectl get pods -n {namespace} -o json")
-        pods = json.loads(pods)
-        pod_list = [item["metadata"]["name"] for item in pods["items"]]
+        stream = pod_log(pod_name, container_name=None, follow=follow)
+        for line in stream.stream():
+            print(line.decode("utf-8"), end=None)
     except Exception as e:
-        print(f"Could not fetch any pods in namespace {namespace}: {e}")
-        return
-
-    if not pod_list:
-        print(f"Could not fetch any pods in namespace {namespace}")
-        return
-
-    q = [
-        inquirer.List(
-            name="pod",
-            message="Please choose a pod",
-            choices=pod_list,
-        )
-    ]
-    selected = inquirer.prompt(q, theme=GreenPassion())
-    if selected:
-        pod_name = selected["pod"]
-        try:
-            command = f"kubectl logs pod/{pod_name} -n {namespace} {follow_flag}"
-            stream_command(command)
-        except Exception as e:
-            print(f"Please consider waiting for the pod to become available. Encountered: {e}")
-    else:
-        pass  # cancelled by user
+        print(e)
+    except KeyboardInterrupt:
+        print("Interrupted streaming log!")
 
 
 @click.command()
