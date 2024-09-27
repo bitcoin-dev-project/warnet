@@ -231,17 +231,18 @@ def run(scenario_file: str, additional_args: tuple[str]):
 
 
 @click.command()
-@click.argument("pod_name", type=str, default="")
-@click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
-def logs(pod_name: str, follow: bool):
-    """Show the logs of a pod"""
+@click.argument("pod_name", type=str, required=False)
+@click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs in real-time")
+@click.option("--grep", "-g", type=str, required=False, help="Pattern to grep for in logs")
+def logs(pod_name: str = "", follow: bool = False, grep: str = ""):
+    """Show the logs of a Kubernetes pod, optionally filtering by a grep pattern."""
     follow_flag = "--follow" if follow else ""
     namespace = get_default_namespace()
 
     if pod_name:
         try:
             command = f"kubectl logs pod/{pod_name} -n {namespace} {follow_flag}"
-            stream_command(command)
+            stream_command(command, grep)
             return
         except Exception as e:
             print(f"Could not find the pod {pod_name}: {e}")
@@ -270,7 +271,7 @@ def logs(pod_name: str, follow: bool):
         pod_name = selected["pod"]
         try:
             command = f"kubectl logs pod/{pod_name} -n {namespace} {follow_flag}"
-            stream_command(command)
+            stream_command(command, grep)
         except Exception as e:
             print(f"Please consider waiting for the pod to become available. Encountered: {e}")
     else:
