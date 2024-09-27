@@ -15,6 +15,7 @@ DEFAULT_NAMESPACE = "default"
 LOGGING_NAMESPACE = "warnet-logging"
 INGRESS_NAMESPACE = "ingress"
 WARGAMES_NAMESPACE_PREFIX = "wargames-"
+KUBE_INTERNAL_NAMESPACES = ["kube-node-lease", "kube-public", "kube-system", "kubernetes-dashboard"]
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
