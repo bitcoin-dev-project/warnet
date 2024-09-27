@@ -9,7 +9,7 @@ from typing import Optional
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client import CoreV1Api
-from kubernetes.client.models import V1Pod, V1PodList
+from kubernetes.client.models import V1Namespace, V1Pod, V1PodList
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -360,18 +360,32 @@ def write_file_to_container(pod_name, container_name, dst_path, data):
         return True
     except Exception as e:
         print(f"Failed to copy data to {pod_name}({container_name}):{dst_path}:\n{e}")
+
+
 def get_kubeconfig_value(jsonpath):
     command = f"kubectl config view --minify -o jsonpath={jsonpath}"
     return run_command(command)
 
 
-def get_namespaces_by_prefix(prefix: str):
+def get_namespaces() -> list[V1Namespace]:
+    sclient = get_static_client()
+    try:
+        return sclient.list_namespace().items
+
+    except ApiException as e:
+        if e.status == 403:
+            ns = sclient.read_namespace(name=get_default_namespace())
+            return [ns]
+        else:
+            return []
+
+
+def get_namespaces_by_prefix(prefix: str) -> list[V1Namespace]:
     """
     Get all namespaces beginning with `prefix`. Returns empty list of no namespaces with the specified prefix are found.
     """
-    command = "kubectl get namespaces -o jsonpath={.items[*].metadata.name}"
-    namespaces = run_command(command).split()
-    return [ns for ns in namespaces if ns.startswith(prefix)]
+    namespaces = get_namespaces()
+    return [ns for ns in namespaces if ns.metadata.name.startswith(prefix)]
 
 
 def get_service_accounts_in_namespace(namespace):
