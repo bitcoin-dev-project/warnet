@@ -186,7 +186,7 @@ def setup():
                     inquirer.Confirm(
                         "install_helm",
                         message=click.style(
-                            "Would you like to use Warnet's downloader to install Helm into your virtual environment?",
+                            "Would you like Warnet to install Helm into your virtual environment?",
                             fg="blue",
                             bold=True,
                         ),
