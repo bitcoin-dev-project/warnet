@@ -8,7 +8,8 @@ from typing import Optional
 
 import yaml
 from kubernetes import client, config, watch
-from kubernetes.client.models import CoreV1Event, V1Pod, V1PodList
+from kubernetes.client import CoreV1Api
+from kubernetes.client.models import V1Pod, V1PodList
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -23,7 +24,7 @@ from .constants import (
 from .process import run_command, stream_command
 
 
-def get_static_client() -> CoreV1Event:
+def get_static_client() -> CoreV1Api:
     config.load_kube_config(config_file=KUBECONFIG)
     return client.CoreV1Api()
 
