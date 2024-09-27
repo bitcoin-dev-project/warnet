@@ -45,7 +45,7 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                self.warnet("down")
+                self.warnet("down --force")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")

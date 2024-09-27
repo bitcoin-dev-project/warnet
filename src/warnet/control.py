@@ -113,10 +113,15 @@ def stop_all_scenarios(scenarios):
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
 
 
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Skip confirmations",
+)
 @click.command()
-def down():
+def down(force):
     """Bring down a running warnet quickly"""
-    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
 
     def uninstall_release(namespace, release_name):
         cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
@@ -128,19 +133,53 @@ def down():
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
 
+    namespaces = get_namespaces()
+    print(namespaces)
+    release_list: list[dict[str, str]] = []
+    for namespace in namespaces:
+        command = f"helm list --namespace {namespace.metadata.name} -o json"
+        result = run_command(command)
+        if result:
+            releases = json.loads(result)
+            for release in releases:
+                release_list.append({"namespace": namespace.metadata.name, "name": release["name"]})
+
+    if not force:
+        affected_namespaces = set([entry["namespace"] for entry in release_list])
+        namespace_listing = "\n  ".join(affected_namespaces)
+        confirmed = "confirmed"
+        click.secho("Preparing to bring down the running Warnet...", fg="yellow")
+        click.secho("The listed namespaces will be affected:", fg="yellow")
+        click.secho(f"  {namespace_listing}", fg="blue")
+
+        proj_answers = inquirer.prompt(
+            [
+                inquirer.Confirm(
+                    confirmed,
+                    message=click.style(
+                        "Do you want to bring down the running Warnet?", fg="yellow", bold=False
+                    ),
+                    default=False,
+                ),
+            ]
+        )
+        if not proj_answers:
+            click.secho("Operation cancelled by user.", fg="yellow")
+            sys.exit(0)
+        if proj_answers[confirmed]:
+            click.secho("Bringing down the warnet...", fg="yellow")
+        else:
+            click.secho("Operation cancelled by user", fg="yellow")
+            sys.exit(0)
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
 
         # Uninstall Helm releases
-        for namespace in get_namespaces():
-            command = f"helm list --namespace {namespace.metadata.name} -o json"
-            result = run_command(command)
-            if result:
-                releases = json.loads(result)
-                for release in releases:
-                    futures.append(
-                        executor.submit(uninstall_release, namespace.metadata.name, release["name"])
-                    )
+        for release in release_list:
+            futures.append(
+                executor.submit(uninstall_release, release["namespace"], release["name"])
+            )
 
         # Delete remaining pods
         pods = get_pods()
