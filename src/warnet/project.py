@@ -434,7 +434,7 @@ def query_arch_from_uname(arch: str) -> Optional[str]:
         return "armv6"
     elif arch.startswith("armv7"):
         return "arm"
-    elif arch == "aarch64":
+    elif arch == "aarch64" or arch == "arm64":
         return "arm64"
     elif arch == "x86":
         return "386"
