@@ -500,7 +500,7 @@ def install_helm_rootlessly_to_venv():
     uname_arch = os.uname().machine
     arch = query_arch_from_uname(uname_arch)
     if not arch:
-        click.secho(f"No Helm binary candidate for arch: {arch}", fg="red")
+        click.secho(f"No Helm binary candidate for arch: {uname_arch}", fg="red")
         sys.exit(1)
 
     helm_filename = f"{HELM_BINARY_NAME}-{version}-{os_name}-{arch}.tar.gz"
