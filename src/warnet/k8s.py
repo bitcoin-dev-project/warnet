@@ -18,6 +18,7 @@ from .constants import (
     CADDY_INGRESS_NAME,
     DEFAULT_NAMESPACE,
     INGRESS_NAMESPACE,
+    KUBE_INTERNAL_NAMESPACES,
     KUBECONFIG,
     LOGGING_NAMESPACE,
 )
@@ -370,7 +371,11 @@ def get_kubeconfig_value(jsonpath):
 def get_namespaces() -> list[V1Namespace]:
     sclient = get_static_client()
     try:
-        return sclient.list_namespace().items
+        return [
+            ns
+            for ns in sclient.list_namespace().items
+            if ns.metadata.name not in KUBE_INTERNAL_NAMESPACES
+        ]
 
     except ApiException as e:
         if e.status == 403:
