@@ -26,9 +26,9 @@ class DAGConnectionTest(TestBase):
         self.wait_for_all_edges()
 
     def run_connect_dag_scenario(self):
-        scenario_file = self.scen_dir / "testscenario_connect_dag.py"
+        scenario_file = self.scen_dir / "test_scenarios" / "connect_dag.py"
         self.log.info(f"Running scenario from: {scenario_file}")
-        self.warnet(f"run {scenario_file}")
+        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir}")
         self.wait_for_all_scenarios()
 
 

@@ -44,7 +44,7 @@ def copy_scenario_defaults(directory: Path):
         directory,
         SCENARIOS_DIR.name,
         SCENARIOS_DIR,
-        ["__pycache__", "testscenario_*.py"],
+        ["__pycache__", "test_scenarios"],
     )
 
 

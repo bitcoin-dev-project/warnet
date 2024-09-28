@@ -83,9 +83,9 @@ class ScenariosTest(TestBase):
         self.stop_scenario()
 
     def run_and_check_scenario_from_file(self):
-        scenario_file = self.scen_dir / "testscenario_p2p_interface.py"
+        scenario_file = self.scen_dir / "test_scenarios" / "p2p_interface.py"
         self.log.info(f"Running scenario from: {scenario_file}")
-        self.warnet(f"run {scenario_file}")
+        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir}")
         self.wait_for_predicate(self.check_scenario_clean_exit)
 
     def check_regtest_recon(self):
@@ -95,9 +95,9 @@ class ScenariosTest(TestBase):
         self.wait_for_predicate(self.check_scenario_clean_exit)
 
     def check_active_count(self):
-        scenario_file = self.scen_dir / "testscenario_buggy_failure.py"
+        scenario_file = self.scen_dir / "test_scenarios" / "buggy_failure.py"
         self.log.info(f"Running scenario from: {scenario_file}")
-        self.warnet(f"run {scenario_file}")
+        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir}")
 
         def two_pass_one_fail():
             deployed = scenarios_deployed()

@@ -172,14 +172,15 @@ def get_active_network(namespace):
     default=False,
     help="Stream scenario output and delete container when stopped",
 )
+@click.option("--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
+def run(scenario_file: str, source_dir, additional_args: tuple[str]):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
     scenario_path = Path(scenario_file).resolve()
-    scenario_dir = scenario_path.parent
+    scenario_dir = scenario_path.parent if not source_dir else Path(source_dir).resolve()
     scenario_name = scenario_path.stem
 
     if additional_args and ("--help" in additional_args or "-h" in additional_args):
@@ -212,15 +213,24 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
     def filter(path):
         if any(needle in str(path) for needle in [".pyc", ".csv", ".DS_Store"]):
             return False
-        return any(
-            needle in str(path) for needle in ["commander.py", "test_framework", scenario_name]
-        )
+        if any(needle in str(path) for needle in ["__init__.py", "commander.py", "test_framework", scenario_path.name]):
+            print(f"Including: {path}")
+            return True
+        return False
 
+    # In case the scenario file is not in the root of the archive directory,
+    # we need to specify its relative path as a submodule
+    # First get the path of the file relative to the source directory
+    relative_path = scenario_path.relative_to(scenario_dir)
+    # Remove the '.py' extension
+    relative_name = relative_path.with_suffix("")
+    # Replace path separators with dots and pray the user included __init__.py
+    module_name = ".".join(relative_name.parts)
     # Compile python archive
     zipapp.create_archive(
         source=scenario_dir,
         target=archive_buffer,
-        main=f"{scenario_name}:main",
+        main=f"{module_name}:main",
         compressed=True,
         filter=filter,
     )
