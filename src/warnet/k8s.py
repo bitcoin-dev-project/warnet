@@ -118,7 +118,7 @@ def delete_namespace(namespace: str) -> bool:
 
 
 def delete_pod(pod_name: str) -> bool:
-    command = f"kubectl delete pod {pod_name}"
+    command = f"kubectl -n {get_default_namespace()} delete pod {pod_name}"
     return stream_command(command)
 
 

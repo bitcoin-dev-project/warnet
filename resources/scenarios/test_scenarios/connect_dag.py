@@ -120,5 +120,6 @@ class ConnectDag(Commander):
 def main():
     ConnectDag().main()
 
+
 if __name__ == "__main__":
     main()

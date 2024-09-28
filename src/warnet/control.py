@@ -24,8 +24,8 @@ from .k8s import (
     get_pods,
     pod_log,
     snapshot_bitcoin_datadir,
-    wait_for_pod,
     wait_for_init,
+    wait_for_pod,
     write_file_to_container,
 )
 from .process import run_command, stream_command
@@ -172,9 +172,11 @@ def get_active_network(namespace):
     default=False,
     help="Stream scenario output and delete container when stopped",
 )
-@click.option("--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False)
+@click.option(
+    "--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False
+)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, source_dir, additional_args: tuple[str]):
+def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
@@ -213,7 +215,10 @@ def run(scenario_file: str, source_dir, additional_args: tuple[str]):
     def filter(path):
         if any(needle in str(path) for needle in [".pyc", ".csv", ".DS_Store"]):
             return False
-        if any(needle in str(path) for needle in ["__init__.py", "commander.py", "test_framework", scenario_path.name]):
+        if any(
+            needle in str(path)
+            for needle in ["__init__.py", "commander.py", "test_framework", scenario_path.name]
+        ):
             print(f"Including: {path}")
             return True
         return False
@@ -280,6 +285,8 @@ def run(scenario_file: str, source_dir, additional_args: tuple[str]):
         print(f"Successfully uploaded scenario data to commander: {scenario_name}")
 
     if debug:
+        print("Waiting for commander pod to start...")
+        wait_for_pod(name)
         _logs(pod_name=name, follow=True)
         print("Deleting pod...")
         delete_pod(name)
