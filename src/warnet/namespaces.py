@@ -8,6 +8,7 @@ from .constants import (
     DEFAULTS_NAMESPACE_FILE,
     NAMESPACES_DIR,
     NAMESPACES_FILE,
+    WARGAMES_NAMESPACE_PREFIX,
 )
 from .process import run_command, stream_command
 
@@ -34,11 +35,13 @@ def namespaces():
 
 @namespaces.command()
 def list():
-    """List all namespaces with 'warnet-' prefix"""
+    """List all namespaces with 'wargames-' prefix"""
     cmd = "kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'"
     res = run_command(cmd)
     all_namespaces = res.split()
-    warnet_namespaces = [ns for ns in all_namespaces if ns.startswith("warnet-")]
+    warnet_namespaces = [
+        ns for ns in all_namespaces if ns.startswith(f"{WARGAMES_NAMESPACE_PREFIX}")
+    ]
 
     if warnet_namespaces:
         print("Warnet namespaces:")
@@ -52,14 +55,16 @@ def list():
 @click.option("--all", "destroy_all", is_flag=True, help="Destroy all warnet- prefixed namespaces")
 @click.argument("namespace", required=False)
 def destroy(destroy_all: bool, namespace: str):
-    """Destroy a specific namespace or all warnet- prefixed namespaces"""
+    """Destroy a specific namespace or all 'wargames-' prefixed namespaces"""
     if destroy_all:
         cmd = "kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'"
         res = run_command(cmd)
 
         # Get the list of namespaces
         all_namespaces = res.split()
-        warnet_namespaces = [ns for ns in all_namespaces if ns.startswith("warnet-")]
+        warnet_namespaces = [
+            ns for ns in all_namespaces if ns.startswith(f"{WARGAMES_NAMESPACE_PREFIX}")
+        ]
 
         if not warnet_namespaces:
             print("No warnet namespaces found to destroy.")
@@ -72,8 +77,8 @@ def destroy(destroy_all: bool, namespace: str):
             else:
                 print(f"Destroyed namespace: {ns}")
     elif namespace:
-        if not namespace.startswith("warnet-"):
-            print("Error: Can only destroy namespaces with 'warnet-' prefix")
+        if not namespace.startswith(f"{WARGAMES_NAMESPACE_PREFIX}"):
+            print(f"Error: Can only destroy namespaces with '{WARGAMES_NAMESPACE_PREFIX}' prefix")
             return
 
         destroy_cmd = f"kubectl delete namespace {namespace}"
