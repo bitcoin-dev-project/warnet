@@ -1,15 +1,26 @@
+import hashlib
 import os
 import platform
+import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import click
 import inquirer
+import requests
 
+from .constants import (
+    HELM_BINARY_NAME,
+    HELM_BLESSED_NAME_AND_CHECKSUMS,
+    HELM_BLESSED_VERSION,
+    HELM_DOWNLOAD_URL_STUB,
+)
 from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_scenario_defaults
 
@@ -155,7 +166,7 @@ def setup():
         except FileNotFoundError as err:
             return False, str(err)
 
-    def is_helm_installed() -> tuple[bool, str]:
+    def is_helm_installed_and_offer_if_not() -> tuple[bool, str]:
         try:
             version_result = subprocess.run(["helm", "version"], capture_output=True, text=True)
             location_result = subprocess.run(
@@ -167,8 +178,31 @@ def setup():
                 return version_result.returncode == 0, location_result.stdout.strip()
             else:
                 return False, ""
-        except FileNotFoundError as err:
-            return False, str(err)
+
+        except FileNotFoundError:
+            print()
+            helm_answer = inquirer.prompt(
+                [
+                    inquirer.Confirm(
+                        "install_helm",
+                        message=click.style(
+                            "Would you like Warnet to install Helm into your virtual environment?",
+                            fg="blue",
+                            bold=True,
+                        ),
+                        default=True,
+                    ),
+                ]
+            )
+            if helm_answer is None:
+                msg = "Setup cancelled by user."
+                click.secho(msg, fg="yellow")
+                return False, msg
+            if helm_answer["install_helm"]:
+                click.secho("    Installing Helm...", fg="yellow", bold=True)
+                install_helm_rootlessly_to_venv()
+                return is_helm_installed_and_offer_if_not()
+            return False, "Please install Helm."
 
     def check_installation(tool_info: ToolInfo) -> ToolStatus:
         has_good_version, location = tool_info.is_installed_func()
@@ -218,8 +252,8 @@ def setup():
     )
     helm_info = ToolInfo(
         tool_name="Helm",
-        is_installed_func=is_helm_installed,
-        install_instruction="Install Helm from Helm's official site.",
+        is_installed_func=is_helm_installed_and_offer_if_not,
+        install_instruction="Install Helm from Helm's official site, or rootlessly install Helm using Warnet's downloader when prompted.",
         install_url="https://helm.sh/docs/intro/install/",
     )
     minikube_info = ToolInfo(
@@ -361,3 +395,137 @@ def init():
     """Initialize a warnet project in the current directory"""
     current_dir = Path.cwd()
     new_internal(directory=current_dir, from_init=True)
+
+
+def get_os_name_for_helm() -> Optional[str]:
+    """Return a short operating system name suitable for downloading a helm binary."""
+    uname_sys = platform.system().lower()
+    if "linux" in uname_sys:
+        return "linux"
+    elif uname_sys == "darwin":
+        return "darwin"
+    elif "win" in uname_sys:
+        return "windows"
+    return None
+
+
+def is_in_virtualenv() -> bool:
+    """Check if the user is in a virtual environment."""
+    return hasattr(sys, "real_prefix") or (
+        hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+    )
+
+
+def download_file(url, destination):
+    click.secho(f"    Downloading {url}", fg="blue")
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(destination, "wb") as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
+    else:
+        raise Exception(f"Failed to download {url} (status code {response.status_code})")
+
+
+def query_arch_from_uname(arch: str) -> Optional[str]:
+    if arch.startswith("armv5"):
+        return "armv5"
+    elif arch.startswith("armv6"):
+        return "armv6"
+    elif arch.startswith("armv7"):
+        return "arm"
+    elif arch == "aarch64" or arch == "arm64":
+        return "arm64"
+    elif arch == "x86":
+        return "386"
+    elif arch == "x86_64":
+        return "amd64"
+    elif arch == "i686" or arch == "i386":
+        return "386"
+    else:
+        return None
+
+
+def write_blessed_checksum(helm_filename: str, dest_path: str):
+    checksum = next(
+        (b["checksum"] for b in HELM_BLESSED_NAME_AND_CHECKSUMS if b["name"] == helm_filename), None
+    )
+    if checksum:
+        with open(dest_path, "w") as f:
+            f.write(checksum)
+    else:
+        click.secho("Could not find a matching helm binary and checksum", fg="red")
+
+
+def verify_checksum(file_path, checksum_path):
+    click.secho("    Verifying checksum...", fg="blue")
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+
+    with open(checksum_path) as f:
+        expected_checksum = f.read().strip()
+
+    if sha256_hash.hexdigest() != expected_checksum:
+        raise Exception("Checksum verification failed!")
+    click.secho("    Checksum verified.", fg="blue")
+
+
+def install_helm_to_venv(helm_bin_path):
+    venv_bin_dir = os.path.join(sys.prefix, "bin")
+    helm_dst_path = os.path.join(venv_bin_dir, HELM_BINARY_NAME)
+    shutil.move(helm_bin_path, helm_dst_path)
+    os.chmod(helm_dst_path, 0o755)
+    click.secho(f"    {HELM_BINARY_NAME} installed into {helm_dst_path}", fg="blue")
+
+
+def install_helm_rootlessly_to_venv():
+    if not is_in_virtualenv():
+        click.secho(
+            "Error: You are not in a virtual environment. Please activate a virtual environment and try again.",
+            fg="yellow",
+        )
+        sys.exit(1)
+
+    version = HELM_BLESSED_VERSION
+
+    os_name = get_os_name_for_helm()
+    if os_name is None:
+        click.secho(
+            "Error: Could not determine the operating system of this computer.", fg="yellow"
+        )
+        sys.exit(1)
+
+    uname_arch = os.uname().machine
+    arch = query_arch_from_uname(uname_arch)
+    if not arch:
+        click.secho(f"No Helm binary candidate for arch: {uname_arch}", fg="red")
+        sys.exit(1)
+
+    helm_filename = f"{HELM_BINARY_NAME}-{version}-{os_name}-{arch}.tar.gz"
+    helm_url = f"{HELM_DOWNLOAD_URL_STUB}{helm_filename}"
+
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            helm_archive_path = os.path.join(temp_dir, helm_filename)
+            checksum_path = os.path.join(temp_dir, f"{helm_filename}.sha256")
+
+            download_file(helm_url, helm_archive_path)
+            write_blessed_checksum(helm_filename, checksum_path)
+            verify_checksum(helm_archive_path, checksum_path)
+
+            # Extract Helm and install it in the virtual environment's bin folder
+            with tarfile.open(helm_archive_path, "r:gz") as tar:
+                tar.extractall(path=temp_dir)
+            helm_bin_path = os.path.join(temp_dir, os_name + "-" + arch, HELM_BINARY_NAME)
+            install_helm_to_venv(helm_bin_path)
+
+            click.secho(
+                f"    {HELM_BINARY_NAME} {version} installed successfully to your virtual environment!\n",
+                fg="blue",
+            )
+
+    except Exception as e:
+        click.secho(f"Error: {e}\nCould not install helm.", fg="yellow")
+        sys.exit(1)
