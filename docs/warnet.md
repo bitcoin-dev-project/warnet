@@ -72,6 +72,7 @@ options:
 |-----------------|--------|------------|-----------|
 | scenario_file   | Path   | yes        |           |
 | debug           | Bool   |            | False     |
+| source_dir      | Path   |            |           |
 | additional_args | String |            |           |
 
 ### `warnet setup`
