@@ -2,12 +2,7 @@
 
 import socket
 
-# The base class exists inside the commander container when deployed,
-# but requires a relative path inside the python source code for other functions.
-try:
-    from commander import Commander
-except ImportError:
-    from resources.scenarios.commander import Commander
+from commander import Commander
 
 # The entire Bitcoin Core test_framework directory is available as a library
 from test_framework.messages import MSG_TX, CInv, hash256, msg_getdata
@@ -85,5 +80,9 @@ class Reconnaissance(Commander):
         self.log.info(f"Got notfound message from {dstaddr}:{dstport}")
 
 
-if __name__ == "__main__":
+def main():
     Reconnaissance().main()
+
+
+if __name__ == "__main__":
+    main()

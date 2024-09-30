@@ -2,11 +2,7 @@
 
 from time import sleep
 
-# The base class exists inside the commander container
-try:
-    from commander import Commander
-except ImportError:
-    from resources.scenarios.commander import Commander
+from commander import Commander
 
 
 class Miner:
@@ -72,5 +68,9 @@ class MinerStd(Commander):
                 sleep(self.options.interval)
 
 
-if __name__ == "__main__":
+def main():
     MinerStd().main()
+
+
+if __name__ == "__main__":
+    main()

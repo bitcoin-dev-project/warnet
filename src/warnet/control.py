@@ -1,9 +1,10 @@
-import base64
+import io
 import json
 import os
 import subprocess
 import sys
 import time
+import zipapp
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -23,7 +24,9 @@ from .k8s import (
     get_pods,
     pod_log,
     snapshot_bitcoin_datadir,
+    wait_for_init,
     wait_for_pod,
+    write_file_to_container,
 )
 from .process import run_command, stream_command
 
@@ -169,18 +172,23 @@ def get_active_network(namespace):
     default=False,
     help="Stream scenario output and delete container when stopped",
 )
+@click.option(
+    "--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False
+)
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
+def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
     scenario_path = Path(scenario_file).resolve()
+    scenario_dir = scenario_path.parent if not source_dir else Path(source_dir).resolve()
     scenario_name = scenario_path.stem
 
-    with open(scenario_path, "rb") as file:
-        scenario_data = base64.b64encode(file.read()).decode()
+    if additional_args and ("--help" in additional_args or "-h" in additional_args):
+        return subprocess.run([sys.executable, scenario_path, "--help"])
 
+    # Collect tank data for warnet.json
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
     namespace = get_default_namespace()
     tankpods = get_mission("tank")
@@ -197,9 +205,46 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
         for tank in tankpods
     ]
 
-    # Encode warnet data
-    warnet_data = base64.b64encode(json.dumps(tanks).encode()).decode()
+    # Encode tank data for warnet.json
+    warnet_data = json.dumps(tanks).encode()
 
+    # Create in-memory buffer to store python archive instead of writing to disk
+    archive_buffer = io.BytesIO()
+
+    # No need to copy the entire scenarios/ directory into the archive
+    def filter(path):
+        if any(needle in str(path) for needle in [".pyc", ".csv", ".DS_Store"]):
+            return False
+        if any(
+            needle in str(path)
+            for needle in ["__init__.py", "commander.py", "test_framework", scenario_path.name]
+        ):
+            print(f"Including: {path}")
+            return True
+        return False
+
+    # In case the scenario file is not in the root of the archive directory,
+    # we need to specify its relative path as a submodule
+    # First get the path of the file relative to the source directory
+    relative_path = scenario_path.relative_to(scenario_dir)
+    # Remove the '.py' extension
+    relative_name = relative_path.with_suffix("")
+    # Replace path separators with dots and pray the user included __init__.py
+    module_name = ".".join(relative_name.parts)
+    # Compile python archive
+    zipapp.create_archive(
+        source=scenario_dir,
+        target=archive_buffer,
+        main=f"{module_name}:main",
+        compressed=True,
+        filter=filter,
+    )
+
+    # Encode the binary data as Base64
+    archive_buffer.seek(0)
+    archive_data = archive_buffer.read()
+
+    # Start the commander pod with python and init containers
     try:
         # Construct Helm command
         helm_command = [
@@ -210,17 +255,11 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
             namespace,
             "--set",
             f"fullnameOverride={name}",
-            "--set",
-            f"scenario={scenario_data}",
-            "--set",
-            f"warnet={warnet_data}",
         ]
 
         # Add additional arguments
         if additional_args:
             helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
-            if "--help" in additional_args or "-h" in additional_args:
-                return subprocess.run([sys.executable, scenario_path, "--help"])
 
         helm_command.extend([name, COMMANDER_CHART])
 
@@ -228,15 +267,22 @@ def run(scenario_file: str, debug: bool, additional_args: tuple[str]):
         result = subprocess.run(helm_command, check=True, capture_output=True, text=True)
 
         if result.returncode == 0:
-            print(f"Successfully started scenario: {scenario_name}")
+            print(f"Successfully deployed scenario commander: {scenario_name}")
             print(f"Commander pod name: {name}")
         else:
-            print(f"Failed to start scenario: {scenario_name}")
+            print(f"Failed to deploy scenario commander: {scenario_name}")
             print(f"Error: {result.stderr}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Failed to start scenario: {scenario_name}")
+        print(f"Failed to deploy scenario commander: {scenario_name}")
         print(f"Error: {e.stderr}")
+
+    # upload scenario files and network data to the init container
+    wait_for_init(name)
+    if write_file_to_container(
+        name, "init", "/shared/warnet.json", warnet_data
+    ) and write_file_to_container(name, "init", "/shared/archive.pyz", archive_data):
+        print(f"Successfully uploaded scenario data to commander: {scenario_name}")
 
     if debug:
         print("Waiting for commander pod to start...")

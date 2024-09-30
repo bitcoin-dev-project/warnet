@@ -28,7 +28,5 @@ nodes:
     connect:
       - tank-0006
   - name: tank-0006
-fork_observer:
-  enabled: true
 caddy:
   enabled: true

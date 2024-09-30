@@ -2,11 +2,7 @@
 
 from time import sleep
 
-# The base class exists inside the commander container
-try:
-    from commander import Commander
-except ImportError:
-    from resources.scenarios.commander import Commander
+from commander import Commander
 
 
 class LNInit(Commander):
@@ -185,5 +181,9 @@ class LNInit(Commander):
         )
 
 
-if __name__ == "__main__":
+def main():
     LNInit().main()
+
+
+if __name__ == "__main__":
+    main()

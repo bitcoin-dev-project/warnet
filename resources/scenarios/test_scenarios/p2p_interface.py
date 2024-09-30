@@ -52,5 +52,9 @@ class GetdataTest(Commander):
         p2p_block_store.wait_until(lambda: p2p_block_store.blocks[best_block] == 1)
 
 
-if __name__ == "__main__":
+def main():
     GetdataTest().main()
+
+
+if __name__ == "__main__":
+    main()

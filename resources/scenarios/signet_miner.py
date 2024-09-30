@@ -11,11 +11,7 @@
 # we use the authproxy from the test framework.
 ###
 
-# The base class exists inside the commander container
-try:
-    from commander import Commander
-except ImportError:
-    from resources.scenarios.commander import Commander
+from commander import Commander
 
 import json
 import logging
@@ -566,5 +562,8 @@ def get_args(parser):
 
     return args
 
-if __name__ == "__main__":
+def main():
     SignetMinerScenario().main()
+
+if __name__ == "__main__":
+    main()

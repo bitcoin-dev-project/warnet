@@ -117,5 +117,9 @@ class ConnectDag(Commander):
             raise ValueError("ConnectionType must be of type DNS or IP")
 
 
-if __name__ == "__main__":
+def main():
     ConnectDag().main()
+
+
+if __name__ == "__main__":
+    main()
