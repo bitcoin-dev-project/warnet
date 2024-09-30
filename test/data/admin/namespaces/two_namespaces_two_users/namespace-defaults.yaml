@@ -1,0 +1,18 @@
+users:
+  - name: warnet-user
+    roles:
+      - pod-viewer
+      - pod-manager
+# the pod-viewer and pod-manager roles are the default
+# roles defined in values.yaml for the namespaces charts
+#
+# if you need a different set of roles for a particular namespaces
+# deployment, you can override values.yaml by providing your own
+# role definitions below
+#
+# roles:
+#   - name: my-custom-role
+#     rules:
+#      - apiGroups: ""
+#        resources: ""
+#        verbs: ""

@@ -1,0 +1,19 @@
+namespaces:
+  - name: wargames-red-team
+    users:
+      - name: alice
+        roles:
+          - pod-viewer
+      - name: bob
+        roles:
+          - pod-viewer
+          - pod-manager
+  - name: wargames-blue-team
+    users:
+      - name: mallory
+        roles:
+          - pod-viewer
+      - name: carol
+        roles:
+          - pod-viewer
+          - pod-manager
