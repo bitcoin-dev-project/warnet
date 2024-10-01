@@ -16,19 +16,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: eifinger/setup-uv@v1
-      - run: uvx ruff check .
+      - name: Install a specific version of uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.4"
+          enable-cache: true
+      - run: uvx ruff@0.6.8 check .
 
   ruff-format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v2
+      - name: Install a specific version of uv
+        uses: astral-sh/setup-uv@v3
         with:
-          version: "latest"
+          version: "0.4.4"
           enable-cache: true
-      - run: uvx ruff format . --check
+      - run: uvx ruff@0.6.8 format . --check
 
   test:
     needs: [ruff, ruff-format]

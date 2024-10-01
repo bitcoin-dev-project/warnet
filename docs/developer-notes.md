@@ -21,15 +21,27 @@ pip install --upgrade pip
 pip install -e .
 ```
 
-## Lint
+## Formatting & linting
 
 This project primarily uses the `uv` python packaging tool: https://docs.astral.sh/uv/ along with the sister formatter/linter `ruff` https://docs.astral.sh/ruff/
+
+Refer to the `uv` documentation for installation methods: https://docs.astral.sh/uv/getting-started/installation/
 
 With `uv` installed you can add/remove dependencies using `uv add <dep>` or `uv remove <dep>.
 This will update the [`uv.lock`](https://docs.astral.sh/uv/guides/projects/#uvlock) file automatically.
 
+We use ruff version 0.6.8 in this project currently. This can be installed as a stand-alone binary (see documentation), or via `uv` using:
 
-`uv` can also run tools (like `ruff`) without external installation, simply run `uvx ruff check .` or `uvx ruff format .` to use a uv-managed format/lint on the project.
+```bash
+# install
+$ uv tool install ruff@0.6.8
+
+# lint
+$ uvx ruff@0.6.8 check .
+
+# format
+$ uvx ruff@0.6.8 format .
+```
 
 ## Release process
 
