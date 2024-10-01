@@ -9,6 +9,7 @@ from .k8s import get_kubeconfig_value, get_namespaces_by_prefix, get_service_acc
 from .namespaces import copy_namespaces_defaults, namespaces
 from .network import copy_network_defaults
 from .process import run_command
+from .service_accounts import service_accounts
 
 
 @click.group(name="admin", hidden=True)
@@ -18,6 +19,7 @@ def admin():
 
 
 admin.add_command(namespaces)
+admin.add_command(service_accounts)
 
 
 @admin.command()
