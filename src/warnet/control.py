@@ -21,6 +21,8 @@ from .constants import (
     BITCOINCORE_CONTAINER,
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
+    INGRESS_NAMESPACE,
+    LOGGING_NAMESPACE,
 )
 from .k8s import (
     delete_pod,
@@ -365,7 +367,11 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
     if pod_name == "":
         try:
             pods = get_pods()
-            pod_list = [f"{item.metadata.name}: {item.metadata.namespace}" for item in pods]
+            pod_list = [
+                f"{item.metadata.name}: {item.metadata.namespace}"
+                for item in pods
+                if item.metadata.namespace not in [LOGGING_NAMESPACE, INGRESS_NAMESPACE]
+            ]
         except Exception as e:
             print(f"Could not fetch any pods in namespace {namespace}: {e}")
             return
