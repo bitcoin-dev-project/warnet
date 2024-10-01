@@ -472,6 +472,7 @@ def write_file_to_container(pod_name, container_name, dst_path, data):
     except Exception as e:
         print(f"Failed to copy data to {pod_name}({container_name}):{dst_path}:\n{e}")
 
+
 def open_kubeconfig(kubeconfig_path: str = KUBECONFIG) -> dict:
     try:
         with open(kubeconfig_path) as file:
