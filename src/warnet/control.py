@@ -21,6 +21,7 @@ from .k8s import (
     delete_pod,
     get_default_namespace,
     get_mission,
+    get_pod,
     get_pods,
     pod_log,
     snapshot_bitcoin_datadir,
@@ -329,7 +330,15 @@ def _logs(pod_name: str, follow: bool):
             return  # cancelled by user
 
     try:
-        stream = pod_log(pod_name, container_name=None, follow=follow)
+        pod = get_pod(pod_name)
+        container_names = [container.name for container in pod.spec.containers]
+        container_name = container_names[0]
+    except Exception as e:
+        print(f"Could not determine primary container: {e}")
+        return
+
+    try:
+        stream = pod_log(pod_name, container_name=container_name, follow=follow)
         for line in stream.stream():
             print(line.decode("utf-8"), end=None)
     except Exception as e:
