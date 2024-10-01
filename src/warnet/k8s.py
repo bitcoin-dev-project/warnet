@@ -66,10 +66,12 @@ def get_mission(mission: str) -> list[V1Pod]:
     return crew
 
 
-def get_pod_exit_status(pod_name):
+def get_pod_exit_status(pod_name, namespace: Optional[str] = None):
+    if not namespace:
+        namespace = get_default_namespace()
     try:
         sclient = get_static_client()
-        pod = sclient.read_namespaced_pod(name=pod_name, namespace=get_default_namespace())
+        pod = sclient.read_namespaced_pod(name=pod_name, namespace=namespace)
         for container_status in pod.status.container_statuses:
             if container_status.state.terminated:
                 return container_status.state.terminated.exit_code
