@@ -35,13 +35,19 @@ def get_dynamic_client() -> DynamicClient:
     return DynamicClient(client.ApiClient())
 
 
-def get_pods() -> V1PodList:
+def get_pods() -> list[V1Pod]:
     sclient = get_static_client()
-    try:
-        pod_list: V1PodList = sclient.list_namespaced_pod(get_default_namespace())
-    except Exception as e:
-        raise e
-    return pod_list
+    pods: list[V1Pod] = []
+    namespaces = get_namespaces()
+    for ns in namespaces:
+        namespace = ns.metadata.name
+        try:
+            pod_list: V1PodList = sclient.list_namespaced_pod(namespace)
+            for pod in pod_list.items:
+                pods.append(pod)
+        except Exception as e:
+            raise e
+    return pods
 
 
 def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
@@ -51,10 +57,10 @@ def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
     return sclient.read_namespaced_pod(name=name, namespace=namespace)
 
 
-def get_mission(mission: str) -> list[V1PodList]:
+def get_mission(mission: str) -> list[V1Pod]:
     pods = get_pods()
-    crew = []
-    for pod in pods.items:
+    crew: list[V1Pod] = []
+    for pod in pods:
         if "mission" in pod.metadata.labels and pod.metadata.labels["mission"] == mission:
             crew.append(pod)
     return crew

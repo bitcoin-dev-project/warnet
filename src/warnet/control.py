@@ -144,7 +144,7 @@ def down():
 
         # Delete remaining pods
         pods = get_pods()
-        for pod in pods.items:
+        for pod in pods:
             futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
 
         # Wait for all tasks to complete and print results
@@ -312,7 +312,7 @@ def _logs(pod_name: str, follow: bool):
     if pod_name == "":
         try:
             pods = get_pods()
-            pod_list = [item.metadata.name for item in pods.items]
+            pod_list = [item.metadata.name for item in pods]
         except Exception as e:
             print(f"Could not fetch any pods in namespace {namespace}: {e}")
             return
