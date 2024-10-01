@@ -4,10 +4,11 @@ import sys
 import tempfile
 from pathlib import Path
 from time import sleep
+from typing import Optional
 
 import yaml
 from kubernetes import client, config, watch
-from kubernetes.client.models import CoreV1Event, V1PodList
+from kubernetes.client.models import CoreV1Event, V1Pod, V1PodList
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -39,6 +40,13 @@ def get_pods() -> V1PodList:
     except Exception as e:
         raise e
     return pod_list
+
+
+def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
+    sclient = get_static_client()
+    if not namespace:
+        namespace = get_default_namespace()
+    return sclient.read_namespaced_pod(name=name, namespace=namespace)
 
 
 def get_mission(mission: str) -> list[V1PodList]:
