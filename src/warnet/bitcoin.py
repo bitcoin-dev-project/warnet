@@ -52,11 +52,14 @@ def _rpc(tank: str, method: str, params: str, namespace: Optional[str] = None):
 
 @bitcoin.command()
 @click.argument("tank", type=str, required=True)
-def debug_log(tank: str):
+@click.option("--namespace", default=None, show_default=True)
+def debug_log(tank: str, namespace: Optional[str]):
     """
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
-    cmd = f"kubectl logs {tank}"
+    if not namespace:
+        namespace = get_default_namespace()
+    cmd = f"kubectl logs {tank} --namespace {namespace}"
     try:
         print(run_command(cmd))
     except Exception as e:
@@ -79,8 +82,12 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
         sys.exit(1)
 
     matching_logs = []
+    longest_namespace_len = 0
 
     for tank in tanks:
+        if len(tank.metadata.namespace) > longest_namespace_len:
+            longest_namespace_len = len(tank.metadata.namespace)
+
         pod_name = tank.metadata.name
         logs = pod_log(pod_name, BITCOINCORE_CONTAINER)
 
@@ -89,7 +96,7 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
                 for line in logs:
                     log_entry = line.decode("utf-8").rstrip()
                     if re.search(pattern, log_entry):
-                        matching_logs.append((log_entry, pod_name))
+                        matching_logs.append((log_entry, tank.metadata.namespace, pod_name))
             except Exception as e:
                 print(e)
             except KeyboardInterrupt:
@@ -100,7 +107,7 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
         matching_logs.sort(key=lambda x: x[0])
 
     # Print matching logs
-    for log_entry, pod_name in matching_logs:
+    for log_entry, namespace, pod_name in matching_logs:
         try:
             # Split the log entry into Kubernetes timestamp, Bitcoin timestamp, and the rest of the log
             k8s_timestamp, rest = log_entry.split(" ", 1)
@@ -108,9 +115,13 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 
             # Format the output based on the show_k8s_timestamps option
             if show_k8s_timestamps:
-                print(f"{pod_name}: {k8s_timestamp} {bitcoin_timestamp} {log_message}")
+                print(
+                    f"{pod_name} {namespace:<{longest_namespace_len}} {k8s_timestamp} {bitcoin_timestamp} {log_message}"
+                )
             else:
-                print(f"{pod_name}: {bitcoin_timestamp} {log_message}")
+                print(
+                    f"{pod_name} {namespace:<{longest_namespace_len}} {bitcoin_timestamp} {log_message}"
+                )
         except ValueError:
             # If we can't parse the timestamps, just print the original log entry
             print(f"{pod_name}: {log_entry}")
