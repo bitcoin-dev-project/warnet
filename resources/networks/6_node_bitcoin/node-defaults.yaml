@@ -21,6 +21,6 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "27.0"
 
-config: |
+defaultConfig: |
   dns=1
   debug=rpc
