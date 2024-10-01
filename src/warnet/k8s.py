@@ -360,9 +360,12 @@ def wait_for_pod(pod_name, timeout_seconds=10, namespace: Optional[str] = None):
         timeout_seconds -= 1
 
 
-def write_file_to_container(pod_name, container_name, dst_path, data):
+def write_file_to_container(
+    pod_name, container_name, dst_path, data, namespace: Optional[str] = None
+):
+    if not namespace:
+        namespace = get_default_namespace()
     sclient = get_static_client()
-    namespace = get_default_namespace()
     exec_command = ["sh", "-c", f"cat > {dst_path}"]
     try:
         res = stream(
