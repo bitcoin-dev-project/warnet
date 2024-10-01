@@ -340,18 +340,20 @@ def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]
 @click.command()
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
-def logs(pod_name: str, follow: bool):
+@click.option("--namespace", type=str, default="default", show_default=True)
+def logs(pod_name: str, follow: bool, namespace: str):
     """Show the logs of a pod"""
-    return _logs(pod_name, follow)
+    return _logs(pod_name, follow, namespace)
 
 
-def _logs(pod_name: str, follow: bool):
-    namespace = get_default_namespace()
+def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
+    if not namespace:
+        namespace = get_default_namespace()
 
     if pod_name == "":
         try:
             pods = get_pods()
-            pod_list = [item.metadata.name for item in pods]
+            pod_list = [f"{item.metadata.name}: {item.metadata.namespace}" for item in pods]
         except Exception as e:
             print(f"Could not fetch any pods in namespace {namespace}: {e}")
             return
@@ -369,7 +371,7 @@ def _logs(pod_name: str, follow: bool):
         ]
         selected = inquirer.prompt(q, theme=GreenPassion())
         if selected:
-            pod_name = selected["pod"]
+            pod_name, pod_namespace = selected["pod"].split(": ")
         else:
             return  # cancelled by user
 
