@@ -134,15 +134,15 @@ def down(force):
         return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
 
     namespaces = get_namespaces()
-    print(namespaces)
     release_list: list[dict[str, str]] = []
-    for namespace in namespaces:
-        command = f"helm list --namespace {namespace.metadata.name} -o json"
+    for v1namespace in namespaces:
+        namespace = v1namespace.metadata.name
+        command = f"helm list --namespace {namespace} -o json"
         result = run_command(command)
         if result:
             releases = json.loads(result)
             for release in releases:
-                release_list.append({"namespace": namespace.metadata.name, "name": release["name"]})
+                release_list.append({"namespace": namespace, "name": release["name"]})
 
     if not force:
         affected_namespaces = set([entry["namespace"] for entry in release_list])
