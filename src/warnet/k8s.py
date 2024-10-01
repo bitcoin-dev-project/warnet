@@ -303,10 +303,10 @@ def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
         if pod.metadata.name == pod_name:
             for init_container_status in pod.status.init_container_statuses:
                 if init_container_status.state.running:
-                    print(f"initContainer in pod {pod_name} is ready")
+                    print(f"initContainer in pod {pod_name} ({namespace}) is ready")
                     w.stop()
                     return True
-    print(f"Timeout waiting for initContainer in {pod_name} to be ready.")
+    print(f"Timeout waiting for initContainer in {pod_name} ({namespace})to be ready.")
     return False
 
 
