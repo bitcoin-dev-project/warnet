@@ -332,12 +332,14 @@ def get_ingress_ip_or_host():
         return None
 
 
-def pod_log(pod_name, container_name=None, follow=False):
+def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str] = None):
     sclient = get_static_client()
+    if not namespace:
+        namespace = get_default_namespace()
     try:
         return sclient.read_namespaced_pod_log(
             name=pod_name,
-            namespace=get_default_namespace(),
+            namespace=namespace,
             container=container_name,
             follow=follow,
             _preload_content=False,
