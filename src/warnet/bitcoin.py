@@ -133,16 +133,29 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 @click.argument("tank_a", type=str, required=True)
 @click.argument("tank_b", type=str, required=True)
 @click.option("--chain", default="regtest", show_default=True)
-def messages(tank_a: str, tank_b: str, chain: str):
+@click.option("--namespace_a", default=None, show_default=True)
+@click.option("--namespace_b", default=None, show_default=True)
+def messages(
+    tank_a: str, tank_b: str, chain: str, namespace_a: Optional[str], namespace_b: Optional[str]
+):
     """
     Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
     """
     try:
+        if not namespace_a:
+            namespace_a = get_default_namespace()
+        if not namespace_b:
+            namespace_b = get_default_namespace()
+
         # Get the messages
-        messages = get_messages(tank_a, tank_b, chain)
+        messages = get_messages(
+            tank_a, tank_b, chain, namespace_a=namespace_a, namespace_b=namespace_b
+        )
 
         if not messages:
-            print(f"No messages found between {tank_a} and {tank_b}")
+            print(
+                f"No messages found between {tank_a} ({namespace_a}) and {tank_b} ({namespace_b})"
+            )
             return
 
         # Process and print messages
@@ -167,7 +180,7 @@ def messages(tank_a: str, tank_b: str, chain: str):
         print(f"Error fetching messages between nodes {tank_a} and {tank_b}: {e}")
 
 
-def get_messages(tank_a: str, tank_b: str, chain: str):
+def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespace_b: str):
     """
     Fetch messages from the message capture files
     """
@@ -175,15 +188,17 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
     # Get the IP of node_b
-    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}'"
+    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
     tank_b_ip = run_command(cmd).strip()
 
     # Get the service IP of node_b
-    cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}'"
+    cmd = (
+        f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
+    )
     tank_b_service_ip = run_command(cmd).strip()
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec {tank_a} -- ls {base_dir}"
+    cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- ls {base_dir}"
 
     dirs = run_command(cmd).splitlines()
 
@@ -194,7 +209,8 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec {tank_a} -- cat {file_path}"
+                cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- cat {file_path}"
+                import subprocess
 
                 blob = subprocess.run(
                     cmd, shell=True, capture_output=True, executable="bash"
