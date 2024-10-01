@@ -5,10 +5,9 @@ from datetime import datetime
 from io import BytesIO
 
 import click
-from urllib3.exceptions import MaxRetryError
-
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
+from urllib3.exceptions import MaxRetryError
 
 from .k8s import get_default_namespace, get_mission, get_pod
 from .process import run_command
