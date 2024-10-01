@@ -81,9 +81,11 @@ def get_pod_exit_status(pod_name, namespace: Optional[str] = None):
         return None
 
 
-def get_edges() -> any:
+def get_edges(namespace: Optional[str] = None) -> any:
+    if not namespace:
+        namespace = get_default_namespace()
     sclient = get_static_client()
-    configmap = sclient.read_namespaced_config_map(name="edges", namespace="warnet")
+    configmap = sclient.read_namespaced_config_map(name="edges", namespace=namespace)
     return json.loads(configmap.data["data"])
 
 
