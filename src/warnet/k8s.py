@@ -291,9 +291,10 @@ def wait_for_pod_ready(name, namespace, timeout=300):
     return False
 
 
-def wait_for_init(pod_name, timeout=300):
+def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
+    if not namespace:
+        namespace = get_default_namespace()
     sclient = get_static_client()
-    namespace = get_default_namespace()
     w = watch.Watch()
     for event in w.stream(
         sclient.list_namespaced_pod, namespace=namespace, timeout_seconds=timeout
