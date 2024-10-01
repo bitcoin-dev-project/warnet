@@ -58,7 +58,9 @@ def _connected(end="\n"):
     for tank in tanks:
         # Get actual
         try:
-            peerinfo = json.loads(_rpc(tank.metadata.name, "getpeerinfo", ""))
+            peerinfo = json.loads(
+                _rpc(tank.metadata.name, "getpeerinfo", "", namespace=tank.metadata.namespace)
+            )
             actual = 0
             for peer in peerinfo:
                 if is_connection_manual(peer):
