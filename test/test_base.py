@@ -131,7 +131,7 @@ class TestBase:
             if len(scns) == 0:
                 return True
             for s in scns:
-                exit_status = get_pod_exit_status(s["name"])
+                exit_status = get_pod_exit_status(s["name"], s["namespace"])
                 self.log.debug(f"Scenario {s['name']} exited with code {exit_status}")
                 if exit_status != 0:
                     return False
