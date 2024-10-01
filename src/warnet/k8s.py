@@ -160,9 +160,14 @@ def get_default_namespace() -> str:
 
 
 def snapshot_bitcoin_datadir(
-    pod_name: str, chain: str, local_path: str = "./", filters: list[str] = None
+    pod_name: str,
+    chain: str,
+    local_path: str = "./",
+    filters: list[str] = None,
+    namespace: Optional[str] = None,
 ) -> None:
-    namespace = get_default_namespace()
+    if not namespace:
+        namespace = get_default_namespace()
     sclient = get_static_client()
 
     try:
