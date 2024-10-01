@@ -392,6 +392,8 @@ def wait_for_init(pod_name, timeout=300):
     ):
         pod = event["object"]
         if pod.metadata.name == pod_name:
+            if not pod.status.init_container_statuses:
+                continue
             for init_container_status in pod.status.init_container_statuses:
                 if init_container_status.state.running:
                     print(f"initContainer in pod {pod_name} is ready")
