@@ -221,11 +221,21 @@ def get_active_network(namespace):
     "--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False
 )
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]):
+@click.option("--namespace", default=None, show_default=True)
+def run(
+    scenario_file: str,
+    debug: bool,
+    source_dir,
+    additional_args: tuple[str],
+    namespace: Optional[str],
+):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
+    if not namespace:
+        namespace = get_default_namespace()
+
     scenario_path = Path(scenario_file).resolve()
     scenario_dir = scenario_path.parent if not source_dir else Path(source_dir).resolve()
     scenario_name = scenario_path.stem
@@ -235,7 +245,6 @@ def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]
 
     # Collect tank data for warnet.json
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
-    namespace = get_default_namespace()
     tankpods = get_mission("tank")
     tanks = [
         {
@@ -323,18 +332,20 @@ def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]
         print(f"Error: {e.stderr}")
 
     # upload scenario files and network data to the init container
-    wait_for_init(name)
+    wait_for_init(name, namespace=namespace)
     if write_file_to_container(
-        name, "init", "/shared/warnet.json", warnet_data
-    ) and write_file_to_container(name, "init", "/shared/archive.pyz", archive_data):
+        name, "init", "/shared/warnet.json", warnet_data, namespace=namespace
+    ) and write_file_to_container(
+        name, "init", "/shared/archive.pyz", archive_data, namespace=namespace
+    ):
         print(f"Successfully uploaded scenario data to commander: {scenario_name}")
 
     if debug:
         print("Waiting for commander pod to start...")
-        wait_for_pod(name)
-        _logs(pod_name=name, follow=True)
+        wait_for_pod(name, namespace=namespace)
+        _logs(pod_name=name, follow=True, namespace=namespace)
         print("Deleting pod...")
-        delete_pod(name)
+        delete_pod(name, namespace=namespace)
 
 
 @click.command()
