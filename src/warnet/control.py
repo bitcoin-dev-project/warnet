@@ -339,8 +339,8 @@ def _logs(pod_name: str, follow: bool):
 
     try:
         stream = pod_log(pod_name, container_name=container_name, follow=follow)
-        for line in stream.stream():
-            print(line.decode("utf-8"), end=None)
+        for line in stream:
+            click.echo(line.decode("utf-8").rstrip())
     except Exception as e:
         print(e)
     except KeyboardInterrupt:
