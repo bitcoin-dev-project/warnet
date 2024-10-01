@@ -4,6 +4,7 @@ import subprocess
 import sys
 from datetime import datetime
 from io import BytesIO
+from typing import Optional
 
 import click
 from test_framework.messages import ser_uint256
@@ -24,23 +25,24 @@ def bitcoin():
 @click.argument("tank", type=str)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(tank: str, method: str, params: str):
+@click.option("--namespace", default=None, show_default=True)
+def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
     try:
-        result = _rpc(tank, method, params)
+        result = _rpc(tank, method, params, namespace)
     except Exception as e:
         print(f"{e}")
         sys.exit(1)
     print(result)
 
 
-def _rpc(tank: str, method: str, params: str):
+def _rpc(tank: str, method: str, params: str, namespace: Optional[str] = None):
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
-    namespace = get_default_namespace()
-
+    if not namespace:
+        namespace = get_default_namespace()
     if params:
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
