@@ -348,10 +348,12 @@ def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str
         raise Exception(json.loads(e.body.decode("utf-8"))["message"]) from None
 
 
-def wait_for_pod(pod_name, timeout_seconds=10):
+def wait_for_pod(pod_name, timeout_seconds=10, namespace: Optional[str] = None):
+    if not namespace:
+        namespace = get_default_namespace()
     sclient = get_static_client()
     while timeout_seconds > 0:
-        pod = sclient.read_namespaced_pod_status(name=pod_name, namespace=get_default_namespace())
+        pod = sclient.read_namespaced_pod_status(name=pod_name, namespace=namespace)
         if pod.status.phase != "Pending":
             return
         sleep(1)
