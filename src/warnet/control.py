@@ -16,11 +16,17 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
+from .constants import (
+    BITCOINCORE_CONTAINER,
+    COMMANDER_CHART,
+    COMMANDER_CONTAINER,
+    LOGGING_NAMESPACE,
+)
 from .k8s import (
     delete_pod,
     get_default_namespace,
     get_mission,
+    get_pod,
     get_pods,
     pod_log,
     snapshot_bitcoin_datadir,
@@ -329,9 +335,28 @@ def _logs(pod_name: str, follow: bool):
             return  # cancelled by user
 
     try:
-        stream = pod_log(pod_name, container_name=None, follow=follow)
-        for line in stream.stream():
-            print(line.decode("utf-8"), end=None)
+        pod = get_pod(pod_name)
+        eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
+        available_container_names = [container.name for container in pod.spec.containers]
+        container_name = next(
+            (
+                container_name
+                for container_name in available_container_names
+                if container_name in eligible_container_names
+            ),
+            None,
+        )
+        if not container_name:
+            print("Could not determine primary container.")
+            return
+    except Exception as e:
+        print(f"Error getting pods. Could not determine primary container: {e}")
+        return
+
+    try:
+        stream = pod_log(pod_name, container_name=container_name, follow=follow)
+        for line in stream:
+            click.echo(line.decode("utf-8").rstrip())
     except Exception as e:
         print(e)
     except KeyboardInterrupt:

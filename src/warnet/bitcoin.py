@@ -5,11 +5,11 @@ from datetime import datetime
 from io import BytesIO
 
 import click
-from urllib3.exceptions import MaxRetryError
-
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
+from urllib3.exceptions import MaxRetryError
 
+from .constants import BITCOINCORE_CONTAINER
 from .k8s import get_default_namespace, get_mission
 from .process import run_command
 
@@ -39,10 +39,11 @@ def _rpc(tank: str, method: str, params: str):
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace()
+
     if params:
-        cmd = f"kubectl -n {namespace} exec {tank} -- bitcoin-cli {method} {' '.join(map(str, params))}"
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
-        cmd = f"kubectl -n {namespace} exec {tank} -- bitcoin-cli {method}"
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
     return run_command(cmd)
 
 
