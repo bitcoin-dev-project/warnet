@@ -10,7 +10,7 @@ from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
 from .constants import BITCOINCORE_CONTAINER
-from .k8s import get_default_namespace, get_mission
+from .k8s import get_default_namespace, get_mission, pod_log
 from .process import run_command
 
 
@@ -79,25 +79,18 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 
     for tank in tanks:
         pod_name = tank.metadata.name
-        # Get container names for this pod
-        containers = tank.spec.containers
-        if not containers:
-            continue
-
-        # Use the first container name
-        container_name = containers[0].name
-        if not container_name:
-            continue
-
-        # Get logs from the specific container
-        command = f"kubectl logs {pod_name} -c {container_name} --timestamps"
-        logs = run_command(command)
+        logs = pod_log(pod_name, BITCOINCORE_CONTAINER)
 
         if logs is not False:
-            # Process logs
-            for log_entry in logs.splitlines():
-                if re.search(pattern, log_entry):
-                    matching_logs.append((log_entry, pod_name))
+            try:
+                for line in logs:
+                    log_entry = line.decode("utf-8").rstrip()
+                    if re.search(pattern, log_entry):
+                        matching_logs.append((log_entry, pod_name))
+            except Exception as e:
+                print(e)
+            except KeyboardInterrupt:
+                print("Interrupted streaming log!")
 
     # Sort logs if needed
     if not no_sort:
