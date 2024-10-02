@@ -12,6 +12,7 @@ from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
+from .constants import BITCOINCORE_CONTAINER
 from .k8s import (
     get_default_namespace,
     get_mission,
@@ -60,7 +61,7 @@ def _rpc(tank: str, method: str, params: tuple[str, ...]) -> str:
         sclient.connect_get_namespaced_pod_exec,
         tank,
         namespace,
-        container="bitcoincore",
+        container=BITCOINCORE_CONTAINER,
         command=cmd,
         stderr=True,
         stdin=False,
