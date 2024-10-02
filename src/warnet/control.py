@@ -16,11 +16,17 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
+from .constants import (
+    BITCOINCORE_CONTAINER,
+    COMMANDER_CHART,
+    COMMANDER_CONTAINER,
+    LOGGING_NAMESPACE,
+)
 from .k8s import (
     delete_pod,
     get_default_namespace,
     get_mission,
+    get_pod,
     get_pods,
     pod_log,
     snapshot_bitcoin_datadir,
@@ -28,7 +34,7 @@ from .k8s import (
     wait_for_pod,
     write_file_to_container,
 )
-from .process import run_command, stream_command
+from .process import run_command
 
 console = Console()
 
@@ -83,11 +89,8 @@ def stop_scenario(scenario_name):
     """Stop a single scenario using Helm"""
     # Stop the pod immediately (faster than uninstalling)
     namespace = get_default_namespace()
-    cmd = f"kubectl --namespace {namespace} delete pod {scenario_name} --grace-period=0 --force"
-    if stream_command(cmd):
-        console.print(f"[bold green]Successfully stopped scenario: {scenario_name}[/bold green]")
-    else:
-        console.print(f"[bold red]Failed to stop scenario: {scenario_name}[/bold red]")
+    delete_pod(scenario_name, namespace, grace_period=0, force=True)
+    console.print(f"[bold yellow]Requested scenario stop: {scenario_name}[/bold yellow]")
 
     # Then uninstall via helm (non-blocking)
     command = f"helm uninstall {scenario_name} --namespace {namespace} --wait=false"
@@ -119,11 +122,6 @@ def down():
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"Initiated uninstall for: {release_name} in namespace {namespace}"
 
-    def delete_pod(pod_name, namespace):
-        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
-
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
 
@@ -139,11 +137,24 @@ def down():
         # Delete remaining pods
         pods = get_pods()
         for pod in pods.items:
-            futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
+            futures.append(
+                executor.submit(
+                    delete_pod,
+                    pod.metadata.name,
+                    pod.metadata.namespace,
+                    grace_period=0,
+                    force=True,
+                    ignore_not_found=True,
+                )
+            )
 
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
-            console.print(f"[yellow]{future.result()}[/yellow]")
+            result = future.result()
+            msg = ""
+            if result:
+                msg = result if isinstance(result, str) else result.metadata.name
+            click.secho(f"Deletion: {msg}", fg="yellow")
 
     console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
     console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
@@ -289,7 +300,7 @@ def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]
         wait_for_pod(name)
         _logs(pod_name=name, follow=True)
         print("Deleting pod...")
-        delete_pod(name)
+        delete_pod(name, namespace=namespace)
 
 
 @click.command()
@@ -301,18 +312,16 @@ def logs(pod_name: str, follow: bool):
 
 
 def _logs(pod_name: str, follow: bool):
-    namespace = get_default_namespace()
-
     if pod_name == "":
         try:
             pods = get_pods()
             pod_list = [item.metadata.name for item in pods.items]
         except Exception as e:
-            print(f"Could not fetch any pods in namespace {namespace}: {e}")
+            print(f"Could not fetch any pods: {e}")
             return
 
         if not pod_list:
-            print(f"Could not fetch any pods in namespace {namespace}")
+            print("Could not fetch any pods")
             return
 
         q = [
@@ -329,9 +338,28 @@ def _logs(pod_name: str, follow: bool):
             return  # cancelled by user
 
     try:
-        stream = pod_log(pod_name, container_name=None, follow=follow)
+        pod = get_pod(pod_name)
+        eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
+        available_container_names = [container.name for container in pod.spec.containers]
+        container_name = next(
+            (
+                container_name
+                for container_name in available_container_names
+                if container_name in eligible_container_names
+            ),
+            None,
+        )
+        if not container_name:
+            print("Could not determine primary container.")
+            return
+    except Exception as e:
+        print(f"Error getting pods. Could not determine primary container: {e}")
+        return
+
+    try:
+        stream = pod_log(pod_name, container_name=container_name, follow=follow)
         for line in stream.stream():
-            print(line.decode("utf-8"), end=None)
+            click.secho(line.decode("utf-8"))
     except Exception as e:
         print(e)
     except KeyboardInterrupt:

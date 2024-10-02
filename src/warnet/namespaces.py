@@ -9,7 +9,7 @@ from .constants import (
     NAMESPACES_DIR,
     NAMESPACES_FILE,
 )
-from .process import run_command, stream_command
+from .k8s import CoreV1Api, V1Status, get_static_client
 
 
 def copy_namespaces_defaults(directory: Path):
@@ -32,17 +32,14 @@ def namespaces():
     """Namespaces commands"""
 
 
-@click.argument(
-    "namespaces_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path)
-)
 @namespaces.command()
 def list():
     """List all namespaces with 'warnet-' prefix"""
-    cmd = "kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'"
-    res = run_command(cmd)
-    all_namespaces = res.split()
-    warnet_namespaces = [ns for ns in all_namespaces if ns.startswith("warnet-")]
-
+    sclient: CoreV1Api = get_static_client()
+    all_namespaces = sclient.list_namespace()
+    warnet_namespaces = [
+        ns.metadata.name for ns in all_namespaces.items if ns.metadata.name.startswith("warnet-")
+    ]
     if warnet_namespaces:
         print("Warnet namespaces:")
         for ns in warnet_namespaces:
@@ -56,33 +53,34 @@ def list():
 @click.argument("namespace", required=False)
 def destroy(destroy_all: bool, namespace: str):
     """Destroy a specific namespace or all warnet- prefixed namespaces"""
+    sclient: CoreV1Api = get_static_client()
     if destroy_all:
-        cmd = "kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'"
-        res = run_command(cmd)
-
-        # Get the list of namespaces
-        all_namespaces = res.split()
-        warnet_namespaces = [ns for ns in all_namespaces if ns.startswith("warnet-")]
+        all_namespaces = sclient.list_namespace()
+        warnet_namespaces = [
+            ns.metadata.name
+            for ns in all_namespaces.items
+            if ns.metadata.name.startswith("warnet-")
+        ]
 
         if not warnet_namespaces:
             print("No warnet namespaces found to destroy.")
             return
 
         for ns in warnet_namespaces:
-            destroy_cmd = f"kubectl delete namespace {ns}"
-            if not stream_command(destroy_cmd):
-                print(f"Failed to destroy namespace: {ns}")
+            resp: V1Status = sclient.delete_namespace(ns)
+            if resp.status:
+                print(f"Destroyed namespace: {ns} with {resp.status}")
             else:
-                print(f"Destroyed namespace: {ns}")
+                print(f"Failed to destroy namespace: {ns}")
     elif namespace:
         if not namespace.startswith("warnet-"):
             print("Error: Can only destroy namespaces with 'warnet-' prefix")
             return
 
-        destroy_cmd = f"kubectl delete namespace {namespace}"
-        if not stream_command(destroy_cmd):
-            print(f"Failed to destroy namespace: {namespace}")
+        resp: V1Status = sclient.delete_namespace(namespace)
+        if resp.status:
+            print(f"Destroying namespace: {namespace} with {resp.status}")
         else:
-            print(f"Destroyed namespace: {namespace}")
+            print(f"Failed to destroy namespace: {namespace}")
     else:
         print("Error: Please specify a namespace or use --all flag.")

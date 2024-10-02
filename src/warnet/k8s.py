@@ -1,16 +1,19 @@
 import json
 import os
-import sys
 import tempfile
 from pathlib import Path
 from time import sleep
+from typing import Optional
 
 import yaml
 from kubernetes import client, config, watch
-from kubernetes.client.models import CoreV1Event, V1PodList
+from kubernetes.client.api import CoreV1Api
+from kubernetes.client.models import V1DeleteOptions, V1Pod, V1PodList, V1Service, V1Status
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
+from kubernetes.utils import create_from_yaml
+from urllib3 import HTTPResponse
 
 from .constants import (
     CADDY_INGRESS_NAME,
@@ -19,10 +22,13 @@ from .constants import (
     KUBECONFIG,
     LOGGING_NAMESPACE,
 )
-from .process import run_command, stream_command
 
 
-def get_static_client() -> CoreV1Event:
+class K8sError(Exception):
+    pass
+
+
+def get_static_client() -> CoreV1Api:
     config.load_kube_config(config_file=KUBECONFIG)
     return client.CoreV1Api()
 
@@ -30,6 +36,36 @@ def get_static_client() -> CoreV1Event:
 def get_dynamic_client() -> DynamicClient:
     config.load_kube_config(config_file=KUBECONFIG)
     return DynamicClient(client.ApiClient())
+
+
+def kexec(pod: str, namespace: str, cmd: [str]) -> str:
+    """It's `kubectl exec` but with a k at the beginning so as not to conflict with python's `exec`"""
+    sclient = get_static_client()
+    resp = stream(
+        sclient.connect_get_namespaced_pod_exec,
+        pod,
+        namespace,
+        command=cmd,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    return resp
+
+
+def get_service(name: str, namespace: Optional[str] = None) -> V1Service:
+    sclient = get_static_client()
+    if not namespace:
+        namespace = get_default_namespace()
+    return sclient.read_namespaced_service(name=name, namespace=namespace)
+
+
+def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
+    sclient = get_static_client()
+    if not namespace:
+        namespace = get_default_namespace()
+    return sclient.read_namespaced_pod(name=name, namespace=namespace)
 
 
 def get_pods() -> V1PodList:
@@ -41,7 +77,7 @@ def get_pods() -> V1PodList:
     return pod_list
 
 
-def get_mission(mission: str) -> list[V1PodList]:
+def get_mission(mission: str) -> list[V1Pod]:
     pods = get_pods()
     crew = []
     for pod in pods.items:
@@ -52,8 +88,7 @@ def get_mission(mission: str) -> list[V1PodList]:
 
 def get_pod_exit_status(pod_name):
     try:
-        sclient = get_static_client()
-        pod = sclient.read_namespaced_pod(name=pod_name, namespace=get_default_namespace())
+        pod = get_pod(pod_name)
         for container_status in pod.status.container_statuses:
             if container_status.state.terminated:
                 return container_status.state.terminated.exit_code
@@ -64,13 +99,14 @@ def get_pod_exit_status(pod_name):
 
 
 def get_edges() -> any:
+    namespace = get_default_namespace()
     sclient = get_static_client()
-    configmap = sclient.read_namespaced_config_map(name="edges", namespace="warnet")
+    configmap = sclient.read_namespaced_config_map(name="edges", namespace=namespace)
     return json.loads(configmap.data["data"])
 
 
 def create_kubernetes_object(
-    kind: str, metadata: dict[str, any], spec: dict[str, any] = None
+    kind: str, metadata: dict[str, any], spec: Optional[dict[str, any]] = None
 ) -> dict[str, any]:
     metadata["namespace"] = get_default_namespace()
     obj = {
@@ -83,22 +119,73 @@ def create_kubernetes_object(
     return obj
 
 
-def set_kubectl_context(namespace: str) -> bool:
+def get_context_entry(kubeconfig_data: dict) -> dict:
+    current_context_name = kubeconfig_data.get("current-context")
+    if not current_context_name:
+        raise K8sError(f"Could not determine current context from config data: {kubeconfig_data}")
+
+    context_entry = next(
+        (
+            ctx
+            for ctx in kubeconfig_data.get("contexts", [])
+            if ctx.get("name") == current_context_name
+        ),
+        None,
+    )
+
+    if not context_entry:
+        raise K8sError(f"Context '{current_context_name}' not found in kubeconfig.")
+
+    return context_entry
+
+
+def set_context_namespace(namespace: str) -> None:
     """
-    Set the default kubectl context to the specified namespace.
+    Set the namespace within the KUBECONFIG's current context
     """
-    command = f"kubectl config set-context --current --namespace={namespace}"
-    result = stream_command(command)
-    if result:
-        print(f"Kubectl context set to namespace: {namespace}")
-    else:
-        print(f"Failed to set kubectl context to namespace: {namespace}")
-    return result
+    try:
+        kubeconfig_data = open_kubeconfig()
+    except K8sError as e:
+        raise K8sError(f"Could not open KUBECONFIG: {KUBECONFIG}") from e
+
+    try:
+        context_entry = get_context_entry(kubeconfig_data)
+    except K8sError as e:
+        raise K8sError(f"Could not get context entry for {KUBECONFIG}") from e
+
+    context_entry["context"]["namespace"] = namespace
+
+    try:
+        write_kubeconfig(kubeconfig_data)
+    except Exception as e:
+        raise K8sError(f"Could not write to KUBECONFIG: {KUBECONFIG}") from e
+
+
+def get_default_namespace() -> str:
+    try:
+        kubeconfig_data = open_kubeconfig()
+    except K8sError as e:
+        raise K8sError(f"Could not open KUBECONFIG: {KUBECONFIG}") from e
+
+    try:
+        context_entry = get_context_entry(kubeconfig_data)
+    except K8sError as e:
+        raise K8sError(f"Could not get context entry for {KUBECONFIG}") from e
+
+    namespace = context_entry["context"].get("namespace", DEFAULT_NAMESPACE)
+
+    return namespace
 
 
 def apply_kubernetes_yaml(yaml_file: str) -> bool:
-    command = f"kubectl apply -f {yaml_file}"
-    return stream_command(command)
+    namespace = get_default_namespace()
+    v1 = get_static_client()
+    path = os.path.abspath(yaml_file)
+    try:
+        create_from_yaml(v1, path, namespace=namespace)
+        return True
+    except Exception as e:
+        raise e
 
 
 def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
@@ -112,29 +199,33 @@ def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
         Path(temp_file_path).unlink()
 
 
-def delete_namespace(namespace: str) -> bool:
-    command = f"kubectl delete namespace {namespace} --ignore-not-found"
-    return run_command(command)
+def delete_namespace(namespace: str) -> V1Status:
+    v1: CoreV1Api = get_static_client()
+    resp = v1.delete_namespace(namespace)
+    return resp
 
 
-def delete_pod(pod_name: str) -> bool:
-    command = f"kubectl -n {get_default_namespace()} delete pod {pod_name}"
-    return stream_command(command)
-
-
-def get_default_namespace() -> str:
-    command = "kubectl config view --minify -o jsonpath='{..namespace}'"
+def delete_pod(
+    pod_name: str,
+    namespace: str,
+    grace_period: int = 30,
+    force: bool = False,
+    ignore_not_found: bool = True,
+) -> Optional[V1Status]:
+    v1: CoreV1Api = get_static_client()
+    delete_options = V1DeleteOptions(
+        grace_period_seconds=grace_period,
+        propagation_policy="Foreground" if force else "Background",
+    )
     try:
-        kubectl_namespace = run_command(command)
-    except Exception as e:
-        print(e)
-        if str(e).find("command not found"):
-            print(
-                "It looks like kubectl is not installed. Please install it to continue: "
-                "https://kubernetes.io/docs/tasks/tools/"
-            )
-        sys.exit(1)
-    return kubectl_namespace if kubectl_namespace else DEFAULT_NAMESPACE
+        resp = v1.delete_namespaced_pod(name=pod_name, namespace=namespace, body=delete_options)
+        return resp
+    except ApiException as e:
+        if e.status == 404 and ignore_not_found:
+            print(f"Pod {pod_name} in namespace {namespace} not found, but ignoring as requested.")
+            return None
+        else:
+            raise
 
 
 def snapshot_bitcoin_datadir(
@@ -220,15 +311,13 @@ def snapshot_bitcoin_datadir(
             if resp.peek_stderr():
                 print(f"Error: {resp.read_stderr()}")
         resp.close()
+
         local_file_path = Path(local_path) / f"{pod_name}_bitcoin_data.tar.gz"
-        copy_command = (
-            f"kubectl cp {namespace}/{pod_name}:/tmp/bitcoin_data.tar.gz {local_file_path}"
-        )
-        if not stream_command(copy_command):
-            raise Exception("Failed to copy tar file from pod to local machine")
+        temp_bitcoin_data_path = "/tmp/bitcoin_data.tar.gz"
+        copy_file_from_pod(namespace, pod_name, temp_bitcoin_data_path, local_file_path)
 
         print(f"Bitcoin data exported successfully to {local_file_path}")
-        cleanup_command = ["rm", "/tmp/bitcoin_data.tar.gz"]
+        cleanup_command = ["rm", temp_bitcoin_data_path]
         stream(
             sclient.connect_get_namespaced_pod_exec,
             pod_name,
@@ -245,6 +334,36 @@ def snapshot_bitcoin_datadir(
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+
+
+def copy_file_from_pod(namespace, pod_name, pod_path, local_path):
+    exec_command = ["cat", pod_path]
+
+    v1 = client.CoreV1Api()
+
+    # Note: We do not specify the container name here; if we pack multiple containers in a pod
+    # we will need to change this
+    resp = stream(
+        v1.connect_get_namespaced_pod_exec,
+        pod_name,
+        namespace,
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+
+    with open(local_path, "wb") as local_file:
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                local_file.write(resp.read_stdout().encode("utf-8"))
+            if resp.peek_stderr():
+                print("Error:", resp.read_stderr())
+
+    resp.close()
 
 
 def wait_for_pod_ready(name, namespace, timeout=300):
@@ -273,6 +392,8 @@ def wait_for_init(pod_name, timeout=300):
     ):
         pod = event["object"]
         if pod.metadata.name == pod_name:
+            if not pod.status.init_container_statuses:
+                continue
             for init_container_status in pod.status.init_container_statuses:
                 if init_container_status.state.running:
                     print(f"initContainer in pod {pod_name} is ready")
@@ -304,7 +425,7 @@ def get_ingress_ip_or_host():
         return None
 
 
-def pod_log(pod_name, container_name=None, follow=False):
+def pod_log(pod_name, container_name=None, follow=False, timestamps=False) -> HTTPResponse:
     sclient = get_static_client()
     try:
         return sclient.read_namespaced_pod_log(
@@ -312,6 +433,7 @@ def pod_log(pod_name, container_name=None, follow=False):
             namespace=get_default_namespace(),
             container=container_name,
             follow=follow,
+            timestamps=timestamps,
             _preload_content=False,
         )
     except ApiException as e:
@@ -351,3 +473,24 @@ def write_file_to_container(pod_name, container_name, dst_path, data):
         return True
     except Exception as e:
         print(f"Failed to copy data to {pod_name}({container_name}):{dst_path}:\n{e}")
+
+
+def open_kubeconfig(kubeconfig_path: str = KUBECONFIG) -> dict:
+    try:
+        with open(kubeconfig_path) as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError as e:
+        raise K8sError(f"Kubeconfig file {kubeconfig_path} not found.") from e
+    except yaml.YAMLError as e:
+        raise K8sError(f"Error parsing kubeconfig: {e}") from e
+
+
+def write_kubeconfig(kube_config: dict) -> None:
+    dir_name = os.path.dirname(KUBECONFIG)
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False) as temp_file:
+            yaml.safe_dump(kube_config, temp_file)
+        os.replace(temp_file.name, KUBECONFIG)
+    except Exception as e:
+        os.remove(temp_file.name)
+        raise K8sError(f"Error writing kubeconfig: {KUBECONFIG}") from e

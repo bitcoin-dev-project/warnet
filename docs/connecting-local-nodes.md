@@ -4,6 +4,9 @@
 
 [Telepresence](https://github.com/telepresenceio/telepresence) can be used to make a connection from the cluster to your local machine. Telepresence is designed to intercept cluster commmunication and forward it to your local machine so we will have to install a dummy pod and service to receive the traffic that will get forwarded.
 
+> [!NOTE]
+> This guide uses `kubectl` which is available from the [Kubernetes website](https://kubernetes.io/docs/tasks/tools/).
+
 ### Run Warnet network
 
 ```shell

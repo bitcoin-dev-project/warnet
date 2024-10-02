@@ -1,3 +1,5 @@
+import base64
+import codecs
 import os
 import re
 import sys
@@ -5,12 +7,21 @@ from datetime import datetime
 from io import BytesIO
 
 import click
-from urllib3.exceptions import MaxRetryError
-
+from kubernetes.stream import stream
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
+from urllib3.exceptions import MaxRetryError
 
-from .k8s import get_default_namespace, get_mission
+from .constants import BITCOINCORE_CONTAINER
+from .k8s import (
+    get_default_namespace,
+    get_mission,
+    get_pod,
+    get_service,
+    get_static_client,
+    kexec,
+    pod_log,
+)
 from .process import run_command
 
 
@@ -23,7 +34,7 @@ def bitcoin():
 @click.argument("tank", type=str)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(tank: str, method: str, params: str):
+def rpc(tank: str, method: str, params: tuple[str, ...]):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
@@ -35,15 +46,40 @@ def rpc(tank: str, method: str, params: str):
     print(result)
 
 
-def _rpc(tank: str, method: str, params: str):
+def _rpc(tank: str, method: str, params: tuple[str, ...]) -> str:
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace()
+
+    sclient = get_static_client()
     if params:
-        cmd = f"kubectl -n {namespace} exec {tank} -- bitcoin-cli {method} {' '.join(map(str, params))}"
+        cmd = ["bitcoin-cli", method]
+        cmd.extend(params)
     else:
-        cmd = f"kubectl -n {namespace} exec {tank} -- bitcoin-cli {method}"
-    return run_command(cmd)
+        cmd = ["bitcoin-cli", method]
+    resp = stream(
+        sclient.connect_get_namespaced_pod_exec,
+        tank,
+        namespace,
+        container=BITCOINCORE_CONTAINER,
+        command=cmd,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+    stdout = ""
+    stderr = ""
+    while resp.is_open():
+        resp.update(timeout=1)
+        if resp.peek_stdout():
+            stdout_chunk = resp.read_stdout()
+            stdout += stdout_chunk
+        if resp.peek_stderr():
+            stderr_chunk = resp.read_stderr()
+            stderr += stderr_chunk
+    return stdout + stderr
 
 
 @bitcoin.command()
@@ -52,7 +88,7 @@ def debug_log(tank: str):
     """
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
-    cmd = f"kubectl logs {tank}"
+    cmd = f"warnet logs {tank}"
     try:
         print(run_command(cmd))
     except Exception as e:
@@ -67,14 +103,13 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     """
     Grep combined bitcoind logs using regex <pattern>
     """
-
     try:
         tanks = get_mission("tank")
     except MaxRetryError as e:
         print(f"{e}")
         sys.exit(1)
 
-    matching_logs = []
+    matching_logs: list[tuple[str, any]] = []
 
     for tank in tanks:
         pod_name = tank.metadata.name
@@ -89,14 +124,14 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             continue
 
         # Get logs from the specific container
-        command = f"kubectl logs {pod_name} -c {container_name} --timestamps"
-        logs = run_command(command)
+        log_stream = pod_log(pod_name, container_name, timestamps=True)
 
-        if logs is not False:
-            # Process logs
-            for log_entry in logs.splitlines():
-                if re.search(pattern, log_entry):
-                    matching_logs.append((log_entry, pod_name))
+        compiled_pattern = re.compile(pattern)
+
+        for log_line in iter_lines_from_stream(log_stream):
+            log_entry = log_line.rstrip("\n")
+            if compiled_pattern.search(log_entry):
+                matching_logs.append((log_entry, pod_name))
 
     # Sort logs if needed
     if not no_sort:
@@ -119,6 +154,22 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             print(f"{pod_name}: {log_entry}")
 
     return matching_logs
+
+
+def iter_lines_from_stream(log_stream, encoding="utf-8"):
+    decoder = codecs.getincrementaldecoder(encoding)()
+    buffer = ""
+    for chunk in log_stream.stream():
+        # Decode the chunk incrementally
+        text = decoder.decode(chunk)
+        buffer += text
+        # Split the buffer into lines
+        lines = buffer.split("\n")
+        buffer = lines.pop()  # Last item is incomplete line or empty
+        yield from lines
+    # Yield any remaining text in the buffer
+    if buffer:
+        yield buffer
 
 
 @bitcoin.command()
@@ -167,17 +218,18 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
     # Get the IP of node_b
-    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}'"
-    tank_b_ip = run_command(cmd).strip()
+    tank_b_pod = get_pod(tank_b)
+    tank_b_ip = tank_b_pod.status.pod_ip
 
     # Get the service IP of node_b
-    cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}'"
-    tank_b_service_ip = run_command(cmd).strip()
+    tank_b_service = get_service(tank_b)
+    tank_b_service_ip = tank_b_service.spec.cluster_ip
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec {tank_a} -- ls {base_dir}"
 
-    dirs = run_command(cmd).splitlines()
+    resp = kexec(tank_a, get_default_namespace(), ["ls", base_dir])
+
+    dirs = resp.splitlines()
 
     messages = []
 
@@ -186,18 +238,15 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec {tank_a} -- cat {file_path}"
-                import subprocess
 
-                blob = subprocess.run(
-                    cmd, shell=True, capture_output=True, executable="bash"
-                ).stdout
-
+                resp = kexec(tank_a, get_default_namespace(), ["base64", file_path])
+                resp_bytes = base64.b64decode(resp)
                 # Parse the blob
-                json = parse_raw_messages(blob, outbound)
+                json = parse_raw_messages(resp_bytes, outbound)
                 messages = messages + json
 
     messages.sort(key=lambda x: x["time"])
+
     return messages
 
 

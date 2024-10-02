@@ -62,7 +62,7 @@ class ScenariosTest(TestBase):
         try:
             deployed = scenarios_deployed()
             commander = deployed[0]["commander"]
-            command = f"kubectl logs {commander}"
+            command = f"warnet logs {commander}"
             print("\ncommander output:")
             print(run_command(command))
             print("\n")

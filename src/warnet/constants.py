@@ -11,10 +11,13 @@ WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
 ]
 
-DEFAULT_NAMESPACE = "warnet"
+DEFAULT_NAMESPACE = "default"
 LOGGING_NAMESPACE = "warnet-logging"
 INGRESS_NAMESPACE = "ingress"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
+
+BITCOINCORE_CONTAINER = "bitcoincore"
+COMMANDER_CONTAINER = "commander"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
