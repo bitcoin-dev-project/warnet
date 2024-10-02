@@ -22,7 +22,12 @@ from .constants import (
     NETWORK_FILE,
     WARGAMES_NAMESPACE_PREFIX,
 )
-from .k8s import get_default_namespace, wait_for_ingress_controller, wait_for_pod_ready
+from .k8s import (
+    get_default_namespace,
+    get_namespaces_by_prefix,
+    wait_for_ingress_controller,
+    wait_for_pod_ready,
+)
 from .process import stream_command
 
 
@@ -44,10 +49,27 @@ def validate_directory(ctx, param, value):
     callback=validate_directory,
 )
 @click.option("--debug", is_flag=True)
-@click.option("--namespace", type=str)
-def deploy(directory, debug, namespace):
+@click.option("--namespace", type=str, help="Specify a namespace in which to deploy the network")
+@click.option("--to-all-users", is_flag=True, help="Deploy network to all user namespaces")
+def deploy(directory, debug, namespace, to_all_users):
+    """Deploy a warnet with topology loaded from <directory>"""
+    if to_all_users:
+        namespaces = get_namespaces_by_prefix(WARGAMES_NAMESPACE_PREFIX)
+        for namespace in namespaces:
+            _deploy(directory, debug, namespace.metadata.name, False)
+    else:
+        _deploy(directory, debug, namespace, to_all_users)
+
+
+def _deploy(directory, debug, namespace, to_all_users):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
+
+    if to_all_users:
+        namespaces = get_namespaces_by_prefix(WARGAMES_NAMESPACE_PREFIX)
+        for namespace in namespaces:
+            deploy(directory, debug, namespace.metadata.name, False)
+        return
 
     if (directory / NETWORK_FILE).exists():
         dl = deploy_logging_stack(directory, debug)
