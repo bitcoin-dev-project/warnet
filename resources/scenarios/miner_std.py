@@ -41,15 +41,21 @@ class MinerStd(Commander):
             action="store_true",
             help="When true, generate 101 blocks ONCE per miner",
         )
+        parser.add_argument(
+            "--tank",
+            dest="tank",
+            type=str,
+            help="Select one tank by name as the only miner",
+        )
 
     def run_test(self):
         self.log.info("Starting miners.")
-
-        max_miners = 1
-        if self.options.allnodes:
-            max_miners = len(self.nodes)
-        for index in range(max_miners):
-            self.miners.append(Miner(self.nodes[index], self.options.mature))
+        if self.options.tank:
+            self.miners = [Miner(self.tanks[self.options.tank], self.options.mature)]
+        else:
+            max_miners = len(self.nodes) if self.options.allnodes else 1
+            for index in range(max_miners):
+                self.miners.append(Miner(self.nodes[index], self.options.mature))
 
         while True:
             for miner in self.miners:
