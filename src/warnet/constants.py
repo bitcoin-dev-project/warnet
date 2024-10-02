@@ -16,6 +16,9 @@ LOGGING_NAMESPACE = "warnet-logging"
 INGRESS_NAMESPACE = "ingress"
 HELM_COMMAND = "helm upgrade --install --create-namespace"
 
+BITCOINCORE_CONTAINER = "bitcoincore"
+COMMANDER_CONTAINER = "commander"
+
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
 RESOURCES_DIR = files("resources")
