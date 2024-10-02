@@ -9,7 +9,8 @@ from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
-from .k8s import get_default_namespace, get_mission, get_pod
+from .constants import BITCOINCORE_CONTAINER
+from .k8s import get_default_namespace, get_mission
 from .process import run_command
 
 
@@ -39,18 +40,10 @@ def _rpc(tank: str, method: str, params: str):
     # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace()
 
-    try:
-        pod = get_pod(tank)
-        container_names = [container.name for container in pod.spec.containers]
-        container_name = container_names[0]
-    except Exception as e:
-        print(f"Could not determine primary container: {e}")
-        return
-
     if params:
-        cmd = f"kubectl -n {namespace} exec {tank} --container {container_name} -- bitcoin-cli {method} {' '.join(map(str, params))}"
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
-        cmd = f"kubectl -n {namespace} exec {tank} --container {container_name} -- bitcoin-cli {method}"
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
     return run_command(cmd)
 
 
