@@ -16,7 +16,12 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from .constants import COMMANDER_CHART, LOGGING_NAMESPACE
+from .constants import (
+    BITCOINCORE_CONTAINER,
+    COMMANDER_CHART,
+    COMMANDER_CONTAINER,
+    LOGGING_NAMESPACE,
+)
 from .k8s import (
     delete_pod,
     get_default_namespace,
@@ -331,10 +336,21 @@ def _logs(pod_name: str, follow: bool):
 
     try:
         pod = get_pod(pod_name)
-        container_names = [container.name for container in pod.spec.containers]
-        container_name = container_names[0]
+        eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
+        available_container_names = [container.name for container in pod.spec.containers]
+        container_name = next(
+            (
+                container_name
+                for container_name in available_container_names
+                if container_name in eligible_container_names
+            ),
+            None,
+        )
+        if not container_name:
+            print("Could not determine primary container.")
+            return
     except Exception as e:
-        print(f"Could not determine primary container: {e}")
+        print(f"Error getting pods. Could not determine primary container: {e}")
         return
 
     try:
