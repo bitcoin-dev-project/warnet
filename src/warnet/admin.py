@@ -62,7 +62,7 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
     os.makedirs(kubeconfig_dir, exist_ok=True)
 
     # Get all namespaces that start with prefix
-    # This assumes when deploying multiple namespacs for the purpose of team games, all namespaces start with a prefix,
+    # This assumes when deploying multiple namespaces for the purpose of team games, all namespaces start with a prefix,
     # e.g., tabconf-wargames-*. Currently, this is a bit brittle, but we can improve on this in the future
     # by automatically applying a TEAM_PREFIX when creating the get_warnet_namespaces
     # TODO: choose a prefix convention and have it managed by the helm charts instead of requiring the
