@@ -29,19 +29,18 @@ class NamespaceAdminTest(TestBase):
             os.chdir(self.tmpdir)
             self.log.info(f"Running test in: {self.tmpdir}")
             self.setup_namespaces()
-            self.current_context = get_kubeconfig_value("{.current-context}")
+            self.initial_context = get_kubeconfig_value("{.current-context}")
             self.setup_service_accounts()
             self.deploy_network_in_team_namespaces()
             self.authenticate_and_become_bob()
-            self.become_minikube_once_again()
+            self.return_to_intial_context()
         finally:
             self.cleanup()
 
-    def become_minikube_once_again(self):
-        minikube = "minikube"
-        cmd = f"kubectl config use-context {minikube}"
+    def return_to_intial_context(self):
+        cmd = f"kubectl config use-context {self.initial_context}"
         self.log.info(run_command(cmd))
-        self.wait_for_predicate(self.this_is_the_current_context(minikube))
+        self.wait_for_predicate(self.this_is_the_current_context(self.initial_context))
 
     def this_is_the_current_context(self, context: str) -> Callable[[], bool]:
         cmd = "kubectl config current-context"
@@ -69,7 +68,7 @@ class NamespaceAdminTest(TestBase):
 
     def authenticate_and_become_bob(self):
         self.log.info("Authenticating and becoming bob...")
-        assert get_kubeconfig_value("{.current-context}") == self.current_context
+        assert get_kubeconfig_value("{.current-context}") == self.initial_context
         self.log.info(self.warnet("auth kubeconfigs/bob-wargames-red-team-kubeconfig"))
         assert get_kubeconfig_value("{.current-context}") == "bob-wargames-red-team"
 
