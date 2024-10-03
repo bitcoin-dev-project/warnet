@@ -28,8 +28,7 @@ Modify this chart based on the number of teams and users you have.
 Deploy the *two_namespaces_two_users* chart.
 
 ```shell
-$ cd namespaces
-$ warnet deploy two_namespaces_two_users
+$ warnet deploy namespaces/two_namespaces_two_users
 ```
 
 Observe that this creates service accounts and namespaces in the cluster:
