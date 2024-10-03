@@ -12,7 +12,7 @@ from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
 from .constants import BITCOINCORE_CONTAINER
-from .k8s import get_default_namespace, get_mission, pod_log, get_default_namespace_or
+from .k8s import get_default_namespace_or, get_mission, pod_log
 from .process import run_command
 
 

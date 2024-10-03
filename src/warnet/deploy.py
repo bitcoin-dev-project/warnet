@@ -24,9 +24,10 @@ from .constants import (
 )
 from .k8s import (
     get_default_namespace,
+    get_default_namespace_or,
     get_namespaces_by_prefix,
     wait_for_ingress_controller,
-    wait_for_pod_ready, get_default_namespace_or,
+    wait_for_pod_ready,
 )
 from .process import stream_command
 

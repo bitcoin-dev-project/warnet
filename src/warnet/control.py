@@ -27,6 +27,7 @@ from .constants import (
 from .k8s import (
     delete_pod,
     get_default_namespace,
+    get_default_namespace_or,
     get_mission,
     get_namespaces,
     get_pod,
@@ -35,7 +36,7 @@ from .k8s import (
     snapshot_bitcoin_datadir,
     wait_for_init,
     wait_for_pod,
-    write_file_to_container, get_default_namespace_or,
+    write_file_to_container,
 )
 from .process import run_command, stream_command
 

@@ -424,4 +424,3 @@ def get_service_accounts_in_namespace(namespace):
     # skip the default service account created by k8s
     service_accounts = run_command(command).split()
     return [sa for sa in service_accounts if sa != "default"]
-
