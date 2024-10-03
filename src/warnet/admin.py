@@ -52,7 +52,7 @@ def init():
     help="Duration of the token in seconds (default: 48 hours)",
 )
 def create_kubeconfigs(kubeconfig_dir, token_duration):
-    """Create kubeconfig files for all ServiceAccounts in warnet team namespaces starting with <prefix>."""
+    """Create kubeconfig files for ServiceAccounts"""
     kubeconfig_dir = os.path.expanduser(kubeconfig_dir)
 
     cluster_name = get_kubeconfig_value("{.clusters[0].name}")
