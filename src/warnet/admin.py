@@ -6,7 +6,7 @@ import yaml
 from rich import print as richprint
 
 from .constants import NETWORK_DIR, WARGAMES_NAMESPACE_PREFIX
-from .k8s import get_kubeconfig_value, get_namespaces_by_prefix, get_service_accounts_in_namespace
+from .k8s import get_kubeconfig_value, get_namespaces_by_type, get_service_accounts_in_namespace
 from .namespaces import copy_namespaces_defaults, namespaces
 from .network import copy_network_defaults
 from .process import run_command
@@ -67,7 +67,7 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
     # TODO: choose a prefix convention and have it managed by the helm charts instead of requiring the
     # admin user to pipe through the correct string in multiple places. Another would be to use
     # labels instead of namespace naming conventions
-    warnet_namespaces = get_namespaces_by_prefix(WARGAMES_NAMESPACE_PREFIX)
+    warnet_namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
 
     for v1namespace in warnet_namespaces:
         namespace = v1namespace.metadata.name

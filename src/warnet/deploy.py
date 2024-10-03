@@ -25,7 +25,7 @@ from .constants import (
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
-    get_namespaces_by_prefix,
+    get_namespaces_by_type,
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
@@ -55,7 +55,7 @@ def validate_directory(ctx, param, value):
 def deploy(directory, debug, namespace, to_all_users):
     """Deploy a warnet with topology loaded from <directory>"""
     if to_all_users:
-        namespaces = get_namespaces_by_prefix(WARGAMES_NAMESPACE_PREFIX)
+        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         for namespace in namespaces:
             _deploy(directory, debug, namespace.metadata.name, False)
     else:
@@ -67,7 +67,7 @@ def _deploy(directory, debug, namespace, to_all_users):
     directory = Path(directory)
 
     if to_all_users:
-        namespaces = get_namespaces_by_prefix(WARGAMES_NAMESPACE_PREFIX)
+        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         for namespace in namespaces:
             deploy(directory, debug, namespace.metadata.name, False)
         return

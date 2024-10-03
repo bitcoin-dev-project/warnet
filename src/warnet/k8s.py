@@ -408,12 +408,12 @@ def get_namespaces() -> list[V1Namespace]:
             return []
 
 
-def get_namespaces_by_prefix(prefix: str) -> list[V1Namespace]:
+def get_namespaces_by_type(namespace_type: str) -> list[V1Namespace]:
     """
     Get all namespaces beginning with `prefix`. Returns empty list of no namespaces with the specified prefix are found.
     """
     namespaces = get_namespaces()
-    return [ns for ns in namespaces if ns.metadata.name.startswith(prefix)]
+    return [ns for ns in namespaces if ns.metadata.name.startswith(namespace_type)]
 
 
 def get_service_accounts_in_namespace(namespace):
