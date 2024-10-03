@@ -26,7 +26,7 @@ from .k8s import (
     get_default_namespace,
     get_namespaces_by_prefix,
     wait_for_ingress_controller,
-    wait_for_pod_ready,
+    wait_for_pod_ready, get_default_namespace_or,
 )
 from .process import stream_command
 
@@ -218,11 +218,10 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     network_file_path = directory / NETWORK_FILE
     defaults_file_path = directory / DEFAULTS_FILE
 
+    namespace = get_default_namespace_or(namespace)
+
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
-
-    if not namespace:
-        namespace = get_default_namespace()
 
     for node in network_file["nodes"]:
         click.echo(f"Deploying node: {node.get('name')}")

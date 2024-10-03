@@ -35,7 +35,7 @@ from .k8s import (
     snapshot_bitcoin_datadir,
     wait_for_init,
     wait_for_pod,
-    write_file_to_container,
+    write_file_to_container, get_default_namespace_or,
 )
 from .process import run_command, stream_command
 
@@ -236,8 +236,7 @@ def run(
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
 
     scenario_path = Path(scenario_file).resolve()
     scenario_dir = scenario_path.parent if not source_dir else Path(source_dir).resolve()
@@ -361,8 +360,7 @@ def logs(pod_name: str, follow: bool, namespace: str):
 
 
 def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
 
     if pod_name == "":
         try:

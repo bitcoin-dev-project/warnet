@@ -51,9 +51,8 @@ def get_pods() -> list[V1Pod]:
 
 
 def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
-    if not namespace:
-        namespace = get_default_namespace()
     return sclient.read_namespaced_pod(name=name, namespace=namespace)
 
 
@@ -67,8 +66,7 @@ def get_mission(mission: str) -> list[V1Pod]:
 
 
 def get_pod_exit_status(pod_name, namespace: Optional[str] = None):
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     try:
         sclient = get_static_client()
         pod = sclient.read_namespaced_pod(name=pod_name, namespace=namespace)
@@ -82,8 +80,7 @@ def get_pod_exit_status(pod_name, namespace: Optional[str] = None):
 
 
 def get_edges(namespace: Optional[str] = None) -> any:
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     configmap = sclient.read_namespaced_config_map(name="edges", namespace=namespace)
     return json.loads(configmap.data["data"])
@@ -138,8 +135,7 @@ def delete_namespace(namespace: str) -> bool:
 
 
 def delete_pod(pod_name: str, namespace: Optional[str] = None) -> bool:
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     command = f"kubectl -n {namespace} delete pod {pod_name}"
     return stream_command(command)
 
@@ -159,6 +155,10 @@ def get_default_namespace() -> str:
     return kubectl_namespace if kubectl_namespace else DEFAULT_NAMESPACE
 
 
+def get_default_namespace_or(namespace: Optional[str]) -> str:
+    return namespace if namespace else get_default_namespace()
+
+
 def snapshot_bitcoin_datadir(
     pod_name: str,
     chain: str,
@@ -166,8 +166,7 @@ def snapshot_bitcoin_datadir(
     filters: list[str] = None,
     namespace: Optional[str] = None,
 ) -> None:
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
 
     try:
@@ -292,8 +291,7 @@ def wait_for_pod_ready(name, namespace, timeout=300):
 
 
 def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     w = watch.Watch()
     for event in w.stream(
@@ -335,9 +333,9 @@ def get_ingress_ip_or_host():
 
 
 def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str] = None):
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
-    if not namespace:
-        namespace = get_default_namespace()
+
     try:
         return sclient.read_namespaced_pod_log(
             name=pod_name,
@@ -351,8 +349,7 @@ def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str
 
 
 def wait_for_pod(pod_name, timeout_seconds=10, namespace: Optional[str] = None):
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     while timeout_seconds > 0:
         pod = sclient.read_namespaced_pod_status(name=pod_name, namespace=namespace)
@@ -365,8 +362,7 @@ def wait_for_pod(pod_name, timeout_seconds=10, namespace: Optional[str] = None):
 def write_file_to_container(
     pod_name, container_name, dst_path, data, namespace: Optional[str] = None
 ):
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     exec_command = ["sh", "-c", f"cat > {dst_path}"]
     try:
@@ -428,3 +424,4 @@ def get_service_accounts_in_namespace(namespace):
     # skip the default service account created by k8s
     service_accounts = run_command(command).split()
     return [sa for sa in service_accounts if sa != "default"]
+

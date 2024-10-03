@@ -12,7 +12,7 @@ from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
 from .constants import BITCOINCORE_CONTAINER
-from .k8s import get_default_namespace, get_mission, pod_log
+from .k8s import get_default_namespace, get_mission, pod_log, get_default_namespace_or
 from .process import run_command
 
 
@@ -41,8 +41,7 @@ def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
 def _rpc(tank: str, method: str, params: str, namespace: Optional[str] = None):
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     if params:
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
@@ -57,8 +56,7 @@ def debug_log(tank: str, namespace: Optional[str]):
     """
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
-    if not namespace:
-        namespace = get_default_namespace()
+    namespace = get_default_namespace_or(namespace)
     cmd = f"kubectl logs {tank} --namespace {namespace}"
     try:
         print(run_command(cmd))
@@ -142,10 +140,8 @@ def messages(
     Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
     """
     try:
-        if not namespace_a:
-            namespace_a = get_default_namespace()
-        if not namespace_b:
-            namespace_b = get_default_namespace()
+        namespace_a = get_default_namespace_or(namespace_a)
+        namespace_b = get_default_namespace_or(namespace_b)
 
         # Get the messages
         messages = get_messages(
