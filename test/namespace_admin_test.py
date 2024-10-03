@@ -6,7 +6,8 @@ from typing import Callable, Optional
 
 from test_base import TestBase
 
-from warnet.k8s import get_kubeconfig_value
+from warnet.constants import WARGAMES_NAMESPACE_PREFIX
+from warnet.k8s import get_kubeconfig_value, get_static_client
 from warnet.process import run_command
 
 
@@ -72,30 +73,30 @@ class NamespaceAdminTest(TestBase):
         self.log.info(self.warnet("auth kubeconfigs/bob-wargames-red-team-kubeconfig"))
         assert get_kubeconfig_value("{.current-context}") == "bob-wargames-red-team"
 
-    def get_service_accounts(self) -> Optional[dict[str, str]]:
-        self.log.info("Setting up service accounts")
-        resp = self.warnet("admin service-accounts list")
-        if resp == "Could not find any matching service accounts.":
-            return None
-        service_accounts: dict[str, [str]] = {}
-        current_namespace = ""
-        for line in resp.splitlines():
-            if line.startswith("Service"):
-                current_namespace = line.split(": ")[1]
-                service_accounts[current_namespace] = []
-            if line.startswith("- "):
-                sa = line.lstrip("- ")
-                service_accounts[current_namespace].append(sa)
-        self.log.info(f"Service accounts: {service_accounts}")
-        return service_accounts
-
     def service_accounts_are_validated(self) -> bool:
         self.log.info("Checking service accounts")
-        maybe_service_accounts = self.get_service_accounts()
+        sclient = get_static_client()
+        namespaces = sclient.list_namespace().items
+
+        filtered_namespaces = [
+            ns.metadata.name
+            for ns in namespaces
+            if ns.metadata.name.startswith(WARGAMES_NAMESPACE_PREFIX)
+        ]
+        assert len(filtered_namespaces) != 0
+
+        maybe_service_accounts = {}
+
+        for namespace in filtered_namespaces:
+            service_accounts = sclient.list_namespaced_service_account(namespace=namespace).items
+            for sa in service_accounts:
+                maybe_service_accounts.setdefault(namespace, []).append(sa.metadata.name)
+
         expected = {
             "wargames-blue-team": ["carol", "default", "mallory"],
             "wargames-red-team": ["alice", "bob", "default"],
         }
+
         return maybe_service_accounts == expected
 
     def get_namespaces(self) -> Optional[list[str]]:
