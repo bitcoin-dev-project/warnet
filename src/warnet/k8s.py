@@ -424,3 +424,37 @@ def get_service_accounts_in_namespace(namespace):
     # skip the default service account created by k8s
     service_accounts = run_command(command).split()
     return [sa for sa in service_accounts if sa != "default"]
+
+
+def can_delete_pods(namespace: Optional[str] = None) -> bool:
+    namespace = get_default_namespace_or(namespace)
+
+    get_static_client()
+    auth_api = client.AuthorizationV1Api()
+
+    # Define the SelfSubjectAccessReview request for deleting pods
+    access_review = client.V1SelfSubjectAccessReview(
+        spec=client.V1SelfSubjectAccessReviewSpec(
+            resource_attributes=client.V1ResourceAttributes(
+                namespace=namespace,
+                verb="delete",  # Action: 'delete'
+                resource="pods",  # Resource: 'pods'
+            )
+        )
+    )
+
+    try:
+        # Perform the SelfSubjectAccessReview check
+        review_response = auth_api.create_self_subject_access_review(body=access_review)
+
+        # Check the result and return
+        if review_response.status.allowed:
+            print(f"Service account can delete pods in namespace '{namespace}'.")
+            return True
+        else:
+            print(f"Service account CANNOT delete pods in namespace '{namespace}'.")
+            return False
+
+    except ApiException as e:
+        print(f"An error occurred: {e}")
+        return False
