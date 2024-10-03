@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import click
+import yaml
 from rich import print as richprint
 
 from .constants import NETWORK_DIR, WARGAMES_NAMESPACE_PREFIX
@@ -92,27 +93,32 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
             # might not be worth it since we are just reading the yaml to then create a bunch of values and its not
             # actually used to deploy anything into the cluster
             # Then benefit would be making this code a bit cleaner and easy to follow, fwiw
-            kubeconfig_content = f"""apiVersion: v1
-kind: Config
-clusters:
-- name: {cluster_name}
-  cluster:
-    server: {cluster_server}
-    certificate-authority-data: {cluster_ca}
-users:
-- name: {sa}
-  user:
-    token: {token}
-contexts:
-- name: {sa}-{namespace}
-  context:
-    cluster: {cluster_name}
-    namespace: {namespace}
-    user: {sa}
-current-context: {sa}-{namespace}
-"""
+
+            kubeconfig_dict = {
+                "apiVersion": "v1",
+                "kind": "Config",
+                "clusters": [
+                    {
+                        "name": cluster_name,
+                        "cluster": {
+                            "server": cluster_server,
+                            "certificate-authority-data": cluster_ca,
+                        },
+                    }
+                ],
+                "users": [{"name": sa, "user": {"token": token}}],
+                "contexts": [
+                    {
+                        "name": f"{sa}-{namespace}",
+                        "context": {"cluster": cluster_name, "namespace": namespace, "user": sa},
+                    }
+                ],
+                "current-context": f"{sa}-{namespace}",
+            }
+
+            # Write to a YAML file
             with open(kubeconfig_file, "w") as f:
-                f.write(kubeconfig_content)
+                yaml.dump(kubeconfig_dict, f, default_flow_style=False)
 
             click.echo(f"    Created kubeconfig file for {sa}: {kubeconfig_file}")
 
