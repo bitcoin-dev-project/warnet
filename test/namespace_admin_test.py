@@ -27,6 +27,7 @@ class NamespaceAdminTest(TestBase):
     def run_test(self):
         try:
             self.setup_namespaces()
+            self.current_context = get_kubeconfig_value("{.current-context}")
             self.setup_service_accounts()
             self.deploy_network_in_team_namespaces()
             self.authenticate_and_become_bob()
@@ -66,7 +67,7 @@ class NamespaceAdminTest(TestBase):
 
     def authenticate_and_become_bob(self):
         self.log.info("Authenticating and becoming bob...")
-        assert get_kubeconfig_value("{.current-context}") == "minikube"
+        assert get_kubeconfig_value("{.current-context}") == self.current_context
         self.log.info(self.warnet("auth kubeconfigs/bob-wargames-red-team-kubeconfig"))
         assert get_kubeconfig_value("{.current-context}") == "bob-wargames-red-team"
 
