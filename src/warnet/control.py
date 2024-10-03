@@ -26,6 +26,7 @@ from .constants import (
     TANK_MISSION,
 )
 from .k8s import (
+    can_delete_pods,
     delete_pod,
     get_default_namespace,
     get_default_namespace_or,
@@ -137,6 +138,10 @@ def down(force):
         cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
+
+    if not can_delete_pods():
+        click.secho("You do not have permission to bring down the network.", fg="red")
+        return
 
     namespaces = get_namespaces()
     release_list: list[dict[str, str]] = []
