@@ -1,11 +1,13 @@
 nodes:
   - name: tank-0001
+    config: uacomment=tank0001
     image:
       tag: "26.0"
     connect:
       - tank-0002
       - tank-0003
   - name: tank-0002
+    config: uacomment=tank0002
     resources:
       limits:
         cpu: 100m
@@ -17,14 +19,17 @@ nodes:
       - tank-0003
       - tank-0004
   - name: tank-0003
+    config: uacomment=tank0003
     connect:
       - tank-0004
       - tank-0005
   - name: tank-0004
+    config: uacomment=tank0004
     connect:
       - tank-0005
       - tank-0006
   - name: tank-0005
+    config: uacomment=tank0005
     connect:
       - tank-0006
   - name: tank-0006

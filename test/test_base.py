@@ -39,6 +39,7 @@ class TestBase:
         logging.config.dictConfig(logging_config)
         self.log = logging.getLogger("test")
         self.log.info("Logging started")
+        self.log.info(f"Testdir: {self.tmpdir}")
 
     def cleanup(self, signum=None, frame=None):
         try:

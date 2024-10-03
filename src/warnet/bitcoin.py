@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime
 from io import BytesIO
@@ -181,7 +182,6 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
                 cmd = f"kubectl exec {tank_a} -- cat {file_path}"
-                import subprocess
 
                 blob = subprocess.run(
                     cmd, shell=True, capture_output=True, executable="bash"

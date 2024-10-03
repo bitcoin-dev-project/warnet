@@ -38,6 +38,7 @@ jobs:
         test:
           - conf_test.py
           - dag_connection_test.py
+          - graph_test.py
           - logging_test.py
           - rpc_test.py
           - services_test.py
@@ -87,24 +88,3 @@ jobs:
           name: kubernetes-logs-${{ matrix.test }}
           path: ./k8s-logs
           retention-days: 5
-  test-without-mk:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        test:
-          - graph_test.py
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          version: "latest"
-          enable-cache: true
-      - name: Install Python
-        run: uv python install $PYTHON_VERSION
-      - name: Install project
-        run: uv sync --all-extras --dev
-      - name: Run tests
-        run: |
-          source .venv/bin/activate
-          ./test/${{matrix.test}}

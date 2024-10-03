@@ -13,6 +13,7 @@ data:
     rpcport={{ index .Values .Values.chain "RPCPort" }}
     zmqpubrawblock=tcp://0.0.0.0:{{ .Values.ZMQBlockPort }}
     zmqpubrawtx=tcp://0.0.0.0:{{ .Values.ZMQTxPort }}
+    {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
     {{- range .Values.connect }}
       {{- print "connect=" . | nindent 4}}

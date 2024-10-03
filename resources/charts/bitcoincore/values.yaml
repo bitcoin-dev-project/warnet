@@ -133,6 +133,8 @@ baseConfig: |
 
 config: ""
 
+defaultConfig: ""
+
 connect: []
 loadSnapshot:
   enabled: false
