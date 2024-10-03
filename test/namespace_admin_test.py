@@ -26,6 +26,8 @@ class NamespaceAdminTest(TestBase):
 
     def run_test(self):
         try:
+            os.chdir(self.tmpdir)
+            self.log.info(f"Running test in: {self.tmpdir}")
             self.setup_namespaces()
             self.current_context = get_kubeconfig_value("{.current-context}")
             self.setup_service_accounts()
