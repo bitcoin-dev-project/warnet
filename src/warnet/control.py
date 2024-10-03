@@ -12,6 +12,7 @@ from typing import Optional
 import click
 import inquirer
 from inquirer.themes import GreenPassion
+from kubernetes.client.models import V1Pod
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
@@ -21,8 +22,8 @@ from .constants import (
     BITCOINCORE_CONTAINER,
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
-    INGRESS_NAMESPACE,
-    LOGGING_NAMESPACE,
+    COMMANDER_MISSION,
+    TANK_MISSION,
 )
 from .k8s import (
     delete_pod,
@@ -363,20 +364,23 @@ def logs(pod_name: str, follow: bool, namespace: str):
 def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
     namespace = get_default_namespace_or(namespace)
 
+    def format_pods(pods: list[V1Pod]) -> list[str]:
+        return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in pods]
+
     if pod_name == "":
         try:
-            pods = get_pods()
-            pod_list = [
-                f"{item.metadata.name}: {item.metadata.namespace}"
-                for item in pods
-                if item.metadata.namespace not in [LOGGING_NAMESPACE, INGRESS_NAMESPACE]
-            ]
+            pod_list = []
+            formatted_commanders = format_pods(get_mission(COMMANDER_MISSION))
+            formatted_tanks = format_pods(get_mission(TANK_MISSION))
+            pod_list.extend(formatted_commanders)
+            pod_list.extend(formatted_tanks)
+
         except Exception as e:
-            print(f"Could not fetch any pods in namespace {namespace}: {e}")
+            print(f"Could not fetch any pods in namespace ({namespace}): {e}")
             return
 
         if not pod_list:
-            print(f"Could not fetch any pods in namespace {namespace}")
+            print(f"Could not fetch any pods in namespace ({namespace})")
             return
 
         q = [
