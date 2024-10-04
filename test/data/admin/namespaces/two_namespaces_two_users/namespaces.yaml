@@ -1,19 +1,19 @@
 namespaces:
-  - name: wargames-red-team
+  - name: wargames-red-team-warnettest
     users:
-      - name: alice
+      - name: alice-warnettest
         roles:
           - pod-viewer
-      - name: bob
+      - name: bob-warnettest
         roles:
           - pod-viewer
           - pod-manager
-  - name: wargames-blue-team
+  - name: wargames-blue-team-warnettest
     users:
-      - name: mallory
+      - name: mallory-warnettest
         roles:
           - pod-viewer
-      - name: carol
+      - name: carol-warnettest
         roles:
           - pod-viewer
           - pod-manager

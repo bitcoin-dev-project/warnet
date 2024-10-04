@@ -3,8 +3,8 @@ nodes:
     image:
       tag: "26.0"
     connect:
-      - tank-0002.wargames-red-team.svc.cluster.local
-      - tank-0003.wargames-blue-team.svc.cluster.local
+      - tank-0002.wargames-red-team-warnettest.svc.cluster.local
+      - tank-0003.wargames-blue-team-warnettest.svc.cluster.local
   - name: tank-0002
     resources:
       limits:
@@ -14,19 +14,19 @@ nodes:
         cpu: 100m
         memory: 128Mi
     connect:
-      - tank-0003.wargames-red-team.svc.cluster.local
-      - tank-0004.wargames-blue-team.svc.cluster.local
+      - tank-0003.wargames-red-team-warnettest.svc.cluster.local
+      - tank-0004.wargames-blue-team-warnettest.svc.cluster.local
   - name: tank-0003
     connect:
-      - tank-0004.wargames-red-team.svc.cluster.local
-      - tank-0005.wargames-blue-team.svc.cluster.local
+      - tank-0004.wargames-red-team-warnettest.svc.cluster.local
+      - tank-0005.wargames-blue-team-warnettest.svc.cluster.local
   - name: tank-0004
     connect:
-      - tank-0005.wargames-red-team.svc.cluster.local
-      - tank-0006.wargames-blue-team.svc.cluster.local
+      - tank-0005.wargames-red-team-warnettest.svc.cluster.local
+      - tank-0006.wargames-blue-team-warnettest.svc.cluster.local
   - name: tank-0005
     connect:
-      - tank-0006.wargames-red-team.svc.cluster.local
+      - tank-0006.wargames-red-team-warnettest.svc.cluster.local
   - name: tank-0006
 fork_observer:
   enabled: false
