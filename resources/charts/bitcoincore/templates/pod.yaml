@@ -9,6 +9,7 @@ metadata:
     {{- end }}
     chain: {{ .Values.chain }}
     RPCPort: "{{ index .Values .Values.chain "RPCPort" }}"
+    rpcpassword: {{ .Values.rpcpassword }}
     app: {{ include "bitcoincore.fullname" . }}
     {{- if .Values.collectLogs }}
     collect_logs: "true"
@@ -89,7 +90,7 @@ spec:
         - name: BITCOIN_RPC_USER
           value: user
         - name: BITCOIN_RPC_PASSWORD
-          value: password
+          value: {{ .Values.rpcpassword }}
         {{- if .Values.metrics }}
         - name: METRICS
           value: {{ .Values.metrics }}

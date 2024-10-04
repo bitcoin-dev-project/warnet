@@ -124,12 +124,13 @@ baseConfig: |
   fallbackfee=0.00001000
   listen=1
   rpcuser=user
-  rpcpassword=password
+  # rpcpassword MUST be set as a chart value
   rpcallowip=0.0.0.0/0
   rpcbind=0.0.0.0
   rest=1
   # rpcport and zmq endpoints are configured by chain in configmap.yaml
 
+rpcpassword: gn0cchi
 
 config: ""
 
