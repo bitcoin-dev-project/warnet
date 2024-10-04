@@ -25,6 +25,10 @@ from .constants import (
 from .process import run_command, stream_command
 
 
+class K8sError(Exception):
+    pass
+
+
 def get_static_client() -> CoreV1Api:
     config.load_kube_config(config_file=KUBECONFIG)
     return client.CoreV1Api()
@@ -458,3 +462,24 @@ def can_delete_pods(namespace: Optional[str] = None) -> bool:
     except ApiException as e:
         print(f"An error occurred: {e}")
         return False
+
+
+def open_kubeconfig(kubeconfig_path: str) -> dict:
+    try:
+        with open(kubeconfig_path) as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError as e:
+        raise K8sError(f"Kubeconfig file {kubeconfig_path} not found.") from e
+    except yaml.YAMLError as e:
+        raise K8sError(f"Error parsing kubeconfig: {e}") from e
+
+
+def write_kubeconfig(kube_config: dict, kubeconfig_path: str) -> None:
+    dir_name = os.path.dirname(kubeconfig_path)
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False) as temp_file:
+            yaml.safe_dump(kube_config, temp_file)
+        os.replace(temp_file.name, kubeconfig_path)
+    except Exception as e:
+        os.remove(temp_file.name)
+        raise K8sError(f"Error writing kubeconfig: {kubeconfig_path}") from e
