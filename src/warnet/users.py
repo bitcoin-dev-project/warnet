@@ -1,70 +1,123 @@
+import difflib
+import json
 import os
-import subprocess
 import sys
 
 import click
-import yaml
+
+from warnet.constants import KUBECONFIG
+from warnet.k8s import K8sError, open_kubeconfig, write_kubeconfig
 
 
 @click.command()
-@click.argument("kube_config", type=str)
-def auth(kube_config: str) -> None:
-    """
-    Authenticate with a warnet cluster using a kube config file
-    """
+@click.argument("auth_config", type=str)
+def auth(auth_config):
+    """Authenticate with a Warnet cluster using a kubernetes config file"""
     try:
-        current_kubeconfig = os.environ.get("KUBECONFIG", os.path.expanduser("~/.kube/config"))
-        combined_kubeconfig = (
-            f"{current_kubeconfig}:{kube_config}" if current_kubeconfig else kube_config
-        )
-        os.environ["KUBECONFIG"] = combined_kubeconfig
-        with open(kube_config) as file:
-            content = yaml.safe_load(file)
-            user = content["users"][0]
-            user_name = user["name"]
-            user_token = user["user"]["token"]
-            current_context = content["current-context"]
-        flatten_cmd = "kubectl config view --flatten"
-        result_flatten = subprocess.run(
-            flatten_cmd, shell=True, check=True, capture_output=True, text=True
-        )
-    except subprocess.CalledProcessError as e:
-        click.secho("Error occurred while executing kubectl config view --flatten:", fg="red")
-        click.secho(e.stderr, fg="red")
+        auth_config = open_kubeconfig(auth_config)
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not open auth_config: {auth_config}", fg="red")
         sys.exit(1)
 
-    if result_flatten.returncode == 0:
-        with open(current_kubeconfig, "w") as file:
-            file.write(result_flatten.stdout)
-            click.secho(f"Authorization file written to: {current_kubeconfig}", fg="green")
-    else:
-        click.secho("Could not create authorization file", fg="red")
-        click.secho(result_flatten.stderr, fg="red")
-        sys.exit(result_flatten.returncode)
+    is_first_config = False
+    if not os.path.exists(KUBECONFIG):
+        try:
+            write_kubeconfig(auth_config, KUBECONFIG)
+            is_first_config = True
+        except K8sError as e:
+            click.secho(e, fg="yellow")
+            click.secho(f"Could not write KUBECONFIG: {KUBECONFIG}", fg="red")
+            sys.exit(1)
 
     try:
-        update_cmd = f"kubectl config set-credentials {user_name} --token {user_token}"
-        result_update = subprocess.run(
-            update_cmd, shell=True, check=True, capture_output=True, text=True
-        )
-        if result_update.returncode != 0:
-            click.secho("Could not update authorization file", fg="red")
-            click.secho(result_flatten.stderr, fg="red")
-            sys.exit(result_flatten.returncode)
-    except subprocess.CalledProcessError as e:
-        click.secho("Error occurred while executing kubectl config view --flatten:", fg="red")
-        click.secho(e.stderr, fg="red")
+        base_config = open_kubeconfig(KUBECONFIG)
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not open KUBECONFIG: {KUBECONFIG}", fg="red")
         sys.exit(1)
 
-    with open(current_kubeconfig) as file:
-        contents = yaml.safe_load(file)
+    if not is_first_config:
+        for category in ["clusters", "users", "contexts"]:
+            if category in auth_config:
+                merge_entries(category, base_config, auth_config)
 
-    with open(current_kubeconfig, "w") as file:
-        contents["current-context"] = current_context
-        yaml.safe_dump(contents, file)
+    new_current_context = auth_config.get("current-context")
+    base_config["current-context"] = new_current_context
 
-    with open(current_kubeconfig) as file:
-        contents = yaml.safe_load(file)
+    # Check if the new current context has an explicit namespace
+    context_entry = next(
+        (ctx for ctx in base_config["contexts"] if ctx["name"] == new_current_context), None
+    )
+    if context_entry and "namespace" not in context_entry["context"]:
         click.secho(
-            f"\nwarnet's current context is now set to: {contents['current-context']}", fg="green"
+            f"Warning: The context '{new_current_context}' does not have an explicit namespace.",
+            fg="yellow",
         )
+
+    try:
+        write_kubeconfig(base_config, KUBECONFIG)
+        click.secho(f"Updated kubeconfig with authorization data: {KUBECONFIG}", fg="green")
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not write KUBECONFIG: {KUBECONFIG}", fg="red")
+        sys.exit(1)
+
+    try:
+        base_config = open_kubeconfig(KUBECONFIG)
+        click.secho(
+            f"Warnet's current context is now set to: {base_config['current-context']}", fg="green"
+        )
+    except K8sError as e:
+        click.secho(f"Error reading from {KUBECONFIG}: {e}", fg="red")
+        sys.exit(1)
+
+
+def merge_entries(category, base_config, auth_config):
+    name = "name"
+    base_list = base_config.setdefault(category, [])
+    auth_list = auth_config[category]
+    base_entry_names = {entry[name] for entry in base_list}  # Extract existing names
+    for auth_entry in auth_list:
+        if auth_entry[name] in base_entry_names:
+            existing_entry = next(
+                base_entry for base_entry in base_list if base_entry[name] == auth_entry[name]
+            )
+            if existing_entry != auth_entry:
+                # Show diff between existing and new entry
+                existing_entry_str = json.dumps(existing_entry, indent=2, sort_keys=True)
+                auth_entry_str = json.dumps(auth_entry, indent=2, sort_keys=True)
+                diff = difflib.unified_diff(
+                    existing_entry_str.splitlines(),
+                    auth_entry_str.splitlines(),
+                    fromfile="Existing Entry",
+                    tofile="New Entry",
+                    lineterm="",
+                )
+                click.echo("Differences between existing and new entry:\n")
+                click.echo("\n".join(diff))
+
+                if click.confirm(
+                    f"The '{category}' section key '{auth_entry[name]}' already exists and differs. Overwrite?",
+                    default=False,
+                ):
+                    # Find and replace the existing entry
+                    base_list[:] = [
+                        base_entry if base_entry[name] != auth_entry[name] else auth_entry
+                        for base_entry in base_list
+                    ]
+                    click.secho(
+                        f"Overwrote '{category}' section key '{auth_entry[name]}'", fg="yellow"
+                    )
+                else:
+                    click.secho(
+                        f"Skipped '{category}' section key '{auth_entry[name]}'", fg="yellow"
+                    )
+            else:
+                click.secho(
+                    f"Entry for '{category}' section key '{auth_entry[name]}' is identical. No changes made.",
+                    fg="blue",
+                )
+        else:
+            base_list.append(auth_entry)
+            click.secho(f"Added new '{category}' section key '{auth_entry[name]}'", fg="green")
