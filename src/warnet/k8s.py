@@ -395,6 +395,48 @@ def get_kubeconfig_value(jsonpath):
     return run_command(command)
 
 
+def get_cluster_of_current_context(kubeconfig_data: dict) -> dict:
+    # Get the current context name
+    current_context_name = kubeconfig_data.get("current-context")
+
+    if not current_context_name:
+        raise K8sError("No current context found in kubeconfig.")
+
+    # Find the context entry for the current context
+    context_entry = next(
+        (
+            context
+            for context in kubeconfig_data.get("contexts", [])
+            if context["name"] == current_context_name
+        ),
+        None,
+    )
+
+    if not context_entry:
+        raise K8sError(f"Context '{current_context_name}' not found in kubeconfig.")
+
+    # Get the cluster name from the context entry
+    cluster_name = context_entry.get("context", {}).get("cluster")
+
+    if not cluster_name:
+        raise K8sError(f"Cluster not specified in context '{current_context_name}'.")
+
+    # Find the cluster entry associated with the cluster name
+    cluster_entry = next(
+        (
+            cluster
+            for cluster in kubeconfig_data.get("clusters", [])
+            if cluster["name"] == cluster_name
+        ),
+        None,
+    )
+
+    if not cluster_entry:
+        raise K8sError(f"Cluster '{cluster_name}' not found in kubeconfig.")
+
+    return cluster_entry
+
+
 def get_namespaces() -> list[V1Namespace]:
     sclient = get_static_client()
     try:
