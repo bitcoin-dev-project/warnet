@@ -1,12 +1,19 @@
 import os
+import sys
 from pathlib import Path
 
 import click
 import yaml
 from rich import print as richprint
 
-from .constants import NETWORK_DIR, WARGAMES_NAMESPACE_PREFIX
-from .k8s import get_kubeconfig_value, get_namespaces_by_type, get_service_accounts_in_namespace
+from .constants import KUBECONFIG, NETWORK_DIR, WARGAMES_NAMESPACE_PREFIX
+from .k8s import (
+    K8sError,
+    get_cluster_of_current_context,
+    get_namespaces_by_type,
+    get_service_accounts_in_namespace,
+    open_kubeconfig,
+)
 from .namespaces import copy_namespaces_defaults, namespaces
 from .network import copy_network_defaults
 from .process import run_command
@@ -54,9 +61,14 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
     """Create kubeconfig files for ServiceAccounts"""
     kubeconfig_dir = os.path.expanduser(kubeconfig_dir)
 
-    cluster_name = get_kubeconfig_value("{.clusters[0].name}")
-    cluster_server = get_kubeconfig_value("{.clusters[0].cluster.server}")
-    cluster_ca = get_kubeconfig_value("{.clusters[0].cluster.certificate-authority-data}")
+    try:
+        kubeconfig_data = open_kubeconfig(KUBECONFIG)
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not open auth_config: {KUBECONFIG}", fg="red")
+        sys.exit(1)
+
+    cluster = get_cluster_of_current_context(kubeconfig_data)
 
     os.makedirs(kubeconfig_dir, exist_ok=True)
 
@@ -93,24 +105,15 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
             # might not be worth it since we are just reading the yaml to then create a bunch of values and its not
             # actually used to deploy anything into the cluster
             # Then benefit would be making this code a bit cleaner and easy to follow, fwiw
-
             kubeconfig_dict = {
                 "apiVersion": "v1",
                 "kind": "Config",
-                "clusters": [
-                    {
-                        "name": cluster_name,
-                        "cluster": {
-                            "server": cluster_server,
-                            "certificate-authority-data": cluster_ca,
-                        },
-                    }
-                ],
+                "clusters": [cluster],
                 "users": [{"name": sa, "user": {"token": token}}],
                 "contexts": [
                     {
                         "name": f"{sa}-{namespace}",
-                        "context": {"cluster": cluster_name, "namespace": namespace, "user": sa},
+                        "context": {"cluster": cluster["name"], "namespace": namespace, "user": sa},
                     }
                 ],
                 "current-context": f"{sa}-{namespace}",
