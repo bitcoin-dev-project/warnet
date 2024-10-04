@@ -130,14 +130,31 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 @click.argument("tank_a", type=str, required=True)
 @click.argument("tank_b", type=str, required=True)
 @click.option("--chain", default="regtest", show_default=True)
-@click.option("--namespace_a", default=None, show_default=True)
-@click.option("--namespace_b", default=None, show_default=True)
-def messages(
-    tank_a: str, tank_b: str, chain: str, namespace_a: Optional[str], namespace_b: Optional[str]
-):
+def messages(tank_a: str, tank_b: str, chain: str):
     """
     Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
+
+    Optionally, include a namespace like so: tank-name.namespace
     """
+
+    def parse_name_and_namespace(tank: str) -> tuple[str, Optional[str]]:
+        tank_split = tank.split(".")
+        try:
+            namespace = tank_split[1]
+        except IndexError:
+            namespace = None
+        return tank_split[0], namespace
+
+    tank_a_split = tank_a.split(".")
+    tank_b_split = tank_b.split(".")
+    if len(tank_a_split) > 2 or len(tank_b_split) > 2:
+        click.secho("Accepted formats: tank-name OR tank-name.namespace")
+        click.secho(f"Foramts found: {tank_a} {tank_b}")
+        sys.exit(1)
+
+    tank_a, namespace_a = parse_name_and_namespace(tank_a)
+    tank_b, namespace_b = parse_name_and_namespace(tank_b)
+
     try:
         namespace_a = get_default_namespace_or(namespace_a)
         namespace_b = get_default_namespace_or(namespace_b)
