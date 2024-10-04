@@ -90,7 +90,7 @@ spec:
         - name: BITCOIN_RPC_USER
           value: user
         - name: BITCOIN_RPC_PASSWORD
-          value: password
+          value: {{ .Values.rpcpassword }}
         {{- if .Values.metrics }}
         - name: METRICS
           value: {{ .Values.metrics }}
