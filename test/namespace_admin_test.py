@@ -6,8 +6,14 @@ from typing import Callable, Optional
 
 from test_base import TestBase
 
-from warnet.constants import WARGAMES_NAMESPACE_PREFIX
-from warnet.k8s import get_kubeconfig_value, get_static_client
+from warnet.constants import KUBECONFIG, WARGAMES_NAMESPACE_PREFIX
+from warnet.k8s import (
+    K8sError,
+    get_kubeconfig_value,
+    get_static_client,
+    open_kubeconfig,
+    write_kubeconfig,
+)
 from warnet.process import run_command
 
 
@@ -29,14 +35,33 @@ class NamespaceAdminTest(TestBase):
         try:
             os.chdir(self.tmpdir)
             self.log.info(f"Running test in: {self.tmpdir}")
+            self.establish_initial_context()
+            self.establish_names()
             self.setup_namespaces()
-            self.initial_context = get_kubeconfig_value("{.current-context}")
             self.setup_service_accounts()
             self.deploy_network_in_team_namespaces()
             self.authenticate_and_become_bob()
             self.return_to_intial_context()
         finally:
+            try:
+                self.cleanup_kubeconfig()
+            except K8sError as e:
+                self.log.info(f"KUBECONFIG cleanup error: {e}")
             self.cleanup()
+
+    def establish_initial_context(self):
+        self.initial_context = get_kubeconfig_value("{.current-context}")
+        self.log.info(f"Initial context: {self.initial_context}")
+
+    def establish_names(self):
+        self.bob_user = "bob-warnettest"
+        self.bob_auth_file = "bob-warnettest-wargames-red-team-warnettest-kubeconfig"
+        self.bob_context = "bob-warnettest-wargames-red-team-warnettest"
+
+        self.blue_namespace = "wargames-blue-team-warnettest"
+        self.red_namespace = "wargames-red-team-warnettest"
+        self.blue_users = ["carol-warnettest", "default", "mallory-warnettest"]
+        self.red_users = ["alice-warnettest", self.bob_user, "default"]
 
     def return_to_intial_context(self):
         cmd = f"kubectl config use-context {self.initial_context}"
@@ -59,6 +84,7 @@ class NamespaceAdminTest(TestBase):
         self.log.info("Creating service accounts...")
         self.log.info(self.warnet("admin create-kubeconfigs"))
         self.wait_for_predicate(self.service_accounts_are_validated)
+        self.log.info("Service accounts have been set up and validated")
 
     def deploy_network_in_team_namespaces(self):
         self.log.info("Deploy networks to team namespaces")
@@ -70,8 +96,8 @@ class NamespaceAdminTest(TestBase):
     def authenticate_and_become_bob(self):
         self.log.info("Authenticating and becoming bob...")
         assert get_kubeconfig_value("{.current-context}") == self.initial_context
-        self.log.info(self.warnet("auth kubeconfigs/bob-wargames-red-team-kubeconfig"))
-        assert get_kubeconfig_value("{.current-context}") == "bob-wargames-red-team"
+        self.warnet(f"auth kubeconfigs/{self.bob_auth_file}")
+        assert get_kubeconfig_value("{.current-context}") == self.bob_context
 
     def service_accounts_are_validated(self) -> bool:
         self.log.info("Checking service accounts")
@@ -93,8 +119,8 @@ class NamespaceAdminTest(TestBase):
                 maybe_service_accounts.setdefault(namespace, []).append(sa.metadata.name)
 
         expected = {
-            "wargames-blue-team": ["carol", "default", "mallory"],
-            "wargames-red-team": ["alice", "bob", "default"],
+            self.blue_namespace: self.blue_users,
+            self.red_namespace: self.red_users,
         }
 
         return maybe_service_accounts == expected
@@ -115,11 +141,37 @@ class NamespaceAdminTest(TestBase):
         maybe_namespaces = self.get_namespaces()
         if maybe_namespaces is None:
             return False
-        if len(maybe_namespaces) != 2:
+        if self.blue_namespace not in maybe_namespaces:
             return False
-        if "wargames-blue-team" not in maybe_namespaces:
-            return False
-        return "wargames-red-team" in maybe_namespaces
+        return self.red_namespace in maybe_namespaces
+
+    def cleanup_kubeconfig(self):
+        try:
+            kubeconfig_data = open_kubeconfig(KUBECONFIG)
+        except K8sError as e:
+            raise K8sError(f"Could not open KUBECONFIG: {KUBECONFIG}") from e
+
+        kubeconfig_data = remove_user(kubeconfig_data, self.bob_user)
+        kubeconfig_data = remove_context(kubeconfig_data, self.bob_context)
+
+        try:
+            write_kubeconfig(kubeconfig_data, KUBECONFIG)
+        except Exception as e:
+            raise K8sError(f"Could not write to KUBECONFIG: {KUBECONFIG}") from e
+
+
+def remove_user(kubeconfig_data: dict, username: str) -> dict:
+    kubeconfig_data["users"] = [
+        user for user in kubeconfig_data["users"] if user["name"] != username
+    ]
+    return kubeconfig_data
+
+
+def remove_context(kubeconfig_data: dict, context_name: str) -> dict:
+    kubeconfig_data["contexts"] = [
+        context for context in kubeconfig_data["contexts"] if context["name"] != context_name
+    ]
+    return kubeconfig_data
 
 
 if __name__ == "__main__":
