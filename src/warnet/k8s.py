@@ -391,7 +391,7 @@ def write_file_to_container(
 
 
 def get_kubeconfig_value(jsonpath):
-    command = f"kubectl config view --minify -o jsonpath={jsonpath}"
+    command = f"kubectl config view --minify --raw -o jsonpath={jsonpath}"
     return run_command(command)
 
 
