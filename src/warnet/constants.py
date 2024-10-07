@@ -161,3 +161,31 @@ HELM_BLESSED_NAME_AND_CHECKSUMS = [
         "checksum": "fc370a291ed926da5e77acf42006de48e7fd5ff94d20c3f6aa10c04fea66e53c",
     },
 ]
+
+
+# Kubectl binary
+KUBECTL_BINARY_NAME = "kubectl"
+KUBECTL_BLESSED_VERSION = "v1.31.1"
+KUBECTL_DOWNLOAD_URL_STUB = f"https://dl.k8s.io/release/{KUBECTL_BLESSED_VERSION}/bin"
+KUBECTL_BLESSED_NAME_AND_CHECKSUMS = [
+    {
+        "system": "linux",
+        "arch": "amd64",
+        "checksum": "57b514a7facce4ee62c93b8dc21fda8cf62ef3fed22e44ffc9d167eab843b2ae",
+    },
+    {
+        "system": "linux",
+        "arch": "arm64",
+        "checksum": "3af2451191e27ecd4ac46bb7f945f76b71e934d54604ca3ffc7fe6f5dd123edb",
+    },
+    {
+        "system": "darwin",
+        "arch": "amd64",
+        "checksum": "4b86d3fb8dee8dd61f341572f1ba13c1030d493f4dc1b4831476f61f3cbb77d0",
+    },
+    {
+        "system": "darwin",
+        "arch": "arm64",
+        "checksum": "08909b92e62004f4f1222dfd39214085383ea368bdd15c762939469c23484634",
+    },
+]
