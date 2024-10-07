@@ -1,3 +1,4 @@
+required-version = "==0.6.8"
 extend-exclude = [
     "resources/scenarios/test_framework",
     "resources/images/exporter/authproxy.py",
