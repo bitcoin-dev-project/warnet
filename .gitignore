@@ -6,3 +6,4 @@ warnet.egg-info
 .env
 dist/
 build/
+**/kubeconfigs/
