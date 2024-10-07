@@ -173,7 +173,7 @@ def deploy_fork_observer(directory: Path, debug: bool) -> bool:
 
     default_namespace = get_default_namespace()
     namespace = LOGGING_NAMESPACE
-    cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
+    cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace} --create-namespace"
     if debug:
         cmd += " --debug"
 
