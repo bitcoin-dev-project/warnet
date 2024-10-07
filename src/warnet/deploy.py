@@ -273,7 +273,7 @@ def deploy_namespaces(directory: Path):
     for namespace in namespaces_file["namespaces"]:
         click.echo(f"Deploying namespace: {namespace.get('name')}")
         try:
-            temp_override_file_path = Path()
+            temp_override_file_path = ""
             namespace_name = namespace.get("name")
             namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
 
@@ -294,7 +294,7 @@ def deploy_namespaces(directory: Path):
             click.echo(f"Error: {e}")
             return
         finally:
-            if temp_override_file_path.exists():
+            if temp_override_file_path:
                 temp_override_file_path.unlink()
 
 
