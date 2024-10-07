@@ -61,7 +61,7 @@ Before letting the users into your cluster, make sure to create a network of tan
 
 
 ```shell
-$ warnet admin deploy networks/mynet --to-all-users
+$ warnet deploy networks/mynet --to-all-users
 ```
 
 Observe that the *wargames-red-team* namespace now has tanks in it.
