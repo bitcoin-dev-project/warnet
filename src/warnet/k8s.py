@@ -368,7 +368,7 @@ def write_file_to_container(
 ):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
-    exec_command = ["sh", "-c", f"cat > {dst_path}.tmp"]
+    exec_command = ["sh", "-c", f"cat > {dst_path}.tmp && sync"]
     try:
         res = stream(
             sclient.connect_get_namespaced_pod_exec,
