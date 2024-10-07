@@ -368,7 +368,7 @@ def write_file_to_container(
 ):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
-    exec_command = ["sh", "-c", f"cat > {dst_path}"]
+    exec_command = ["sh", "-c", f"cat > {dst_path}.tmp"]
     try:
         res = stream(
             sclient.connect_get_namespaced_pod_exec,
@@ -384,6 +384,18 @@ def write_file_to_container(
         )
         res.write_stdin(data)
         res.close()
+        rename_command = ["sh", "-c", f"mv {dst_path}.tmp {dst_path}"]
+        stream(
+            sclient.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            command=rename_command,
+            container=container_name,
+            stdin=False,
+            stderr=True,
+            stdout=True,
+            tty=False,
+        )
         print(f"Successfully copied data to {pod_name}({container_name}):{dst_path}")
         return True
     except Exception as e:
