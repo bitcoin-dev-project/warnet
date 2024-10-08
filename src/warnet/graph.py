@@ -25,6 +25,7 @@ def custom_graph(
     fork_obs_query_interval: int,
     caddy: bool,
     logging: bool,
+    force_pull: bool
 ):
     try:
         datadir.mkdir(parents=False, exist_ok=False)
@@ -83,6 +84,10 @@ def custom_graph(
     # Configure logging
     defaults_yaml_content["collectLogs"] = logging
 
+    # Set pullPolicy
+    if force_pull:
+        defaults_yaml_content["image"]["pullPolicy"] = "Always"
+
     with open(os.path.join(datadir, "node-defaults.yaml"), "w") as f:
         yaml.dump(defaults_yaml_content, f, default_flow_style=False, sort_keys=False)
 
@@ -122,6 +127,14 @@ def inquirer_create_network(project_path: Path):
             ),
             choices=SUPPORTED_TAGS,
             default=DEFAULT_TAG,
+        ),
+
+        inquirer.Confirm(
+            "force_pull",
+            message=click.style(
+                "Would you like to force-pull bitcoin node images from dockerhub?", fg="blue", bold=True
+            ),
+            default=False,
         ),
     ]
 
@@ -197,6 +210,7 @@ def inquirer_create_network(project_path: Path):
         fork_observer_query_interval,
         caddy,
         logging,
+        net_answers["force_pull"],
     )
     return custom_network_path
 
