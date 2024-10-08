@@ -25,6 +25,7 @@ from .constants import (
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
+    get_mission,
     get_namespaces_by_type,
     wait_for_ingress_controller,
     wait_for_pod_ready,
@@ -181,15 +182,15 @@ def deploy_fork_observer(directory: Path, debug: bool) -> bool:
     override_string = ""
 
     # Add an entry for each node in the graph
-    for i, node in enumerate(network_file["nodes"]):
-        node_name = node.get("name")
+    for i, tank in enumerate(get_mission("tank")):
+        node_name = tank.metadata.name
         node_config = f"""
 [[networks.nodes]]
 id = {i}
 name = "{node_name}"
-description = "A node. Just A node."
+description = ""
 rpc_host = "{node_name}.{default_namespace}.svc"
-rpc_port = 18443
+rpc_port = {int(tank.metadata.labels["RPCPort"])}
 rpc_user = "forkobserver"
 rpc_password = "tabconf2024"
 """
