@@ -25,7 +25,7 @@ def custom_graph(
     fork_obs_query_interval: int,
     caddy: bool,
     logging: bool,
-    force_pull: bool
+    force_pull: bool,
 ):
     try:
         datadir.mkdir(parents=False, exist_ok=False)
@@ -98,119 +98,90 @@ def custom_graph(
 
 def inquirer_create_network(project_path: Path):
     # Custom network configuration
-    questions = [
-        inquirer.Text(
-            "network_name",
-            message=click.style("Enter your network name", fg="blue", bold=True),
-            validate=lambda _, x: len(x) > 0,
-        ),
-        inquirer.List(
-            "nodes",
-            message=click.style("How many nodes would you like?", fg="blue", bold=True),
-            choices=["8", "12", "20", "50", "other"],
-            default="12",
-        ),
-        inquirer.List(
-            "connections",
-            message=click.style(
-                "How many connections would you like each node to have?",
-                fg="blue",
-                bold=True,
-            ),
-            choices=["0", "1", "2", "8", "12", "other"],
-            default="8",
-        ),
-        inquirer.List(
-            "version",
-            message=click.style(
-                "Which version would you like nodes to run by default?", fg="blue", bold=True
-            ),
-            choices=SUPPORTED_TAGS,
-            default=DEFAULT_TAG,
-        ),
-
-        inquirer.Confirm(
-            "force_pull",
-            message=click.style(
-                "Would you like to force-pull bitcoin node images from dockerhub?", fg="blue", bold=True
-            ),
-            default=False,
-        ),
-    ]
-
-    net_answers = inquirer.prompt(questions)
-    if net_answers is None:
-        click.secho("Setup cancelled by user.", fg="yellow")
-        return False
-
-    if net_answers["nodes"] == "other":
-        custom_nodes = inquirer.prompt(
-            [
-                inquirer.Text(
-                    "nodes",
-                    message=click.style("Enter the number of nodes", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) > 0,
-                )
-            ]
+    network_name = inquirer.text(
+        message=click.style("Enter your network name", fg="blue", bold=True),
+        validate=lambda _, x: len(x) > 0,
+    )
+    nodes = inquirer.list_input(
+        message=click.style("How many nodes would you like?", fg="blue", bold=True),
+        choices=["8", "12", "20", "50", "other"],
+        default="12",
+    )
+    if nodes == "other":
+        nodes = inquirer.text(
+            message=click.style("Enter the number of nodes", fg="blue", bold=True),
+            validate=lambda _, x: int(x) > 0,
         )
-        if custom_nodes is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        net_answers["nodes"] = custom_nodes["nodes"]
-
-    if net_answers["connections"] == "other":
-        custom_connections = inquirer.prompt(
-            [
-                inquirer.Text(
-                    "connections",
-                    message=click.style("Enter the number of connections", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) >= 0,
-                )
-            ]
-        )
-        if custom_connections is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        net_answers["connections"] = custom_connections["connections"]
-    fork_observer = click.prompt(
-        click.style(
-            "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
+    connections = inquirer.list_input(
+        message=click.style(
+            "How many connections would you like each node to have?",
+            fg="blue",
+            bold=True,
         ),
-        type=bool,
+        choices=["0", "1", "2", "8", "12", "other"],
+        default="8",
+    )
+    if connections == "other":
+        connections = inquirer.text(
+            message=click.style("Enter the number of connections", fg="blue", bold=True),
+            validate=lambda _, x: int(x) >= 0,
+        )
+    version = inquirer.list_input(
+        message=click.style(
+            "Which version would you like nodes to run by default?", fg="blue", bold=True
+        ),
+        choices=SUPPORTED_TAGS,
+        default=DEFAULT_TAG,
+    )
+    force_pull = inquirer.confirm(
+        message=click.style(
+            "Would you like to force-pull bitcoin node images from dockerhub?", fg="blue", bold=True
+        ),
+        default=False,
+    )
+
+    # Inquire about fork observer
+    fork_observer = inquirer.confirm(
+        message=click.style(
+            "Would you like to enable fork-observer on the network?", fg="blue", bold=True
+        ),
         default=True,
     )
     fork_observer_query_interval = 20
     if fork_observer:
-        fork_observer_query_interval = click.prompt(
-            click.style(
-                "\nHow often would you like fork-observer to query node status (seconds)?",
-                fg="blue",
-                bold=True,
-            ),
-            type=int,
-            default=20,
+        fork_observer_query_interval = int(
+            inquirer.text(
+                message=click.style(
+                    "How often would you like fork-observer to query node status (seconds)?",
+                    fg="blue",
+                    bold=True,
+                ),
+                validate=lambda _, x: int(x) > 0,
+                default=fork_observer_query_interval,
+            )
         )
 
-    logging = click.prompt(
-        click.style(
-            "\nWould you like to enable grafana logging on the network?", fg="blue", bold=True
+    # Inquire about logging
+    logging = inquirer.confirm(
+        message=click.style(
+            "Would you like to enable grafana logging on the network?", fg="blue", bold=True
         ),
-        type=bool,
         default=False,
     )
+
     caddy = fork_observer | logging
-    custom_network_path = project_path / "networks" / net_answers["network_name"]
+    custom_network_path = project_path / "networks" / network_name
     click.secho("\nGenerating custom network...", fg="yellow", bold=True)
     custom_graph(
-        int(net_answers["nodes"]),
-        int(net_answers["connections"]),
-        net_answers["version"],
+        int(nodes),
+        int(connections),
+        version,
         custom_network_path,
         fork_observer,
         fork_observer_query_interval,
         caddy,
         logging,
-        net_answers["force_pull"],
+        force_pull,
     )
     return custom_network_path
 
