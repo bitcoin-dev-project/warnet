@@ -87,3 +87,112 @@ docker buildx build \
   --tag bitcoindevproject/bitcoin:0.16.1 \
   resources/images/bitcoin/insecure
 ```
+
+## unknown p2p message crash
+
+Will crash when sent an "unknown" P2P message is received from a node using protocol version >= 70016
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/armhf \
+  --build-context bitcoin-src="." \
+  --build-arg ALPINE_VERSION="3.20" \
+  --build-arg BITCOIN_VERSION="28.1.1" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="" \
+  --build-arg REPO="willcl-ark/bitcoin" \
+  --build-arg COMMIT_SHA="df1768325cca49bb867b7919675ae06c964b5ffa" \
+  --tag bitcoindevproject/bitcoin:99.1.0-unknown-message \
+  resources/images/bitcoin/insecure
+```
+
+## invalid blocks crash
+
+Will crash when sent an invalid block
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/armhf \
+  --build-context bitcoin-src="." \
+  --build-arg ALPINE_VERSION="3.20" \
+  --build-arg BITCOIN_VERSION="28.1.1" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="" \
+  --build-arg REPO="willcl-ark/bitcoin" \
+  --build-arg COMMIT_SHA="f72bc595fc762c7afcbd156f4f84bf48f7ff4fdb" \
+  --tag bitcoindevproject/bitcoin:99.1.0-invalid-blocks \
+  resources/images/bitcoin/insecure
+```
+
+## too many orphans crash
+
+Will crash when we have 50 orphans in the orphanage
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/armhf \
+  --build-context bitcoin-src="." \
+  --build-arg ALPINE_VERSION="3.20" \
+  --build-arg BITCOIN_VERSION="28.1.1" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="" \
+  --build-arg REPO="willcl-ark/bitcoin" \
+  --build-arg COMMIT_SHA="38aff9d695f5aa187fc3b75f08228248963372ee" \
+  --tag bitcoindevproject/bitcoin:99.1.0-50-orphans \
+  resources/images/bitcoin/insecure
+```
+
+## full mempool crash
+
+Will crash when we would normally trim the mempool size.
+Mempool set to 50MB by default.
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/armhf \
+  --build-context bitcoin-src="." \
+  --build-arg ALPINE_VERSION="3.20" \
+  --build-arg BITCOIN_VERSION="28.1.1" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="" \
+  --build-arg REPO="willcl-ark/bitcoin" \
+  --build-arg COMMIT_SHA="d30f8112611c4732ccb01f0a0216eb7ed10e04a7" \
+  --tag bitcoindevproject/bitcoin:99.1.0-no-mp-trim\
+  resources/images/bitcoin/insecure
+```
+
+## disabled opcodes crash
+
+Will crash when processing a disabled opcode
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/armhf \
+  --build-context bitcoin-src="." \
+  --build-arg ALPINE_VERSION="3.20" \
+  --build-arg BITCOIN_VERSION="28.1.1" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="" \
+  --build-arg REPO="willcl-ark/bitcoin" \
+  --build-arg COMMIT_SHA="51e068ed42727eee08af62e09eb5789d8b910f61" \
+  --tag bitcoindevproject/bitcoin:99.1.0-disabled-opcodes \
+  resources/images/bitcoin/insecure
+```
+
+## crash when 5k inv messages received
+
+Will crash when we receive a total of 5k `INV` p2p messages are received from a single peer.
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/armhf \
+  --build-context bitcoin-src="." \
+  --build-arg ALPINE_VERSION="3.20" \
+  --build-arg BITCOIN_VERSION="28.1.1" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="" \
+  --build-arg REPO="willcl-ark/bitcoin" \
+  --build-arg COMMIT_SHA="3e1ce7de0d19f791315fa87e0d29504ee0c80fe8" \
+  --tag bitcoindevproject/bitcoin:99.1.0-5k-inv \
+  resources/images/bitcoin/insecure
+```

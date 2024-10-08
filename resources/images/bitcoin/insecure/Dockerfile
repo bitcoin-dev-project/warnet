@@ -110,7 +110,7 @@ RUN --mount=type=cache,target=/ccache \
     && ./autogen.sh \
     && ./configure \
     LDFLAGS=-L`ls -d /opt/db*`/lib/ \
-    CPPFLAGS="-g0 -I`ls -d /opt/db*`/include/ --param ggc-min-expand=1 --param ggc-min-heapsize=32768" \
+    CPPFLAGS="-I`ls -d /opt/db*`/include/ --param ggc-min-expand=1 --param ggc-min-heapsize=32768" \
     --prefix=${BITCOIN_PREFIX} \
     ${BUILD_ARGS} \
     ${EXTRA_BUILD_ARGS} \
