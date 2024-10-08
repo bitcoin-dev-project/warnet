@@ -14,12 +14,12 @@ parameters in <angle brackets>.
 ## API Commands
 
 ### `warnet auth`
-Authenticate with a warnet cluster using a kube config file
+Authenticate with a Warnet cluster using a kubernetes config file
 
 options:
 | name        | type   | required   | default   |
 |-------------|--------|------------|-----------|
-| kube_config | String | yes        |           |
+| auth_config | String | yes        |           |
 
 ### `warnet create`
 Create a new warnet network
@@ -33,14 +33,20 @@ Open the Warnet dashboard in default browser
 Deploy a warnet with topology loaded from \<directory>
 
 options:
-| name      | type   | required   | default   |
-|-----------|--------|------------|-----------|
-| directory | Path   | yes        |           |
-| debug     | Bool   |            | False     |
+| name         | type   | required   | default   |
+|--------------|--------|------------|-----------|
+| directory    | Path   | yes        |           |
+| debug        | Bool   |            | False     |
+| namespace    | String |            |           |
+| to_all_users | Bool   |            | False     |
 
 ### `warnet down`
 Bring down a running warnet quickly
 
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| force  | Bool   |            | False     |
 
 ### `warnet init`
 Initialize a warnet project in the current directory
@@ -50,10 +56,11 @@ Initialize a warnet project in the current directory
 Show the logs of a pod
 
 options:
-| name     | type   | required   | default   |
-|----------|--------|------------|-----------|
-| pod_name | String |            | ""        |
-| follow   | Bool   |            | False     |
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| pod_name  | String |            | ""        |
+| follow    | Bool   |            | False     |
+| namespace | String |            | "default" |
 
 ### `warnet new`
 Create a new warnet project in the specified directory
@@ -74,6 +81,7 @@ options:
 | debug           | Bool   |            | False     |
 | source_dir      | Path   |            |           |
 | additional_args | String |            |           |
+| namespace       | String |            |           |
 
 ### `warnet setup`
 Setup warnet
@@ -104,6 +112,15 @@ options:
 
 ## Admin
 
+### `warnet admin create-kubeconfigs`
+Create kubeconfig files for ServiceAccounts
+
+options:
+| name           | type   | required   | default       |
+|----------------|--------|------------|---------------|
+| kubeconfig_dir | String |            | "kubeconfigs" |
+| token_duration | Int    |            | 172800        |
+
 ### `warnet admin init`
 Initialize a warnet project in the current directory
 
@@ -118,9 +135,10 @@ Namespaces commands
 Fetch the Bitcoin Core debug log from \<tank pod name>
 
 options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| tank   | String | yes        |           |
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| tank      | String | yes        |           |
+| namespace | String |            |           |
 
 ### `warnet bitcoin grep-logs`
 Grep combined bitcoind logs using regex \<pattern>
@@ -135,6 +153,8 @@ options:
 ### `warnet bitcoin messages`
 Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [chain]
 
+    Optionally, include a namespace like so: tank-name.namespace
+
 options:
 | name   | type   | required   | default   |
 |--------|--------|------------|-----------|
@@ -146,11 +166,12 @@ options:
 Call bitcoin-cli \<method> [params] on \<tank pod name>
 
 options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| tank   | String | yes        |           |
-| method | String | yes        |           |
-| params | String |            |           |
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| tank      | String | yes        |           |
+| method    | String | yes        |           |
+| params    | String |            |           |
+| namespace | String |            |           |
 
 ## Graph
 
