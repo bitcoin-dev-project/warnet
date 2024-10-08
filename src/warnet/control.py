@@ -7,10 +7,12 @@ import time
 import zipapp
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Optional
 
 import click
 import inquirer
 from inquirer.themes import GreenPassion
+from kubernetes.client.models import V1Pod
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
@@ -20,12 +22,16 @@ from .constants import (
     BITCOINCORE_CONTAINER,
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
-    LOGGING_NAMESPACE,
+    COMMANDER_MISSION,
+    TANK_MISSION,
 )
 from .k8s import (
+    can_delete_pods,
     delete_pod,
     get_default_namespace,
+    get_default_namespace_or,
     get_mission,
+    get_namespaces,
     get_pod,
     get_pods,
     pod_log,
@@ -113,12 +119,15 @@ def stop_all_scenarios(scenarios):
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
 
 
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Skip confirmations",
+)
 @click.command()
-def down():
+def down(force):
     """Bring down a running warnet quickly"""
-    console.print("[bold yellow]Bringing down the warnet...[/bold yellow]")
-
-    namespaces = [get_default_namespace(), LOGGING_NAMESPACE]
 
     def uninstall_release(namespace, release_name):
         cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
@@ -130,21 +139,61 @@ def down():
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
 
+    if not can_delete_pods():
+        click.secho("You do not have permission to bring down the network.", fg="red")
+        return
+
+    namespaces = get_namespaces()
+    release_list: list[dict[str, str]] = []
+    for v1namespace in namespaces:
+        namespace = v1namespace.metadata.name
+        command = f"helm list --namespace {namespace} -o json"
+        result = run_command(command)
+        if result:
+            releases = json.loads(result)
+            for release in releases:
+                release_list.append({"namespace": namespace, "name": release["name"]})
+
+    if not force:
+        affected_namespaces = set([entry["namespace"] for entry in release_list])
+        namespace_listing = "\n  ".join(affected_namespaces)
+        confirmed = "confirmed"
+        click.secho("Preparing to bring down the running Warnet...", fg="yellow")
+        click.secho("The listed namespaces will be affected:", fg="yellow")
+        click.secho(f"  {namespace_listing}", fg="blue")
+
+        proj_answers = inquirer.prompt(
+            [
+                inquirer.Confirm(
+                    confirmed,
+                    message=click.style(
+                        "Do you want to bring down the running Warnet?", fg="yellow", bold=False
+                    ),
+                    default=False,
+                ),
+            ]
+        )
+        if not proj_answers:
+            click.secho("Operation cancelled by user.", fg="yellow")
+            sys.exit(0)
+        if proj_answers[confirmed]:
+            click.secho("Bringing down the warnet...", fg="yellow")
+        else:
+            click.secho("Operation cancelled by user", fg="yellow")
+            sys.exit(0)
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
 
         # Uninstall Helm releases
-        for namespace in namespaces:
-            command = f"helm list --namespace {namespace} -o json"
-            result = run_command(command)
-            if result:
-                releases = json.loads(result)
-                for release in releases:
-                    futures.append(executor.submit(uninstall_release, namespace, release["name"]))
+        for release in release_list:
+            futures.append(
+                executor.submit(uninstall_release, release["namespace"], release["name"])
+            )
 
         # Delete remaining pods
         pods = get_pods()
-        for pod in pods.items:
+        for pod in pods:
             futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
 
         # Wait for all tasks to complete and print results
@@ -182,11 +231,20 @@ def get_active_network(namespace):
     "--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False
 )
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
-def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]):
+@click.option("--namespace", default=None, show_default=True)
+def run(
+    scenario_file: str,
+    debug: bool,
+    source_dir,
+    additional_args: tuple[str],
+    namespace: Optional[str],
+):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
+    namespace = get_default_namespace_or(namespace)
+
     scenario_path = Path(scenario_file).resolve()
     scenario_dir = scenario_path.parent if not source_dir else Path(source_dir).resolve()
     scenario_name = scenario_path.stem
@@ -196,7 +254,6 @@ def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]
 
     # Collect tank data for warnet.json
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
-    namespace = get_default_namespace()
     tankpods = get_mission("tank")
     tanks = [
         {
@@ -284,41 +341,51 @@ def run(scenario_file: str, debug: bool, source_dir, additional_args: tuple[str]
         print(f"Error: {e.stderr}")
 
     # upload scenario files and network data to the init container
-    wait_for_init(name)
+    wait_for_init(name, namespace=namespace)
     if write_file_to_container(
-        name, "init", "/shared/warnet.json", warnet_data
-    ) and write_file_to_container(name, "init", "/shared/archive.pyz", archive_data):
+        name, "init", "/shared/warnet.json", warnet_data, namespace=namespace
+    ) and write_file_to_container(
+        name, "init", "/shared/archive.pyz", archive_data, namespace=namespace
+    ):
         print(f"Successfully uploaded scenario data to commander: {scenario_name}")
 
     if debug:
         print("Waiting for commander pod to start...")
-        wait_for_pod(name)
-        _logs(pod_name=name, follow=True)
+        wait_for_pod(name, namespace=namespace)
+        _logs(pod_name=name, follow=True, namespace=namespace)
         print("Deleting pod...")
-        delete_pod(name)
+        delete_pod(name, namespace=namespace)
 
 
 @click.command()
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
-def logs(pod_name: str, follow: bool):
+@click.option("--namespace", type=str, default="default", show_default=True)
+def logs(pod_name: str, follow: bool, namespace: str):
     """Show the logs of a pod"""
-    return _logs(pod_name, follow)
+    return _logs(pod_name, follow, namespace)
 
 
-def _logs(pod_name: str, follow: bool):
-    namespace = get_default_namespace()
+def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
+    namespace = get_default_namespace_or(namespace)
+
+    def format_pods(pods: list[V1Pod]) -> list[str]:
+        return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in pods]
 
     if pod_name == "":
         try:
-            pods = get_pods()
-            pod_list = [item.metadata.name for item in pods.items]
+            pod_list = []
+            formatted_commanders = format_pods(get_mission(COMMANDER_MISSION))
+            formatted_tanks = format_pods(get_mission(TANK_MISSION))
+            pod_list.extend(formatted_commanders)
+            pod_list.extend(formatted_tanks)
+
         except Exception as e:
-            print(f"Could not fetch any pods in namespace {namespace}: {e}")
+            print(f"Could not fetch any pods in namespace ({namespace}): {e}")
             return
 
         if not pod_list:
-            print(f"Could not fetch any pods in namespace {namespace}")
+            print(f"Could not fetch any pods in namespace ({namespace})")
             return
 
         q = [
@@ -330,7 +397,7 @@ def _logs(pod_name: str, follow: bool):
         ]
         selected = inquirer.prompt(q, theme=GreenPassion())
         if selected:
-            pod_name = selected["pod"]
+            pod_name, pod_namespace = selected["pod"].split(": ")
         else:
             return  # cancelled by user
 

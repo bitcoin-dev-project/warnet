@@ -1,9 +1,9 @@
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime
 from io import BytesIO
+from typing import Optional
 
 import click
 from test_framework.messages import ser_uint256
@@ -11,7 +11,7 @@ from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
 from .constants import BITCOINCORE_CONTAINER
-from .k8s import get_default_namespace, get_mission, pod_log
+from .k8s import get_default_namespace_or, get_mission, pod_log
 from .process import run_command
 
 
@@ -24,23 +24,23 @@ def bitcoin():
 @click.argument("tank", type=str)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(tank: str, method: str, params: str):
+@click.option("--namespace", default=None, show_default=True)
+def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
     try:
-        result = _rpc(tank, method, params)
+        result = _rpc(tank, method, params, namespace)
     except Exception as e:
         print(f"{e}")
         sys.exit(1)
     print(result)
 
 
-def _rpc(tank: str, method: str, params: str):
+def _rpc(tank: str, method: str, params: str, namespace: Optional[str] = None):
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
-    namespace = get_default_namespace()
-
+    namespace = get_default_namespace_or(namespace)
     if params:
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
     else:
@@ -50,11 +50,13 @@ def _rpc(tank: str, method: str, params: str):
 
 @bitcoin.command()
 @click.argument("tank", type=str, required=True)
-def debug_log(tank: str):
+@click.option("--namespace", default=None, show_default=True)
+def debug_log(tank: str, namespace: Optional[str]):
     """
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
-    cmd = f"kubectl logs {tank}"
+    namespace = get_default_namespace_or(namespace)
+    cmd = f"kubectl logs {tank} --namespace {namespace}"
     try:
         print(run_command(cmd))
     except Exception as e:
@@ -77,8 +79,12 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
         sys.exit(1)
 
     matching_logs = []
+    longest_namespace_len = 0
 
     for tank in tanks:
+        if len(tank.metadata.namespace) > longest_namespace_len:
+            longest_namespace_len = len(tank.metadata.namespace)
+
         pod_name = tank.metadata.name
         logs = pod_log(pod_name, BITCOINCORE_CONTAINER)
 
@@ -87,7 +93,7 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
                 for line in logs:
                     log_entry = line.decode("utf-8").rstrip()
                     if re.search(pattern, log_entry):
-                        matching_logs.append((log_entry, pod_name))
+                        matching_logs.append((log_entry, tank.metadata.namespace, pod_name))
             except Exception as e:
                 print(e)
             except KeyboardInterrupt:
@@ -98,7 +104,7 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
         matching_logs.sort(key=lambda x: x[0])
 
     # Print matching logs
-    for log_entry, pod_name in matching_logs:
+    for log_entry, namespace, pod_name in matching_logs:
         try:
             # Split the log entry into Kubernetes timestamp, Bitcoin timestamp, and the rest of the log
             k8s_timestamp, rest = log_entry.split(" ", 1)
@@ -106,9 +112,13 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 
             # Format the output based on the show_k8s_timestamps option
             if show_k8s_timestamps:
-                print(f"{pod_name}: {k8s_timestamp} {bitcoin_timestamp} {log_message}")
+                print(
+                    f"{pod_name} {namespace:<{longest_namespace_len}} {k8s_timestamp} {bitcoin_timestamp} {log_message}"
+                )
             else:
-                print(f"{pod_name}: {bitcoin_timestamp} {log_message}")
+                print(
+                    f"{pod_name} {namespace:<{longest_namespace_len}} {bitcoin_timestamp} {log_message}"
+                )
         except ValueError:
             # If we can't parse the timestamps, just print the original log entry
             print(f"{pod_name}: {log_entry}")
@@ -123,13 +133,41 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 def messages(tank_a: str, tank_b: str, chain: str):
     """
     Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
+
+    Optionally, include a namespace like so: tank-name.namespace
     """
+
+    def parse_name_and_namespace(tank: str) -> tuple[str, Optional[str]]:
+        tank_split = tank.split(".")
+        try:
+            namespace = tank_split[1]
+        except IndexError:
+            namespace = None
+        return tank_split[0], namespace
+
+    tank_a_split = tank_a.split(".")
+    tank_b_split = tank_b.split(".")
+    if len(tank_a_split) > 2 or len(tank_b_split) > 2:
+        click.secho("Accepted formats: tank-name OR tank-name.namespace")
+        click.secho(f"Foramts found: {tank_a} {tank_b}")
+        sys.exit(1)
+
+    tank_a, namespace_a = parse_name_and_namespace(tank_a)
+    tank_b, namespace_b = parse_name_and_namespace(tank_b)
+
     try:
+        namespace_a = get_default_namespace_or(namespace_a)
+        namespace_b = get_default_namespace_or(namespace_b)
+
         # Get the messages
-        messages = get_messages(tank_a, tank_b, chain)
+        messages = get_messages(
+            tank_a, tank_b, chain, namespace_a=namespace_a, namespace_b=namespace_b
+        )
 
         if not messages:
-            print(f"No messages found between {tank_a} and {tank_b}")
+            print(
+                f"No messages found between {tank_a} ({namespace_a}) and {tank_b} ({namespace_b})"
+            )
             return
 
         # Process and print messages
@@ -154,7 +192,7 @@ def messages(tank_a: str, tank_b: str, chain: str):
         print(f"Error fetching messages between nodes {tank_a} and {tank_b}: {e}")
 
 
-def get_messages(tank_a: str, tank_b: str, chain: str):
+def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespace_b: str):
     """
     Fetch messages from the message capture files
     """
@@ -162,15 +200,17 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
     # Get the IP of node_b
-    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}'"
+    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
     tank_b_ip = run_command(cmd).strip()
 
     # Get the service IP of node_b
-    cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}'"
+    cmd = (
+        f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
+    )
     tank_b_service_ip = run_command(cmd).strip()
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec {tank_a} -- ls {base_dir}"
+    cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- ls {base_dir}"
 
     dirs = run_command(cmd).splitlines()
 
@@ -181,7 +221,8 @@ def get_messages(tank_a: str, tank_b: str, chain: str):
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec {tank_a} -- cat {file_path}"
+                cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- cat {file_path}"
+                import subprocess
 
                 blob = subprocess.run(
                     cmd, shell=True, capture_output=True, executable="bash"

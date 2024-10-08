@@ -45,10 +45,11 @@ def status():
     table.add_column("Component", style="cyan")
     table.add_column("Name", style="green")
     table.add_column("Status", style="yellow")
+    table.add_column("Namespace", style="green")
 
     # Add tanks to the table
     for tank in tanks:
-        table.add_row("Tank", tank["name"], tank["status"])
+        table.add_row("Tank", tank["name"], tank["status"], tank["namespace"])
 
     # Add a separator if there are both tanks and scenarios
     if tanks and scenarios:
@@ -58,7 +59,7 @@ def status():
     active = 0
     if scenarios:
         for scenario in scenarios:
-            table.add_row("Scenario", scenario["name"], scenario["status"])
+            table.add_row("Scenario", scenario["name"], scenario["status"], scenario["namespace"])
             if scenario["status"] == "running" or scenario["status"] == "pending":
                 active += 1
     else:
@@ -86,9 +87,23 @@ def status():
 
 def _get_tank_status():
     tanks = get_mission("tank")
-    return [{"name": tank.metadata.name, "status": tank.status.phase.lower()} for tank in tanks]
+    return [
+        {
+            "name": tank.metadata.name,
+            "status": tank.status.phase.lower(),
+            "namespace": tank.metadata.namespace,
+        }
+        for tank in tanks
+    ]
 
 
 def _get_deployed_scenarios():
     commanders = get_mission("commander")
-    return [{"name": c.metadata.name, "status": c.status.phase.lower()} for c in commanders]
+    return [
+        {
+            "name": c.metadata.name,
+            "status": c.status.phase.lower(),
+            "namespace": c.metadata.namespace,
+        }
+        for c in commanders
+    ]

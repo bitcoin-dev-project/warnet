@@ -45,7 +45,7 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                self.warnet("down")
+                self.warnet("down --force")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")
@@ -131,7 +131,7 @@ class TestBase:
             if len(scns) == 0:
                 return True
             for s in scns:
-                exit_status = get_pod_exit_status(s["name"])
+                exit_status = get_pod_exit_status(s["name"], s["namespace"])
                 self.log.debug(f"Scenario {s['name']} exited with code {exit_status}")
                 if exit_status != 0:
                     return False

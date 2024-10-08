@@ -2,6 +2,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 import click
 import yaml
@@ -19,8 +20,15 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    WARGAMES_NAMESPACE_PREFIX,
 )
-from .k8s import get_default_namespace, wait_for_ingress_controller, wait_for_pod_ready
+from .k8s import (
+    get_default_namespace,
+    get_default_namespace_or,
+    get_namespaces_by_type,
+    wait_for_ingress_controller,
+    wait_for_pod_ready,
+)
 from .process import stream_command
 
 
@@ -42,13 +50,31 @@ def validate_directory(ctx, param, value):
     callback=validate_directory,
 )
 @click.option("--debug", is_flag=True)
-def deploy(directory, debug):
+@click.option("--namespace", type=str, help="Specify a namespace in which to deploy the network")
+@click.option("--to-all-users", is_flag=True, help="Deploy network to all user namespaces")
+def deploy(directory, debug, namespace, to_all_users):
+    """Deploy a warnet with topology loaded from <directory>"""
+    if to_all_users:
+        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
+        for namespace in namespaces:
+            _deploy(directory, debug, namespace.metadata.name, False)
+    else:
+        _deploy(directory, debug, namespace, to_all_users)
+
+
+def _deploy(directory, debug, namespace, to_all_users):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
+    if to_all_users:
+        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
+        for namespace in namespaces:
+            deploy(directory, debug, namespace.metadata.name, False)
+        return
+
     if (directory / NETWORK_FILE).exists():
         dl = deploy_logging_stack(directory, debug)
-        deploy_network(directory, debug)
+        deploy_network(directory, debug, namespace=namespace)
         df = deploy_fork_observer(directory, debug)
         if dl | df:
             deploy_ingress(debug)
@@ -147,7 +173,7 @@ def deploy_fork_observer(directory: Path, debug: bool) -> bool:
 
     default_namespace = get_default_namespace()
     namespace = LOGGING_NAMESPACE
-    cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace}"
+    cmd = f"{HELM_COMMAND} 'fork-observer' {FORK_OBSERVER_CHART} --namespace {namespace} --create-namespace"
     if debug:
         cmd += " --debug"
 
@@ -189,14 +215,14 @@ rpc_password = "tabconf2024"
     return True
 
 
-def deploy_network(directory: Path, debug: bool = False):
+def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str] = None):
     network_file_path = directory / NETWORK_FILE
     defaults_file_path = directory / DEFAULTS_FILE
 
+    namespace = get_default_namespace_or(namespace)
+
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
-
-    namespace = get_default_namespace()
 
     for node in network_file["nodes"]:
         click.echo(f"Deploying node: {node.get('name')}")
@@ -237,16 +263,17 @@ def deploy_namespaces(directory: Path):
 
     names = [n.get("name") for n in namespaces_file["namespaces"]]
     for n in names:
-        if not n.startswith("warnet-"):
-            click.echo(
-                f"Failed to create namespace: {n}. Namespaces must start with a 'warnet-' prefix."
+        if not n.startswith(WARGAMES_NAMESPACE_PREFIX):
+            click.secho(
+                f"Failed to create namespace: {n}. Namespaces must start with a '{WARGAMES_NAMESPACE_PREFIX}' prefix.",
+                fg="red",
             )
             return
 
     for namespace in namespaces_file["namespaces"]:
         click.echo(f"Deploying namespace: {namespace.get('name')}")
         try:
-            temp_override_file_path = Path()
+            temp_override_file_path = ""
             namespace_name = namespace.get("name")
             namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
 
@@ -267,7 +294,7 @@ def deploy_namespaces(directory: Path):
             click.echo(f"Error: {e}")
             return
         finally:
-            if temp_override_file_path.exists():
+            if temp_override_file_path:
                 temp_override_file_path.unlink()
 
 

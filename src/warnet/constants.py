@@ -11,10 +11,15 @@ WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
 ]
 
-DEFAULT_NAMESPACE = "warnet"
+DEFAULT_NAMESPACE = "default"
 LOGGING_NAMESPACE = "warnet-logging"
 INGRESS_NAMESPACE = "ingress"
-HELM_COMMAND = "helm upgrade --install --create-namespace"
+WARGAMES_NAMESPACE_PREFIX = "wargames-"
+KUBE_INTERNAL_NAMESPACES = ["kube-node-lease", "kube-public", "kube-system", "kubernetes-dashboard"]
+HELM_COMMAND = "helm upgrade --install"
+
+TANK_MISSION = "tank"
+COMMANDER_MISSION = "commander"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
@@ -98,10 +103,10 @@ LOGGING_HELM_COMMANDS = [
     "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
     "helm repo update",
     f"helm upgrade --install --namespace warnet-logging --create-namespace --values {MANIFESTS_DIR}/loki_values.yaml loki grafana/loki --version 5.47.2",
-    "helm upgrade --install --namespace warnet-logging promtail grafana/promtail",
-    "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --set grafana.enabled=false",
-    f"helm upgrade --install grafana-dashboards {CHARTS_DIR}/grafana-dashboards --namespace warnet-logging",
-    f"helm upgrade --install --namespace warnet-logging loki-grafana grafana/grafana --values {MANIFESTS_DIR}/grafana_values.yaml",
+    "helm upgrade --install --namespace warnet-logging promtail grafana/promtail --create-namespace",
+    "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --create-namespace --set grafana.enabled=false",
+    f"helm upgrade --install grafana-dashboards {CHARTS_DIR}/grafana-dashboards --namespace warnet-logging --create-namespace",
+    f"helm upgrade --install --namespace warnet-logging --create-namespace loki-grafana grafana/grafana --values {MANIFESTS_DIR}/grafana_values.yaml",
 ]
 
 
