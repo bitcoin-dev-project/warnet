@@ -16,6 +16,6 @@ data:
     zmqpubrawtx=tcp://0.0.0.0:{{ .Values.ZMQTxPort }}
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
-    {{- range .Values.connect }}
-      {{- print "connect=" . | nindent 4}}
+    {{- range .Values.addnode }}
+      {{- print "addnode=" . | nindent 4}}
     {{- end }}

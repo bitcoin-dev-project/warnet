@@ -38,11 +38,11 @@ def custom_graph(
     connections = set()
 
     for i in range(num_nodes):
-        node = {"name": f"tank-{i:04d}", "connect": [], "image": {"tag": version}}
+        node = {"name": f"tank-{i:04d}", "addnode": [], "image": {"tag": version}}
 
         # Add round-robin connection
         next_node = (i + 1) % num_nodes
-        node["connect"].append(f"tank-{next_node:04d}")
+        node["addnode"].append(f"tank-{next_node:04d}")
         connections.add((i, next_node))
 
         # Add random connections
@@ -55,7 +55,7 @@ def custom_graph(
             random_node = random.choice(available_nodes)
             # Avoid circular loops of A -> B -> A
             if (random_node, i) not in connections:
-                node["connect"].append(f"tank-{random_node:04d}")
+                node["addnode"].append(f"tank-{random_node:04d}")
                 connections.add((i, random_node))
                 available_nodes.remove(random_node)
 
