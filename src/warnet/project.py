@@ -20,6 +20,10 @@ from .constants import (
     HELM_BLESSED_NAME_AND_CHECKSUMS,
     HELM_BLESSED_VERSION,
     HELM_DOWNLOAD_URL_STUB,
+    KUBECTL_BINARY_NAME,
+    KUBECTL_BLESSED_NAME_AND_CHECKSUMS,
+    KUBECTL_BLESSED_VERSION,
+    KUBECTL_DOWNLOAD_URL_STUB,
 )
 from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_scenario_defaults
@@ -147,7 +151,7 @@ def setup():
         except FileNotFoundError as err:
             return False, str(err)
 
-    def is_kubectl_installed() -> tuple[bool, str]:
+    def is_kubectl_installed_and_offer_if_not() -> tuple[bool, str]:
         try:
             version_result = subprocess.run(
                 ["kubectl", "version", "--client"],
@@ -163,8 +167,30 @@ def setup():
                 return True, location_result.stdout.strip()
             else:
                 return False, ""
-        except FileNotFoundError as err:
-            return False, str(err)
+        except FileNotFoundError:
+            print()
+            kubectl_answer = inquirer.prompt(
+                [
+                    inquirer.Confirm(
+                        "install_kubectl",
+                        message=click.style(
+                            "Would you like Warnet to install Kubectl into your virtual environment?",
+                            fg="blue",
+                            bold=True,
+                        ),
+                        default=True,
+                    ),
+                ]
+            )
+            if kubectl_answer is None:
+                msg = "Setup cancelled by user."
+                click.secho(msg, fg="yellow")
+                return False, msg
+            if kubectl_answer["install_kubectl"]:
+                click.secho("    Installing Kubectl...", fg="yellow", bold=True)
+                install_kubectl_rootlessly_to_venv()
+                return is_kubectl_installed_and_offer_if_not()
+            return False, "Please install Kubectl."
 
     def is_helm_installed_and_offer_if_not() -> tuple[bool, str]:
         try:
@@ -246,7 +272,7 @@ def setup():
     )
     kubectl_info = ToolInfo(
         tool_name="Kubectl",
-        is_installed_func=is_kubectl_installed,
+        is_installed_func=is_kubectl_installed_and_offer_if_not,
         install_instruction="Install kubectl.",
         install_url="https://kubernetes.io/docs/tasks/tools/install-kubectl/",
     )
@@ -446,7 +472,23 @@ def query_arch_from_uname(arch: str) -> Optional[str]:
         return None
 
 
-def write_blessed_checksum(helm_filename: str, dest_path: str):
+def write_blessed_kubectl_checksum(system: str, arch: str, dest_path: str):
+    checksum = next(
+        (
+            b["checksum"]
+            for b in KUBECTL_BLESSED_NAME_AND_CHECKSUMS
+            if b["system"] == system and b["arch"] == arch
+        ),
+        None,
+    )
+    if checksum:
+        with open(dest_path, "w") as f:
+            f.write(checksum)
+    else:
+        click.secho("Could not find a matching kubectl binary and checksum", fg="red")
+
+
+def write_blessed_helm_checksum(helm_filename: str, dest_path: str):
     checksum = next(
         (b["checksum"] for b in HELM_BLESSED_NAME_AND_CHECKSUMS if b["name"] == helm_filename), None
     )
@@ -472,12 +514,12 @@ def verify_checksum(file_path, checksum_path):
     click.secho("    Checksum verified.", fg="blue")
 
 
-def install_helm_to_venv(helm_bin_path):
+def install_to_venv(bin_path, binary_name):
     venv_bin_dir = os.path.join(sys.prefix, "bin")
-    helm_dst_path = os.path.join(venv_bin_dir, HELM_BINARY_NAME)
-    shutil.move(helm_bin_path, helm_dst_path)
-    os.chmod(helm_dst_path, 0o755)
-    click.secho(f"    {HELM_BINARY_NAME} installed into {helm_dst_path}", fg="blue")
+    dst_path = os.path.join(venv_bin_dir, binary_name)
+    shutil.move(bin_path, dst_path)
+    os.chmod(dst_path, 0o755)
+    click.secho(f"    {binary_name} installed into {dst_path}", fg="blue")
 
 
 def install_helm_rootlessly_to_venv():
@@ -512,17 +554,66 @@ def install_helm_rootlessly_to_venv():
             checksum_path = os.path.join(temp_dir, f"{helm_filename}.sha256")
 
             download_file(helm_url, helm_archive_path)
-            write_blessed_checksum(helm_filename, checksum_path)
+            write_blessed_helm_checksum(helm_filename, checksum_path)
             verify_checksum(helm_archive_path, checksum_path)
 
             # Extract Helm and install it in the virtual environment's bin folder
             with tarfile.open(helm_archive_path, "r:gz") as tar:
                 tar.extractall(path=temp_dir)
             helm_bin_path = os.path.join(temp_dir, os_name + "-" + arch, HELM_BINARY_NAME)
-            install_helm_to_venv(helm_bin_path)
+            install_to_venv(helm_bin_path, HELM_BINARY_NAME)
 
             click.secho(
                 f"    {HELM_BINARY_NAME} {version} installed successfully to your virtual environment!\n",
+                fg="blue",
+            )
+
+    except Exception as e:
+        click.secho(f"Error: {e}\nCould not install helm.", fg="yellow")
+        sys.exit(1)
+
+
+def install_kubectl_rootlessly_to_venv():
+    if not is_in_virtualenv():
+        click.secho(
+            "Error: You are not in a virtual environment. Please activate a virtual environment and try again.",
+            fg="yellow",
+        )
+        sys.exit(1)
+
+    os_name = get_os_name_for_helm()
+    if os_name is None:
+        click.secho(
+            "Error: Could not determine the operating system of this computer.", fg="yellow"
+        )
+        sys.exit(1)
+
+    uname_arch = os.uname().machine
+    arch = query_arch_from_uname(uname_arch)
+    if arch not in ["arm64", "amd64"]:
+        click.secho(f"No Kubectl binary candidate for arch: {uname_arch}", fg="red")
+        sys.exit(1)
+
+    uname_sys = os.uname().sysname.lower()
+    if uname_sys not in ["linux", "darwin"]:
+        click.secho(f"The following system is not supported: {uname_sys}", fg="red")
+        sys.exit(1)
+
+    kubectl_url = f"{KUBECTL_DOWNLOAD_URL_STUB}/{uname_sys}/{arch}/{KUBECTL_BINARY_NAME}"
+
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            binary_path = os.path.join(temp_dir, KUBECTL_BINARY_NAME)
+            checksum_path = os.path.join(temp_dir, f"{KUBECTL_BINARY_NAME}.sha256")
+
+            download_file(kubectl_url, binary_path)
+            write_blessed_kubectl_checksum(uname_sys, arch, checksum_path)
+            verify_checksum(binary_path, checksum_path)
+
+            install_to_venv(binary_path, KUBECTL_BINARY_NAME)
+
+            click.secho(
+                f"    {KUBECTL_BINARY_NAME} {KUBECTL_BLESSED_VERSION} installed successfully to your virtual environment!\n",
                 fg="blue",
             )
 
