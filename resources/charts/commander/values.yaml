@@ -65,6 +65,4 @@ volumeMounts: []
 
 port:
 
-warnet: ""
-
 args: ""
