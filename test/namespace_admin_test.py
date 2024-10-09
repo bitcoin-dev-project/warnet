@@ -51,8 +51,8 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
             self.setup_network()
             self.authenticate_and_become_bob()
             self.bob_runs_scenario_tests()
-            self.return_to_intial_context()
         finally:
+            self.return_to_initial_context()
             try:
                 self.cleanup_kubeconfig()
             except K8sError as e:
@@ -146,7 +146,7 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
             return False
         return self.red_namespace in maybe_namespaces
 
-    def return_to_intial_context(self):
+    def return_to_initial_context(self):
         cmd = f"kubectl config use-context {self.initial_context}"
         self.log.info(run_command(cmd))
         self.wait_for_predicate(self.this_is_the_current_context(self.initial_context))
