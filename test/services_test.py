@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+import json
 import os
 from pathlib import Path
+from time import sleep
 
 import requests
 from test_base import TestBase
 
-from warnet.k8s import get_ingress_ip_or_host
+from warnet.k8s import get_ingress_ip_or_host, wait_for_ingress_controller
 
 
 class ServicesTest(TestBase):
@@ -31,16 +33,27 @@ class ServicesTest(TestBase):
         self.log.info("Creating chain split")
         self.warnet("bitcoin rpc john createwallet miner")
         self.warnet("bitcoin rpc john -generate 1")
-        # Port will be auto-forwarded by `warnet deploy`, routed through the enabled Caddy pod
+
+        self.log.info("Waiting for ingress controller")
+        wait_for_ingress_controller()
+
+        self.log.info("Waiting for ingress host")
+        ingress_ip = None
+        attempts = 100
+        while not ingress_ip:
+            ingress_ip = get_ingress_ip_or_host()
+            attempts -= 1
+            if attempts < 0:
+                raise Exception("Never got ingress host")
+            sleep(1)
+        # network id is 0xDEADBE in decimal
+        fo_data_uri = f"http://{ingress_ip}/fork-observer/api/14593470/data.json"
 
         def call_fo_api():
             # if on minikube remember to run `minikube tunnel` for this test to run
-            ingress_ip = get_ingress_ip_or_host()
-            fo_root = f"http://{ingress_ip}/fork-observer"
             try:
-                fo_res = requests.get(f"{fo_root}/api/networks.json")
-                network_id = fo_res.json()["networks"][0]["id"]
-                fo_data = requests.get(f"{fo_root}/api/{network_id}/data.json")
+                self.log.info(f"Getting: {fo_data_uri}")
+                fo_data = requests.get(fo_data_uri)
                 # fork observed!
                 return len(fo_data.json()["header_infos"]) == 2
             except Exception as e:
@@ -50,6 +63,19 @@ class ServicesTest(TestBase):
 
         self.wait_for_predicate(call_fo_api)
         self.log.info("Fork observed!")
+
+        self.log.info("Checking node description...")
+        fo_data = requests.get(fo_data_uri)
+        nodes = fo_data.json()["nodes"]
+        assert len(nodes) == 4
+        assert nodes[1]["name"] == "john"
+        assert nodes[1]["description"] == "john.default.svc:18444"
+
+        self.log.info("Checking reachable address is provided...")
+        self.warnet("bitcoin rpc george addnode john.default.svc:18444 onetry")
+        self.wait_for_predicate(
+            lambda: len(json.loads(self.warnet("bitcoin rpc george getpeerinfo"))) > 1
+        )
 
 
 if __name__ == "__main__":
