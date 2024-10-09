@@ -19,7 +19,7 @@ roles:
         resources: ["persistentvolumeclaims", "namespaces"]
         verbs: ["get", "list"]
       - apiGroups: [""]
-        resources: ["events"]
+        resources: ["events", "pods/status"]
         verbs: ["get"]
   - name: pod-manager
     rules:
@@ -36,5 +36,5 @@ roles:
         resources: ["persistentvolumeclaims", "namespaces"]
         verbs: ["get", "list"]
       - apiGroups: [""]
-        resources: ["events"]
+        resources: ["events", "pods/status"]
         verbs: ["get"]
