@@ -136,7 +136,8 @@ config: ""
 
 defaultConfig: ""
 
-connect: []
+addnode: []
+
 loadSnapshot:
   enabled: false
   url: ""

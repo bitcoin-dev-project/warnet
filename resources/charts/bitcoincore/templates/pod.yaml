@@ -15,7 +15,7 @@ metadata:
     collect_logs: "true"
     {{- end }}
   annotations:
-    init_peers: "{{ .Values.connect | len }}"
+    init_peers: "{{ .Values.addnode | len }}"
 spec:
   restartPolicy: "{{ .Values.restartPolicy }}"
   {{- with .Values.imagePullSecrets }}
