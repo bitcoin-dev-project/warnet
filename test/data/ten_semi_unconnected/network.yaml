@@ -22,7 +22,7 @@ nodes:
     config: |
       debug=validation
   - name: tank-0008
-    connect:
+    addnode:
       - tank-0009
     config: |
       debug=validation
