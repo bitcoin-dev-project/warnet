@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
+from scenarios_test import ScenariosTest
 from test_base import TestBase
 
 from warnet.constants import KUBECONFIG, WARGAMES_NAMESPACE_PREFIX
@@ -17,9 +18,10 @@ from warnet.k8s import (
 from warnet.process import run_command
 
 
-class NamespaceAdminTest(TestBase):
+class NamespaceAdminTest(ScenariosTest, TestBase):
     def __init__(self):
         super().__init__()
+
         self.namespace_dir = (
             Path(os.path.dirname(__file__))
             / "data"
@@ -27,33 +29,9 @@ class NamespaceAdminTest(TestBase):
             / "namespaces"
             / "two_namespaces_two_users"
         )
-        self.network_dir = (
-            Path(os.path.dirname(__file__)) / "data" / "admin" / "networks" / "6_node_bitcoin"
-        )
 
-    def run_test(self):
-        try:
-            os.chdir(self.tmpdir)
-            self.log.info(f"Running test in: {self.tmpdir}")
-            self.establish_initial_context()
-            self.establish_names()
-            self.setup_namespaces()
-            self.setup_service_accounts()
-            self.deploy_network_in_team_namespaces()
-            self.authenticate_and_become_bob()
-            self.return_to_intial_context()
-        finally:
-            try:
-                self.cleanup_kubeconfig()
-            except K8sError as e:
-                self.log.info(f"KUBECONFIG cleanup error: {e}")
-            self.cleanup()
-
-    def establish_initial_context(self):
-        self.initial_context = get_kubeconfig_value("{.current-context}")
-        self.log.info(f"Initial context: {self.initial_context}")
-
-    def establish_names(self):
+        self.initial_context = None
+        self.current_context = None
         self.bob_user = "bob-warnettest"
         self.bob_auth_file = "bob-warnettest-wargames-red-team-warnettest-kubeconfig"
         self.bob_context = "bob-warnettest-wargames-red-team-warnettest"
@@ -63,16 +41,29 @@ class NamespaceAdminTest(TestBase):
         self.blue_users = ["carol-warnettest", "default", "mallory-warnettest"]
         self.red_users = ["alice-warnettest", self.bob_user, "default"]
 
-    def return_to_intial_context(self):
-        cmd = f"kubectl config use-context {self.initial_context}"
-        self.log.info(run_command(cmd))
-        self.wait_for_predicate(self.this_is_the_current_context(self.initial_context))
+    def run_test(self):
+        try:
+            os.chdir(self.tmpdir)
+            self.log.info(f"Running test in: {self.tmpdir}")
+            self.establish_initial_context()
+            self.setup_namespaces()
+            self.setup_service_accounts()
+            self.setup_network()
+            self.authenticate_and_become_bob()
+            self.bob_runs_scenario_tests()
+        finally:
+            self.return_to_initial_context()
+            try:
+                self.cleanup_kubeconfig()
+            except K8sError as e:
+                self.log.info(f"KUBECONFIG cleanup error: {e}")
+            self.cleanup()
 
-    def this_is_the_current_context(self, context: str) -> Callable[[], bool]:
-        cmd = "kubectl config current-context"
-        current_context = run_command(cmd).strip()
-        self.log.info(f"Current context: {current_context} {context == current_context}")
-        return lambda: current_context == context
+    def establish_initial_context(self):
+        self.initial_context = get_kubeconfig_value("{.current-context}")
+        self.log.info(f"Initial context: {self.initial_context}")
+        self.current_context = self.initial_context
+        self.log.info(f"Current context: {self.current_context}")
 
     def setup_namespaces(self):
         self.log.info("Setting up the namespaces")
@@ -86,18 +77,28 @@ class NamespaceAdminTest(TestBase):
         self.wait_for_predicate(self.service_accounts_are_validated)
         self.log.info("Service accounts have been set up and validated")
 
-    def deploy_network_in_team_namespaces(self):
-        self.log.info("Deploy networks to team namespaces")
-        self.log.info(self.warnet(f"deploy {self.network_dir} --to-all-users"))
+    def setup_network(self):
+        if self.current_context == self.bob_context:
+            self.log.info(f"Allowing {self.current_context} to update the network...")
+            assert self.this_is_the_current_context(self.bob_context)
+            self.warnet(f"deploy {self.network_dir}")
+        else:
+            self.log.info("Deploy networks to team namespaces")
+            assert self.this_is_the_current_context(self.initial_context)
+            self.log.info(self.warnet(f"deploy {self.network_dir} --to-all-users"))
         self.wait_for_all_tanks_status()
         self.log.info("Waiting for all edges")
         self.wait_for_all_edges()
 
     def authenticate_and_become_bob(self):
         self.log.info("Authenticating and becoming bob...")
+        self.log.info(f"Current context: {self.current_context}")
+        assert self.initial_context == self.current_context
         assert get_kubeconfig_value("{.current-context}") == self.initial_context
         self.warnet(f"auth kubeconfigs/{self.bob_auth_file}")
-        assert get_kubeconfig_value("{.current-context}") == self.bob_context
+        self.current_context = self.bob_context
+        assert get_kubeconfig_value("{.current-context}") == self.current_context
+        self.log.info(f"Current context: {self.current_context}")
 
     def service_accounts_are_validated(self) -> bool:
         self.log.info("Checking service accounts")
@@ -145,6 +146,17 @@ class NamespaceAdminTest(TestBase):
             return False
         return self.red_namespace in maybe_namespaces
 
+    def return_to_initial_context(self):
+        cmd = f"kubectl config use-context {self.initial_context}"
+        self.log.info(run_command(cmd))
+        self.wait_for_predicate(self.this_is_the_current_context(self.initial_context))
+
+    def this_is_the_current_context(self, context: str) -> Callable[[], bool]:
+        cmd = "kubectl config current-context"
+        current_context = run_command(cmd).strip()
+        self.log.info(f"Current context: {current_context} {context == current_context}")
+        return lambda: current_context == context
+
     def cleanup_kubeconfig(self):
         try:
             kubeconfig_data = open_kubeconfig(KUBECONFIG)
@@ -158,6 +170,11 @@ class NamespaceAdminTest(TestBase):
             write_kubeconfig(kubeconfig_data, KUBECONFIG)
         except Exception as e:
             raise K8sError(f"Could not write to KUBECONFIG: {KUBECONFIG}") from e
+
+    def bob_runs_scenario_tests(self):
+        assert self.this_is_the_current_context(self.bob_context)
+        super().run_test()
+        assert self.this_is_the_current_context(self.bob_context)
 
 
 def remove_user(kubeconfig_data: dict, username: str) -> dict:

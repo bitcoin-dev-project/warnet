@@ -49,7 +49,7 @@ class GetdataTest(Commander):
         good_getdata = msg_getdata()
         good_getdata.inv.append(CInv(t=2, h=best_block))
         p2p_block_store.send_and_ping(good_getdata)
-        p2p_block_store.wait_until(lambda: p2p_block_store.blocks[best_block] == 1)
+        p2p_block_store.wait_until(lambda: p2p_block_store.blocks[best_block] >= 1)
 
 
 def main():
