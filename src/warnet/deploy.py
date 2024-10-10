@@ -184,13 +184,20 @@ def deploy_fork_observer(directory: Path, debug: bool) -> bool:
     # Add an entry for each node in the graph
     for i, tank in enumerate(get_mission("tank")):
         node_name = tank.metadata.name
+        for container in tank.spec.containers:
+            if container.name == "bitcoincore":
+                for port in container.ports:
+                    if port.name == "rpc":
+                        rpcport = port.container_port
+                    if port.name == "p2p":
+                        p2pport = port.container_port
         node_config = f"""
 [[networks.nodes]]
 id = {i}
 name = "{node_name}"
-description = ""
+description = "{node_name}.{default_namespace}.svc:{int(p2pport)}"
 rpc_host = "{node_name}.{default_namespace}.svc"
-rpc_port = {int(tank.metadata.labels["RPCPort"])}
+rpc_port = {int(rpcport)}
 rpc_user = "forkobserver"
 rpc_password = "tabconf2024"
 """
