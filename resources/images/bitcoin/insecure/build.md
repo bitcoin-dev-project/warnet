@@ -31,8 +31,8 @@ docker buildx build \
   --build-context bitcoin-src="." \
   --build-arg ALPINE_VERSION="3.12.12" \
   --build-arg BITCOIN_VERSION="0.20.0" \
-  --build-arg EXTRA_PACKAGES="sqlite-dev miniupnpc" \
-  --build-arg EXTRA_RUNTIME_PACKAGES="boost-filesystem sqlite-dev" \
+  --build-arg EXTRA_PACKAGES="sqlite-dev miniupnpc-dev" \
+  --build-arg EXTRA_RUNTIME_PACKAGES="boost-filesystem sqlite-dev miniupnpc-dev" \
   --build-arg REPO="josibake/bitcoin" \
   --build-arg COMMIT_SHA="0bbff8feff0acf1693dfe41184d9a4fd52001d3f" \
   --tag bitcoindevproject/bitcoin:0.20.0 \
