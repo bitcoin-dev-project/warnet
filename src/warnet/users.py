@@ -22,9 +22,7 @@ def auth(auth_config):
 
     is_first_config = False
     if not os.path.exists(KUBECONFIG):
-        kube_folder = os.path.join(os.path.expanduser("~"), ".kube")
-        if not os.path.exists(kube_folder):
-            os.makedirs(kube_folder)
+        os.makedirs(os.path.dirname(KUBECONFIG), exist_ok=True)
         try:
             write_kubeconfig(auth_config, KUBECONFIG)
             is_first_config = True
