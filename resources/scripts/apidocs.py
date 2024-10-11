@@ -29,7 +29,7 @@ def print_cmd(cmd, super=""):
                 format_default_value(p["default"], p["type"]["param_type"]),
             ]
             for p in cmd["params"]
-            if p["name"] != "help"
+            if p["name"] != "help" and p["name"] != "unknown_args"
         ]
         doc += tabulate(data, headers=headers, tablefmt="github")
     doc += "\n\n"

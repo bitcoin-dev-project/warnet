@@ -72,7 +72,7 @@ options:
 
 ### `warnet run`
 Run a scenario from a file.
-    Pass `-- --help` to get individual scenario help
+Pass `-- --help` to get individual scenario help
 
 options:
 | name            | type   | required   | default   |
@@ -153,7 +153,7 @@ options:
 ### `warnet bitcoin messages`
 Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [chain]
 
-    Optionally, include a namespace like so: tank-name.namespace
+Optionally, include a namespace like so: tank-name.namespace
 
 options:
 | name   | type   | required   | default   |
@@ -179,7 +179,7 @@ options:
 
 ### `warnet image build`
 Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> with the specified \<tags>.
-    Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
+Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
 
 options:
 | name       | type   | required   | default   |
