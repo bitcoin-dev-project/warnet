@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import tempfile
+from multiprocessing import Process
 from pathlib import Path
 from typing import Optional
 
@@ -75,17 +76,44 @@ def _deploy(directory, debug, namespace, to_all_users):
 
     if to_all_users:
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
+        processes = []
         for namespace in namespaces:
-            deploy(directory, debug, namespace.metadata.name, False)
+            p = Process(target=deploy, args=(directory, debug, namespace.metadata.name, False))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
         return
 
     if (directory / NETWORK_FILE).exists():
-        dl = deploy_logging_stack(directory, debug)
-        deploy_network(directory, debug, namespace=namespace)
-        df = deploy_fork_observer(directory, debug)
-        if dl | df:
-            deploy_ingress(debug)
-            deploy_caddy(directory, debug)
+        processes = []
+        logging_process = Process(target=deploy_logging_stack, args=(directory, debug))
+        logging_process.start()
+        processes.append(logging_process)
+
+        network_process = Process(target=deploy_network, args=(directory, debug, namespace))
+        network_process.start()
+
+        ingress_process = Process(target=deploy_ingress, args=(debug,))
+        ingress_process.start()
+        processes.append(ingress_process)
+
+        caddy_process = Process(target=deploy_caddy, args=(directory, debug))
+        caddy_process.start()
+        processes.append(caddy_process)
+
+        # Wait for the network process to complete
+        network_process.join()
+
+        # Start the fork observer process immediately after network process completes
+        fork_observer_process = Process(target=deploy_fork_observer, args=(directory, debug))
+        fork_observer_process.start()
+        processes.append(fork_observer_process)
+
+        # Wait for all other processes to complete
+        for p in processes:
+            p.join()
+
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
