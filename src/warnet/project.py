@@ -159,7 +159,8 @@ def setup():
                 text=True,
             )
             if cluster_info.returncode == 0:
-                return True, f"\n\t{cluster_info.stdout.strip().replace('\n', '\n\t')}"
+                indented_output = cluster_info.stdout.strip().replace('\n', '\n\t')
+                return True, f"\n\t{indented_output}"
             else:
                 return False, ""
         except Exception:
