@@ -370,7 +370,8 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
     namespace = get_default_namespace_or(namespace)
 
     def format_pods(pods: list[V1Pod]) -> list[str]:
-        return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in pods]
+        sorted_pods = sorted(pods, key=lambda pod: pod.metadata.creation_timestamp, reverse=True)
+        return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in sorted_pods]
 
     if pod_name == "":
         try:
@@ -402,7 +403,7 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
             return  # cancelled by user
 
     try:
-        pod = get_pod(pod_name)
+        pod = get_pod(pod_name, namespace=pod_namespace)
         eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
         available_container_names = [container.name for container in pod.spec.containers]
         container_name = next(
@@ -421,7 +422,9 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
         return
 
     try:
-        stream = pod_log(pod_name, container_name=container_name, follow=follow)
+        stream = pod_log(
+            pod_name, container_name=container_name, namespace=pod_namespace, follow=follow
+        )
         for line in stream:
             click.echo(line.decode("utf-8").rstrip())
     except Exception as e:
