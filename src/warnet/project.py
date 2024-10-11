@@ -151,6 +151,21 @@ def setup():
         except FileNotFoundError as err:
             return False, str(err)
 
+    def is_docker_desktop_kube_running() -> tuple[bool, str]:
+        try:
+            cluster_info = subprocess.run(
+                ["kubectl", "cluster-info", "--request-timeout=1"],
+                capture_output=True,
+                text=True,
+            )
+            if cluster_info.returncode == 0:
+                return True, f"\n\t{cluster_info.stdout.strip().replace('\n', '\n\t')}"
+            else:
+                return False, ""
+        except Exception:
+            print()
+            return False, "Please enable kubernetes in Docker Desktop"
+
     def is_kubectl_installed_and_offer_if_not() -> tuple[bool, str]:
         try:
             version_result = subprocess.run(
@@ -264,6 +279,12 @@ def setup():
         install_instruction="Please make sure docker is running",
         install_url="https://docs.docker.com/engine/install/",
     )
+    docker_desktop_kube_running = ToolInfo(
+        tool_name="Kubernetes Running in Docker Desktop",
+        is_installed_func=is_docker_desktop_kube_running,
+        install_instruction="Please enable the local kubernetes cluster in Docker Desktop",
+        install_url="https://docs.docker.com/desktop/kubernetes/",
+    )
     minikube_running_info = ToolInfo(
         tool_name="Running Minikube",
         is_installed_func=is_minikube_running,
@@ -319,10 +340,13 @@ def setup():
 
         check_results: list[ToolStatus] = []
         if answers:
+            check_results.append(check_installation(kubectl_info))
+            check_results.append(check_installation(helm_info))
             if answers["platform"] == "Docker Desktop":
                 check_results.append(check_installation(docker_info))
                 check_results.append(check_installation(docker_desktop_info))
                 check_results.append(check_installation(docker_running_info))
+                check_results.append(check_installation(docker_desktop_kube_running))
             elif answers["platform"] == "Minikube":
                 check_results.append(check_installation(docker_info))
                 check_results.append(check_installation(docker_running_info))
@@ -330,8 +354,6 @@ def setup():
                 if is_platform_darwin():
                     check_results.append(check_installation(minikube_version_info))
                 check_results.append(check_installation(minikube_running_info))
-            check_results.append(check_installation(kubectl_info))
-            check_results.append(check_installation(helm_info))
         else:
             click.secho("Please re-run setup.", fg="yellow")
             sys.exit(1)
