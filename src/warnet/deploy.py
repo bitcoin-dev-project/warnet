@@ -32,29 +32,35 @@ from .k8s import (
 )
 from .process import stream_command
 
+HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
+
 
 def validate_directory(ctx, param, value):
     directory = Path(value)
     if not directory.is_dir():
-        raise click.BadParameter(f"'{value}' is not a valid directory.")
+        raise click.BadParameter(f"'{value}' is not a valid directory.{HINT}")
     if not (directory / NETWORK_FILE).exists() and not (directory / NAMESPACES_FILE).exists():
         raise click.BadParameter(
-            f"'{value}' does not contain a valid network.yaml or namespaces.yaml file."
+            f"'{value}' does not contain a valid network.yaml or namespaces.yaml file.{HINT}"
         )
     return directory
 
 
-@click.command()
+@click.command(context_settings={"ignore_unknown_options": True})
 @click.argument(
     "directory",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    type=click.Path(exists=True),
     callback=validate_directory,
 )
 @click.option("--debug", is_flag=True)
 @click.option("--namespace", type=str, help="Specify a namespace in which to deploy the network")
 @click.option("--to-all-users", is_flag=True, help="Deploy network to all user namespaces")
-def deploy(directory, debug, namespace, to_all_users):
+@click.argument("unknown_args", nargs=-1)
+def deploy(directory, debug, namespace, to_all_users, unknown_args):
     """Deploy a warnet with topology loaded from <directory>"""
+    if unknown_args:
+        raise click.BadParameter(f"Unknown args: {unknown_args}{HINT}")
+
     if to_all_users:
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         for namespace in namespaces:
