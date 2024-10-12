@@ -259,41 +259,49 @@ rpc_password = "tabconf2024"
 
 def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str] = None):
     network_file_path = directory / NETWORK_FILE
-    defaults_file_path = directory / DEFAULTS_FILE
-
     namespace = get_default_namespace_or(namespace)
 
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    processes = []
     for node in network_file["nodes"]:
-        click.echo(f"Deploying node: {node.get('name')}")
-        try:
-            temp_override_file_path = ""
-            node_name = node.get("name")
-            node_config_override = {k: v for k, v in node.items() if k != "name"}
+        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace))
+        p.start()
+        processes.append(p)
 
-            cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
-            if debug:
-                cmd += " --debug"
+    for p in processes:
+        p.join()
 
-            if node_config_override:
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".yaml", delete=False
-                ) as temp_file:
-                    yaml.dump(node_config_override, temp_file)
-                    temp_override_file_path = Path(temp_file.name)
-                cmd = f"{cmd} -f {temp_override_file_path}"
 
-            if not stream_command(cmd):
-                click.echo(f"Failed to run Helm command: {cmd}")
-                return
-        except Exception as e:
-            click.echo(f"Error: {e}")
+def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
+    defaults_file_path = directory / DEFAULTS_FILE
+    click.echo(f"Deploying node: {node.get('name')}")
+    temp_override_file_path = ""
+    try:
+        node_name = node.get("name")
+        node_config_override = {k: v for k, v in node.items() if k != "name"}
+
+        defaults_file_path = directory / DEFAULTS_FILE
+        cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
+        if debug:
+            cmd += " --debug"
+
+        if node_config_override:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+                yaml.dump(node_config_override, temp_file)
+                temp_override_file_path = Path(temp_file.name)
+            cmd = f"{cmd} -f {temp_override_file_path}"
+
+        if not stream_command(cmd):
+            click.echo(f"Failed to run Helm command: {cmd}")
             return
-        finally:
-            if temp_override_file_path:
-                Path(temp_override_file_path).unlink()
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        return
+    finally:
+        if temp_override_file_path:
+            Path(temp_override_file_path).unlink()
 
 
 def deploy_namespaces(directory: Path):
