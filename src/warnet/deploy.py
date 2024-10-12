@@ -144,7 +144,7 @@ def deploy_caddy(directory: Path, debug: bool):
     if not network_file.get(name, {}).get("enabled", False):
         return
 
-    cmd = f"{HELM_COMMAND} {name} {CADDY_CHART} --namespace {namespace}"
+    cmd = f"{HELM_COMMAND} {name} {CADDY_CHART} --namespace {namespace} --create-namespace"
     if debug:
         cmd += " --debug"
 
