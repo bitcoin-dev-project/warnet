@@ -320,32 +320,40 @@ def deploy_namespaces(directory: Path):
             )
             return
 
+    processes = []
     for namespace in namespaces_file["namespaces"]:
-        click.echo(f"Deploying namespace: {namespace.get('name')}")
-        try:
-            temp_override_file_path = ""
-            namespace_name = namespace.get("name")
-            namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
+        p = Process(target=deploy_single_namespace, args=(namespace, defaults_file_path))
+        p.start()
+        processes.append(p)
 
-            cmd = f"{HELM_COMMAND} {namespace_name} {NAMESPACES_CHART_LOCATION} -f {defaults_file_path}"
+    for p in processes:
+        p.join()
 
-            if namespace_config_override:
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".yaml", delete=False
-                ) as temp_file:
-                    yaml.dump(namespace_config_override, temp_file)
-                    temp_override_file_path = Path(temp_file.name)
-                cmd = f"{cmd} -f {temp_override_file_path}"
 
-            if not stream_command(cmd):
-                click.echo(f"Failed to run Helm command: {cmd}")
-                return
-        except Exception as e:
-            click.echo(f"Error: {e}")
+def deploy_single_namespace(namespace, defaults_file_path: Path):
+    click.echo(f"Deploying namespace: {namespace.get('name')}")
+    temp_override_file_path = ""
+    try:
+        namespace_name = namespace.get("name")
+        namespace_config_override = {k: v for k, v in namespace.items() if k != "name"}
+
+        cmd = f"{HELM_COMMAND} {namespace_name} {NAMESPACES_CHART_LOCATION} -f {defaults_file_path}"
+
+        if namespace_config_override:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
+                yaml.dump(namespace_config_override, temp_file)
+                temp_override_file_path = Path(temp_file.name)
+            cmd = f"{cmd} -f {temp_override_file_path}"
+
+        if not stream_command(cmd):
+            click.echo(f"Failed to run Helm command: {cmd}")
             return
-        finally:
-            if temp_override_file_path:
-                temp_override_file_path.unlink()
+    except Exception as e:
+        click.echo(f"Error: {e}")
+        return
+    finally:
+        if temp_override_file_path:
+            Path(temp_override_file_path).unlink()
 
 
 def is_windows():
