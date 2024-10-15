@@ -398,12 +398,12 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
         ]
         selected = inquirer.prompt(q, theme=GreenPassion())
         if selected:
-            pod_name, pod_namespace = selected["pod"].split(": ")
+            pod_name, namespace = selected["pod"].split(": ")
         else:
             return  # cancelled by user
 
     try:
-        pod = get_pod(pod_name, namespace=pod_namespace)
+        pod = get_pod(pod_name, namespace=namespace)
         eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
         available_container_names = [container.name for container in pod.spec.containers]
         container_name = next(
@@ -423,7 +423,7 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
 
     try:
         stream = pod_log(
-            pod_name, container_name=container_name, namespace=pod_namespace, follow=follow
+            pod_name, container_name=container_name, namespace=namespace, follow=follow
         )
         for line in stream:
             click.echo(line.decode("utf-8").rstrip())
