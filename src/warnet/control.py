@@ -360,7 +360,7 @@ def run(
 @click.command()
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
-@click.option("--namespace", type=str, default="default", show_default=True)
+@click.option("--namespace", type=str, default="", show_default=True)
 def logs(pod_name: str, follow: bool, namespace: str):
     """Show the logs of a pod"""
     return _logs(pod_name, follow, namespace)
