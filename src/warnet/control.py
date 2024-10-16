@@ -367,8 +367,6 @@ def logs(pod_name: str, follow: bool, namespace: str):
 
 
 def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
-    namespace = get_default_namespace_or(namespace)
-
     def format_pods(pods: list[V1Pod]) -> list[str]:
         sorted_pods = sorted(pods, key=lambda pod: pod.metadata.creation_timestamp, reverse=True)
         return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in sorted_pods]
@@ -382,11 +380,11 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
             pod_list.extend(formatted_tanks)
 
         except Exception as e:
-            print(f"Could not fetch any pods in namespace ({namespace}): {e}")
+            click.secho(f"Could not fetch any pods: {e}")
             return
 
         if not pod_list:
-            print(f"Could not fetch any pods in namespace ({namespace})")
+            click.secho("Could not fetch any pods.")
             return
 
         q = [
