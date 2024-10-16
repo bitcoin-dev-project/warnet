@@ -367,15 +367,17 @@ def logs(pod_name: str, follow: bool, namespace: str):
 
 
 def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
-    def format_pods(pods: list[V1Pod]) -> list[str]:
+    def format_pods(pods: list[V1Pod], namespace: Optional[str]) -> list[str]:
+        if namespace:
+            pods = [pod for pod in pods if pod.metadata.namespace == namespace]
         sorted_pods = sorted(pods, key=lambda pod: pod.metadata.creation_timestamp, reverse=True)
         return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in sorted_pods]
 
     if pod_name == "":
         try:
             pod_list = []
-            formatted_commanders = format_pods(get_mission(COMMANDER_MISSION))
-            formatted_tanks = format_pods(get_mission(TANK_MISSION))
+            formatted_commanders = format_pods(get_mission(COMMANDER_MISSION), namespace)
+            formatted_tanks = format_pods(get_mission(TANK_MISSION), namespace)
             pod_list.extend(formatted_commanders)
             pod_list.extend(formatted_tanks)
 
