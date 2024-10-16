@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
+import pexpect
 from scenarios_test import ScenariosTest
 from test_base import TestBase
 
@@ -49,7 +50,9 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
             self.setup_namespaces()
             self.setup_service_accounts()
             self.setup_network()
+            self.admin_checks_logs()
             self.authenticate_and_become_bob()
+            self.bob_checks_logs()
             self.bob_runs_scenario_tests()
         finally:
             self.return_to_initial_context()
@@ -175,6 +178,56 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         assert self.this_is_the_current_context(self.bob_context)
         super().run_test()
         assert self.this_is_the_current_context(self.bob_context)
+
+    def bob_checks_logs(self):
+        assert self.this_is_the_current_context(self.bob_context)
+        self.log.info("Bob will check the logs")
+        bitcoin_version_slug = "Bitcoin Core version v27.0.0"
+        self.sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
+        self.sut.expect("Please choose a pod", timeout=10)
+        self.sut.sendline("")
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
+        self.sut.expect("Please choose a pod", timeout=10)
+        self.sut.sendline("")
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.sut = pexpect.spawn(
+            f"warnet logs tank-0008 --namespace {self.red_namespace}", maxread=4096 * 10
+        )
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.log.info("Bob has checked the logs")
+        assert self.this_is_the_current_context(self.bob_context)
+
+    def admin_checks_logs(self):
+        assert self.this_is_the_current_context(self.initial_context)
+        self.log.info("The admin will check the logs")
+        bitcoin_version_slug = "Bitcoin Core version v27.0.0"
+        self.sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
+        self.sut.expect("Please choose a pod", timeout=10)
+        self.sut.sendline("")
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
+        self.sut.expect("Please choose a pod", timeout=10)
+        self.sut.sendline("")
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
+        self.sut.expect("The pod 'tank-0008' is found in these namespaces", timeout=10)
+        self.sut.close()
+        self.sut = pexpect.spawn(
+            f"warnet logs tank-0008 --namespace {self.red_namespace}", maxread=4096 * 10
+        )
+        self.sut.expect(bitcoin_version_slug, timeout=10)
+        self.sut.close()
+        self.log.info("The admin has checked the logs")
+        assert self.this_is_the_current_context(self.initial_context)
 
 
 def remove_user(kubeconfig_data: dict, username: str) -> dict:
