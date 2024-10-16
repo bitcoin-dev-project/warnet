@@ -402,6 +402,13 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
         else:
             return  # cancelled by user
 
+        try:
+            pod = get_pod(pod_name, namespace=namespace)
+        except Exception as e:
+            click.secho(e)
+            click.secho(f"Could not get pod: {pod_name}: {namespace}")
+            return
+
     try:
         pod = get_pod(pod_name, namespace=namespace)
         eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
