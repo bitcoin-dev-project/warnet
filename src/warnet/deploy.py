@@ -94,7 +94,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         network_process = Process(target=deploy_network, args=(directory, debug, namespace))
         network_process.start()
 
-        ingress_process = Process(target=deploy_ingress, args=(debug,))
+        ingress_process = Process(target=deploy_ingress, args=(directory, debug))
         ingress_process.start()
         processes.append(ingress_process)
 
@@ -184,7 +184,15 @@ def deploy_caddy(directory: Path, debug: bool):
     click.echo("\nTo access the warnet dashboard run:\n  warnet dashboard")
 
 
-def deploy_ingress(debug: bool):
+def deploy_ingress(directory: Path, debug: bool):
+    # Deploy ingress if either logging or fork observer is enabled
+    network_file_path = directory / NETWORK_FILE
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+    fo_enabled = network_file.get("fork_observer", {}).get("enabled", False)
+    logging_enabled = check_logging_required(directory)
+    if not (fo_enabled or logging_enabled):
+        return
     click.echo("Deploying ingress controller")
 
     for command in INGRESS_HELM_COMMANDS:
