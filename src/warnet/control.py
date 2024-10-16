@@ -409,8 +409,43 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
             click.secho(f"Could not get pod: {pod_name}: {namespace}")
             return
 
+    else:
+        pod = None
+        if not namespace:
+            namespaces = []
+            for v1namespace in get_namespaces():
+                namespace_candidate = v1namespace.metadata.name
+                try:
+                    pod = get_pod(pod_name, namespace=namespace_candidate)
+                    namespaces.append(namespace_candidate)
+                except Exception:
+                    pass
+
+            if len(namespaces) > 1:
+                click.secho(f"The pod '{pod.metadata.name}' is found in these namespaces:")
+                for ns in namespaces:
+                    click.secho(f"  - {ns}")
+                click.secho("Please limit your search to one of those namespaces.")
+                return
+
+            if not namespaces:
+                click.echo(f"Could not find pod in any namespaces: {pod_name}")
+
+            namespace = namespaces[0]
+
+        else:
+            try:
+                pod = get_pod(pod_name, namespace=namespace)
+            except Exception as e:
+                click.secho(e)
+                click.secho(f"Could not get pod: {pod_name}: {namespace}")
+                return
+
+        if not pod:
+            click.secho(f"Could not find: {pod_name}", fg="yellow")
+            sys.exit(1)
+
     try:
-        pod = get_pod(pod_name, namespace=namespace)
         eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
         available_container_names = [container.name for container in pod.spec.containers]
         container_name = next(
