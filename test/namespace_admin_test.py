@@ -42,6 +42,8 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         self.blue_users = ["carol-warnettest", "default", "mallory-warnettest"]
         self.red_users = ["alice-warnettest", self.bob_user, "default"]
 
+        self.bitcoin_version_slug = "Bitcoin Core version v27.0.0"
+
     def run_test(self):
         try:
             os.chdir(self.tmpdir)
@@ -182,60 +184,66 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
     def bob_checks_logs(self):
         assert self.this_is_the_current_context(self.bob_context)
         self.log.info("Bob will check the logs")
-        bitcoin_version_slug = "Bitcoin Core version v27.0.0"
-        self.sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
-        self.sut.expect("Please choose a pod", timeout=10)
-        self.sut.sendline("")
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
-        self.sut.expect("Please choose a pod", timeout=10)
-        self.sut.sendline("")
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn(
+
+        sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn(
             f"warnet logs tank-0008 --namespace {self.red_namespace}", maxread=4096 * 10
         )
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
-        assert expect_without_traceback(
-            "Could not find pod in any namespaces", self.sut, timeout=10
-        )
-        self.sut.close()
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
+        assert expect_without_traceback("Could not find pod in any namespaces", sut)
+        sut.close()
+
         self.log.info("Bob has checked the logs")
         assert self.this_is_the_current_context(self.bob_context)
 
     def admin_checks_logs(self):
         assert self.this_is_the_current_context(self.initial_context)
         self.log.info("The admin will check the logs")
-        bitcoin_version_slug = "Bitcoin Core version v27.0.0"
-        self.sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
-        self.sut.expect("Please choose a pod", timeout=10)
-        self.sut.sendline("")
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
-        self.sut.expect("Please choose a pod", timeout=10)
-        self.sut.sendline("")
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
-        self.sut.expect("The pod 'tank-0008' is found in these namespaces", timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn(
+
+        sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
+        assert expect_without_traceback("The pod 'tank-0008' is found in these namespaces", sut)
+        sut.close()
+
+        sut = pexpect.spawn(
             f"warnet logs tank-0008 --namespace {self.red_namespace}", maxread=4096 * 10
         )
-        self.sut.expect(bitcoin_version_slug, timeout=10)
-        self.sut.close()
-        self.sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
-        assert expect_without_traceback(
-            "Could not find pod in any namespaces", self.sut, timeout=10
-        )
-        self.sut.close()
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
+        assert expect_without_traceback("Could not find pod in any namespaces", sut)
+        sut.close()
+
         self.log.info("The admin has checked the logs")
         assert self.this_is_the_current_context(self.initial_context)
 
@@ -260,17 +268,17 @@ class StackTraceFoundException(Exception):
     pass
 
 
-def expect_without_traceback(expectation: str, sut: pexpect.spawn, timeout: int = 10) -> bool:
+def expect_without_traceback(expectation: str, sut: pexpect.spawn, timeout: int = 2) -> bool:
     expectation_found = False
     while True:
         try:
-            sut.expect("\n", timeout=timeout)
+            sut.expect(["\r", "\n"], timeout=timeout)  # inquirer uses \r
             line = sut.before.decode("utf-8")
             if "Traceback (" in line:
                 raise StackTraceFoundException
             if expectation in line:
                 expectation_found = True
-        except pexpect.exceptions.EOF:
+        except (pexpect.exceptions.EOF, pexpect.exceptions.TIMEOUT):
             break
     return expectation_found
 
