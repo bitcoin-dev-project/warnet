@@ -201,6 +201,11 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         )
         self.sut.expect(bitcoin_version_slug, timeout=10)
         self.sut.close()
+        self.sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
+        assert expect_without_traceback(
+            "Could not find pod in any namespaces", self.sut, timeout=10
+        )
+        self.sut.close()
         self.log.info("Bob has checked the logs")
         assert self.this_is_the_current_context(self.bob_context)
 
@@ -226,6 +231,11 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         )
         self.sut.expect(bitcoin_version_slug, timeout=10)
         self.sut.close()
+        self.sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
+        assert expect_without_traceback(
+            "Could not find pod in any namespaces", self.sut, timeout=10
+        )
+        self.sut.close()
         self.log.info("The admin has checked the logs")
         assert self.this_is_the_current_context(self.initial_context)
 
@@ -242,6 +252,27 @@ def remove_context(kubeconfig_data: dict, context_name: str) -> dict:
         context for context in kubeconfig_data["contexts"] if context["name"] != context_name
     ]
     return kubeconfig_data
+
+
+class StackTraceFoundException(Exception):
+    """Custom exception raised when a stack trace is found in the output."""
+
+    pass
+
+
+def expect_without_traceback(expectation: str, sut: pexpect.spawn, timeout: int = 10) -> bool:
+    expectation_found = False
+    while True:
+        try:
+            sut.expect("\n", timeout=timeout)
+            line = sut.before.decode("utf-8")
+            if "Traceback (" in line:
+                raise StackTraceFoundException
+            if expectation in line:
+                expectation_found = True
+        except pexpect.exceptions.EOF:
+            break
+    return expectation_found
 
 
 if __name__ == "__main__":

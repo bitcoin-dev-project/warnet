@@ -430,6 +430,7 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
 
             if not namespaces:
                 click.echo(f"Could not find pod in any namespaces: {pod_name}")
+                return
 
             namespace = namespaces[0]
 
