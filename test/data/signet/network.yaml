@@ -50,3 +50,33 @@ nodes:
       tag: "0.16.1"
     addnode:
       - miner
+  - name: tank-11
+    image:
+      tag: "98.0.0-invalid-blocks"
+    addnode:
+      - miner
+  - name: tank-12
+    image:
+      tag: "94.0.0-5k-inv"
+    addnode:
+      - miner
+  - name: tank-13
+    image:
+      tag: "95.0.0-disabled-opcodes"
+    addnode:
+      - miner
+  - name: tank-14
+    image:
+      tag: "96.0.0-no-mp-trim"
+    addnode:
+      - miner
+  - name: tank-15
+    image:
+      tag: "97.0.0-50-orphans"
+    addnode:
+      - miner
+  - name: tank-16
+    image:
+      tag: "99.0.0-unknown-message"
+    addnode:
+      - miner

@@ -37,13 +37,13 @@ class SignetTest(TestBase):
             f"bitcoin rpc miner importdescriptors '{json.dumps(self.signer_data['descriptors'])}'"
         )
         self.warnet(
-            f"run resources/scenarios/signet_miner.py --tank=0 generate --min-nbits --address={self.signer_data['address']['address']}"
+            f"run resources/scenarios/signet_miner.py --tank=0 generate --max-blocks=8 --min-nbits --address={self.signer_data['address']['address']}"
         )
 
         def block_one():
-            for n in range(1, 11):
+            for n in range(1, 17):
                 height = int(self.warnet(f"bitcoin rpc tank-{n} getblockcount"))
-                if height != 1:
+                if height < 8:
                     return False
             return True
 
