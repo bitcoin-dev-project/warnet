@@ -1,12 +1,12 @@
 image:
   repository: bitcoindevproject/bitcoin
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: "27.0"
 
 chain: signet
 
 spec:
-  restartPolicy: Always
+  restartPolicy: Never
 
 defaultConfig: |
   debug=rpc
