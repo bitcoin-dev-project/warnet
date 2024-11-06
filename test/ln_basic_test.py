@@ -30,12 +30,12 @@ class LNBasicTest(TestBase):
         self.wait_for_all_tanks_status(target="running")
 
         def wait_for_all_ln_rpc():
-            nodes = ["tank-0000-lnd", "tank-0001-lnd", "tank-0002-lnd"]
+            nodes = ["tank-0000-ln", "tank-0001-ln", "tank-0002-ln"]
             for node in nodes:
                 try:
                     self.warnet(f"ln rpc {node} getinfo")
-                except Exception as e:
-                    print(f"LN node {node} not ready for rpc yet: {e}")
+                except Exception:
+                    print(f"LN node {node} not ready for rpc yet")
                     return False
             return True
 
@@ -49,7 +49,7 @@ class LNBasicTest(TestBase):
         )
 
         addrs = []
-        for lnd in ["tank-0000-lnd", "tank-0001-lnd", "tank-0002-lnd"]:
+        for lnd in ["tank-0000-ln", "tank-0001-ln", "tank-0002-ln"]:
             addrs.append(json.loads(self.warnet(f"ln rpc {lnd} newaddress p2wkh"))["address"])
 
         self.warnet(
@@ -61,27 +61,27 @@ class LNBasicTest(TestBase):
 
     def manual_open_channels(self):
         # 0 -> 1 -> 2
-        pk1 = self.warnet("ln pubkey tank-0001-lnd")
-        pk2 = self.warnet("ln pubkey tank-0002-lnd")
+        pk1 = self.warnet("ln pubkey tank-0001-ln")
+        pk2 = self.warnet("ln pubkey tank-0002-ln")
 
         host1 = None
         host2 = None
 
         while not host1 or not host2:
             if not host1:
-                host1 = self.warnet("ln host tank-0001-lnd")
+                host1 = self.warnet("ln host tank-0001-ln")
             if not host2:
-                host2 = self.warnet("ln host tank-0002-lnd")
+                host2 = self.warnet("ln host tank-0002-ln")
             sleep(1)
 
         print(
             self.warnet(
-                f"ln rpc tank-0000-lnd openchannel --node_key {pk1} --local_amt 100000 --connect {host1}"
+                f"ln rpc tank-0000-ln openchannel --node_key {pk1} --local_amt 100000 --connect {host1}"
             )
         )
         print(
             self.warnet(
-                f"ln rpc tank-0001-lnd openchannel --node_key {pk2} --local_amt 100000 --connect {host2}"
+                f"ln rpc tank-0001-ln openchannel --node_key {pk2} --local_amt 100000 --connect {host2}"
             )
         )
 
@@ -99,20 +99,20 @@ class LNBasicTest(TestBase):
 
         while len(chs0) != 2 or len(chs1) != 2 or len(chs2) != 2:
             if len(chs0) != 2:
-                chs0 = json.loads(self.warnet("ln rpc tank-0000-lnd describegraph"))["edges"]
+                chs0 = json.loads(self.warnet("ln rpc tank-0000-ln describegraph"))["edges"]
             if len(chs1) != 2:
-                chs1 = json.loads(self.warnet("ln rpc tank-0001-lnd describegraph"))["edges"]
+                chs1 = json.loads(self.warnet("ln rpc tank-0001-ln describegraph"))["edges"]
             if len(chs2) != 2:
-                chs2 = json.loads(self.warnet("ln rpc tank-0002-lnd describegraph"))["edges"]
+                chs2 = json.loads(self.warnet("ln rpc tank-0002-ln describegraph"))["edges"]
             sleep(1)
 
     def pay_invoice(self):
-        inv = json.loads(self.warnet("ln rpc tank-0002-lnd addinvoice --amt 1000"))
+        inv = json.loads(self.warnet("ln rpc tank-0002-ln addinvoice --amt 1000"))
         print(inv)
-        print(self.warnet(f"ln rpc tank-0000-lnd payinvoice -f {inv['payment_request']}"))
+        print(self.warnet(f"ln rpc tank-0000-ln payinvoice -f {inv['payment_request']}"))
 
         def wait_for_success():
-            return json.loads(self.warnet("ln rpc tank-0002-lnd channelbalance"))["balance"] == 1000
+            return json.loads(self.warnet("ln rpc tank-0002-ln channelbalance"))["balance"] == 1000
             self.wait_for_predicate(wait_for_success)
 
 

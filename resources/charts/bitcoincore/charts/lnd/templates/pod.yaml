@@ -14,6 +14,7 @@ metadata:
     {{- if .Values.collectLogs }}
     collect_logs: "true"
     {{- end }}
+    chain: {{ .Values.global.chain }}
 spec:
   {{- with .Values.imagePullSecrets }}
   imagePullSecrets:

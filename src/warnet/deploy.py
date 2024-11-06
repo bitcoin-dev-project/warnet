@@ -17,7 +17,6 @@ from .constants import (
     HELM_COMMAND,
     INGRESS_HELM_COMMANDS,
     LOGGING_CRD_COMMANDS,
-    LND_CHART_LOCATION,
     LOGGING_HELM_COMMANDS,
     LOGGING_NAMESPACE,
     NAMESPACES_CHART_LOCATION,
@@ -30,7 +29,6 @@ from .k8s import (
     get_default_namespace_or,
     get_mission,
     get_namespaces_by_type,
-    get_pod,
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
@@ -335,43 +333,6 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
     finally:
         if temp_override_file_path:
             Path(temp_override_file_path).unlink()
-
-
-def deploy_lnd(node: object, namespace: str):
-    node_name = node.get("name")
-    lnd_name = f"{node_name}-lnd"
-
-    tank = get_pod(node_name, namespace)
-
-    # A little harsh but for now let's make sure this always works
-    assert tank
-
-    extra_conf = {
-        "extraLabels": {"chain": tank.metadata.labels["chain"]},
-        "config": ("\n").join(
-            [
-                f"bitcoin.{tank.metadata.labels['chain']}=1",
-                "bitcoind.rpcuser=user",
-                f"bitcoind.rpcpass={tank.metadata.labels['rpcpassword']}",
-                f"bitcoind.rpchost={node_name}:{int(tank.metadata.labels['RPCPort'])}",
-                f"bitcoind.zmqpubrawblock=tcp://{node_name}:{int(tank.metadata.labels['ZMQBlockPort'])}",
-                f"bitcoind.zmqpubrawtx=tcp://{node_name}:{int(tank.metadata.labels['ZMQTxPort'])}",
-                f"alias={lnd_name}",
-                f"externalhosts={lnd_name}",
-                f"tlsextradomain={lnd_name}",
-            ]
-        ),
-    }
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
-        yaml.dump(extra_conf, temp_file)
-        extra_conf_file_path = Path(temp_file.name)
-
-    cmd = f"{HELM_COMMAND} {lnd_name} {LND_CHART_LOCATION} --namespace {namespace} -f {extra_conf_file_path}"
-    if not stream_command(cmd):
-        print(f"Failed to run Helm command: {cmd}")
-        return
-    Path(extra_conf_file_path).unlink()
 
 
 def deploy_namespaces(directory: Path):

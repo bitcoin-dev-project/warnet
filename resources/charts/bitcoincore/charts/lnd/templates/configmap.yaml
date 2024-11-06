@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lnd.fullname" . }}
+  labels:
+    {{- include "lnd.labels" . | nindent 4 }}
+data:
+  lnd.conf: |
+    {{- .Values.baseConfig | nindent 4 }}
+    {{- .Values.defaultConfig | nindent 4 }}
+    {{- .Values.config | nindent 4 }}
+    bitcoin.{{ .Values.global.chain }}=1
+    bitcoind.rpcpass={{ .Values.global.rpcpassword }}
+    bitcoind.rpchost={{ include "bitcoincore.fullname" . }}:{{ index .Values.global .Values.global.chain "RPCPort" }}
+    bitcoind.zmqpubrawblock=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQBlockPort }}
+    bitcoind.zmqpubrawtx=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQTxPort }}
+    alias={{ include "lnd.fullname" . }}
+    externalhosts={{ include "lnd.fullname" . }}
+    tlsextradomain={{ include "lnd.fullname" . }}
