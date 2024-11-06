@@ -29,6 +29,18 @@ class LNBasicTest(TestBase):
         self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
 
+        def wait_for_all_ln_rpc():
+            nodes = ["tank-0000-lnd", "tank-0001-lnd", "tank-0002-lnd"]
+            for node in nodes:
+                try:
+                    self.warnet(f"ln rpc {node} getinfo")
+                except Exception as e:
+                    print(f"LN node {node} not ready for rpc yet: {e}")
+                    return False
+            return True
+
+        self.wait_for_predicate(wait_for_all_ln_rpc)
+
     def fund_wallets(self):
         self.warnet("bitcoin rpc tank-0000 createwallet miner")
         self.warnet("bitcoin rpc tank-0000 -generate 110")
