@@ -65,6 +65,6 @@ Always add for custom semver, check version for valid semver
 {{- $custom := contains "-" .Values.image.tag -}}
 {{- $newer := semverCompare ">=0.17.0" .Values.image.tag -}}
 {{- if or $newer $custom -}}
-[{{ .Values.chain }}]
+[{{ .Values.global.chain }}]
 {{- end -}}
 {{- end -}}

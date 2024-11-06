@@ -111,7 +111,8 @@ baseConfig: |
   maxpendingchannels=64
   trickledelay=1
   rpclisten=0.0.0.0:10009
-  # zmq* and bitcoind.{rpcuser, rpcpass} are set in warnet code
+  bitcoind.rpcuser=user
+  # zmq* and bitcoind.rpcpass are set in configmap.yaml
 
 config: ""
 

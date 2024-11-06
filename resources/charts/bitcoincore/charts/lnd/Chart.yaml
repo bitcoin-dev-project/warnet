@@ -1,5 +1,6 @@
 apiVersion: v2
 name: lnd
+
 description: A Helm chart for LND
 
 # A chart can be either an 'application' or a 'library' chart.
