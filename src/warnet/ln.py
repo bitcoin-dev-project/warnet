@@ -3,7 +3,11 @@ from typing import Optional
 
 import click
 
-from .k8s import get_default_namespace_or, get_pod
+from .k8s import (
+    get_channels,
+    get_default_namespace_or,
+    get_pod,
+)
 from .process import run_command
 
 
@@ -25,8 +29,6 @@ def rpc(pod: str, method: str, params: str, namespace: Optional[str]):
 
 
 def _rpc(pod_name: str, method: str, params: str = "", namespace: Optional[str] = None):
-    # TODO: when we add back cln we'll need to describe the pod,
-    # get a label with implementation type and then adjust command
     pod = get_pod(pod_name)
     namespace = get_default_namespace_or(namespace)
     chain = pod.metadata.labels["chain"]
@@ -42,9 +44,12 @@ def pubkey(
     """
     Get lightning node pub key from <ln pod name>
     """
-    # TODO: again here, cln will need a different command
+    print(_pubkey(pod))
+
+
+def _pubkey(pod: str):
     info = _rpc(pod, "getinfo")
-    print(json.loads(info)["identity_pubkey"])
+    return json.loads(info)["identity_pubkey"]
 
 
 @ln.command()
@@ -55,8 +60,40 @@ def host(
     """
     Get lightning node host from <ln pod name>
     """
-    # TODO: again here, cln will need a different command
+    print(_host(pod))
+
+
+def _host(pod):
     info = _rpc(pod, "getinfo")
     uris = json.loads(info)["uris"]
     if uris and len(uris) >= 0:
-        print(uris[0].split("@")[1])
+        return uris[0].split("@")[1]
+    else:
+        return ""
+
+
+@ln.command()
+def open_all_channels():
+    """
+    Open all channels with source policies defined in the network.yaml
+    <!> IGNORES HARD CODED CHANNEL IDs <!>
+    <!> Should only be run once or you'll end up with duplicate channels <!>
+    """
+    channels = get_channels()
+    commands = []
+    for ch in channels:
+        pk = _pubkey(ch["target"])
+        host = _host(ch["target"])
+        local_amt = ch["local_amt"]
+        push_amt = ch.get("push_amt", 0)
+        assert pk, f"{ch['target']} has no public key"
+        assert host, f"{ch['target']} has no host"
+        assert local_amt, "Channel has no local_amount"
+        commands.append(
+            (
+                ch["source"],
+                f"openchannel --node_key {pk} --connect {host} --local_amt {local_amt} --push_amt {push_amt}",
+            )
+        )
+    for command in commands:
+        _rpc(*command)

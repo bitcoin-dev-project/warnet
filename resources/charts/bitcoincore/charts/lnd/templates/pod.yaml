@@ -4,9 +4,6 @@ metadata:
   name: {{ include "lnd.fullname" . }}
   labels:
     {{- include "lnd.labels" . | nindent 4 }}
-    {{- with .Values.extraLabels }}
-        {{- toYaml . | nindent 4 }}
-    {{- end }}
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
