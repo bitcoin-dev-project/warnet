@@ -243,7 +243,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         try:
             temp_override_file_path = ""
             node_name = node.get("name")
-            node_config_override = {k: v for k, v in node.items() if k != "name" and k != "lnd"}
+            node_config_override = {k: v for k, v in node.items() if k != "name"}
 
             cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
             if debug:
