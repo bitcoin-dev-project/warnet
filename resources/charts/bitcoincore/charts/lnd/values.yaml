@@ -112,6 +112,7 @@ baseConfig: |
   trickledelay=1
   rpclisten=0.0.0.0:10009
   bitcoind.rpcuser=user
+  protocol.wumbo-channels=1
   # zmq* and bitcoind.rpcpass are set in configmap.yaml
 
 config: ""
