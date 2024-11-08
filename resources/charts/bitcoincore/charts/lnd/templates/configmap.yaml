@@ -17,3 +17,15 @@ data:
     alias={{ include "lnd.fullname" . }}
     externalhosts={{ include "lnd.fullname" . }}
     tlsextradomain={{ include "lnd.fullname" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lnd.fullname" . }}-channels
+  labels:
+    channels: "true"
+    {{- include "lnd.labels" . | nindent 4 }}
+data:
+  source: {{ include "lnd.fullname" . }}
+  channels: |
+    {{ .Values.channels | toJson }}
