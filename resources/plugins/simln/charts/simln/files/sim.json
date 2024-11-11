@@ -1,0 +1,16 @@
+{
+  "nodes": [
+    {
+      "id": "tank-0000-ln",
+      "address": "https://tank-0004-ln:10009",
+      "macaroon": "/working/admin.macaroon",
+      "cert": "/working/tls.cert"
+    },
+    {
+      "id": "tank-0001-ln",
+      "address": "https://tank-0005-ln:10009",
+      "macaroon": "/working/admin.macaroon",
+      "cert": "/working/tls.cert"
+    }
+  ]
+}

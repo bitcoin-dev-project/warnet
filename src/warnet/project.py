@@ -26,7 +26,7 @@ from .constants import (
     KUBECTL_DOWNLOAD_URL_STUB,
 )
 from .graph import inquirer_create_network
-from .network import copy_network_defaults, copy_scenario_defaults
+from .network import copy_network_defaults, copy_plugins_defaults, copy_scenario_defaults
 
 
 @click.command()
@@ -387,6 +387,7 @@ def create_warnet_project(directory: Path, check_empty: bool = False):
     try:
         copy_network_defaults(directory)
         copy_scenario_defaults(directory)
+        copy_plugins_defaults(directory)
         click.echo(f"Copied network example files to {directory}/networks")
         click.echo(f"Created warnet project structure in {directory}")
     except Exception as e:

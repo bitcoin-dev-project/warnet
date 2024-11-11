@@ -24,6 +24,7 @@ from .constants import (
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
     COMMANDER_MISSION,
+    PLUGIN_MISSION,
     TANK_MISSION,
 )
 from .k8s import (
@@ -384,8 +385,10 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
             pod_list = []
             formatted_commanders = format_pods(get_mission(COMMANDER_MISSION))
             formatted_tanks = format_pods(get_mission(TANK_MISSION))
+            formatted_plugins = format_pods(get_mission(PLUGIN_MISSION))
             pod_list.extend(formatted_commanders)
             pod_list.extend(formatted_tanks)
+            pod_list.extend(formatted_plugins)
 
         except Exception as e:
             print(f"Could not fetch any pods in namespace ({namespace}): {e}")

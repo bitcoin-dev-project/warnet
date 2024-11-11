@@ -20,6 +20,7 @@ HELM_COMMAND = "helm upgrade --install"
 
 TANK_MISSION = "tank"
 COMMANDER_MISSION = "commander"
+PLUGIN_MISSION = "plugin"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
@@ -36,6 +37,12 @@ NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
+
+# Plugin architecture
+PLUGINS_LABEL = "plugins"
+PLUGIN_YAML = "plugin.yaml"
+PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_LABEL)
+WARNET_USER_DIR_ENV_VAR = "WARNET_USER_DIR"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))

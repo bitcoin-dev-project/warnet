@@ -50,6 +50,7 @@ jobs:
           - signet_test.py
           - scenarios_test.py
           - namespace_admin_test.py
+          - simln_test.py
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.2.0
