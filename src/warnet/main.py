@@ -6,6 +6,7 @@ from .control import down, logs, run, snapshot, stop
 from .dashboard import dashboard
 from .deploy import deploy
 from .graph import create, graph
+from .hooks import plugin
 from .image import image
 from .project import init, new, setup
 from .status import status
@@ -34,6 +35,7 @@ cli.add_command(snapshot)
 cli.add_command(status)
 cli.add_command(stop)
 cli.add_command(create)
+cli.add_command(plugin)
 
 
 if __name__ == "__main__":

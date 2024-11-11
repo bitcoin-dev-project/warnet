@@ -4,12 +4,35 @@ import os
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
-from warnet.constants import HOOK_NAME_KEY, HOOKS_API_FILE, HOOKS_API_STEM
+import click
+
+from warnet.constants import (
+    HOOK_NAME_KEY,
+    HOOKS_API_FILE,
+    HOOKS_API_STEM,
+    PLUGINS_LABEL,
+    WARNET_USER_DIR_ENV_VAR,
+)
 
 hook_registry: set[Callable[..., Any]] = set()
 imported_modules = {}
+
+
+@click.group(name="plugin")
+def plugin():
+    pass
+
+
+@plugin.command()
+def ls():
+    plugin_dir = get_plugin_directory()
+
+    if not plugin_dir:
+        click.secho("Could not determine the plugin directory location.")
+        click.secho("Consider setting environment variable containing your project directory:")
+        click.secho(f"export {WARNET_USER_DIR_ENV_VAR}=/home/user/path/to/project/", fg="yellow")
 
 
 def api(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -73,6 +96,9 @@ def create_hooks(directory: Path):
                 )
             )
 
+    click.secho("\nConsider setting environment variable containing your project directory:")
+    click.secho(f"export {WARNET_USER_DIR_ENV_VAR}={directory.parent}\n", fg="yellow")
+
 
 decorator_code = """
 
@@ -102,15 +128,17 @@ def post_{hook}(func):
 
 def load_user_modules() -> bool:
     was_successful_load = False
-    user_module_path = Path.cwd() / "plugins"
 
-    if not user_module_path.is_dir():
+    plugin_dir = get_plugin_directory()
+
+    if not plugin_dir or not plugin_dir.is_dir():
         return was_successful_load
 
-    # Temporarily add the current directory to sys.path for imports
-    sys.path.insert(0, str(Path.cwd()))
+    # Temporarily add the directory to sys.path for imports
+    sys.path.insert(0, str(plugin_dir))
 
-    hooks_path = user_module_path / HOOKS_API_FILE
+    hooks_path = plugin_dir / HOOKS_API_FILE
+
     if hooks_path.is_file():
         hooks_spec = importlib.util.spec_from_file_location(HOOKS_API_STEM, hooks_path)
         hooks_module = importlib.util.module_from_spec(hooks_spec)
@@ -118,9 +146,9 @@ def load_user_modules() -> bool:
         sys.modules[HOOKS_API_STEM] = hooks_module
         hooks_spec.loader.exec_module(hooks_module)
 
-    for file in user_module_path.glob("*.py"):
+    for file in plugin_dir.glob("*.py"):
         if file.stem not in ("__init__", HOOKS_API_STEM):
-            module_name = f"plugins.{file.stem}"
+            module_name = f"{PLUGINS_LABEL}.{file.stem}"
             spec = importlib.util.spec_from_file_location(module_name, file)
             module = importlib.util.module_from_spec(spec)
             imported_modules[module_name] = module
@@ -143,6 +171,17 @@ def find_hooks(module_name: str, func_name: str):
         elif func.__annotations__.get(HOOK_NAME_KEY) == f"post_{func_name}":
             post_hooks.append(func)
     return pre_hooks, post_hooks
+
+
+def get_plugin_directory() -> Optional[Path]:
+    user_dir = os.getenv(WARNET_USER_DIR_ENV_VAR)
+
+    plugin_dir = Path(user_dir) / PLUGINS_LABEL if user_dir else Path.cwd() / PLUGINS_LABEL
+
+    if plugin_dir and plugin_dir.is_dir():
+        return plugin_dir
+    else:
+        return None
 
 
 def get_version(package_name: str) -> str:
