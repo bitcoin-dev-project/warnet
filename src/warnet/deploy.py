@@ -22,6 +22,7 @@ from .constants import (
     NETWORK_FILE,
     WARGAMES_NAMESPACE_PREFIX,
 )
+from .hooks import api
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -56,6 +57,7 @@ def validate_directory(ctx, param, value):
 @click.option("--namespace", type=str, help="Specify a namespace in which to deploy the network")
 @click.option("--to-all-users", is_flag=True, help="Deploy network to all user namespaces")
 @click.argument("unknown_args", nargs=-1)
+@api
 def deploy(directory, debug, namespace, to_all_users, unknown_args):
     """Deploy a warnet with topology loaded from <directory>"""
     if unknown_args:
