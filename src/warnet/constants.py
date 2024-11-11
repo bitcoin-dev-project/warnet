@@ -38,10 +38,12 @@ NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Plugin architecture
-PLUGINS_DIR = RESOURCES_DIR.joinpath("plugins")
+PLUGINS_LABEL = "plugins"
+PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_LABEL)
 HOOK_NAME_KEY = "hook_name"  # this lives as a key in object.__annotations__
 HOOKS_API_STEM = "hooks_api"
 HOOKS_API_FILE = HOOKS_API_STEM + ".py"
+WARNET_USER_DIR_ENV_VAR = "WARNET_USER_DIR"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
