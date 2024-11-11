@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from warnet.constants import HOOK_NAME_KEY, HOOKS_API_FILE, HOOKS_API_STEM
 
-hook_registry: set[str] = set()
+hook_registry: set[Callable[..., Any]] = set()
 imported_modules = {}
 
 
@@ -26,13 +26,13 @@ def api(func: Callable[..., Any]) -> Callable[..., Any]:
         pass
     ```
     """
-    if func.__name__ in hook_registry:
+    if func.__name__ in [fn.__name__ for fn in hook_registry]:
         print(
             f"Cannot re-use function names in the Warnet plugin API -- "
             f"'{func.__name__}' has already been taken."
         )
         sys.exit(1)
-    hook_registry.add(func.__name__)
+    hook_registry.add(func)
 
     if not imported_modules:
         load_user_modules()
@@ -66,21 +66,35 @@ def create_hooks(directory: Path):
     with open(init_file_path, "w") as file:
         file.write(f"# API Version: {get_version('warnet')}")
         # For each enum variant, create a corresponding decorator function
-        for hook in hook_registry:
-            file.write(decorator_code.format(hook=hook, HOOK_NAME_KEY=HOOK_NAME_KEY))
+        for func in hook_registry:
+            file.write(
+                decorator_code.format(
+                    hook=func.__name__, doc=func.__doc__, HOOK_NAME_KEY=HOOK_NAME_KEY
+                )
+            )
 
 
 decorator_code = """
 
 
 def pre_{hook}(func):
-    \"\"\"Functions with this decoration run before `{hook}`.\"\"\"
+    \"\"\"
+    Functions with this decoration run before `{hook}`.
+
+    `{hook}` documentation:
+    {doc}
+    \"\"\"
     func.__annotations__['{HOOK_NAME_KEY}'] = 'pre_{hook}'
     return func
 
 
 def post_{hook}(func):
-    \"\"\"Functions with this decoration run after `{hook}`.\"\"\"
+    \"\"\"
+    Functions with this decoration run after `{hook}`.
+
+    `{hook}` documentation:
+    {doc}
+    \"\"\"
     func.__annotations__['{HOOK_NAME_KEY}'] = 'post_{hook}'
     return func
 """
