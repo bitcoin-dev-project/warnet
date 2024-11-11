@@ -37,6 +37,12 @@ DEFAULTS_FILE = "node-defaults.yaml"
 NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
+# Plugin architecture
+PLUGINS_DIR = RESOURCES_DIR.joinpath("plugins")
+HOOK_NAME_KEY = "hook_name"  # this lives as a key in object.__annotations__
+HOOKS_API_STEM = "hooks_api"
+HOOKS_API_FILE = HOOKS_API_STEM + ".py"
+
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
 FORK_OBSERVER_CHART = str(CHARTS_DIR.joinpath("fork-observer"))
