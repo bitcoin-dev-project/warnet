@@ -91,7 +91,6 @@ def load_user_modules() -> bool:
     user_module_path = Path.cwd() / "plugins"
 
     if not user_module_path.is_dir():
-        print("No plugins folder found in the current directory")
         return was_successful_load
 
     # Temporarily add the current directory to sys.path for imports
