@@ -33,6 +33,7 @@ service:
 
 RPCPort: 10009
 P2PPort: 9735
+RestPort: 8080
 
 ingress:
   enabled: false
@@ -80,7 +81,18 @@ readinessProbe:
   tcpSocket:
     port: 10009
   timeoutSeconds: 1
-
+startupProbe:
+  failureThreshold: 10
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        PHRASE=`curl --silent --insecure https://localhost:8080/v1/genseed | grep -o '\[[^]]*\]'`
+        curl --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -102,8 +114,7 @@ tolerations: []
 affinity: {}
 
 baseConfig: |
-  noseedbackup=true
-  norest=true
+  norest=false
   debuglevel=debug
   accept-keysend=true
   bitcoin.active=true

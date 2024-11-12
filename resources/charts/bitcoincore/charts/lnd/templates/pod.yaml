@@ -32,10 +32,15 @@ spec:
         - name: p2p
           containerPort: {{ .Values.P2PPort }}
           protocol: TCP
+        - name: rest
+          containerPort: {{ .Values.RestPort }}
+          protocol: TCP
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
         {{- toYaml .Values.readinessProbe | nindent 8 }}
+      startupProbe:
+        {{- toYaml .Values.startupProbe | nindent 8 }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
@@ -45,6 +50,12 @@ spec:
         - mountPath: /root/.lnd/lnd.conf
           name: config
           subPath: lnd.conf
+        - mountPath: /root/.lnd/tls.key
+          name: tlskey
+          subPath: tls.key
+        - mountPath: /root/.lnd/tls.cert
+          name: tlscert
+          subPath: tls.cert
     {{- if .Values.circuitBreaker }}
     - name: circuitbreaker
       image: pinheadmz/circuitbreaker:278737d
@@ -57,6 +68,12 @@ spec:
     - configMap:
         name: {{ include "lnd.fullname" . }}
       name: config
+    - configMap:
+        name: {{ include "lnd.fullname" . }}
+      name: tlskey
+    - configMap:
+        name: {{ include "lnd.fullname" . }}
+      name: tlscert
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}
