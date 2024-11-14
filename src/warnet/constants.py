@@ -20,6 +20,7 @@ HELM_COMMAND = "helm upgrade --install"
 
 TANK_MISSION = "tank"
 COMMANDER_MISSION = "commander"
+PLUGIN_MISSION = "plugin"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
