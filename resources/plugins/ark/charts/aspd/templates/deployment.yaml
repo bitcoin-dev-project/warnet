@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-{{ .Values.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.name }}
+    spec:
+      containers:
+        - name: {{ .Values.name }}-main
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["aspd", "start", "--datadir", "{{ .Values.datadir }}"]
+          volumeMounts:
+            - name: data-volume
+              mountPath: "{{ .Values.datadir }}"
+          env:
+            - name: BITCOIND_URL
+              value: "{{ .Values.bitcoind.url }}"
+            - name: BITCOIND_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-bitcoind
+                  key: cookie
+      initContainers:
+        - name: {{ .Values.name }}-setup
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            [
+              "aspd", "create",
+              "--network", "{{ .Values.network }}",
+              "--datadir", "{{ .Values.datadir }}",
+              "--bitcoind-url", "{{ .Values.bitcoind.url }}",
+              "--bitcoind-cookie", "$(BITCOIND_COOKIE)"
+            ]
+          env:
+            - name: BITCOIND_COOKIE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-bitcoind
+                  key: cookie
+          volumeMounts:
+            - name: data-volume
+              mountPath: "{{ .Values.datadir }}"
+      volumes:
+        - name: data-volume
+          emptyDir: {}
