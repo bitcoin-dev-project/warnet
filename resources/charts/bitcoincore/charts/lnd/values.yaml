@@ -115,6 +115,7 @@ affinity: {}
 
 baseConfig: |
   norest=false
+  restlisten=0.0.0.0:8080
   debuglevel=debug
   accept-keysend=true
   bitcoin.active=true
