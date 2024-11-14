@@ -1,11 +1,14 @@
 import argparse
+import base64
 import configparser
+import http.client
 import json
 import logging
 import os
 import pathlib
 import random
 import signal
+import ssl
 import sys
 import tempfile
 from typing import Dict
@@ -21,6 +24,13 @@ from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
 WARNET_FILE = "/shared/warnet.json"
+
+# hard-coded deterministic lnd credentials
+ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
+# Don't worry about lnd's self-signed certificates
+INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+INSECURE_CONTEXT.check_hostname = False
+INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
 try:
     with open(WARNET_FILE) as file:
@@ -39,6 +49,45 @@ AuthServiceProxy.oldrequest = AuthServiceProxy._request
 AuthServiceProxy._request = auth_proxy_request
 
 
+class LND:
+    def __init__(self, tank_name):
+        self.conn = http.client.HTTPSConnection(
+            host=f"{tank_name}-ln", port=8080, timeout=5, context=INSECURE_CONTEXT
+        )
+
+    def get(self, uri):
+        self.conn.request(
+            method="GET", url=uri, headers={"Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX}
+        )
+        return self.conn.getresponse().read().decode("utf8")
+
+    def post(self, uri, data):
+        body = json.dumps(data)
+        self.conn.request(
+            method="POST",
+            url=uri,
+            body=body,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(body)),
+                "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+            },
+        )
+        # Stream output, otherwise we get a timeout error
+        res = self.conn.getresponse()
+        stream = ""
+        while True:
+            try:
+                data = res.read(1)
+                if len(data) == 0:
+                    break
+                else:
+                    stream += data.decode("utf8")
+            except Exception:
+                break
+        return stream
+
+
 class Commander(BitcoinTestFramework):
     # required by subclasses of BitcoinTestFramework
     def set_test_params(self):
@@ -54,6 +103,10 @@ class Commander(BitcoinTestFramework):
         if "miner" not in wallets:
             node.createwallet("miner", descriptors=True)
         return node.get_wallet_rpc("miner")
+
+    @staticmethod
+    def hex_to_b64(hex):
+        return base64.b64encode(bytes.fromhex(hex)).decode()
 
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
@@ -108,6 +161,12 @@ class Commander(BitcoinTestFramework):
             )
             node.rpc_connected = True
             node.init_peers = tank["init_peers"]
+
+            # Tank might not even have an ln node, that's
+            # not our problem, it'll just 404 if scenario tries
+            # to connect to it
+            node.lnd = LND(tank["tank"])
+
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node
 
