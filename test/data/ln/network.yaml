@@ -52,10 +52,3 @@ nodes:
       - tank-0000
     ln:
       lnd: true
-    lnd:
-      channels:
-        - id:
-            block: 301
-            index: 1
-          target: tank-0000-ln
-          local_amt: 25000

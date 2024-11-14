@@ -12,6 +12,7 @@ class LNBasicTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
+        self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
         self.lns = [
             "tank-0000-ln",
             "tank-0001-ln",
@@ -29,16 +30,21 @@ class LNBasicTest(TestBase):
             self.fund_wallets()
 
             # Manually open two channels between first three nodes
-            # and send a payment
+            # and send a payment using warnet RPC
             self.manual_open_channels()
             self.wait_for_gossip_sync(self.lns[:3], 2)
             self.pay_invoice(sender="tank-0000-ln", recipient="tank-0002-ln")
 
-            # Automatically open channels from network.yaml
+            # Automatically open channels from network.yaml using warnet RPC
             self.automatic_open_channels()
-            self.wait_for_gossip_sync(self.lns[3:], 3)
+            self.wait_for_gossip_sync(self.lns[3:], 2)
             # push_amt should enable payments from target to source
             self.pay_invoice(sender="tank-0005-ln", recipient="tank-0003-ln")
+
+            # Automatically open channels from inside a scenario commander
+            self.scenario_open_channels()
+            self.pay_invoice(sender="tank-0002-ln", recipient="tank-0003-ln")
+
         finally:
             self.cleanup()
 
@@ -75,6 +81,11 @@ class LNBasicTest(TestBase):
         self.warnet("bitcoin rpc tank-0000 sendmany '' '{" + outputs + "}'")
         self.warnet("bitcoin rpc tank-0000 -generate 1")
 
+    def wait_for_two_txs(self):
+        self.wait_for_predicate(
+            lambda: json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"] == 2
+        )
+
     def manual_open_channels(self):
         # 0 -> 1 -> 2
         pk1 = self.warnet("ln pubkey tank-0001-ln")
@@ -101,10 +112,7 @@ class LNBasicTest(TestBase):
             )
         )
 
-        def wait_for_two_txs():
-            return json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"] == 2
-
-        self.wait_for_predicate(wait_for_two_txs)
+        self.wait_for_two_txs()
 
         self.warnet("bitcoin rpc tank-0000 -generate 10")
 
@@ -131,13 +139,19 @@ class LNBasicTest(TestBase):
         self.wait_for_predicate(wait_for_success)
 
     def automatic_open_channels(self):
+        # 3 -> 4 -> 5
         self.warnet("ln open-all-channels")
 
-        def wait_for_three_txs():
-            return json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"] == 3
+        self.wait_for_two_txs()
 
-        self.wait_for_predicate(wait_for_three_txs)
         self.warnet("bitcoin rpc tank-0000 -generate 10")
+
+    def scenario_open_channels(self):
+        # 2 -> 3
+        # connecting all six ln nodes in the graph
+        scenario_file = self.scen_dir / "test_scenarios" / "ln_basic.py"
+        self.log.info(f"Running scenario from: {scenario_file}")
+        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir} --debug")
 
 
 if __name__ == "__main__":
