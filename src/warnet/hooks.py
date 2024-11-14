@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 import click
+import yaml
 
 from warnet.constants import (
     HOOK_NAME_KEY,
@@ -16,12 +17,18 @@ from warnet.constants import (
     WARNET_USER_DIR_ENV_VAR,
 )
 
+
+class PluginError(Exception):
+    pass
+
+
 hook_registry: set[Callable[..., Any]] = set()
 imported_modules = {}
 
 
 @click.group(name="plugin")
 def plugin():
+    """Control plugins"""
     pass
 
 
@@ -33,6 +40,29 @@ def ls():
         click.secho("Could not determine the plugin directory location.")
         click.secho("Consider setting environment variable containing your project directory:")
         click.secho(f"export {WARNET_USER_DIR_ENV_VAR}=/home/user/path/to/project/", fg="yellow")
+        sys.exit(1)
+
+    for plugin, status in get_plugins_with_status(plugin_dir):
+        if status:
+            click.secho(f"{plugin.stem:<20} enabled", fg="green")
+        else:
+            click.secho(f"{plugin.stem:<20} disabled", fg="yellow")
+
+
+@plugin.command()
+@click.argument("plugin", type=str)
+@click.argument("function", type=str)
+def run(plugin: str, function: str):
+    module = imported_modules.get(f"plugins.{plugin}")
+    if hasattr(module, function):
+        func = getattr(module, function)
+        if callable(func):
+            result = func()
+            print(result)
+        else:
+            click.secho(f"{function} in {module} is not callable.")
+    else:
+        click.secho(f"Could not find {function} in {module}")
 
 
 def api(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -134,6 +164,11 @@ def load_user_modules() -> bool:
     if not plugin_dir or not plugin_dir.is_dir():
         return was_successful_load
 
+    enabled_plugins = [plugin for plugin, enabled in get_plugins_with_status(plugin_dir) if enabled]
+
+    if not enabled_plugins:
+        return was_successful_load
+
     # Temporarily add the directory to sys.path for imports
     sys.path.insert(0, str(plugin_dir))
 
@@ -146,15 +181,16 @@ def load_user_modules() -> bool:
         sys.modules[HOOKS_API_STEM] = hooks_module
         hooks_spec.loader.exec_module(hooks_module)
 
-    for file in plugin_dir.glob("*.py"):
-        if file.stem not in ("__init__", HOOKS_API_STEM):
-            module_name = f"{PLUGINS_LABEL}.{file.stem}"
-            spec = importlib.util.spec_from_file_location(module_name, file)
-            module = importlib.util.module_from_spec(spec)
-            imported_modules[module_name] = module
-            sys.modules[module_name] = module
-            spec.loader.exec_module(module)
-            was_successful_load = True
+    for plugin_path in enabled_plugins:
+        for file in plugin_path.glob("*.py"):
+            if file.stem not in ("__init__", HOOKS_API_STEM):
+                module_name = f"{PLUGINS_LABEL}.{file.stem}"
+                spec = importlib.util.spec_from_file_location(module_name, file)
+                module = importlib.util.module_from_spec(spec)
+                imported_modules[module_name] = module
+                sys.modules[module_name] = module
+                spec.loader.exec_module(module)
+                was_successful_load = True
 
     # Remove the added path from sys.path
     sys.path.pop(0)
@@ -190,3 +226,34 @@ def get_version(package_name: str) -> str:
     except PackageNotFoundError:
         print(f"Package not found: {package_name}")
         sys.exit(1)
+
+
+def open_yaml(path: Path) -> dict:
+    try:
+        with open(path) as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError as e:
+        raise PluginError(f"YAML file {path} not found.") from e
+    except yaml.YAMLError as e:
+        raise PluginError(f"Error parsing yaml: {e}") from e
+
+
+def check_if_plugin_enabled(path: Path) -> bool:
+    enabled = None
+    try:
+        plugin_dict = open_yaml(path / Path("plugin.yaml"))
+        enabled = plugin_dict.get("enabled")
+    except PluginError as e:
+        click.secho(e)
+
+    return bool(enabled)
+
+
+def get_plugins_with_status(plugin_dir: Path) -> list[tuple[Path, bool]]:
+    candidates = [
+        Path(os.path.join(plugin_dir, name))
+        for name in os.listdir(plugin_dir)
+        if os.path.isdir(os.path.join(plugin_dir, name))
+    ]
+    plugins = [plugin_dir for plugin_dir in candidates if any(plugin_dir.glob("plugin.yaml"))]
+    return [(plugin, check_if_plugin_enabled(plugin)) for plugin in plugins]
