@@ -1,0 +1,17 @@
+name: "aspd"
+
+image:
+  repository: "mplsgrant/aspd"
+  tag: "d1200b9"
+  pullPolicy: IfNotPresent
+
+network: regtest
+datadir: /data/arkdatadir
+
+bitcoind:
+  url: http://bitcoind-url:port
+  cookie: bitcoind-cookie
+
+service:
+  type: ClusterIP
+  port: 3535

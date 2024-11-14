@@ -1,0 +1,5 @@
+apiVersion: v2
+name: aspd
+description: A Helm chart to deploy aspd
+version: 0.1.0
+appVersion: "alpha-git-tag"

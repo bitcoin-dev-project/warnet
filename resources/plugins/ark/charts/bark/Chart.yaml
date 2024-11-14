@@ -1,0 +1,5 @@
+apiVersion: v2
+name: bark
+description: A Helm chart to deploy bark
+version: 0.1.0
+appVersion: alpha-git-tag
