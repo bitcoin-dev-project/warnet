@@ -13,6 +13,7 @@ import sys
 import tempfile
 from typing import Dict
 
+from kubernetes import client, config
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -23,8 +24,6 @@ from test_framework.test_framework import (
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
-WARNET_FILE = "/shared/warnet.json"
-
 # hard-coded deterministic lnd credentials
 ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
 # Don't worry about lnd's self-signed certificates
@@ -32,11 +31,30 @@ INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 INSECURE_CONTEXT.check_hostname = False
 INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
-try:
-    with open(WARNET_FILE) as file:
-        WARNET = json.load(file)
-except Exception:
-    WARNET = []
+# Figure out what namespace we are in
+with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
+    NAMESPACE = f.read().strip()
+
+# Use the in-cluster k8s client to determine what pods we have access to
+config.load_incluster_config()
+sclient = client.CoreV1Api()
+pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
+
+WARNET = []
+for pod in pods.items:
+    if "mission" not in pod.metadata.labels or pod.metadata.labels["mission"] != "tank":
+        continue
+
+    WARNET.append(
+        {
+            "tank": pod.metadata.name,
+            "chain": pod.metadata.labels["chain"],
+            "rpc_host": pod.status.pod_ip,
+            "rpc_port": int(pod.metadata.labels["RPCPort"]),
+            "rpc_user": "user",
+            "rpc_password": pod.metadata.labels["rpcpassword"],
+        }
+    )
 
 
 # Ensure that all RPC calls are made with brand new http connections
@@ -160,7 +178,6 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
-            node.init_peers = tank["init_peers"]
 
             # Tank might not even have an ln node, that's
             # not our problem, it'll just 404 if scenario tries
