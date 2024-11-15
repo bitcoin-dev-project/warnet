@@ -39,22 +39,35 @@ with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
 config.load_incluster_config()
 sclient = client.CoreV1Api()
 pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
+cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
 
-WARNET = []
+WARNET = {"tanks": [], "lightning": [], "channels": []}
 for pod in pods.items:
-    if "mission" not in pod.metadata.labels or pod.metadata.labels["mission"] != "tank":
+    if "mission" not in pod.metadata.labels:
         continue
 
-    WARNET.append(
-        {
-            "tank": pod.metadata.name,
-            "chain": pod.metadata.labels["chain"],
-            "rpc_host": pod.status.pod_ip,
-            "rpc_port": int(pod.metadata.labels["RPCPort"]),
-            "rpc_user": "user",
-            "rpc_password": pod.metadata.labels["rpcpassword"],
-        }
-    )
+    if pod.metadata.labels["mission"] == "tank":
+        WARNET["tanks"].append(
+            {
+                "tank": pod.metadata.name,
+                "chain": pod.metadata.labels["chain"],
+                "rpc_host": pod.status.pod_ip,
+                "rpc_port": int(pod.metadata.labels["RPCPort"]),
+                "rpc_user": "user",
+                "rpc_password": pod.metadata.labels["rpcpassword"],
+            }
+        )
+
+    if pod.metadata.labels["mission"] == "lightning":
+        WARNET["lightning"].append(pod.metadata.name)
+
+for cm in cmaps.items:
+    if not cm.metadata.labels or "channels" not in cm.metadata.labels:
+        continue
+    channel_jsons = json.loads(cm.data["channels"])
+    for channel_json in channel_jsons:
+        channel_json["source"] = cm.data["source"]
+        WARNET["channels"].append(channel_json)
 
 
 # Ensure that all RPC calls are made with brand new http connections
@@ -68,9 +81,9 @@ AuthServiceProxy._request = auth_proxy_request
 
 
 class LND:
-    def __init__(self, tank_name):
+    def __init__(self, pod_name):
         self.conn = http.client.HTTPSConnection(
-            host=f"{tank_name}-ln", port=8080, timeout=5, context=INSECURE_CONTEXT
+            host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
 
     def get(self, uri):
@@ -153,8 +166,10 @@ class Commander(BitcoinTestFramework):
 
         # Keep a separate index of tanks by pod name
         self.tanks: Dict[str, TestNode] = {}
+        self.lns: Dict[str, LND] = {}
+        self.channels = WARNET["channels"]
 
-        for i, tank in enumerate(WARNET):
+        for i, tank in enumerate(WARNET["tanks"]):
             self.log.info(
                 f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
             )
@@ -179,13 +194,11 @@ class Commander(BitcoinTestFramework):
             )
             node.rpc_connected = True
 
-            # Tank might not even have an ln node, that's
-            # not our problem, it'll just 404 if scenario tries
-            # to connect to it
-            node.lnd = LND(tank["tank"])
-
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node
+
+        for ln in WARNET["lightning"]:
+            self.lns[ln] = LND(ln)
 
         self.num_nodes = len(self.nodes)
 
