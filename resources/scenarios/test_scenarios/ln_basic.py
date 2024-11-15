@@ -14,18 +14,18 @@ class LNBasic(Commander):
         parser.usage = "warnet run /path/to/ln_init.py"
 
     def run_test(self):
-        info = json.loads(self.tanks["tank-0003"].lnd.get("/v1/getinfo"))
+        info = json.loads(self.lns["tank-0003-ln"].get("/v1/getinfo"))
         uri = info["uris"][0]
         pk3, host = uri.split("@")
 
         print(
-            self.tanks["tank-0002"].lnd.post(
+            self.lns["tank-0002-ln"].post(
                 "/v1/peers", data={"addr": {"pubkey": pk3, "host": host}}
             )
         )
 
         print(
-            self.tanks["tank-0002"].lnd.post(
+            self.lns["tank-0002-ln"].post(
                 "/v1/channels/stream",
                 data={"local_funding_amount": 100000, "node_pubkey": self.hex_to_b64(pk3)},
             )
