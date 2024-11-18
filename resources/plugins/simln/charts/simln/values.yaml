@@ -1,0 +1,8 @@
+name: "simln"
+image:
+  repository: "mplsgrant/sim-ln"
+  tag: "d8c165d"
+  pullPolicy: IfNotPresent
+command: ["sh", "-c"]
+args: ["while true; do sleep 3600; done"]
+defaultDataDir: /app/data

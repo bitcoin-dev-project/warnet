@@ -262,6 +262,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             if not stream_command(cmd):
                 click.echo(f"Failed to run Helm command: {cmd}")
                 return
+
         except Exception as e:
             click.echo(f"Error: {e}")
             return

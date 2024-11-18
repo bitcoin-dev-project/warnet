@@ -23,7 +23,7 @@ spec:
           mountPath: /shared
   containers:
     - name: {{ .Chart.Name }}
-      image: python:3.12-slim
+      image: bitcoindevproject/commander
       imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "-c"]
       args:
@@ -35,3 +35,4 @@ spec:
   volumes:
     - name: shared-volume
       emptyDir: {}
+  serviceAccountName: {{ include "commander.fullname" . }}

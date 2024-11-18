@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import sys
@@ -226,3 +227,90 @@ def create():
             fg="yellow",
         )
         return False
+
+
+@click.command()
+@click.argument("graph_file_path", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument("output_path", type=click.Path(exists=False, file_okay=False, dir_okay=True))
+def import_network(graph_file_path: str, output_path: str):
+    """Create a network from an imported lightning network graph JSON"""
+    print(_import_network(graph_file_path, output_path))
+
+
+def _import_network(graph_file_path, output_path):
+    output_path = Path(output_path)
+    graph_file_path = Path(graph_file_path).resolve()
+    with open(graph_file_path) as graph_file:
+        graph = json.loads(graph_file.read())
+
+    tanks = {}
+    pk_to_tank = {}
+    tank_to_pk = {}
+    index = 0
+    for node in graph["nodes"]:
+        tank = f"tank-{index:04d}"
+        pk_to_tank[node["pub_key"]] = tank
+        tank_to_pk[tank] = node["pub_key"]
+        tanks[tank] = {"name": tank, "ln": {"lnd": True}, "lnd": {"channels": []}}
+        index += 1
+    print(f"Imported {index} nodes")
+
+    sorted_edges = sorted(graph["edges"], key=lambda x: int(x["channel_id"]))
+
+    supported_policies = [
+        "base_fee_msat",
+        "fee_rate_ppm",
+        "time_lock_delta",
+        "min_htlc_msat",
+        "max_htlc_msat",
+    ]
+
+    for_fuck_sake_lnd_what_is_your_fucking_problem = {"min_htlc": "min_htlc_msat"}
+
+    def import_policy(json_policy):
+        for ugh in for_fuck_sake_lnd_what_is_your_fucking_problem:
+            if ugh in json_policy:
+                new_key = for_fuck_sake_lnd_what_is_your_fucking_problem[ugh]
+                json_policy[new_key] = json_policy[ugh]
+        return {key: int(json_policy[key]) for key in supported_policies if key in json_policy}
+
+    # By default we start including channel open txs in block 300
+    block = 300
+    # Coinbase occupies the 0 position!
+    index = 1
+    count = 0
+    for edge in sorted_edges:
+        source = pk_to_tank[edge["node1_pub"]]
+        channel = {
+            "id": {"block": block, "index": index},
+            "target": pk_to_tank[edge["node2_pub"]] + "-ln",
+            "local_amt": int(edge["capacity"]),
+            "push_amt": int(edge["capacity"]) // 2,
+            "source_policy": import_policy(edge["node1_policy"]),
+            "target_policy": import_policy(edge["node2_policy"]),
+        }
+        tanks[source]["lnd"]["channels"].append(channel)
+        index += 1
+        if index > 1000:
+            index = 1
+            block += 1
+        count += 1
+
+    print(f"Imported {count} channels")
+
+    network = {"nodes": []}
+    prev_node_name = list(tanks.keys())[-1]
+    for name, obj in tanks.items():
+        obj["name"] = name
+        obj["addnode"] = [prev_node_name]
+        prev_node_name = name
+        network["nodes"].append(obj)
+
+    output_path.mkdir(parents=True, exist_ok=True)
+    # This file must exist and must contain at least one line of valid yaml
+    with open(output_path / "node-defaults.yaml", "w") as f:
+        f.write(f"imported_from: {graph_file_path}\n")
+    # Here's the good stuff
+    with open(output_path / "network.yaml", "w") as f:
+        f.write(yaml.dump(network, sort_keys=False))
+    return f"Network created in {output_path.resolve()}"

@@ -1,15 +1,20 @@
 import argparse
+import base64
 import configparser
+import http.client
 import json
 import logging
 import os
 import pathlib
 import random
 import signal
+import ssl
 import sys
 import tempfile
+import time
 from typing import Dict
 
+from kubernetes import client, config
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -20,13 +25,51 @@ from test_framework.test_framework import (
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
-WARNET_FILE = "/shared/warnet.json"
+# hard-coded deterministic lnd credentials
+ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
+# Don't worry about lnd's self-signed certificates
+INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+INSECURE_CONTEXT.check_hostname = False
+INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
-try:
-    with open(WARNET_FILE) as file:
-        WARNET = json.load(file)
-except Exception:
-    WARNET = []
+# Figure out what namespace we are in
+with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
+    NAMESPACE = f.read().strip()
+
+# Use the in-cluster k8s client to determine what pods we have access to
+config.load_incluster_config()
+sclient = client.CoreV1Api()
+pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
+cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
+
+WARNET = {"tanks": [], "lightning": [], "channels": []}
+for pod in pods.items:
+    if "mission" not in pod.metadata.labels:
+        continue
+
+    if pod.metadata.labels["mission"] == "tank":
+        WARNET["tanks"].append(
+            {
+                "tank": pod.metadata.name,
+                "chain": pod.metadata.labels["chain"],
+                "rpc_host": pod.status.pod_ip,
+                "rpc_port": int(pod.metadata.labels["RPCPort"]),
+                "rpc_user": "user",
+                "rpc_password": pod.metadata.labels["rpcpassword"],
+                "init_peers": pod.metadata.annotations["init_peers"],
+            }
+        )
+
+    if pod.metadata.labels["mission"] == "lightning":
+        WARNET["lightning"].append(pod.metadata.name)
+
+for cm in cmaps.items:
+    if not cm.metadata.labels or "channels" not in cm.metadata.labels:
+        continue
+    channel_jsons = json.loads(cm.data["channels"])
+    for channel_json in channel_jsons:
+        channel_json["source"] = cm.data["source"]
+        WARNET["channels"].append(channel_json)
 
 
 # Ensure that all RPC calls are made with brand new http connections
@@ -37,6 +80,91 @@ def auth_proxy_request(self, method, path, postdata):
 
 AuthServiceProxy.oldrequest = AuthServiceProxy._request
 AuthServiceProxy._request = auth_proxy_request
+
+
+class LND:
+    def __init__(self, pod_name):
+        self.name = pod_name
+        self.conn = http.client.HTTPSConnection(
+            host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
+        )
+
+    def get(self, uri):
+        while True:
+            try:
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers={"Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX, "Connection": "close"},
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception:
+                time.sleep(1)
+
+    def post(self, uri, data):
+        body = json.dumps(data)
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Content-Length": str(len(body)),
+                        "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+                        "Connection": "close",
+                    },
+                )
+                # Stream output, otherwise we get a timeout error
+                res = self.conn.getresponse()
+                stream = ""
+                while True:
+                    try:
+                        data = res.read(1)
+                        if len(data) == 0:
+                            break
+                        else:
+                            stream += data.decode("utf8")
+                    except Exception:
+                        break
+                return stream
+            except Exception:
+                time.sleep(1)
+
+    def newaddress(self):
+        res = self.get("/v1/newaddress")
+        return json.loads(res)
+
+    def walletbalance(self):
+        res = self.get("/v1/balance/blockchain")
+        return int(json.loads(res)["confirmed_balance"])
+
+    def uri(self):
+        res = self.get("/v1/getinfo")
+        info = json.loads(res)
+        if "uris" not in info or len(info["uris"]) == 0:
+            return None
+        return info["uris"][0]
+
+    def connect(self, target_uri):
+        pk, host = target_uri.split("@")
+        res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
+        return json.loads(res)
+
+    def channel(self, pk, local_amt, push_amt, fee_rate):
+        res = self.post(
+            "/v1/channels/stream",
+            data={
+                "local_funding_amount": local_amt,
+                "push_sat": push_amt,
+                "node_pubkey": pk,
+                "sat_per_vbyte": fee_rate,
+            },
+        )
+        return json.loads(res)
 
 
 class Commander(BitcoinTestFramework):
@@ -54,6 +182,17 @@ class Commander(BitcoinTestFramework):
         if "miner" not in wallets:
             node.createwallet("miner", descriptors=True)
         return node.get_wallet_rpc("miner")
+
+    @staticmethod
+    def hex_to_b64(hex):
+        return base64.b64encode(bytes.fromhex(hex)).decode()
+
+    @staticmethod
+    def b64_to_hex(b64, reverse=False):
+        if reverse:
+            return base64.b64decode(b64)[::-1].hex()
+        else:
+            return base64.b64decode(b64).hex()
 
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
@@ -82,8 +221,10 @@ class Commander(BitcoinTestFramework):
 
         # Keep a separate index of tanks by pod name
         self.tanks: Dict[str, TestNode] = {}
+        self.lns: Dict[str, LND] = {}
+        self.channels = WARNET["channels"]
 
-        for i, tank in enumerate(WARNET):
+        for i, tank in enumerate(WARNET["tanks"]):
             self.log.info(
                 f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
             )
@@ -107,9 +248,13 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
-            node.init_peers = tank["init_peers"]
+            node.init_peers = int(tank["init_peers"])
+
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node
+
+        for ln in WARNET["lightning"]:
+            self.lns[ln] = LND(ln)
 
         self.num_nodes = len(self.nodes)
 
