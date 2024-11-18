@@ -51,10 +51,10 @@ spec:
           name: config
           subPath: lnd.conf
         - mountPath: /root/.lnd/tls.key
-          name: tlskey
+          name: config
           subPath: tls.key
         - mountPath: /root/.lnd/tls.cert
-          name: tlscert
+          name: config
           subPath: tls.cert
     {{- if .Values.circuitBreaker }}
     - name: circuitbreaker
@@ -68,12 +68,6 @@ spec:
     - configMap:
         name: {{ include "lnd.fullname" . }}
       name: config
-    - configMap:
-        name: {{ include "lnd.fullname" . }}
-      name: tlskey
-    - configMap:
-        name: {{ include "lnd.fullname" . }}
-      name: tlscert
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}
