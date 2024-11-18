@@ -12,12 +12,13 @@ spec:
       command: ["sh", "-c"]
       args:
         - |
-          cat /config/admin.macaroon.hex | xxd -r -p > /decoded/admin.macaroon
+          cp /configmap/* /config
+          cat /config/admin.macaroon.hex | xxd -r -p > /config/admin.macaroon
       volumeMounts:
-        - name: macaroon-volume
-          mountPath: /decoded
         - name: config-volume
           mountPath: /config
+        - name: configmap-volume
+          mountPath: /configmap
   containers:
     - name: {{ .Values.name }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -27,11 +28,11 @@ spec:
       volumeMounts:
         - name: config-volume
           mountPath: /config
-        - name: macaroon-volume
-          mountPath: /decoded
+        - name: configmap-volume
+          mountPath: /configmap
   volumes:
-    - name: config-volume
+    - name: configmap-volume
       configMap:
         name: {{ include "mychart.fullname" . }}-data
-    - name: macaroon-volume
+    - name: config-volume
       emptyDir: {}

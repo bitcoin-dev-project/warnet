@@ -3,13 +3,13 @@
     {
       "id": "tank-0000-ln",
       "address": "https://tank-0000-ln:10009",
-      "macaroon": "/decoded/admin.macaroon",
+      "macaroon": "/config/admin.macaroon",
       "cert": "/config/tls.cert"
     },
     {
       "id": "tank-0001-ln",
       "address": "https://tank-0001-ln:10009",
-      "macaroon": "/decoded/admin.macaroon",
+      "macaroon": "/config/admin.macaroon",
       "cert": "/config/tls.cert"
     }
   ]
