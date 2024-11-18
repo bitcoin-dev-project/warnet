@@ -19,9 +19,7 @@ class LNBasic(Commander):
         pk3, host = uri.split("@")
 
         print(
-            self.lns["tank-0002-ln"].post(
-                "/v1/peers", data={"addr": {"pubkey": pk3, "host": host}}
-            )
+            self.lns["tank-0002-ln"].post("/v1/peers", data={"addr": {"pubkey": pk3, "host": host}})
         )
 
         print(
