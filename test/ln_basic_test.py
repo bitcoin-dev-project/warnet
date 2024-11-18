@@ -90,6 +90,8 @@ class LNBasicTest(TestBase):
         # 0 -> 1 -> 2
         pk1 = self.warnet("ln pubkey tank-0001-ln")
         pk2 = self.warnet("ln pubkey tank-0002-ln")
+        self.log.info(f"pk1: {pk1}")
+        self.log.info(f"pk2: {pk2}")
 
         host1 = ""
         host2 = ""

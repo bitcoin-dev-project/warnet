@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  labels:
+    app: {{ include "mychart.name" . }}
+    mission: plugin
+spec:
+  initContainers:
+    - name: decode-macaroon
+      image: busybox
+      command: ["sh", "-c"]
+      args:
+        - |
+          cat /config/admin.macaroon.hex | xxd -r -p > /decoded/admin.macaroon
+      volumeMounts:
+        - name: macaroon-volume
+          mountPath: /decoded
+        - name: config-volume
+          mountPath: /config
+  containers:
+    - name: {{ .Values.name }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command: {{ .Values.command | toJson }}
+      args: {{ .Values.args | toJson }}
+      volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        - name: macaroon-volume
+          mountPath: /decoded
+  volumes:
+    - name: config-volume
+      configMap:
+        name: {{ include "mychart.fullname" . }}-data
+    - name: macaroon-volume
+      emptyDir: {}
