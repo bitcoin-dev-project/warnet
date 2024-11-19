@@ -545,3 +545,19 @@ def write_kubeconfig(kube_config: dict, kubeconfig_path: str) -> None:
     except Exception as e:
         os.remove(temp_file.name)
         raise K8sError(f"Error writing kubeconfig: {kubeconfig_path}") from e
+
+
+def get_pods_with_label(label_selector: str, namespace: Optional[str] = None) -> list[V1Pod]:
+    """Get a list of pods by label.
+    Label example: "mission=lightning"
+    """
+    namespace = get_default_namespace_or(namespace)
+    v1 = get_static_client()
+
+    try:
+        pods = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
+        v1_pods = [pod for pod in pods.items]
+        return v1_pods
+    except client.exceptions.ApiException as e:
+        print(f"Error fetching pods: {e}")
+        return []
