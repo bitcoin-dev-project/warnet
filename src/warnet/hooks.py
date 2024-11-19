@@ -36,10 +36,19 @@ def plugin():
     pass
 
 
+@click.group(name="util")
+def util():
+    """Plugin utility functions"""
+    pass
+
+
+plugin.add_command(util)
+
+
 @plugin.command()
 def ls():
-    """List all available plugins and whether they are activated."""
-    plugin_dir = get_plugin_directory()
+    """List all available plugins and whether they are activated"""
+    plugin_dir = _get_plugin_directory()
 
     if not plugin_dir:
         click.secho("Could not determine the plugin directory location.")
@@ -57,8 +66,8 @@ def ls():
 @plugin.command()
 @click.argument("plugin", type=str, default="")
 def toggle(plugin: str):
-    """Turn a plugin on or off"""
-    plugin_dir = get_plugin_directory()
+    """Toggle a plugin on or off"""
+    plugin_dir = _get_plugin_directory()
 
     if plugin == "":
         plugin_list = get_plugins_with_status(plugin_dir)
@@ -67,15 +76,19 @@ def toggle(plugin: str):
         ]
 
         plugins_tag = "plugins"
-        q = [
-            inquirer.List(
-                name=plugins_tag,
-                message="Toggle a plugin, or ctrl-c to cancel",
-                choices=formatted_list,
-            )
-        ]
-        selected = inquirer.prompt(q, theme=GreenPassion())
-        plugin = selected[plugins_tag].split("|")[0].strip()
+        try:
+            q = [
+                inquirer.List(
+                    name=plugins_tag,
+                    message="Toggle a plugin, or ctrl-c to cancel",
+                    choices=formatted_list,
+                )
+            ]
+            selected = inquirer.prompt(q, theme=GreenPassion())
+            plugin = selected[plugins_tag].split("|")[0].strip()
+        except TypeError:
+            # user cancels and `selected[plugins_tag] fails with TypeError
+            sys.exit(0)
 
     plugin_settings = read_yaml(plugin_dir / Path(plugin) / "plugin.yaml")
     updated_settings = copy.deepcopy(plugin_settings)
@@ -87,6 +100,15 @@ def toggle(plugin: str):
 @click.argument("plugin", type=str)
 @click.argument("function", type=str)
 def run(plugin: str, function: str):
+    """Run a command available in a plugin"""
+    plugin_dir = _get_plugin_directory()
+    plugins = get_plugins_with_status(plugin_dir)
+    for plugin_path, status in plugins:
+        if plugin_path.stem == plugin and not status:
+            click.secho(f"The plugin '{plugin_path.stem}' is not enabled", fg="yellow")
+            click.secho("Please toggle it on to run commands.")
+            sys.exit(0)
+
     module = imported_modules.get(f"plugins.{plugin}")
     if hasattr(module, function):
         func = getattr(module, function)
@@ -193,7 +215,7 @@ def post_{hook}(func):
 def load_user_modules() -> bool:
     was_successful_load = False
 
-    plugin_dir = get_plugin_directory()
+    plugin_dir = _get_plugin_directory()
 
     if not plugin_dir or not plugin_dir.is_dir():
         return was_successful_load
@@ -243,7 +265,7 @@ def find_hooks(module_name: str, func_name: str):
     return pre_hooks, post_hooks
 
 
-def get_plugin_directory() -> Optional[Path]:
+def _get_plugin_directory() -> Optional[Path]:
     user_dir = os.getenv(WARNET_USER_DIR_ENV_VAR)
 
     plugin_dir = Path(user_dir) / PLUGINS_LABEL if user_dir else Path.cwd() / PLUGINS_LABEL
@@ -252,6 +274,11 @@ def get_plugin_directory() -> Optional[Path]:
         return plugin_dir
     else:
         return None
+
+
+@util.command()
+def get_plugin_directory():
+    click.secho(_get_plugin_directory())
 
 
 def get_version(package_name: str) -> str:
