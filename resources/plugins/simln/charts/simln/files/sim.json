@@ -2,13 +2,13 @@
   "nodes": [
     {
       "id": "tank-0000-ln",
-      "address": "https://tank-0000-ln:10009",
+      "address": "https://tank-0004-ln:10009",
       "macaroon": "/config/admin.macaroon",
       "cert": "/config/tls.cert"
     },
     {
       "id": "tank-0001-ln",
-      "address": "https://tank-0001-ln:10009",
+      "address": "https://tank-0005-ln:10009",
       "macaroon": "/config/admin.macaroon",
       "cert": "/config/tls.cert"
     }

@@ -1,13 +1,17 @@
+import copy
 import importlib.util
 import inspect
 import os
 import sys
+import tempfile
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import click
+import inquirer
 import yaml
+from inquirer.themes import GreenPassion
 
 from warnet.constants import (
     HOOK_NAME_KEY,
@@ -34,6 +38,7 @@ def plugin():
 
 @plugin.command()
 def ls():
+    """List all available plugins and whether they are activated."""
     plugin_dir = get_plugin_directory()
 
     if not plugin_dir:
@@ -47,6 +52,35 @@ def ls():
             click.secho(f"{plugin.stem:<20} enabled", fg="green")
         else:
             click.secho(f"{plugin.stem:<20} disabled", fg="yellow")
+
+
+@plugin.command()
+@click.argument("plugin", type=str, default="")
+def toggle(plugin: str):
+    """Turn a plugin on or off"""
+    plugin_dir = get_plugin_directory()
+
+    if plugin == "":
+        plugin_list = get_plugins_with_status(plugin_dir)
+        formatted_list = [
+            f"{str(name.stem):<25}| enabled: {active}" for name, active in plugin_list
+        ]
+
+        plugins_tag = "plugins"
+        q = [
+            inquirer.List(
+                name=plugins_tag,
+                message="Toggle a plugin, or ctrl-c to cancel",
+                choices=formatted_list,
+            )
+        ]
+        selected = inquirer.prompt(q, theme=GreenPassion())
+        plugin = selected[plugins_tag].split("|")[0].strip()
+
+    plugin_settings = read_yaml(plugin_dir / Path(plugin) / "plugin.yaml")
+    updated_settings = copy.deepcopy(plugin_settings)
+    updated_settings["enabled"] = not plugin_settings["enabled"]
+    write_yaml(updated_settings, plugin_dir / Path(plugin) / Path("plugin.yaml"))
 
 
 @plugin.command()
@@ -228,7 +262,7 @@ def get_version(package_name: str) -> str:
         sys.exit(1)
 
 
-def open_yaml(path: Path) -> dict:
+def read_yaml(path: Path) -> dict:
     try:
         with open(path) as file:
             return yaml.safe_load(file)
@@ -238,10 +272,21 @@ def open_yaml(path: Path) -> dict:
         raise PluginError(f"Error parsing yaml: {e}") from e
 
 
+def write_yaml(yaml_dict: dict, path: Path) -> None:
+    dir_name = os.path.dirname(path)
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False) as temp_file:
+            yaml.safe_dump(yaml_dict, temp_file)
+        os.replace(temp_file.name, path)
+    except Exception as e:
+        os.remove(temp_file.name)
+        raise PluginError(f"Error writing kubeconfig: {path}") from e
+
+
 def check_if_plugin_enabled(path: Path) -> bool:
     enabled = None
     try:
-        plugin_dict = open_yaml(path / Path("plugin.yaml"))
+        plugin_dict = read_yaml(path / Path("plugin.yaml"))
         enabled = plugin_dict.get("enabled")
     except PluginError as e:
         click.secho(e)
