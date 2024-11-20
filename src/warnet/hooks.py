@@ -99,7 +99,8 @@ def toggle(plugin: str):
 @plugin.command()
 @click.argument("plugin", type=str)
 @click.argument("function", type=str)
-def run(plugin: str, function: str):
+@click.argument("args", nargs=-1, type=str)  # Accepts zero or more arguments
+def run(plugin: str, function: str, args: tuple[str, ...]):
     """Run a command available in a plugin"""
     plugin_dir = _get_plugin_directory()
     plugins = get_plugins_with_status(plugin_dir)
@@ -113,7 +114,7 @@ def run(plugin: str, function: str):
     if hasattr(module, function):
         func = getattr(module, function)
         if callable(func):
-            result = func()
+            result = func(*args)
             print(result)
         else:
             click.secho(f"{function} in {module} is not callable.")
