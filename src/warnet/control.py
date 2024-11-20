@@ -26,7 +26,6 @@ from .constants import (
     PLUGIN_MISSION,
     TANK_MISSION,
 )
-from .hooks import api
 from .k8s import (
     can_delete_pods,
     delete_pod,
@@ -42,6 +41,7 @@ from .k8s import (
     wait_for_pod,
     write_file_to_container,
 )
+from .plugin import api
 from .process import run_command, stream_command
 
 console = Console()

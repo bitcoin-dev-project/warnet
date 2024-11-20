@@ -6,9 +6,9 @@ from .control import down, logs, run, snapshot, stop
 from .dashboard import dashboard
 from .deploy import deploy
 from .graph import create, graph, import_network
-from .hooks import plugin
 from .image import image
 from .ln import ln
+from .plugin import plugin
 from .project import init, new, setup
 from .status import status
 from .users import auth

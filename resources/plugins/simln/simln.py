@@ -5,8 +5,8 @@ from pathlib import Path
 from subprocess import run
 from time import sleep
 
-from warnet.hooks import _get_plugin_directory as get_plugin_directory
 from warnet.k8s import get_pods_with_label, wait_for_pod
+from warnet.plugin import _get_plugin_directory as get_plugin_directory
 from warnet.process import run_command
 from warnet.status import _get_tank_status as network_status
 

@@ -22,7 +22,6 @@ from .constants import (
     NETWORK_FILE,
     WARGAMES_NAMESPACE_PREFIX,
 )
-from .hooks import api
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -31,6 +30,7 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
+from .plugin import api
 from .process import stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"

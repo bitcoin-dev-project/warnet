@@ -10,8 +10,8 @@ from .constants import (
     PLUGINS_DIR,
     SCENARIOS_DIR,
 )
-from .hooks import create_hooks
 from .k8s import get_mission
+from .plugin import create_hooks
 
 
 def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclude_list: list[str]):
