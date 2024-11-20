@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 from time import sleep
@@ -58,6 +59,22 @@ def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     return sclient.read_namespaced_pod(name=name, namespace=namespace)
+
+
+def get_pods_with_label(label_selector: str, namespace: Optional[str] = None) -> list[V1Pod]:
+    """Get a list of pods by label.
+    Label example: "mission=lightning"
+    """
+    namespace = get_default_namespace_or(namespace)
+    v1 = get_static_client()
+
+    try:
+        pods = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
+        v1_pods = [pod for pod in pods.items]
+        return v1_pods
+    except client.exceptions.ApiException as e:
+        print(f"Error fetching pods: {e}")
+        return []
 
 
 def get_mission(mission: str) -> list[V1Pod]:
@@ -547,17 +564,41 @@ def write_kubeconfig(kube_config: dict, kubeconfig_path: str) -> None:
         raise K8sError(f"Error writing kubeconfig: {kubeconfig_path}") from e
 
 
-def get_pods_with_label(label_selector: str, namespace: Optional[str] = None) -> list[V1Pod]:
-    """Get a list of pods by label.
-    Label example: "mission=lightning"
-    """
-    namespace = get_default_namespace_or(namespace)
+def download(pod_name: str, namespace: str, source_path: Path, destination_path: Path = Path(".")):
+    """Download the item from the `source_path` to the `destination_path`"""
+
     v1 = get_static_client()
 
-    try:
-        pods = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
-        v1_pods = [pod for pod in pods.items]
-        return v1_pods
-    except client.exceptions.ApiException as e:
-        print(f"Error fetching pods: {e}")
-        return []
+    os.makedirs(destination_path, exist_ok=True)
+    target_folder = destination_path / source_path.stem
+    os.makedirs(target_folder, exist_ok=True)
+
+    command = ["tar", "cf", "-", str(source_path)]
+
+    resp = stream(
+        v1.connect_get_namespaced_pod_exec,
+        name=pod_name,
+        namespace=namespace,
+        command=command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+
+    tar_file = target_folder.with_suffix(".tar")
+    with open(tar_file, "wb") as f:
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                f.write(resp.read_stdout().encode("utf-8"))
+            if resp.peek_stderr():
+                print(resp.read_stderr())
+
+        resp.close()
+
+    with tarfile.open(tar_file, "r") as tar:
+        tar.extractall(path=target_folder)
+
+    os.remove(tar_file)
