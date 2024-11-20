@@ -127,7 +127,7 @@ def wait_for_predicate(predicate, timeout=5 * 60, interval=5):
     )
 
 
-def wait_for_all_tanks_status(target="running", timeout=20 * 60, interval=5):
+def wait_for_all_tanks_status(target: str = "running", timeout: int = 20 * 60, interval: int = 5):
     """Poll the warnet server for container status
     Block until all tanks are running
     """
@@ -180,8 +180,8 @@ def generate_nodes_file(activity, output_file: Path = Path("nodes.json")):
         node = {
             "id": name,
             "address": f"https://{name}:10009",
-            "macaroon": "/config/admin.macaroon",
-            "cert": "/config/tls.cert",
+            "macaroon": "/working/admin.macaroon",
+            "cert": "/working/tls.cert",
         }
         nodes.append(node)
 

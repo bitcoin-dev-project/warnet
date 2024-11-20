@@ -1,12 +1,14 @@
 import copy
 import importlib.util
 import inspect
+import json
 import os
 import sys
 import tempfile
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Callable, Optional
+from types import ModuleType
+from typing import Any, Callable, Optional, Union, get_args, get_origin, get_type_hints
 
 import click
 import inquirer
@@ -27,7 +29,7 @@ class PluginError(Exception):
 
 
 hook_registry: set[Callable[..., Any]] = set()
-imported_modules = {}
+imported_modules: dict[str, ModuleType] = {}
 
 
 @click.group(name="plugin")
@@ -97,10 +99,11 @@ def toggle(plugin: str):
 
 
 @plugin.command()
-@click.argument("plugin", type=str)
-@click.argument("function", type=str)
-@click.argument("args", nargs=-1, type=str)  # Accepts zero or more arguments
-def run(plugin: str, function: str, args: tuple[str, ...]):
+@click.argument("plugin", type=str, default="")
+@click.argument("function", type=str, default="")
+@click.option("--args", default="", type=str, help="Apply positional arguments to the function")
+@click.option("--json-dict", default="", type=str, help="Use json dict to populate parameters")
+def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
     """Run a command available in a plugin"""
     plugin_dir = _get_plugin_directory()
     plugins = get_plugins_with_status(plugin_dir)
@@ -110,16 +113,106 @@ def run(plugin: str, function: str, args: tuple[str, ...]):
             click.secho("Please toggle it on to run commands.")
             sys.exit(0)
 
-    module = imported_modules.get(f"plugins.{plugin}")
-    if hasattr(module, function):
-        func = getattr(module, function)
-        if callable(func):
-            result = func(*args)
-            print(result)
-        else:
-            click.secho(f"{function} in {module} is not callable.")
+    if plugin == "":
+        plugin_names = [
+            plugin_name.stem for plugin_name, status in get_plugins_with_status() if status
+        ]
+
+        q = [inquirer.List(name="plugin", message="Please choose a plugin", choices=plugin_names)]
+        plugin = inquirer.prompt(q, theme=GreenPassion()).get("plugin")
+
+    if function == "":
+        module = imported_modules.get(f"plugins.{plugin}")
+        funcs = [name for name, _func in inspect.getmembers(module, inspect.isfunction)]
+        q = [inquirer.List(name="func", message="Please choose a function", choices=funcs)]
+        function = inquirer.prompt(q, theme=GreenPassion()).get("func")
+
+    func = get_func(function_name=function, plugin_name=plugin)
+    hints = get_type_hints(func)
+    if not func:
+        sys.exit(0)
+
+    if args:
+        func(*args)
+        sys.exit(0)
+
+    if not json_dict:
+        params = {}
+        sig = inspect.signature(func)
+        for name, param in sig.parameters.items():
+            hint = hints.get(name)
+            hint_name = get_type_name(hint)
+            if param.default != inspect.Parameter.empty:
+                q = [
+                    inquirer.Text(
+                        "input",
+                        message=f"Enter a value for '{name}' ({hint_name})",
+                        default=param.default,
+                    )
+                ]
+            else:
+                q = [
+                    inquirer.Text(
+                        "input",
+                        message=f"Enter a value for '{name}' ({hint_name})",
+                    )
+                ]
+            user_input = inquirer.prompt(q).get("input")
+            params[name] = cast_to_hint(user_input, hint)
+        click.secho(
+            f"\nwarnet plugin run {plugin} {function} --json-dict '{json.dumps(params)}'\n",
+            fg="green",
+        )
     else:
-        click.secho(f"Could not find {function} in {module}")
+        params = json.loads(json_dict)
+
+    func(**params)
+
+
+def cast_to_hint(value: str, hint: Any) -> Any:
+    """
+    Cast a string value to the provided type hint.
+    """
+    origin = get_origin(hint)
+    args = get_args(hint)
+
+    # Handle basic types (int, str, float, etc.)
+    if origin is None:
+        return hint(value)
+
+    # Handle Union (e.g., Union[int, str])
+    if origin is Union:
+        for arg in args:
+            try:
+                return cast_to_hint(value, arg)
+            except (ValueError, TypeError):
+                continue
+        raise ValueError(f"Cannot cast {value} to {hint}")
+
+    # Handle Lists (e.g., List[int])
+    if origin is list:
+        return [cast_to_hint(v.strip(), args[0]) for v in value.split(",")]
+
+    raise ValueError(f"Unsupported hint: {hint}")
+
+
+def get_type_name(type_hint) -> str:
+    if hasattr(type_hint, "__name__"):
+        return type_hint.__name__
+    return str(type_hint)
+
+
+def get_func(function_name: str, plugin_name: str) -> Optional[Callable[..., Any]]:
+    module = imported_modules.get(f"plugins.{plugin_name}")
+    if hasattr(module, function_name):
+        func = getattr(module, function_name)
+        if callable(func):
+            return func
+        else:
+            click.secho(f"{function_name} in {module} is not callable.")
+    else:
+        click.secho(f"Could not find {function_name} in {module}")
+    return None
 
 
 def api(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -322,7 +415,9 @@ def check_if_plugin_enabled(path: Path) -> bool:
     return bool(enabled)
 
 
-def get_plugins_with_status(plugin_dir: Path) -> list[tuple[Path, bool]]:
+def get_plugins_with_status(plugin_dir: Optional[Path] = None) -> list[tuple[Path, bool]]:
+    if not plugin_dir:
+        plugin_dir = _get_plugin_directory()
     candidates = [
         Path(os.path.join(plugin_dir, name))
         for name in os.listdir(plugin_dir)

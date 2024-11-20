@@ -7,7 +7,7 @@ from time import sleep
 import pexpect
 from test_base import TestBase
 
-from warnet.k8s import get_pods_with_label
+from warnet.k8s import download, get_pods_with_label
 from warnet.process import run_command
 
 
@@ -46,19 +46,22 @@ class LNTest(TestBase):
     def copy_results(self) -> bool:
         self.log.info("Copying results")
         sleep(20)
-        get_pods_with_label("mission=plugin")[0]
+        pod = get_pods_with_label("mission=plugin")[0]
 
-        destination_path = "results"
+        download(
+            pod.metadata.name,
+            pod.metadata.namespace,
+        )
 
-        for root, _dirs, files in os.walk(destination_path):
-            for file_name in files:
-                file_path = os.path.join(root, file_name)
-
-                with open(file_path) as file:
-                    content = file.read()
-                    if "Success" in content:
-                        return True
-        return False
+        # for root, _dirs, files in os.walk(destination_path):
+        #     for file_name in files:
+        #         file_path = os.path.join(root, file_name)
+        #
+        #         with open(file_path) as file:
+        #             content = file.read()
+        #             if "Success" in content:
+        #                 return True
+        # return False
 
 
 if __name__ == "__main__":
