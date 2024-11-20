@@ -7,6 +7,7 @@ from pathlib import Path
 from test_base import TestBase
 
 from warnet.cli.process import run_command
+from warnet.k8s import get_pods_with_label
 
 
 class LNTest(TestBase):
@@ -102,18 +103,24 @@ class LNTest(TestBase):
             payment["fee_msat"] == "2213"
         ), f"Expected fee_msat to be 2213, got {payment['fee_msat']}"
 
-    # def test_simln(self):
-    #     self.log.info("Engaging simln")
-    #     node2pub, _ = json.loads(self.warnet("ln rpc 2 getinfo"))["uris"][0].split("@")
-    #     activity = [
-    #         {"source": "ln-0", "destination": node2pub, "interval_secs": 1, "amount_msat": 2000}
-    #     ]
-    #     self.warnet(
-    #         f"network export --exclude=[1] --activity={json.dumps(activity).replace(' ', '')}"
-    #     )
-    #     self.wait_for_predicate(lambda: self.check_invoices(2) > 1)
-    #     assert self.check_invoices(0) == 1, "Expected one invoice for node 0"
-    #     assert self.check_invoices(1) == 0, "Expected no invoices for node 1"
+    def test_simln(self):
+        self.log.info("Engaging simln")
+        pods = get_pods_with_label("mission=lightning")
+        node2pub = self.warnet(f"ln pubkey {pods[1].metadata.name}")
+        activity = [
+            {
+                "source": pods[0].metadata.name,
+                "destination": node2pub,
+                "interval_secs": 1,
+                "amount_msat": 2000,
+            }
+        ]
+        self.warnet(
+            f"network export --exclude=[1] --activity={json.dumps(activity).replace(' ', '')}"
+        )
+        self.wait_for_predicate(lambda: self.check_invoices(2) > 1)
+        assert self.check_invoices(0) == 1, "Expected one invoice for node 0"
+        assert self.check_invoices(1) == 0, "Expected no invoices for node 1"
 
     def check_invoice_settled(self):
         invs = json.loads(self.warnet("ln rpc tank-0002-ln listinvoices"))["invoices"]
