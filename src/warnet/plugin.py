@@ -51,12 +51,8 @@ plugin.add_command(util)
 def ls():
     """List all available plugins and whether they are activated"""
     plugin_dir = _get_plugin_directory()
-
-    if not plugin_dir:
-        click.secho("Could not determine the plugin directory location.")
-        click.secho("Consider setting environment variable containing your project directory:")
-        click.secho(f"export {WARNET_USER_DIR_ENV_VAR}=/home/user/path/to/project/", fg="yellow")
-        sys.exit(1)
+    if plugin_dir is None:
+        direct_user_to_plugin_directory_and_exit()
 
     for plugin, status in get_plugins_with_status(plugin_dir):
         if status:
@@ -70,6 +66,8 @@ def ls():
 def toggle(plugin: str):
     """Toggle a plugin on or off"""
     plugin_dir = _get_plugin_directory()
+    if plugin_dir is None:
+        direct_user_to_plugin_directory_and_exit()
 
     if plugin == "":
         plugin_list = get_plugins_with_status(plugin_dir)
@@ -99,21 +97,27 @@ def toggle(plugin: str):
 
 
 @plugin.command()
-@click.argument("plugin", type=str, default="")
-@click.argument("function", type=str, default="")
+@click.argument("plugin_name", type=str, default="")
+@click.argument("function_name", type=str, default="")
 @click.option("--args", default="", type=str, help="Apply positional arguments to the function")
 @click.option("--json-dict", default="", type=str, help="Use json dict to populate parameters")
-def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
+def run(plugin_name: str, function_name: str, args: tuple[str, ...], json_dict: str):
     """Run a command available in a plugin"""
     plugin_dir = _get_plugin_directory()
+    if plugin_dir is None:
+        direct_user_to_plugin_directory_and_exit()
+
+    if not plugin_dir:
+        click.secho("\nConsider setting environment variable containing your project directory:")
+        sys.exit(0)
     plugins = get_plugins_with_status(plugin_dir)
     for plugin_path, status in plugins:
-        if plugin_path.stem == plugin and not status:
+        if plugin_path.stem == plugin_name and not status:
             click.secho(f"The plugin '{plugin_path.stem}' is not enabled", fg="yellow")
             click.secho("Please toggle it on to run commands.")
             sys.exit(0)
 
-    if plugin == "":
+    if plugin_name == "":
         plugin_names = [
             plugin_name.stem for plugin_name, status in get_plugins_with_status() if status
         ]
@@ -122,18 +126,18 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
         plugin_answer = inquirer.prompt(q, theme=GreenPassion())
         if not plugin_answer:
             sys.exit(0)
-        plugin = plugin_answer.get("plugin")
+        plugin_name = plugin_answer.get("plugin")
 
-    if function == "":
-        module = imported_modules.get(f"plugins.{plugin}")
+    if function_name == "":
+        module = imported_modules.get(f"plugins.{plugin_name}")
         funcs = [name for name, _func in inspect.getmembers(module, inspect.isfunction)]
         q = [inquirer.List(name="func", message="Please choose a function", choices=funcs)]
         function_answer = inquirer.prompt(q, theme=GreenPassion())
         if not function_answer:
             sys.exit(0)
-        function = function_answer.get("func")
+        function_name = function_answer.get("func")
 
-    func = get_func(function_name=function, plugin_name=plugin)
+    func = get_func(function_name=function_name, plugin_name=plugin_name)
     hints = get_type_hints(func)
     if not func:
         sys.exit(0)
@@ -178,12 +182,12 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
                 params[name] = cast_to_hint(user_input, hint)
         if not params:
             click.secho(
-                f"\nwarnet plugin run {plugin} {function}\n",
+                f"\nwarnet plugin run {plugin_name} {function_name}\n",
                 fg="green",
             )
         else:
             click.secho(
-                f"\nwarnet plugin run {plugin} {function} --json-dict '{json.dumps(params)}'\n",
+                f"\nwarnet plugin run {plugin_name} {function_name} --json-dict '{json.dumps(params)}'\n",
                 fg="green",
             )
     else:
@@ -191,7 +195,7 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
 
     try:
         return_value = func(**params)
-        if return_value:
+        if return_value is not None:
             click.secho(return_value)
     except Exception as e:
         click.secho(f"Exception: {e}", fg="yellow")
@@ -306,7 +310,7 @@ def create_hooks(directory: Path):
                 )
             )
 
-    click.secho("\nConsider setting environment variable containing your project directory:")
+    click.secho("\nConsider setting an environment variable containing your project directory:")
     click.secho(f"export {WARNET_USER_DIR_ENV_VAR}={directory.parent}\n", fg="yellow")
 
 
@@ -398,6 +402,18 @@ def _get_plugin_directory() -> Optional[Path]:
         return plugin_dir
     else:
         return None
+
+
+def direct_user_to_plugin_directory_and_exit():
+    click.secho("Could not determine the plugin directory location.")
+    click.secho(
+        "Solution 1: try runing this command again, but this time from your initialized warnet directory."
+    )
+    click.secho(
+        "Solution 2: consider setting environment variable pointing to your Warnet project directory:"
+    )
+    click.secho(f"export {WARNET_USER_DIR_ENV_VAR}=/home/user/path/to/project/", fg="yellow")
+    sys.exit(1)
 
 
 @util.command()

@@ -115,7 +115,7 @@ def everyone_has_a_host() -> bool:
         result = warnet(f"ln host {name}")
         if len(result) > 1:
             host_havers += 1
-    return host_havers == len(pods)
+    return host_havers == len(pods) and host_havers != 0
 
 
 def wait_for_everyone_to_have_a_host():
