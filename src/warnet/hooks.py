@@ -176,10 +176,16 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
                 params[name] = user_input
             else:
                 params[name] = cast_to_hint(user_input, hint)
-        click.secho(
-            f"\nwarnet plugin run {plugin} {function} --json-dict '{json.dumps(params)}'\n",
-            fg="green",
-        )
+        if not params:
+            click.secho(
+                f"\nwarnet plugin run {plugin} {function}\n",
+                fg="green",
+            )
+        else:
+            click.secho(
+                f"\nwarnet plugin run {plugin} {function} --json-dict '{json.dumps(params)}'\n",
+                fg="green",
+            )
     else:
         params = json.loads(json_dict)
 

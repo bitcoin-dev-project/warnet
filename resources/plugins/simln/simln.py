@@ -34,13 +34,18 @@ def deploy_helm():
 def run_simln():
     init_network()
     fund_wallets()
-    wait_for_predicate(everyone_has_a_host)
+    wait_for_everyone_to_have_a_host()
     log.info(warnet("bitcoin rpc tank-0000 -generate 7"))
     # warnet("ln open-all-channels")
     manual_open_channels()
     log.info(warnet("bitcoin rpc tank-0000 -generate 7"))
     wait_for_gossip_sync(2)
     log.info("done waiting")
+    pod_name = prepare_and_launch_activity()
+    log.info(pod_name)
+
+
+def prepare_and_launch_activity() -> str:
     pods = get_pods_with_label(lightning_selector)
     pod_a = pods[0].metadata.name
     pod_b = pods[1].metadata.name
@@ -48,17 +53,19 @@ def run_simln():
         {"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}
     ]
     log.info(f"Activity: {sample_activity}")
-    generate_activity(sample_activity)
+    pod_name = launch_activity(sample_activity)
     log.info("Sent command. Done.")
+    return pod_name
 
 
-def generate_activity(activity: list[dict]):
+def launch_activity(activity: list[dict]) -> str:
     random_digits = "".join(random.choices("0123456789", k=10))
     plugin_dir = get_plugin_directory()
     generate_nodes_file(activity, plugin_dir / Path("simln/charts/simln/files/sim.json"))
     command = f"helm upgrade --install simln-{random_digits} {plugin_dir}/simln/charts/simln"
     log.info(f"generate activity: {command}")
     run_command(command)
+    return f"pod/simln-simln-{random_digits}"
 
 
 def init_network():
@@ -108,6 +115,10 @@ def everyone_has_a_host() -> bool:
     return host_havers == len(pods)
 
 
+def wait_for_everyone_to_have_a_host():
+    wait_for_predicate(everyone_has_a_host)
+
+
 def wait_for_predicate(predicate, timeout=5 * 60, interval=5):
     log.info(
         f"Waiting for predicate ({predicate.__name__}) with timeout {timeout}s and interval {interval}s"
@@ -148,7 +159,7 @@ def wait_for_all_tanks_status(target: str = "running", timeout: int = 20 * 60, i
     wait_for_predicate(check_status, timeout, interval)
 
 
-def wait_for_gossip_sync(expected):
+def wait_for_gossip_sync(expected: int):
     log.info(f"Waiting for sync (expecting {expected})...")
     current = 0
     while current < expected:
@@ -163,7 +174,7 @@ def wait_for_gossip_sync(expected):
     log.info("Synced")
 
 
-def warnet(cmd):
+def warnet(cmd: str = "--help"):
     log.info(f"Executing warnet command: {cmd}")
     command = ["warnet"] + cmd.split()
     proc = run(command, capture_output=True)
@@ -172,7 +183,7 @@ def warnet(cmd):
     return proc.stdout.decode()
 
 
-def generate_nodes_file(activity, output_file: Path = Path("nodes.json")):
+def generate_nodes_file(activity: dict, output_file: Path = Path("nodes.json")):
     nodes = []
 
     for i in get_pods_with_label(lightning_selector):

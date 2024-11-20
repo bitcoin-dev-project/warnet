@@ -8,13 +8,11 @@ from rich.table import Table
 from rich.text import Text
 from urllib3.exceptions import MaxRetryError
 
-from .hooks import api
 from .k8s import get_mission
 from .network import _connected
 
 
 @click.command()
-@api
 def status():
     """Display the unified status of the Warnet network and active scenarios"""
     console = Console()
