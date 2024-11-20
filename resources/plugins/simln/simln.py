@@ -6,7 +6,7 @@ from subprocess import run
 from time import sleep
 
 from warnet.hooks import _get_plugin_directory as get_plugin_directory
-from warnet.k8s import get_pods_with_label
+from warnet.k8s import get_pods_with_label, wait_for_pod
 from warnet.process import run_command
 from warnet.status import _get_tank_status as network_status
 
@@ -43,12 +43,15 @@ def run_simln():
     log.info("done waiting")
     pod_name = prepare_and_launch_activity()
     log.info(pod_name)
+    wait_for_pod(pod_name, 60)
 
 
 def prepare_and_launch_activity() -> str:
     pods = get_pods_with_label(lightning_selector)
-    pod_a = pods[0].metadata.name
-    pod_b = pods[1].metadata.name
+    pod_a = pods[1].metadata.name
+    pod_b = pods[2].metadata.name
+    log.info(f"pod_a: {pod_a}")
+    log.info(f"pod_b: {pod_b}")
     sample_activity = [
         {"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}
     ]
@@ -65,7 +68,7 @@ def launch_activity(activity: list[dict]) -> str:
     command = f"helm upgrade --install simln-{random_digits} {plugin_dir}/simln/charts/simln"
     log.info(f"generate activity: {command}")
     run_command(command)
-    return f"pod/simln-simln-{random_digits}"
+    return f"simln-simln-{random_digits}"
 
 
 def init_network():

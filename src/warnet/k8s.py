@@ -569,7 +569,6 @@ def download(pod_name: str, namespace: str, source_path: Path, destination_path:
 
     v1 = get_static_client()
 
-    os.makedirs(destination_path, exist_ok=True)
     target_folder = destination_path / source_path.stem
     os.makedirs(target_folder, exist_ok=True)
 

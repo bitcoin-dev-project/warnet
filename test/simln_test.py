@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import json
 import os
 from pathlib import Path
 from subprocess import run
@@ -8,7 +8,10 @@ from time import sleep
 import pexpect
 from test_base import TestBase
 
-from warnet.k8s import download, get_pods_with_label
+from warnet.k8s import download, get_pods_with_label, pod_log, wait_for_pod
+from warnet.process import run_command
+
+lightning_selector = "mission=lightning"
 
 
 class LNTest(TestBase):
@@ -42,8 +45,15 @@ class LNTest(TestBase):
 
     def copy_results(self) -> bool:
         self.log.info("Copying results")
-        sleep(20)
         pod = get_pods_with_label("mission=plugin")[0]
+        self.wait_for_gossip_sync(2)
+        wait_for_pod(pod.metadata.name, 60)
+        sleep(20)
+
+        log_resp = pod_log(pod.metadata.name, "simln")
+        self.log.info(log_resp.data.decode("utf-8"))
+        self.log.info("Sleep to process results")
+        sleep(60)
 
         download(pod.metadata.name, pod.metadata.namespace, Path("/working/results"), Path("."))
 
@@ -56,6 +66,20 @@ class LNTest(TestBase):
                     if "Success" in content:
                         return True
         return False
+
+    def wait_for_gossip_sync(self, expected: int):
+        self.log.info(f"Waiting for sync (expecting {expected})...")
+        current = 0
+        while current < expected:
+            current = 0
+            pods = get_pods_with_label(lightning_selector)
+            for v1_pod in pods:
+                node = v1_pod.metadata.name
+                chs = json.loads(run_command(f"warnet ln rpc {node} describegraph"))["edges"]
+                self.log.info(f"{node}: {len(chs)} channels")
+                current += len(chs)
+            sleep(1)
+        self.log.info("Synced")
 
 
 if __name__ == "__main__":
