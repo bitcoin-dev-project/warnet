@@ -117,15 +117,21 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
         plugin_names = [
             plugin_name.stem for plugin_name, status in get_plugins_with_status() if status
         ]
-
         q = [inquirer.List(name="plugin", message="Please choose a plugin", choices=plugin_names)]
-        plugin = inquirer.prompt(q, theme=GreenPassion()).get("plugin")
+
+        plugin_answer = inquirer.prompt(q, theme=GreenPassion())
+        if not plugin_answer:
+            sys.exit(0)
+        plugin = plugin_answer.get("plugin")
 
     if function == "":
         module = imported_modules.get(f"plugins.{plugin}")
         funcs = [name for name, _func in inspect.getmembers(module, inspect.isfunction)]
         q = [inquirer.List(name="func", message="Please choose a function", choices=funcs)]
-        function = inquirer.prompt(q, theme=GreenPassion()).get("func")
+        function_answer = inquirer.prompt(q, theme=GreenPassion())
+        if not function_answer:
+            sys.exit(0)
+        function = function_answer.get("func")
 
     func = get_func(function_name=function, plugin_name=plugin)
     hints = get_type_hints(func)
@@ -133,7 +139,11 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
         sys.exit(0)
 
     if args:
-        func(*args)
+        try:
+            func(*args)
+        except Exception as e:
+            click.secho(f"Exception: {e}", fg="yellow")
+            sys.exit(1)
         sys.exit(0)
 
     if not json_dict:
@@ -157,8 +167,15 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
                         message=f"Enter a value for '{name}' ({hint_name})",
                     )
                 ]
-            user_input = inquirer.prompt(q).get("input")
-            params[name] = cast_to_hint(user_input, hint)
+            user_input_answer = inquirer.prompt(q)
+            if not user_input_answer:
+                sys.exit(0)
+            user_input = user_input_answer.get("input")
+
+            if hint is None:
+                params[name] = user_input
+            else:
+                params[name] = cast_to_hint(user_input, hint)
         click.secho(
             f"\nwarnet plugin run {plugin} {function} --json-dict '{json.dumps(params)}'\n",
             fg="green",
@@ -166,7 +183,12 @@ def run(plugin: str, function: str, args: tuple[str, ...], json_dict: str):
     else:
         params = json.loads(json_dict)
 
-    func(**params)
+    try:
+        return_value = func(**params)
+        if return_value:
+            click.secho(return_value)
+    except Exception as e:
+        click.secho(f"Exception: {e}", fg="yellow")
 
 
 def cast_to_hint(value: str, hint: Any) -> Any:
@@ -197,6 +219,8 @@ def cast_to_hint(value: str, hint: Any) -> Any:
 
 
 def get_type_name(type_hint) -> str:
+    if type_hint is None:
+        return "Unknown type"
     if hasattr(type_hint, "__name__"):
         return type_hint.__name__
     return str(type_hint)
