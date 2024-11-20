@@ -7,32 +7,40 @@ metadata:
     mission: plugin
 spec:
   initContainers:
-    - name: decode-macaroon
-      image: busybox
-      command: ["sh", "-c"]
+    - name: "init-container"
+      image: "busybox"
+      command:
+        - "sh"
+        - "-c"
       args:
-        - |
-          cp /configmap/* /config
-          cat /config/admin.macaroon.hex | xxd -r -p > /config/admin.macaroon
+        - >
+          cp /configmap/* /working;
+          cd /working;
+          cat admin.macaroon.hex | xxd -r -p > admin.macaroon
       volumeMounts:
-        - name: config-volume
-          mountPath: /config
-        - name: configmap-volume
-          mountPath: /configmap
+        - name: {{ .Values.workingVolume.name }}
+          mountPath: {{ .Values.workingVolume.mountPath }}
+        - name: {{ .Values.configmapVolume.name }}
+          mountPath: {{ .Values.configmapVolume.mountPath }}
   containers:
     - name: {{ .Values.name }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
-      command: {{ .Values.command | toJson }}
-      args: {{ .Values.args | toJson }}
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          cd /working;
+          sim-cli
       volumeMounts:
-        - name: config-volume
-          mountPath: /config
-        - name: configmap-volume
-          mountPath: /configmap
+        - name: {{ .Values.workingVolume.name }}
+          mountPath: {{ .Values.workingVolume.mountPath }}
+        - name: {{ .Values.configmapVolume.name }}
+          mountPath: {{ .Values.configmapVolume.mountPath }}
   volumes:
-    - name: configmap-volume
+    - name: {{ .Values.configmapVolume.name }}
       configMap:
         name: {{ include "mychart.fullname" . }}-data
-    - name: config-volume
+    - name: {{ .Values.workingVolume.name }}
       emptyDir: {}

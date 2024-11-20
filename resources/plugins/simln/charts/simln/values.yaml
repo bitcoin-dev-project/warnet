@@ -3,6 +3,12 @@ image:
   repository: "mplsgrant/sim-ln"
   tag: "d8c165d"
   pullPolicy: IfNotPresent
-command: ["sh", "-c"]
-args: ["cd /config; sim-cli"]
+
+workingVolume:
+  name: working-volume
+  mountPath: /working
+configmapVolume:
+  name: configmap-volume
+  mountPath: /configmap
+
 defaultDataDir: /app/data
