@@ -115,7 +115,7 @@ def everyone_has_a_host() -> bool:
 
 
 def wait_for_everyone_to_have_a_host():
-    _wait_for_predicate(everyone_has_a_host)
+    _wait_for_predicate(everyone_has_a_host, timeout=10 * 60)
 
 
 def _wait_for_predicate(predicate, timeout=5 * 60, interval=5):
