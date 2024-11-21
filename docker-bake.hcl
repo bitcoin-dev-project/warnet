@@ -200,8 +200,8 @@ target "v0-20-0" {
     ALPINE_VERSION = "3.12.12"
     BITCOIN_VERSION = "0.20.0"
     COMMIT_SHA = "0bbff8feff0acf1693dfe41184d9a4fd52001d3f"
-    EXTRA_PACKAGES = "sqlite-dev miniupnpc"
-    EXTRA_RUNTIME_PACKAGES = "boost-filesystem sqlite-dev"
+    EXTRA_PACKAGES = "sqlite-dev miniupnpc-dev"
+    EXTRA_RUNTIME_PACKAGES = "boost-filesystem miniupnpc-dev sqlite-dev"
   }
 }
 
