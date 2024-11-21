@@ -4,7 +4,7 @@ metadata:
   name: {{ include "mychart.fullname" . }}
   labels:
     app: {{ include "mychart.name" . }}
-    mission: plugin
+    mission: {{ .Values.name }}
 spec:
   initContainers:
     - name: "init-container"

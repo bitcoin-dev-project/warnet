@@ -99,17 +99,30 @@ def toggle(plugin: str):
 @plugin.command()
 @click.argument("plugin_name", type=str, default="")
 @click.argument("function_name", type=str, default="")
-@click.option("--args", default="", type=str, help="Apply positional arguments to the function")
 @click.option("--json-dict", default="", type=str, help="Use json dict to populate parameters")
-def run(plugin_name: str, function_name: str, args: tuple[str, ...], json_dict: str):
-    """Run a command available in a plugin"""
+def run(plugin_name: str, function_name: str, json_dict: str):
+    """Explore and run plugins"""
+
+    show_explainer = False
+
     plugin_dir = _get_plugin_directory()
     if plugin_dir is None:
         direct_user_to_plugin_directory_and_exit()
 
+    if not json_dict and not sys.stdin.isatty():
+        # read from a pipe: $ echo "something" | warnet plugin run
+        json_dict = sys.stdin.read()
+        if not plugin_name or not function_name:
+            click.secho(
+                "You must specify a plugin name and function name when piping in data.", fg="yellow"
+            )
+            click.secho("Alternative: warnet plugin run --json-dict YOUR_DATA_HERE")
+            sys.exit(1)
+
     if not plugin_dir:
         click.secho("\nConsider setting environment variable containing your project directory:")
         sys.exit(0)
+
     plugins = get_plugins_with_status(plugin_dir)
     for plugin_path, status in plugins:
         if plugin_path.stem == plugin_name and not status:
@@ -117,7 +130,8 @@ def run(plugin_name: str, function_name: str, args: tuple[str, ...], json_dict: 
             click.secho("Please toggle it on to run commands.")
             sys.exit(0)
 
-    if plugin_name == "":
+    if plugin_name == "" and sys.stdin.isatty():
+        show_explainer = True
         plugin_names = [
             plugin_name.stem for plugin_name, status in get_plugins_with_status() if status
         ]
@@ -128,26 +142,24 @@ def run(plugin_name: str, function_name: str, args: tuple[str, ...], json_dict: 
             sys.exit(0)
         plugin_name = plugin_answer.get("plugin")
 
-    if function_name == "":
+    if function_name == "" and sys.stdin.isatty():
+        show_explainer = True
         module = imported_modules.get(f"plugins.{plugin_name}")
-        funcs = [name for name, _func in inspect.getmembers(module, inspect.isfunction)]
+        funcs = [
+            format_func_with_docstring(func)
+            for _name, func in inspect.getmembers(module, inspect.isfunction)
+            if func.__module__ == "plugins." + plugin_name and not func.__name__.startswith("_")
+        ]
         q = [inquirer.List(name="func", message="Please choose a function", choices=funcs)]
         function_answer = inquirer.prompt(q, theme=GreenPassion())
         if not function_answer:
             sys.exit(0)
-        function_name = function_answer.get("func")
+        function_name_with_doc = function_answer.get("func")
+        function_name = function_name_with_doc.split("(")[0].strip()
 
     func = get_func(function_name=function_name, plugin_name=plugin_name)
     hints = get_type_hints(func)
     if not func:
-        sys.exit(0)
-
-    if args:
-        try:
-            func(*args)
-        except Exception as e:
-            click.secho(f"Exception: {e}", fg="yellow")
-            sys.exit(1)
         sys.exit(0)
 
     if not json_dict:
@@ -180,25 +192,67 @@ def run(plugin_name: str, function_name: str, args: tuple[str, ...], json_dict: 
                 params[name] = user_input
             else:
                 params[name] = cast_to_hint(user_input, hint)
-        if not params:
-            click.secho(
-                f"\nwarnet plugin run {plugin_name} {function_name}\n",
-                fg="green",
-            )
-        else:
-            click.secho(
-                f"\nwarnet plugin run {plugin_name} {function_name} --json-dict '{json.dumps(params)}'\n",
-                fg="green",
-            )
+
+        if show_explainer:
+            if not params:
+                click.secho(
+                    f"\nwarnet plugin run {plugin_name} {function_name}\n",
+                    fg="green",
+                )
+            else:
+                click.secho(
+                    f"\nwarnet plugin run {plugin_name} {function_name} --json-dict '{json.dumps(params)}'",
+                    fg="green",
+                )
+                click.secho(
+                    f"echo '{json.dumps(params)}' | warnet plugin run {plugin_name} {function_name}\n",
+                    fg="green",
+                )
     else:
         params = json.loads(json_dict)
 
     try:
-        return_value = func(**params)
+        processed_params = process_obj(params, func)
+        return_value = func(**processed_params)
         if return_value is not None:
-            click.secho(return_value)
+            jsonified = json.dumps(return_value)
+            print(jsonified)
     except Exception as e:
         click.secho(f"Exception: {e}", fg="yellow")
+
+
+def process_obj(some_obj, func) -> dict:
+    """
+    Process a JSON-ish python obj into a param for the func
+
+    Args:
+        some_obj (JSON-ish): A python dict, list, str, int, float, or bool
+        func (callable): A function object whose parameters are used for dictionary keys.
+
+    Returns:
+        dict: Params for the func
+    """
+    param_names = list(inspect.signature(func).parameters.keys())
+    parameters = inspect.signature(func).parameters
+
+    if isinstance(some_obj, dict):
+        return some_obj
+    elif isinstance(some_obj, list):
+        if len(param_names) < len(some_obj):
+            raise ValueError("Function parameters are fewer than the list items.")
+        # If the function expects a single list parameter, use it directly
+        if len(param_names) == 1:
+            param_type = parameters[param_names[0]].annotation
+            if get_origin(param_type) is list:
+                return {param_names[0]: some_obj}
+        # Otherwise, treat the list as a list of individual parameters
+        return {key: value for key, value in zip(param_names, some_obj)}
+    elif isinstance(some_obj, (str, int, float, bool)) or some_obj is None:
+        if not param_names:
+            raise ValueError("Function has no parameters to use as a key.")
+        return {param_names[0]: some_obj}
+    else:
+        raise TypeError("Unsupported type.")
 
 
 def cast_to_hint(value: str, hint: Any) -> Any:
@@ -471,3 +525,13 @@ def get_plugins_with_status(plugin_dir: Optional[Path] = None) -> list[tuple[Pat
     ]
     plugins = [plugin_dir for plugin_dir in candidates if any(plugin_dir.glob("plugin.yaml"))]
     return [(plugin, check_if_plugin_enabled(plugin)) for plugin in plugins]
+
+
+def format_func_with_docstring(func: Callable[..., Any]) -> str:
+    name = func.__name__
+    if func.__doc__:
+        doc = func.__doc__.replace("\n", " ")
+        doc = doc[:96]
+        return f"{name:<25}  ({doc})"
+    else:
+        return name

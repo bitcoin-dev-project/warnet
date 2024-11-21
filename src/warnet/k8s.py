@@ -564,15 +564,22 @@ def write_kubeconfig(kube_config: dict, kubeconfig_path: str) -> None:
         raise K8sError(f"Error writing kubeconfig: {kubeconfig_path}") from e
 
 
-def download(pod_name: str, namespace: str, source_path: Path, destination_path: Path = Path(".")):
+def download(
+    pod_name: str,
+    source_path: Path,
+    destination_path: Path = Path("."),
+    namespace: Optional[str] = None,
+):
     """Download the item from the `source_path` to the `destination_path`"""
+
+    namespace = get_default_namespace_or(namespace)
 
     v1 = get_static_client()
 
     target_folder = destination_path / source_path.stem
     os.makedirs(target_folder, exist_ok=True)
 
-    command = ["tar", "cf", "-", str(source_path)]
+    command = ["tar", "cf", "-", "-C", str(source_path.parent), str(source_path.name)]
 
     resp = stream(
         v1.connect_get_namespaced_pod_exec,
@@ -594,10 +601,9 @@ def download(pod_name: str, namespace: str, source_path: Path, destination_path:
                 f.write(resp.read_stdout().encode("utf-8"))
             if resp.peek_stderr():
                 print(resp.read_stderr())
-
         resp.close()
 
     with tarfile.open(tar_file, "r") as tar:
-        tar.extractall(path=target_folder)
+        tar.extractall(path=destination_path)
 
     os.remove(tar_file)
