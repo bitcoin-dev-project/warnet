@@ -155,7 +155,7 @@ def run(plugin_name: str, function_name: str, json_dict: str):
         if not function_answer:
             sys.exit(0)
         function_name_with_doc = function_answer.get("func")
-        function_name = function_name_with_doc.split("(")[0].strip()
+        function_name = function_name_with_doc.split("\t")[0].strip()
 
     func = get_func(function_name=function_name, plugin_name=plugin_name)
     hints = get_type_hints(func)
@@ -532,6 +532,7 @@ def format_func_with_docstring(func: Callable[..., Any]) -> str:
     if func.__doc__:
         doc = func.__doc__.replace("\n", " ")
         doc = doc[:96]
-        return f"{name:<25}  ({doc})"
+        doc = click.style(doc, italic=True)
+        return f"{name:<25}\t{doc}"
     else:
         return name
