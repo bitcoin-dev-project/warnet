@@ -55,7 +55,7 @@ class LNTest(TestBase):
         self.log.info("Sleep to process results")
         sleep(60)
 
-        download(pod.metadata.name, pod.metadata.namespace, Path("/working/results"), Path("."))
+        download(pod.metadata.name, Path("/working/results"), Path("."), pod.metadata.namespace)
 
         for root, _dirs, files in os.walk(Path("results")):
             for file_name in files:
