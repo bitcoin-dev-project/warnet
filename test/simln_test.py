@@ -45,7 +45,7 @@ class LNTest(TestBase):
 
     def copy_results(self) -> bool:
         self.log.info("Copying results")
-        pod = get_pods_with_label("mission=plugin")[0]
+        pod = get_pods_with_label("mission=simln")[0]
         self.wait_for_gossip_sync(2)
         wait_for_pod(pod.metadata.name, 60)
         sleep(20)
