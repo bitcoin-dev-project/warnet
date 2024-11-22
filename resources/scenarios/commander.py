@@ -11,6 +11,7 @@ import signal
 import ssl
 import sys
 import tempfile
+import time
 from typing import Dict
 
 from kubernetes import client, config
@@ -55,6 +56,7 @@ for pod in pods.items:
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
                 "rpc_user": "user",
                 "rpc_password": pod.metadata.labels["rpcpassword"],
+                "init_peers": pod.metadata.annotations["init_peers"],
             }
         )
 
@@ -82,41 +84,87 @@ AuthServiceProxy._request = auth_proxy_request
 
 class LND:
     def __init__(self, pod_name):
+        self.name = pod_name
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
 
     def get(self, uri):
-        self.conn.request(
-            method="GET", url=uri, headers={"Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX}
-        )
-        return self.conn.getresponse().read().decode("utf8")
+        while True:
+            try:
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers={"Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX, "Connection": "close"},
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception:
+                time.sleep(1)
 
     def post(self, uri, data):
         body = json.dumps(data)
-        self.conn.request(
-            method="POST",
-            url=uri,
-            body=body,
-            headers={
-                "Content-Type": "application/json",
-                "Content-Length": str(len(body)),
-                "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Content-Length": str(len(body)),
+                        "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+                        "Connection": "close",
+                    },
+                )
+                # Stream output, otherwise we get a timeout error
+                res = self.conn.getresponse()
+                stream = ""
+                while True:
+                    try:
+                        data = res.read(1)
+                        if len(data) == 0:
+                            break
+                        else:
+                            stream += data.decode("utf8")
+                    except Exception:
+                        break
+                return stream
+            except Exception:
+                time.sleep(1)
+
+    def newaddress(self):
+        res = self.get("/v1/newaddress")
+        return json.loads(res)
+
+    def walletbalance(self):
+        res = self.get("/v1/balance/blockchain")
+        return int(json.loads(res)["confirmed_balance"])
+
+    def uri(self):
+        res = self.get("/v1/getinfo")
+        info = json.loads(res)
+        if "uris" not in info or len(info["uris"]) == 0:
+            return None
+        return info["uris"][0]
+
+    def connect(self, target_uri):
+        pk, host = target_uri.split("@")
+        res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
+        return json.loads(res)
+
+    def channel(self, pk, local_amt, push_amt, fee_rate):
+        res = self.post(
+            "/v1/channels/stream",
+            data={
+                "local_funding_amount": local_amt,
+                "push_sat": push_amt,
+                "node_pubkey": pk,
+                "sat_per_vbyte": fee_rate,
             },
         )
-        # Stream output, otherwise we get a timeout error
-        res = self.conn.getresponse()
-        stream = ""
-        while True:
-            try:
-                data = res.read(1)
-                if len(data) == 0:
-                    break
-                else:
-                    stream += data.decode("utf8")
-            except Exception:
-                break
-        return stream
+        return json.loads(res)
 
 
 class Commander(BitcoinTestFramework):
@@ -138,6 +186,13 @@ class Commander(BitcoinTestFramework):
     @staticmethod
     def hex_to_b64(hex):
         return base64.b64encode(bytes.fromhex(hex)).decode()
+
+    @staticmethod
+    def b64_to_hex(b64, reverse=False):
+        if reverse:
+            return base64.b64decode(b64)[::-1].hex()
+        else:
+            return base64.b64decode(b64).hex()
 
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
@@ -193,6 +248,7 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
+            node.init_peers = int(tank["init_peers"])
 
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node

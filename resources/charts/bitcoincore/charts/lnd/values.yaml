@@ -83,9 +83,9 @@ readinessProbe:
   timeoutSeconds: 1
 startupProbe:
   failureThreshold: 10
-  periodSeconds: 10
+  periodSeconds: 30
   successThreshold: 1
-  timeoutSeconds: 10
+  timeoutSeconds: 60
   exec:
     command:
       - /bin/sh

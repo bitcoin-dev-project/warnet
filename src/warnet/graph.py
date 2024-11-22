@@ -281,12 +281,11 @@ def _import_network(graph_file_path, output_path):
     count = 0
     for edge in sorted_edges:
         source = pk_to_tank[edge["node1_pub"]]
-        amt = int(edge["capacity"]) // 2
         channel = {
             "id": {"block": block, "index": index},
             "target": pk_to_tank[edge["node2_pub"]] + "-ln",
-            "local_amt": amt,
-            "push_amt": amt - 1,
+            "local_amt": int(edge["capacity"]),
+            "push_amt": int(edge["capacity"]) // 2,
             "source_policy": import_policy(edge["node1_policy"]),
             "target_policy": import_policy(edge["node2_policy"]),
         }
