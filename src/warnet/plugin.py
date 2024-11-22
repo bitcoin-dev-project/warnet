@@ -5,6 +5,8 @@ import json
 import os
 import sys
 import tempfile
+from dataclasses import dataclass
+from enum import Enum, auto
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from types import ModuleType
@@ -30,6 +32,17 @@ from warnet.constants import (
 
 class PluginError(Exception):
     pass
+
+
+class ParamStrategy(Enum):
+    POSITIONAL = auto()
+    NAMED = auto()
+
+
+@dataclass
+class Params:
+    params: list | dict
+    type: ParamStrategy
 
 
 hook_registry: set[Callable[..., Any]] = set()
@@ -103,10 +116,20 @@ def toggle(plugin: str):
 @plugin.command()
 @click.argument("plugin_name", type=str, default="")
 @click.argument("function_name", type=str, default="")
-@click.option("--params", type=str, default="")
-@click.option("--json-input", type=str, default="")
-def run(plugin_name: str, function_name: str, params: str, json_input: str):
-    """Explore and run plugins"""
+@click.option(
+    "--params", type=str, default="", help="Paramter data to be fed to the plugin function"
+)
+def run(plugin_name: str, function_name: str, params: str):
+    """Explore and run plugins
+
+    Use `--params` to pass a JSON list for positional arguments or a JSON object for named arguments.
+
+    Like this:
+
+    Positional - '["first element", 2, 3.0]'
+
+    Named      - '{"first": "first_element", "second": 2, "third": 3.0}'
+    """
     show_explainer = False
 
     plugin_dir = _get_plugin_directory()
@@ -114,13 +137,19 @@ def run(plugin_name: str, function_name: str, params: str, json_input: str):
         direct_user_to_plugin_directory_and_exit()
 
     plugins = get_plugins_with_status(plugin_dir)
+    plugin_was_found = False
     for plugin_path, status in plugins:
+        if plugin_path.stem == plugin_name:
+            plugin_was_found = True
         if plugin_path.stem == plugin_name and not status:
             click.secho(f"The plugin '{plugin_path.stem}' is not enabled", fg="yellow")
             click.secho("Please toggle it on to use it.")
             sys.exit(0)
+    if plugin_name and not plugin_was_found:
+        click.secho(f"The plugin '{plugin_name}' was not found.", fg="yellow")
+        sys.exit(0)
 
-    if plugin_name == "" and sys.stdin.isatty():
+    if plugin_name == "":
         show_explainer = True
         plugin_names = [
             plugin_name.stem for plugin_name, status in get_plugins_with_status() if status
@@ -132,7 +161,7 @@ def run(plugin_name: str, function_name: str, params: str, json_input: str):
             sys.exit(0)
         plugin_name = plugin_answer.get("plugin")
 
-    if function_name == "" and sys.stdin.isatty():
+    if function_name == "":
         show_explainer = True
         module = imported_modules.get(f"plugins.{plugin_name}")
         funcs = [
@@ -152,20 +181,7 @@ def run(plugin_name: str, function_name: str, params: str, json_input: str):
     if not func:
         sys.exit(0)
 
-    if params:
-        print(params)
-        params = json.loads(params)
-        try:
-            return_value = func(*params)
-            if return_value is not None:
-                jsonified = json.dumps(return_value)
-                print(f"'{jsonified}'")
-            sys.exit(0)
-        except Exception as e:
-            click.secho(f"Exception: {e}", fg="yellow")
-            sys.exit(1)
-
-    if not json_input and not params:
+    if not params:
         params = {}
         sig = inspect.signature(func)
         for name, param in sig.parameters.items():
@@ -207,18 +223,35 @@ def run(plugin_name: str, function_name: str, params: str, json_input: str):
                     f"\nwarnet plugin run {plugin_name} {function_name} --json-input '{json.dumps(params)}'",
                     fg="green",
                 )
-
     else:
-        params = json.loads(json_input)
+        params = json.loads(params)
 
-    try:
-        return_value = func(**params)
-        if return_value is not None:
-            jsonified = json.dumps(return_value)
-            print(f"'{jsonified}'")
-    except Exception as e:
-        click.secho(f"Exception: {e}", fg="yellow")
-        sys.exit(1)
+    execute_function_with_params(func, params)
+
+
+def execute_function_with_params(func: Callable[..., Any], params: dict | list):
+    match params:
+        case dict():
+            try:
+                return_value = func(**params)
+                if return_value is not None:
+                    jsonified = json.dumps(return_value)
+                    print(f"'{jsonified}'")
+            except Exception as e:
+                click.secho(f"Exception: {e}", fg="yellow")
+                sys.exit(1)
+        case list():
+            try:
+                return_value = func(*params)
+                if return_value is not None:
+                    jsonified = json.dumps(return_value)
+                    print(f"'{jsonified}'")
+            except Exception as e:
+                click.secho(f"Exception: {e}", fg="yellow")
+                sys.exit(1)
+        case _:
+            click.secho(f"Did not anticipate this type: {params} --> {type(params)}")
+            sys.exit(1)
 
 
 def process_obj(some_obj, func) -> dict:
