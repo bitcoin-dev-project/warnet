@@ -21,6 +21,10 @@ log.addHandler(console_handler)
 lightning_selector = "mission=lightning"
 
 
+class SimLNError(Exception):
+    pass
+
+
 def run_simln():
     """Run a SimLN Plugin demo"""
     init_network()
@@ -48,8 +52,13 @@ def _prepare_and_launch_activity() -> str:
 def get_example_activity() -> list[dict]:
     """Get an activity representing node 2 sending msat to node 3"""
     pods = get_pods_with_label(lightning_selector)
-    pod_a = pods[1].metadata.name
-    pod_b = pods[2].metadata.name
+    try:
+        pod_a = pods[1].metadata.name
+        pod_b = pods[2].metadata.name
+    except Exception as err:
+        raise SimLNError(
+            "Could not access the lightning nodes needed for the example.\n Try deploying some."
+        ) from err
     return [{"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}]
 
 
