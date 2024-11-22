@@ -2,7 +2,6 @@
 import json
 import os
 from pathlib import Path
-from subprocess import run
 from time import sleep
 
 import pexpect
@@ -13,8 +12,12 @@ from warnet.process import run_command
 
 lightning_selector = "mission=lightning"
 
+UP = "\033[A"
+DOWN = "\033[B"
+ENTER = "\n"
 
-class LNTest(TestBase):
+
+class SimLNTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
@@ -40,7 +43,36 @@ class LNTest(TestBase):
         self.sut.sendline("n")
         self.sut.close()
 
-        self.log.info(run(["warnet", "plugin", "run", "simln", "run_simln"]))
+        cmd = "warnet plugin run"
+        self.log.info(cmd)
+        self.sut = pexpect.spawn(cmd)
+        self.sut.expect("simln", timeout=10)
+        self.sut.send(ENTER)
+        self.sut.expect("run_simln", timeout=10)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)
+        self.sut.send(DOWN)  # run_simln
+        self.sut.send(ENTER)
+        self.sut.expect("Sent command", timeout=60 * 3)
+        self.sut.close()
+
+        cmd = "warnet plugin run simln get_example_activity"
+        self.log.info(cmd)
+        self.sut = pexpect.spawn(cmd)
+        self.sut.expect("amount_msat", timeout=10)
+        self.sut.close()
+
+        cmd = 'warnet plugin run simln launch_activity --params "$(warnet plugin run simln get_example_activity)"'
+        self.log.info(f"/bin/bash -c '{cmd}'")
+        self.sut = pexpect.spawn(f"/bin/bash -c '{cmd}'")
+        self.sut.expect("install simln", timeout=10)
+        self.sut.close()
+
         sleep(10)
 
     def copy_results(self) -> bool:
@@ -83,5 +115,5 @@ class LNTest(TestBase):
 
 
 if __name__ == "__main__":
-    test = LNTest()
+    test = SimLNTest()
     test.run_test()
