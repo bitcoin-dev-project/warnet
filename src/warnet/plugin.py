@@ -103,7 +103,7 @@ def toggle(plugin: str):
 @click.argument("plugin_name", type=str, default="")
 @click.argument("function_name", type=str, default="")
 @click.option(
-    "--params", type=str, default="", help="Paramter data to be fed to the plugin function"
+    "--params", type=str, default="", help="Parameter data to be fed to the plugin function"
 )
 def run(plugin_name: str, function_name: str, params: str):
     """Explore and run plugins
@@ -206,7 +206,7 @@ def run(plugin_name: str, function_name: str, params: str):
                 )
             else:
                 click.secho(
-                    f"\nwarnet plugin run {plugin_name} {function_name} --json-input '{json.dumps(params)}'",
+                    f"\nwarnet plugin run {plugin_name} {function_name} --params '{json.dumps(params)}'",
                     fg="green",
                 )
     else:
@@ -221,8 +221,7 @@ def execute_function_with_params(func: Callable[..., Any], params: dict | list):
             try:
                 return_value = func(**params)
                 if return_value is not None:
-                    jsonified = json.dumps(return_value)
-                    print(f"'{jsonified}'")
+                    print(json.dumps(return_value))
             except Exception as e:
                 click.secho(f"Exception: {e}", fg="yellow")
                 sys.exit(1)
@@ -230,8 +229,7 @@ def execute_function_with_params(func: Callable[..., Any], params: dict | list):
             try:
                 return_value = func(*params)
                 if return_value is not None:
-                    jsonified = json.dumps(return_value)
-                    print(f"'{jsonified}'")
+                    print(json.dumps(return_value))
             except Exception as e:
                 click.secho(f"Exception: {e}", fg="yellow")
                 sys.exit(1)
