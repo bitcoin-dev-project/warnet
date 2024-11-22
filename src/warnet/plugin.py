@@ -23,6 +23,10 @@ from warnet.constants import (
     WARNET_USER_DIR_ENV_VAR,
 )
 
+# TODO Add inquirer test
+# TODO get rid of piping
+# TODO iron out input (and test it)
+
 
 class PluginError(Exception):
     pass
@@ -99,35 +103,21 @@ def toggle(plugin: str):
 @plugin.command()
 @click.argument("plugin_name", type=str, default="")
 @click.argument("function_name", type=str, default="")
-@click.option("--json-dict", default="", type=str, help="Use json dict to populate parameters")
-def run(plugin_name: str, function_name: str, json_dict: str):
+@click.option("--params", type=str, default="")
+@click.option("--json-input", type=str, default="")
+def run(plugin_name: str, function_name: str, params: str, json_input: str):
     """Explore and run plugins"""
-
     show_explainer = False
 
     plugin_dir = _get_plugin_directory()
     if plugin_dir is None:
         direct_user_to_plugin_directory_and_exit()
 
-    if not json_dict and not sys.stdin.isatty():
-        # read from a pipe: $ echo "something" | warnet plugin run
-        json_dict = sys.stdin.read()
-        if not plugin_name or not function_name:
-            click.secho(
-                "You must specify a plugin name and function name when piping in data.", fg="yellow"
-            )
-            click.secho("Alternative: warnet plugin run --json-dict YOUR_DATA_HERE")
-            sys.exit(1)
-
-    if not plugin_dir:
-        click.secho("\nConsider setting environment variable containing your project directory:")
-        sys.exit(0)
-
     plugins = get_plugins_with_status(plugin_dir)
     for plugin_path, status in plugins:
         if plugin_path.stem == plugin_name and not status:
             click.secho(f"The plugin '{plugin_path.stem}' is not enabled", fg="yellow")
-            click.secho("Please toggle it on to run commands.")
+            click.secho("Please toggle it on to use it.")
             sys.exit(0)
 
     if plugin_name == "" and sys.stdin.isatty():
@@ -162,7 +152,20 @@ def run(plugin_name: str, function_name: str, json_dict: str):
     if not func:
         sys.exit(0)
 
-    if not json_dict:
+    if params:
+        print(params)
+        params = json.loads(params)
+        try:
+            return_value = func(*params)
+            if return_value is not None:
+                jsonified = json.dumps(return_value)
+                print(f"'{jsonified}'")
+            sys.exit(0)
+        except Exception as e:
+            click.secho(f"Exception: {e}", fg="yellow")
+            sys.exit(1)
+
+    if not json_input and not params:
         params = {}
         sig = inspect.signature(func)
         for name, param in sig.parameters.items():
@@ -201,24 +204,21 @@ def run(plugin_name: str, function_name: str, json_dict: str):
                 )
             else:
                 click.secho(
-                    f"\nwarnet plugin run {plugin_name} {function_name} --json-dict '{json.dumps(params)}'",
+                    f"\nwarnet plugin run {plugin_name} {function_name} --json-input '{json.dumps(params)}'",
                     fg="green",
                 )
-                click.secho(
-                    f"echo '{json.dumps(params)}' | warnet plugin run {plugin_name} {function_name}\n",
-                    fg="green",
-                )
+
     else:
-        params = json.loads(json_dict)
+        params = json.loads(json_input)
 
     try:
-        processed_params = process_obj(params, func)
-        return_value = func(**processed_params)
+        return_value = func(**params)
         if return_value is not None:
             jsonified = json.dumps(return_value)
-            print(jsonified)
+            print(f"'{jsonified}'")
     except Exception as e:
         click.secho(f"Exception: {e}", fg="yellow")
+        sys.exit(1)
 
 
 def process_obj(some_obj, func) -> dict:
@@ -238,7 +238,7 @@ def process_obj(some_obj, func) -> dict:
     if isinstance(some_obj, dict):
         return some_obj
     elif isinstance(some_obj, list):
-        if len(param_names) < len(some_obj):
+        if len(param_names) < len(some_obj):  # TODO: Move this b/c it shortcuts
             raise ValueError("Function parameters are fewer than the list items.")
         # If the function expects a single list parameter, use it directly
         if len(param_names) == 1:
