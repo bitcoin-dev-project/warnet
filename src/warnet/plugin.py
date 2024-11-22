@@ -5,8 +5,6 @@ import json
 import os
 import sys
 import tempfile
-from dataclasses import dataclass
-from enum import Enum, auto
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from types import ModuleType
@@ -26,23 +24,11 @@ from warnet.constants import (
 )
 
 # TODO Add inquirer test
-# TODO get rid of piping
 # TODO iron out input (and test it)
 
 
 class PluginError(Exception):
     pass
-
-
-class ParamStrategy(Enum):
-    POSITIONAL = auto()
-    NAMED = auto()
-
-
-@dataclass
-class Params:
-    params: list | dict
-    type: ParamStrategy
 
 
 hook_registry: set[Callable[..., Any]] = set()
