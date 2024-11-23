@@ -255,7 +255,7 @@ def process_obj(some_obj, func) -> dict:
     if isinstance(some_obj, dict):
         return some_obj
     elif isinstance(some_obj, list):
-        if len(param_names) < len(some_obj):  # TODO: Move this b/c it shortcuts
+        if len(param_names) < len(some_obj):
             raise ValueError("Function parameters are fewer than the list items.")
         # If the function expects a single list parameter, use it directly
         if len(param_names) == 1:
