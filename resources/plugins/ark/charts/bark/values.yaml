@@ -1,7 +1,7 @@
 name: "bark"
 image:
   repository: "mplsgrant/bark"
-  tag: "d1200b9"
+  tag: "af39ec4"
   pullPolicy: IfNotPresent
 command: ["sh", "-c"]
 args: ["while true; do sleep 3600; done"]

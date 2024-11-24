@@ -2,7 +2,7 @@ name: "aspd"
 
 image:
   repository: "mplsgrant/aspd"
-  tag: "d1200b9"
+  tag: "af39ec4"
   pullPolicy: IfNotPresent
 
 network: regtest

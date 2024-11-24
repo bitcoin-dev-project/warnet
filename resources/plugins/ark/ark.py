@@ -1,15 +1,21 @@
-from hooks_api import post_status, pre_status
-
-
-@pre_status
-def print_something_first():
-    print("The ark plugin is enabled.")
-
-
-@post_status
-def print_something_afterwards():
-    print("The ark plugin executes after `status` has run.")
-
-
-def run():
-    print("Running the ark plugin")
+def show_build_instructions():
+    print("bark is an ark implementation that lives here: https://codeberg.org/ark-bitcoin/bark")
+    print("warnet init")
+    print("cd plugins/ark")
+    print("git clone git@codeberg.org:mpls/bark.git")
+    print("cd bark")
+    print("cargo build --workspace --release")
+    print("barkhead=$(git rev-parse --short HEAD)")
+    print("cd ../")
+    print("cp bark/target/release/bark dockerfiles/bark/")
+    print("cp bark/target/release/aspd dockerfiles/aspd/")
+    print("cd dockerfiles/bark")
+    print("docker build -t mplsgrant/bark:$barkhead .")
+    print("docker login")
+    print("docker push mplsgrant/bark:barkhead")
+    print("cd ../aspd")
+    print("docker build -t mplsgrant/aspd:$barkhead .")
+    print("docker push mplsgrant/aspd:$barkhead")
+    print(
+        "Don' forget to update the 'tag' section of the values.yaml file for aspd and bark with the value in $barkhead"
+    )
