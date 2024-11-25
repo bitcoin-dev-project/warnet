@@ -41,7 +41,6 @@ from .k8s import (
     wait_for_pod,
     write_file_to_container,
 )
-from .plugin import api
 from .process import run_command, stream_command
 
 console = Console()
@@ -49,7 +48,6 @@ console = Console()
 
 @click.command()
 @click.argument("scenario_name", required=False)
-@api
 def stop(scenario_name):
     """Stop a running scenario or all scenarios"""
     active_scenarios = [sc.metadata.name for sc in get_mission("commander")]
@@ -129,7 +127,6 @@ def stop_all_scenarios(scenarios):
     help="Skip confirmations",
 )
 @click.command()
-@api
 def down(force):
     """Bring down a running warnet quickly"""
 
@@ -236,7 +233,6 @@ def get_active_network(namespace):
 )
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
 @click.option("--namespace", default=None, show_default=True)
-@api
 def run(
     scenario_file: str,
     debug: bool,
