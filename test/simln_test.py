@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ast
 import json
 import os
 from pathlib import Path
@@ -38,42 +39,15 @@ class SimLNTest(TestBase):
         self.wait_for_all_tanks_status(target="running")
 
     def run_plugin(self):
+        self.log.info("Running SimLN plugin...")
         self.sut = pexpect.spawn("warnet init")
         self.sut.expect("network", timeout=10)
         self.sut.sendline("n")
         self.sut.close()
 
-        cmd = "warnet plugin run"
-        self.log.info(cmd)
-        self.sut = pexpect.spawn(cmd)
-        self.sut.expect("simln", timeout=10)
-        self.sut.send(ENTER)
-        self.sut.expect("run_simln", timeout=10)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)
-        self.sut.send(DOWN)  # run_simln
-        self.sut.send(ENTER)
-        self.sut.expect("Sent command", timeout=60 * 3)
-        self.sut.close()
-
-        cmd = "warnet plugin run simln get_example_activity"
-        self.log.info(cmd)
-        self.sut = pexpect.spawn(cmd)
-        self.sut.expect("amount_msat", timeout=10)
-        self.sut.close()
-
-        cmd = 'warnet plugin run simln launch_activity --params "$(warnet plugin run simln get_example_activity)"'
-        self.log.info(f"/bin/bash -c '{cmd}'")
-        self.sut = pexpect.spawn(f"/bin/bash -c '{cmd}'")
-        self.sut.expect("install simln", timeout=10)
-        self.sut.close()
-
-        sleep(10)
+        run_command("warnet plugins simln run-simln")
+        self.wait_for_predicate(self.found_results)
+        print(run_command("warnet plugins simln get-example-activity"))
 
     def copy_results(self) -> bool:
         self.log.info("Copying results")
@@ -96,7 +70,9 @@ class SimLNTest(TestBase):
                 with open(file_path) as file:
                     content = file.read()
                     if "Success" in content:
+                        self.log.info("Found downloaded results.")
                         return True
+        self.log.info("Did not find downloaded results.")
         return False
 
     def wait_for_gossip_sync(self, expected: int):
@@ -112,6 +88,15 @@ class SimLNTest(TestBase):
                 current += len(chs)
             sleep(1)
         self.log.info("Synced")
+
+    def found_results(self) -> bool:
+        pod_names_literal = run_command("warnet plugins simln list-simln-podnames")
+        pod_names = ast.literal_eval(pod_names_literal)
+        pod = pod_names[0]
+        self.log.info(f"Checking for results file in {pod}")
+        results = run_command(f"warnet plugins simln rpc {pod} ls /working/results")
+        self.log.info(f"Results file: {results}")
+        return len(results) > 10
 
 
 if __name__ == "__main__":

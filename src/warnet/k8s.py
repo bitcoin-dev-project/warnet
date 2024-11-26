@@ -569,7 +569,7 @@ def download(
     source_path: Path,
     destination_path: Path = Path("."),
     namespace: Optional[str] = None,
-):
+) -> Path:
     """Download the item from the `source_path` to the `destination_path`"""
 
     namespace = get_default_namespace_or(namespace)
@@ -607,3 +607,5 @@ def download(
         tar.extractall(path=destination_path)
 
     os.remove(tar_file)
+
+    return destination_path

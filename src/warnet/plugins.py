@@ -14,7 +14,7 @@ import yaml
 from inquirer.themes import GreenPassion
 
 from warnet.constants import (
-    HOOKS_API_STEM,
+    PLUGIN_YAML,
     PLUGINS_LABEL,
     WARNET_USER_DIR_ENV_VAR,
 )
@@ -28,16 +28,16 @@ hook_registry: set[Callable[..., Any]] = set()
 imported_modules: dict[str, ModuleType] = {}
 
 
-@click.group(name="plugin")
-def plugin():
+@click.group(name=PLUGINS_LABEL)
+def plugins():
     """Control plugins"""
     pass
 
 
-@plugin.command()
+@plugins.command()
 def ls():
     """List all available plugins and whether they are activated"""
-    plugin_dir = _get_plugin_directory()
+    plugin_dir = _get_plugins_directory()
     if plugin_dir is None:
         direct_user_to_plugin_directory_and_exit()
 
@@ -48,11 +48,11 @@ def ls():
             click.secho(f"{plugin.stem:<20} disabled", fg="yellow")
 
 
-@plugin.command()
+@plugins.command()
 @click.argument("plugin", type=str, default="")
 def toggle(plugin: str):
     """Toggle a plugin on or off"""
-    plugin_dir = _get_plugin_directory()
+    plugin_dir = _get_plugins_directory()
     if plugin_dir is None:
         direct_user_to_plugin_directory_and_exit()
 
@@ -77,16 +77,16 @@ def toggle(plugin: str):
             # user cancels and `selected[plugins_tag] fails with TypeError
             sys.exit(0)
 
-    plugin_settings = read_yaml(plugin_dir / Path(plugin) / "plugin.yaml")
+    plugin_settings = read_yaml(plugin_dir / Path(plugin) / PLUGIN_YAML)
     updated_settings = copy.deepcopy(plugin_settings)
     updated_settings["enabled"] = not plugin_settings["enabled"]
-    write_yaml(updated_settings, plugin_dir / Path(plugin) / Path("plugin.yaml"))
+    write_yaml(updated_settings, plugin_dir / Path(plugin) / Path(PLUGIN_YAML))
 
 
 def load_user_modules() -> bool:
     was_successful_load = False
 
-    plugin_dir = _get_plugin_directory()
+    plugin_dir = _get_plugins_directory()
 
     if not plugin_dir or not plugin_dir.is_dir():
         return was_successful_load
@@ -101,7 +101,7 @@ def load_user_modules() -> bool:
 
     for plugin_path in enabled_plugins:
         for file in plugin_path.glob("*.py"):
-            if file.stem not in ("__init__", HOOKS_API_STEM):
+            if file.stem not in ("__init__"):
                 module_name = f"{PLUGINS_LABEL}.{file.stem}"
                 spec = importlib.util.spec_from_file_location(module_name, file)
                 module = importlib.util.module_from_spec(spec)
@@ -119,7 +119,7 @@ def register_command(command):
     """Register a command to the CLI."""
     from warnet.main import cli
 
-    register = cli.commands.get("plugin")
+    register = cli.commands.get(PLUGINS_LABEL)
     register.add_command(command)
 
 
@@ -127,11 +127,11 @@ def load_plugins(fn):
     load_user_modules()
     for module in imported_modules.values():
         for name, func in inspect.getmembers(module, inspect.isfunction):
-            if name == "_register":
+            if name == "warnet_register_plugin":
                 func(register_command)
 
 
-def _get_plugin_directory() -> Optional[Path]:
+def _get_plugins_directory() -> Optional[Path]:
     user_dir = os.getenv(WARNET_USER_DIR_ENV_VAR)
 
     plugin_dir = Path(user_dir) / PLUGINS_LABEL if user_dir else Path.cwd() / PLUGINS_LABEL
@@ -188,7 +188,7 @@ def check_if_plugin_enabled(path: Path) -> bool:
 
 def get_plugins_with_status(plugin_dir: Optional[Path] = None) -> list[tuple[Path, bool]]:
     if not plugin_dir:
-        plugin_dir = _get_plugin_directory()
+        plugin_dir = _get_plugins_directory()
     candidates = [
         Path(os.path.join(plugin_dir, name))
         for name in os.listdir(plugin_dir)

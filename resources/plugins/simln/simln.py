@@ -6,9 +6,16 @@ from subprocess import run
 from time import sleep
 
 import click
+from kubernetes.stream import stream
 
-from warnet.k8s import download, get_pods_with_label, wait_for_pod
-from warnet.plugin import _get_plugin_directory as get_plugin_directory
+from warnet.k8s import (
+    download,
+    get_default_namespace,
+    get_pods_with_label,
+    get_static_client,
+    wait_for_pod,
+)
+from warnet.plugins import _get_plugins_directory as get_plugin_directory
 from warnet.process import run_command
 from warnet.status import _get_tank_status as network_status
 
@@ -20,40 +27,62 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_handler.setFormatter(formatter)
 log.addHandler(console_handler)
 
-lightning_selector = "mission=lightning"
+LIGHTNING_SELECTOR = "mission=lightning"
+
+
+@click.group()
+def simln():
+    """Commands for the SimLN plugin"""
+    pass
+
+
+def warnet_register_plugin(register_command):
+    register_command(simln)
 
 
 class SimLNError(Exception):
     pass
 
 
-def run_simln():
-    """Run a SimLN Plugin demo"""
-    init_network()
-    fund_wallets()
-    wait_for_everyone_to_have_a_host()
+@simln.command()
+def run_demo():
+    """Run the SimLN Plugin demo"""
+    _init_network()
+    _fund_wallets()
+    _wait_for_everyone_to_have_a_host()
     log.info(warnet("bitcoin rpc tank-0000 -generate 7"))
     # warnet("ln open-all-channels")
     manual_open_channels()
     log.info(warnet("bitcoin rpc tank-0000 -generate 7"))
     wait_for_gossip_sync(2)
     log.info("done waiting")
-    pod_name = _prepare_and_launch_activity()
+    pod_name = prepare_and_launch_activity()
     log.info(pod_name)
     wait_for_pod(pod_name, 60)
 
 
-def _prepare_and_launch_activity() -> str:
-    sample_activity = get_example_activity()
+@simln.command()
+def list_simln_podnames():
+    """Get a list of simln pod names"""
+    print([pod.metadata.name for pod in get_pods_with_label("mission=simln")])
+
+
+@simln.command()
+def download_results(pod_name: str):
+    """Download SimLN results to the current directory"""
+    print(download(pod_name, source_path=Path("/working/results")))
+
+
+def prepare_and_launch_activity() -> str:
+    sample_activity = _get_example_activity()
     log.info(f"Activity: {sample_activity}")
-    pod_name = launch_activity(sample_activity)
+    pod_name = _launch_activity(sample_activity)
     log.info("Sent command. Done.")
     return pod_name
 
 
-def get_example_activity() -> list[dict]:
-    """Get an activity representing node 2 sending msat to node 3"""
-    pods = get_pods_with_label(lightning_selector)
+def _get_example_activity() -> list[dict]:
+    pods = get_pods_with_label(LIGHTNING_SELECTOR)
     try:
         pod_a = pods[1].metadata.name
         pod_b = pods[2].metadata.name
@@ -64,7 +93,13 @@ def get_example_activity() -> list[dict]:
     return [{"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}]
 
 
-def launch_activity(activity: list[dict]) -> str:
+@simln.command()
+def get_example_activity():
+    """Get an activity representing node 2 sending msat to node 3"""
+    print(_get_example_activity())
+
+
+def _launch_activity(activity: list[dict]) -> str:
     """Launch a SimLN chart which includes the `activity`"""
     random_digits = "".join(random.choices("0123456789", k=10))
     plugin_dir = get_plugin_directory()
@@ -75,7 +110,15 @@ def launch_activity(activity: list[dict]) -> str:
     return f"simln-simln-{random_digits}"
 
 
-def init_network():
+@simln.command()
+@click.argument("activity", type=str)
+def launch_activity(activity: str):
+    """Takes a SimLN Activity which is a JSON list of objects."""
+    parsed_activity = json.loads(activity)
+    print(_launch_activity(parsed_activity))
+
+
+def _init_network():
     """Mine regtest coins and wait for ln nodes to come online."""
     log.info("Initializing network")
     wait_for_all_tanks_status(target="running")
@@ -85,7 +128,7 @@ def init_network():
     _wait_for_predicate(lambda: int(warnet("bitcoin rpc tank-0000 getblockcount")) > 100)
 
     def wait_for_all_ln_rpc():
-        lns = get_pods_with_label(lightning_selector)
+        lns = get_pods_with_label(LIGHTNING_SELECTOR)
         for v1_pod in lns:
             ln = v1_pod.metadata.name
             try:
@@ -98,11 +141,16 @@ def init_network():
     _wait_for_predicate(wait_for_all_ln_rpc)
 
 
-def fund_wallets():
+@simln.command()
+def init_network():
+    _init_network()
+
+
+def _fund_wallets():
     """Fund each ln node with 10 regtest coins."""
     log.info("Funding wallets")
     outputs = ""
-    lns = get_pods_with_label(lightning_selector)
+    lns = get_pods_with_label(LIGHTNING_SELECTOR)
     for v1_pod in lns:
         lnd = v1_pod.metadata.name
         addr = json.loads(warnet(f"ln rpc {lnd} newaddress p2wkh"))["address"]
@@ -113,9 +161,15 @@ def fund_wallets():
     log.info(warnet("bitcoin rpc tank-0000 -generate 1"))
 
 
-def everyone_has_a_host() -> bool:
+@simln.command()
+def fund_wallets():
+    """Fund each ln node with 10 regtest coins."""
+    _fund_wallets()
+
+
+def _everyone_has_a_host() -> bool:
     """Find out if each ln node has a host."""
-    pods = get_pods_with_label(lightning_selector)
+    pods = get_pods_with_label(LIGHTNING_SELECTOR)
     host_havers = 0
     for pod in pods:
         name = pod.metadata.name
@@ -125,8 +179,13 @@ def everyone_has_a_host() -> bool:
     return host_havers == len(pods) and host_havers != 0
 
 
+@simln.command()
 def wait_for_everyone_to_have_a_host():
-    _wait_for_predicate(everyone_has_a_host, timeout=10 * 60)
+    log.info(_wait_for_everyone_to_have_a_host())
+
+
+def _wait_for_everyone_to_have_a_host():
+    _wait_for_predicate(_everyone_has_a_host, timeout=10 * 60)
 
 
 def _wait_for_predicate(predicate, timeout=5 * 60, interval=5):
@@ -173,7 +232,7 @@ def wait_for_gossip_sync(expected: int = 2):
     current = 0
     while current < expected:
         current = 0
-        pods = get_pods_with_label(lightning_selector)
+        pods = get_pods_with_label(LIGHTNING_SELECTOR)
         for v1_pod in pods:
             node = v1_pod.metadata.name
             chs = json.loads(run_command(f"warnet ln rpc {node} describegraph"))["edges"]
@@ -196,7 +255,7 @@ def warnet(cmd: str = "--help"):
 def _generate_nodes_file(activity: list[dict], output_file: Path = Path("nodes.json")):
     nodes = []
 
-    for i in get_pods_with_label(lightning_selector):
+    for i in get_pods_with_label(LIGHTNING_SELECTOR):
         name = i.metadata.name
         node = {
             "id": name,
@@ -252,28 +311,44 @@ def manual_open_channels():
     warnet("bitcoin rpc tank-0000 -generate 10")
 
 
-def list_simln_podnames() -> list[str]:
-    """Get a list of simln pod names"""
-    return [pod.metadata.name for pod in get_pods_with_label("mission=simln")]
+def _rpc(pod, method: str, params: tuple[str, ...]) -> str:
+    namespace = get_default_namespace()
+
+    sclient = get_static_client()
+    if params:
+        cmd = [method]
+        cmd.extend(params)
+    else:
+        cmd = [method]
+    resp = stream(
+        sclient.connect_get_namespaced_pod_exec,
+        pod,
+        namespace,
+        container="simln",
+        command=cmd,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+    stdout = ""
+    stderr = ""
+    while resp.is_open():
+        resp.update(timeout=1)
+        if resp.peek_stdout():
+            stdout_chunk = resp.read_stdout()
+            stdout += stdout_chunk
+        if resp.peek_stderr():
+            stderr_chunk = resp.read_stderr()
+            stderr += stderr_chunk
+    return stdout + stderr
 
 
-def download_results(pod_name: str):
-    """Download SimLN results to the current directory"""
-    download(pod_name, source_path=Path("/working/results"))
-
-
-@click.group()
-def pname():
-    """Commands for PluginName."""
-    pass
-
-
-@pname.command()
-def pthing():
-    """Do another thing."""
-    click.echo("Plugin is doing another thing!")
-    run_simln()
-
-
-def _register(register_command):
-    register_command(pname)
+@simln.command(context_settings={"ignore_unknown_options": True})
+@click.argument("pod", type=str)
+@click.argument("method", type=str)
+@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
+def rpc(pod: str, method: str, params: tuple[str, ...]):
+    """Run commands on a pod"""
+    print(_rpc(pod, method, params))

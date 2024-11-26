@@ -40,10 +40,8 @@ DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Plugin architecture
 PLUGINS_LABEL = "plugins"
+PLUGIN_YAML = "plugin.yaml"
 PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_LABEL)
-HOOK_NAME_KEY = "hook_name"  # this lives as a key in object.__annotations__
-HOOKS_API_STEM = "hooks_api"
-HOOKS_API_FILE = HOOKS_API_STEM + ".py"
 WARNET_USER_DIR_ENV_VAR = "WARNET_USER_DIR"
 
 # Helm charts
