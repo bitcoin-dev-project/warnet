@@ -28,8 +28,7 @@ class SimLNTest(TestBase):
             os.chdir(self.tmpdir)
             self.setup_network()
             self.run_plugin()
-            result = self.copy_results()
-            assert result
+            self.copy_results()
         finally:
             self.cleanup()
 
@@ -39,41 +38,29 @@ class SimLNTest(TestBase):
         self.wait_for_all_tanks_status(target="running")
 
     def run_plugin(self):
-        self.log.info("Running SimLN plugin...")
+        self.log.info("Initializing SimLN plugin...")
         self.sut = pexpect.spawn("warnet init")
         self.sut.expect("network", timeout=10)
         self.sut.sendline("n")
         self.sut.close()
 
-        run_command("warnet plugins simln run-simln")
-        self.wait_for_predicate(self.found_results)
-        print(run_command("warnet plugins simln get-example-activity"))
+        cmd = "warnet plugins simln run-demo"
+        self.log.info(f"Running: {cmd}")
+        run_command(cmd)
+        self.wait_for_predicate(self.found_results_remotely)
+        self.log.info("Ran SimLn plugin.")
 
     def copy_results(self) -> bool:
         self.log.info("Copying results")
         pod = get_pods_with_label("mission=simln")[0]
         self.wait_for_gossip_sync(2)
         wait_for_pod(pod.metadata.name, 60)
-        sleep(20)
 
         log_resp = pod_log(pod.metadata.name, "simln")
         self.log.info(log_resp.data.decode("utf-8"))
-        self.log.info("Sleep to process results")
-        sleep(60)
 
         download(pod.metadata.name, Path("/working/results"), Path("."), pod.metadata.namespace)
-
-        for root, _dirs, files in os.walk(Path("results")):
-            for file_name in files:
-                file_path = os.path.join(root, file_name)
-
-                with open(file_path) as file:
-                    content = file.read()
-                    if "Success" in content:
-                        self.log.info("Found downloaded results.")
-                        return True
-        self.log.info("Did not find downloaded results.")
-        return False
+        self.wait_for_predicate(self.found_results_locally)
 
     def wait_for_gossip_sync(self, expected: int):
         self.log.info(f"Waiting for sync (expecting {expected})...")
@@ -89,14 +76,33 @@ class SimLNTest(TestBase):
             sleep(1)
         self.log.info("Synced")
 
-    def found_results(self) -> bool:
+    def found_results_remotely(self) -> bool:
         pod_names_literal = run_command("warnet plugins simln list-simln-podnames")
         pod_names = ast.literal_eval(pod_names_literal)
         pod = pod_names[0]
         self.log.info(f"Checking for results file in {pod}")
-        results = run_command(f"warnet plugins simln rpc {pod} ls /working/results")
-        self.log.info(f"Results file: {results}")
-        return len(results) > 10
+        results_file = run_command(f"warnet plugins simln rpc {pod} ls /working/results").strip()
+        self.log.info(f"Results file: {results_file}")
+        results = run_command(
+            f"warnet plugins simln rpc {pod} cat /working/results/{results_file}"
+        ).strip()
+        self.log.info(results)
+        return results.find("Success") > 0
+
+    def found_results_locally(self) -> bool:
+        directory = "results"
+        self.log.info(f"Searching {directory}")
+        for root, _dirs, files in os.walk(Path(directory)):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+
+                with open(file_path) as file:
+                    content = file.read()
+                    if "Success" in content:
+                        self.log.info(f"Found downloaded results in directory: {directory}.")
+                        return True
+        self.log.info(f"Did not find downloaded results in directory: {directory}.")
+        return False
 
 
 if __name__ == "__main__":
