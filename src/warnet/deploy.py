@@ -30,7 +30,6 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
-from .plugin import api
 from .process import stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
@@ -57,7 +56,6 @@ def validate_directory(ctx, param, value):
 @click.option("--namespace", type=str, help="Specify a namespace in which to deploy the network")
 @click.option("--to-all-users", is_flag=True, help="Deploy network to all user namespaces")
 @click.argument("unknown_args", nargs=-1)
-@api
 def deploy(directory, debug, namespace, to_all_users, unknown_args):
     """Deploy a warnet with topology loaded from <directory>"""
     if unknown_args:

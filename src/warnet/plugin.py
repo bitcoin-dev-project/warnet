@@ -23,8 +23,11 @@ from warnet.constants import (
     WARNET_USER_DIR_ENV_VAR,
 )
 
-# TODO Add inquirer test
-# TODO iron out input (and test it)
+
+@click.group(name="register")
+def register():
+    """Registered plugins"""
+    pass
 
 
 class PluginError(Exception):
@@ -216,26 +219,20 @@ def run(plugin_name: str, function_name: str, params: str):
 
 
 def execute_function_with_params(func: Callable[..., Any], params: dict | list):
-    match params:
-        case dict():
-            try:
-                return_value = func(**params)
-                if return_value is not None:
-                    print(json.dumps(return_value))
-            except Exception as e:
-                click.secho(f"Exception: {e}", fg="yellow")
-                sys.exit(1)
-        case list():
-            try:
-                return_value = func(*params)
-                if return_value is not None:
-                    print(json.dumps(return_value))
-            except Exception as e:
-                click.secho(f"Exception: {e}", fg="yellow")
-                sys.exit(1)
-        case _:
-            click.secho(f"Did not anticipate this type: {params} --> {type(params)}")
+    try:
+        if isinstance(params, dict):
+            return_value = func(**params)
+        elif isinstance(params, list):
+            return_value = func(*params)
+        else:
+            click.secho(f"Did not anticipate this type: {params} --> {type(params)}", fg="red")
             sys.exit(1)
+
+        if return_value is not None:
+            print(json.dumps(return_value))
+    except Exception as e:
+        click.secho(f"Exception: {e}", fg="yellow")
+        sys.exit(1)
 
 
 def process_obj(some_obj, func) -> dict:
@@ -452,6 +449,22 @@ def load_user_modules() -> bool:
     return was_successful_load
 
 
+def register_command(command):
+    """Register a command to the CLI."""
+    from warnet.main import cli
+
+    register = cli.commands.get("register")
+    register.add_command(command)
+
+
+def load_plugins(fn):
+    load_user_modules()
+    for module in imported_modules.values():
+        for name, func in inspect.getmembers(module, inspect.isfunction):
+            if name == "_register":
+                func(register_command)
+
+
 def find_hooks(module_name: str, func_name: str):
     module = imported_modules.get(module_name)
     pre_hooks = []
@@ -550,6 +563,6 @@ def format_func_with_docstring(func: Callable[..., Any]) -> str:
         doc = func.__doc__.replace("\n", " ")
         doc = doc[:96]
         doc = click.style(doc, italic=True)
-        return f"{name:<25}\t{doc}"
+        return f"{name:<35}\t{doc}"
     else:
         return name

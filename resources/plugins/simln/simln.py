@@ -5,6 +5,8 @@ from pathlib import Path
 from subprocess import run
 from time import sleep
 
+import click
+
 from warnet.k8s import download, get_pods_with_label, wait_for_pod
 from warnet.plugin import _get_plugin_directory as get_plugin_directory
 from warnet.process import run_command
@@ -258,3 +260,20 @@ def list_simln_podnames() -> list[str]:
 def download_results(pod_name: str):
     """Download SimLN results to the current directory"""
     download(pod_name, source_path=Path("/working/results"))
+
+
+@click.group()
+def pname():
+    """Commands for PluginName."""
+    pass
+
+
+@pname.command()
+def pthing():
+    """Do another thing."""
+    click.echo("Plugin is doing another thing!")
+    run_simln()
+
+
+def _register(register_command):
+    register_command(pname)
