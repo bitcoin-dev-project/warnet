@@ -119,7 +119,7 @@ def register_command(command):
     """Register a command to the CLI."""
     from warnet.main import cli
 
-    register = cli.commands.get("register")
+    register = cli.commands.get("plugin")
     register.add_command(command)
 
 

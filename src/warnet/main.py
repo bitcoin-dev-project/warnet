@@ -8,7 +8,7 @@ from .deploy import deploy
 from .graph import create, graph, import_network
 from .image import image
 from .ln import ln
-from .plugin import load_plugins, plugin, register
+from .plugin import load_plugins, plugin
 from .project import init, new, setup
 from .status import status
 from .users import auth
@@ -39,7 +39,6 @@ cli.add_command(status)
 cli.add_command(stop)
 cli.add_command(create)
 cli.add_command(plugin)
-cli.add_command(register)
 
 
 @load_plugins
