@@ -11,7 +11,6 @@ from .constants import (
     SCENARIOS_DIR,
 )
 from .k8s import get_mission
-from .plugin import create_hooks
 
 
 def copy_defaults(directory: Path, target_subdir: str, source_path: Path, exclude_list: list[str]):
@@ -58,7 +57,6 @@ def copy_plugins_defaults(directory: Path):
         PLUGINS_DIR,
         ["__pycache__", "__init__"],
     )
-    create_hooks(directory / PLUGINS_DIR.name)
 
 
 def is_connection_manual(peer):
