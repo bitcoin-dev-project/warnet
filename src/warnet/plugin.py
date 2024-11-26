@@ -24,12 +24,6 @@ from warnet.constants import (
 )
 
 
-@click.group(name="register")
-def register():
-    """Registered plugins"""
-    pass
-
-
 class PluginError(Exception):
     pass
 
@@ -42,15 +36,6 @@ imported_modules: dict[str, ModuleType] = {}
 def plugin():
     """Control plugins"""
     pass
-
-
-@click.group(name="util")
-def util():
-    """Plugin utility functions"""
-    pass
-
-
-plugin.add_command(util)
 
 
 @plugin.command()
@@ -498,11 +483,6 @@ def direct_user_to_plugin_directory_and_exit():
     )
     click.secho(f"export {WARNET_USER_DIR_ENV_VAR}=/home/user/path/to/project/", fg="yellow")
     sys.exit(1)
-
-
-@util.command()
-def get_plugin_directory():
-    click.secho(_get_plugin_directory())
 
 
 def get_version(package_name: str) -> str:
