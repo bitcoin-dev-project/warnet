@@ -59,7 +59,7 @@ def toggle(plugin: str):
     if plugin == "":
         plugin_list = get_plugins_with_status(plugin_dir)
         formatted_list = [
-            f"{str(name.stem):<25}| enabled: {active}" for name, active in plugin_list
+            f"{str(name.stem):<25} ◦ enabled: {active}" for name, active in plugin_list
         ]
 
         plugins_tag = "plugins"
@@ -72,7 +72,7 @@ def toggle(plugin: str):
                 )
             ]
             selected = inquirer.prompt(q, theme=GreenPassion())
-            plugin = selected[plugins_tag].split("|")[0].strip()
+            plugin = selected[plugins_tag].split("◦")[0].strip()
         except TypeError:
             # user cancels and `selected[plugins_tag] fails with TypeError
             sys.exit(0)
