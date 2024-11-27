@@ -14,6 +14,8 @@ import yaml
 from inquirer.themes import GreenPassion
 
 from warnet.constants import (
+    CONTAINER_TAG,
+    MISSION_TAG,
     PLUGIN_YAML,
     PLUGINS_LABEL,
     WARNET_USER_DIR_ENV_VAR,
@@ -196,3 +198,11 @@ def get_plugins_with_status(plugin_dir: Optional[Path] = None) -> list[tuple[Pat
     ]
     plugins = [plugin_dir for plugin_dir in candidates if any(plugin_dir.glob("plugin.yaml"))]
     return [(plugin, check_if_plugin_enabled(plugin)) for plugin in plugins]
+
+
+def get_plugin_missions() -> list[str]:
+    return [getattr(module, MISSION_TAG.upper(), None) for module in imported_modules.values()]
+
+
+def get_plugin_primary_containers() -> list[str]:
+    return [getattr(module, CONTAINER_TAG.upper(), None) for module in imported_modules.values()]
