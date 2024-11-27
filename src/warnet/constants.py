@@ -18,10 +18,13 @@ WARGAMES_NAMESPACE_PREFIX = "wargames-"
 KUBE_INTERNAL_NAMESPACES = ["kube-node-lease", "kube-public", "kube-system", "kubernetes-dashboard"]
 HELM_COMMAND = "helm upgrade --install"
 
+MISSION_TAG = "mission"
 TANK_MISSION = "tank"
 COMMANDER_MISSION = "commander"
 PLUGIN_MISSION = "plugin"
+LIGHTNING_MISSION = "lightning"
 
+CONTAINER_TAG = "container"
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
 

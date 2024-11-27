@@ -1,4 +1,5 @@
 import io
+import itertools
 import json
 import os
 import subprocess
@@ -24,7 +25,6 @@ from .constants import (
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
     COMMANDER_MISSION,
-    PLUGIN_MISSION,
     TANK_MISSION,
 )
 from .k8s import (
@@ -42,6 +42,7 @@ from .k8s import (
     wait_for_pod,
     write_file_to_container,
 )
+from .plugins import get_plugin_missions, get_plugin_primary_containers
 from .process import run_command, stream_command
 
 console = Console()
@@ -385,7 +386,8 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
             pod_list = []
             formatted_commanders = format_pods(get_mission(COMMANDER_MISSION))
             formatted_tanks = format_pods(get_mission(TANK_MISSION))
-            formatted_plugins = format_pods(get_mission(PLUGIN_MISSION))
+            plugin_pods = [get_mission(mission) for mission in get_plugin_missions()]
+            formatted_plugins = format_pods(list(itertools.chain.from_iterable(plugin_pods)))
             pod_list.extend(formatted_commanders)
             pod_list.extend(formatted_tanks)
             pod_list.extend(formatted_plugins)
@@ -414,6 +416,7 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
     try:
         pod = get_pod(pod_name, namespace=namespace)
         eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
+        eligible_container_names.extend(get_plugin_primary_containers())
         available_container_names = [container.name for container in pod.spec.containers]
         container_name = next(
             (
