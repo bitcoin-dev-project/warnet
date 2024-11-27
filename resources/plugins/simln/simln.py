@@ -8,7 +8,8 @@ from time import sleep
 import click
 from kubernetes.stream import stream
 
-# When we want to select pods based on their role in Warnet, we use "mission" tags.
+# When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
+# tag for "lightning" nodes is stored in LIGHTNING_MISSION.
 from warnet.constants import LIGHTNING_MISSION
 from warnet.k8s import (
     download,
@@ -21,12 +22,15 @@ from warnet.plugins import _get_plugins_directory as get_plugin_directory
 from warnet.process import run_command
 from warnet.status import _get_tank_status as network_status
 
-# To make a "mission" tag for your plugin, declare it here. This can be read by the warnet logging
-# system. This should match the helm file associated with this plugin.
+# To make a "mission" tag for your plugin, declare it using the variable name MISSION. This will
+# be read by the warnet log system and status system.
+# This should match the pod's "mission" value in this plugin's associated helm file.
 MISSION = "simln"
 
 # Each pod we deploy should have a primary container. We make the name of that primary container
-# explicit here. This should match the helm file associated with this plugin.
+# explicit here using the variable name CONTAINER which Warnet uses internally in its log and status
+# systems.
+# Again, this should match the container name provided in the associated helm file.
 CONTAINER = MISSION
 
 
@@ -43,16 +47,22 @@ console_handler.setFormatter(formatter)
 log.addHandler(console_handler)
 
 
+# Warnet uses a python package called "click" to manage terminal interactions with the user.
+# Each plugin must declare a click "group" by decorating a function named after the plugin.
+# This makes your plugin available in the plugin section of Warnet.
 @click.group()
 def simln():
     """Commands for the SimLN plugin"""
     pass
 
 
+# Make sure to register your plugin by adding the group function like so:
 def warnet_register_plugin(register_command):
-    register_command(simln)
+    register_command(simln)  # <-- We added the group function here.
 
 
+# The group function name is then used in decorators to create commands. These commands are
+# available to users when the access your plugin from the command line in Warnet.
 @simln.command()
 def run_demo():
     """Run the SimLN Plugin demo"""
@@ -72,7 +82,7 @@ def run_demo():
 @simln.command()
 def list_simln_podnames():
     """Get a list of simln pod names"""
-    print([pod.metadata.name for pod in get_mission("simln")])
+    print([pod.metadata.name for pod in get_mission(MISSION)])
 
 
 @simln.command()
@@ -89,6 +99,11 @@ def prepare_and_launch_activity() -> str:
     return pod_name
 
 
+# When we want to use a command inside our plugin and also provide that command to the user, we like
+# to create a private function whose name starts with an underscore. We also make a public function
+# with the same name except that we leave off the underscore, decorate it with the command
+# decorator, and also provide an instructive doc string which Warnet will display in the help
+# section of the command line program.
 def _get_example_activity() -> list[dict]:
     pods = get_mission(LIGHTNING_MISSION)
     try:
@@ -101,6 +116,7 @@ def _get_example_activity() -> list[dict]:
     return [{"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}]
 
 
+# Notice how the command that we make available to the user simply calls our internal command.
 @simln.command()
 def get_example_activity():
     """Get an activity representing node 2 sending msat to node 3"""
@@ -118,6 +134,7 @@ def _launch_activity(activity: list[dict]) -> str:
     return f"simln-simln-{random_digits}"
 
 
+# Take note of how click expects us to explicitly declare command line arguments.
 @simln.command()
 @click.argument("activity", type=str)
 def launch_activity(activity: str):
@@ -151,6 +168,7 @@ def _init_network():
 
 @simln.command()
 def init_network():
+    """Initialize the demo network."""
     _init_network()
 
 
@@ -328,29 +346,32 @@ def _rpc(pod, method: str, params: tuple[str, ...]) -> str:
         cmd.extend(params)
     else:
         cmd = [method]
-    resp = stream(
-        sclient.connect_get_namespaced_pod_exec,
-        pod,
-        namespace,
-        container="simln",
-        command=cmd,
-        stderr=True,
-        stdin=False,
-        stdout=True,
-        tty=False,
-        _preload_content=False,
-    )
-    stdout = ""
-    stderr = ""
-    while resp.is_open():
-        resp.update(timeout=1)
-        if resp.peek_stdout():
-            stdout_chunk = resp.read_stdout()
-            stdout += stdout_chunk
-        if resp.peek_stderr():
-            stderr_chunk = resp.read_stderr()
-            stderr += stderr_chunk
-    return stdout + stderr
+    try:
+        resp = stream(
+            sclient.connect_get_namespaced_pod_exec,
+            pod,
+            namespace,
+            container="simln",
+            command=cmd,
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            _preload_content=False,
+        )
+        stdout = ""
+        stderr = ""
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                stdout_chunk = resp.read_stdout()
+                stdout += stdout_chunk
+            if resp.peek_stderr():
+                stderr_chunk = resp.read_stderr()
+                stderr += stderr_chunk
+        return stdout + stderr
+    except Exception as err:
+        print(f"Could not execute stream: {err}")
 
 
 @simln.command(context_settings={"ignore_unknown_options": True})
