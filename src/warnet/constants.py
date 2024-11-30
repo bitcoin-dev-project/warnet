@@ -42,6 +42,7 @@ NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Plugin architecture
+USER_DIR_TAG = "user_dir"
 PLUGINS_LABEL = "plugins"
 PLUGIN_YAML = "plugin.yaml"
 PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_LABEL)

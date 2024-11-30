@@ -18,7 +18,7 @@ from warnet.k8s import (
     get_static_client,
     wait_for_pod,
 )
-from warnet.plugins import _get_plugins_directory as get_plugin_directory
+from warnet.plugins import get_plugins_directory_or as get_plugin_directory
 from warnet.process import run_command
 from warnet.status import _get_tank_status as network_status
 
