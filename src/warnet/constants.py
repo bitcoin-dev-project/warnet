@@ -43,9 +43,10 @@ DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Plugin architecture
 USER_DIR_TAG = "user_dir"
-PLUGINS_LABEL = "plugins"
+PLUGINS_TAG = "plugins"
+ENABLED_TAG = "enabled"
 PLUGIN_YAML = "plugin.yaml"
-PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_LABEL)
+PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_TAG)
 WARNET_USER_DIR_ENV_VAR = "WARNET_USER_DIR"
 
 # Helm charts

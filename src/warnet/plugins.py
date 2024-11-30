@@ -6,7 +6,7 @@ import sys
 import tempfile
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Optional
+from typing import Optional
 
 import click
 import inquirer
@@ -15,9 +15,10 @@ from inquirer.themes import GreenPassion
 
 from warnet.constants import (
     CONTAINER_TAG,
+    ENABLED_TAG,
     MISSION_TAG,
     PLUGIN_YAML,
-    PLUGINS_LABEL,
+    PLUGINS_TAG,
     USER_DIR_TAG,
     WARNET_USER_DIR_ENV_VAR,
 )
@@ -27,11 +28,10 @@ class PluginError(Exception):
     pass
 
 
-hook_registry: set[Callable[..., Any]] = set()
 imported_modules: dict[str, ModuleType] = {}
 
 
-@click.group(name=PLUGINS_LABEL)
+@click.group(name=PLUGINS_TAG)
 def plugins():
     """Control plugins"""
     pass
@@ -67,24 +67,23 @@ def toggle(ctx, plugin: str):
             f"{str(name.stem):<25} ◦ enabled: {active}" for name, active in plugin_list
         ]
 
-        plugins_tag = "plugins"
         try:
             q = [
                 inquirer.List(
-                    name=plugins_tag,
+                    name=PLUGINS_TAG,
                     message="Toggle a plugin, or ctrl-c to cancel",
                     choices=formatted_list,
                 )
             ]
             selected = inquirer.prompt(q, theme=GreenPassion())
-            plugin = selected[plugins_tag].split("◦")[0].strip()
+            plugin = selected[PLUGINS_TAG].split("◦")[0].strip()
         except TypeError:
             # user cancels and `selected[plugins_tag] fails with TypeError
             sys.exit(0)
 
     plugin_settings = read_yaml(plugin_dir / Path(plugin) / PLUGIN_YAML)
     updated_settings = copy.deepcopy(plugin_settings)
-    updated_settings["enabled"] = not plugin_settings["enabled"]
+    updated_settings[ENABLED_TAG] = not plugin_settings[ENABLED_TAG]
     write_yaml(updated_settings, plugin_dir / Path(plugin) / Path(PLUGIN_YAML))
 
 
@@ -107,7 +106,7 @@ def load_user_modules(path: Optional[Path] = None) -> bool:
     for plugin_path in enabled_plugins:
         for file in plugin_path.glob("*.py"):
             if file.stem not in ("__init__"):
-                module_name = f"{PLUGINS_LABEL}.{file.stem}"
+                module_name = f"{PLUGINS_TAG}.{file.stem}"
                 spec = importlib.util.spec_from_file_location(module_name, file)
                 module = importlib.util.module_from_spec(spec)
                 imported_modules[module_name] = module
@@ -124,7 +123,7 @@ def register_command(command):
     """Register a command to the CLI."""
     from warnet.main import cli
 
-    register = cli.commands.get(PLUGINS_LABEL)
+    register = cli.commands.get(PLUGINS_TAG)
     register.add_command(command)
 
 
@@ -141,13 +140,13 @@ def get_plugins_directory_or(path: Optional[Path] = None) -> Optional[Path]:
     """
     if path:
         if path.is_dir():
-            return path / PLUGINS_LABEL
+            return path / PLUGINS_TAG
         else:
             click.secho(f"Not a directory: {path}", fg="red")
 
     user_dir = os.getenv(WARNET_USER_DIR_ENV_VAR)
 
-    plugin_dir = Path(user_dir) / PLUGINS_LABEL if user_dir else Path.cwd() / PLUGINS_LABEL
+    plugin_dir = Path(user_dir) / PLUGINS_TAG if user_dir else Path.cwd() / PLUGINS_TAG
 
     if plugin_dir and plugin_dir.is_dir():
         return plugin_dir
@@ -191,8 +190,8 @@ def write_yaml(yaml_dict: dict, path: Path) -> None:
 def check_if_plugin_enabled(path: Path) -> bool:
     enabled = None
     try:
-        plugin_dict = read_yaml(path / Path("plugin.yaml"))
-        enabled = plugin_dict.get("enabled")
+        plugin_dict = read_yaml(path / Path(PLUGIN_YAML))
+        enabled = plugin_dict.get(ENABLED_TAG)
     except PluginError as e:
         click.secho(e)
 
@@ -207,7 +206,7 @@ def get_plugins_with_status(plugin_dir: Optional[Path] = None) -> list[tuple[Pat
         for name in os.listdir(plugin_dir)
         if os.path.isdir(os.path.join(plugin_dir, name))
     ]
-    plugins = [plugin_dir for plugin_dir in candidates if any(plugin_dir.glob("plugin.yaml"))]
+    plugins = [plugin_dir for plugin_dir in candidates if any(plugin_dir.glob(PLUGIN_YAML))]
     return [(plugin, check_if_plugin_enabled(plugin)) for plugin in plugins]
 
 
