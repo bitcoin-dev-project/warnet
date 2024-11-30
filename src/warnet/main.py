@@ -1,4 +1,8 @@
+from pathlib import Path
+
 import click
+
+from warnet.constants import USER_DIR_TAG
 
 from .admin import admin
 from .bitcoin import bitcoin
@@ -8,14 +12,25 @@ from .deploy import deploy
 from .graph import create, graph, import_network
 from .image import image
 from .ln import ln
-from .plugins import load_plugins, plugins
+from .plugins import load_plugins, load_user_modules, plugins
 from .project import init, new, setup
 from .status import status
 from .users import auth
 
 
 @click.group()
-def cli():
+@click.option(
+    "--user-dir",
+    type=click.Path(exists=True, file_okay=False),
+    help="Path to the user's Warnet project directory.",
+)
+@click.pass_context
+def cli(ctx, user_dir: str):
+    ctx.ensure_object(dict)  # initialize ctx object
+    if user_dir:
+        ctx.obj[USER_DIR_TAG] = Path(user_dir)
+    if load_user_modules(ctx.obj.get(USER_DIR_TAG)):
+        load_plugins()
     pass
 
 
@@ -39,11 +54,6 @@ cli.add_command(status)
 cli.add_command(stop)
 cli.add_command(create)
 cli.add_command(plugins)
-
-
-@load_plugins
-def load_early():
-    pass
 
 
 if __name__ == "__main__":

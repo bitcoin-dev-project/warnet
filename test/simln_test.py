@@ -32,6 +32,7 @@ class SimLNTest(TestBase):
             self.run_plugin()
             self.copy_results()
             self.run_activity()
+            self.run_activity_with_user_dir()
         finally:
             self.cleanup()
 
@@ -74,6 +75,17 @@ class SimLNTest(TestBase):
         partial_func = partial(self.found_results_remotely, pod_result.strip())
         self.wait_for_predicate(partial_func)
         self.log.info("Successfully ran activity")
+
+    def run_activity_with_user_dir(self):
+        cmd = "mkdir temp; cd temp; warnet --user-dir ../ plugins simln get-example-activity; cd ../; rm -rf temp"
+        self.log.info(f"Activity: {cmd}")
+        activity_result = run_command(cmd)
+        activity = json.loads(activity_result)
+        pod_result = run_command(f"warnet plugins simln launch-activity '{json.dumps(activity)}'")
+        partial_func = partial(self.found_results_remotely, pod_result.strip())
+        self.wait_for_predicate(partial_func)
+        run_command("cd ../")
+        self.log.info("Successfully ran activity using --user-dir")
 
     def wait_for_gossip_sync(self, expected: int):
         self.log.info(f"Waiting for sync (expecting {expected})...")

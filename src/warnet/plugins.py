@@ -18,6 +18,7 @@ from warnet.constants import (
     MISSION_TAG,
     PLUGIN_YAML,
     PLUGINS_LABEL,
+    USER_DIR_TAG,
     WARNET_USER_DIR_ENV_VAR,
 )
 
@@ -37,9 +38,10 @@ def plugins():
 
 
 @plugins.command()
-def ls():
+@click.pass_context
+def ls(ctx):
     """List all available plugins and whether they are activated"""
-    plugin_dir = _get_plugins_directory()
+    plugin_dir = get_plugins_directory_or(ctx.obj.get(USER_DIR_TAG))
     if plugin_dir is None:
         direct_user_to_plugin_directory_and_exit()
 
@@ -52,9 +54,10 @@ def ls():
 
 @plugins.command()
 @click.argument("plugin", type=str, default="")
-def toggle(plugin: str):
+@click.pass_context
+def toggle(ctx, plugin: str):
     """Toggle a plugin on or off"""
-    plugin_dir = _get_plugins_directory()
+    plugin_dir = get_plugins_directory_or(ctx.obj.get(USER_DIR_TAG))
     if plugin_dir is None:
         direct_user_to_plugin_directory_and_exit()
 
@@ -85,10 +88,10 @@ def toggle(plugin: str):
     write_yaml(updated_settings, plugin_dir / Path(plugin) / Path(PLUGIN_YAML))
 
 
-def load_user_modules() -> bool:
+def load_user_modules(path: Optional[Path] = None) -> bool:
     was_successful_load = False
 
-    plugin_dir = _get_plugins_directory()
+    plugin_dir = get_plugins_directory_or(path)
 
     if not plugin_dir or not plugin_dir.is_dir():
         return was_successful_load
@@ -125,15 +128,23 @@ def register_command(command):
     register.add_command(command)
 
 
-def load_plugins(fn):
-    load_user_modules()
+def load_plugins():
     for module in imported_modules.values():
         for name, func in inspect.getmembers(module, inspect.isfunction):
             if name == "warnet_register_plugin":
                 func(register_command)
 
 
-def _get_plugins_directory() -> Optional[Path]:
+def get_plugins_directory_or(path: Optional[Path] = None) -> Optional[Path]:
+    """Get the plugins directory
+    user-provided path > environment variable > relative path
+    """
+    if path:
+        if path.is_dir():
+            return path / PLUGINS_LABEL
+        else:
+            click.secho(f"Not a directory: {path}", fg="red")
+
     user_dir = os.getenv(WARNET_USER_DIR_ENV_VAR)
 
     plugin_dir = Path(user_dir) / PLUGINS_LABEL if user_dir else Path.cwd() / PLUGINS_LABEL
@@ -147,7 +158,7 @@ def _get_plugins_directory() -> Optional[Path]:
 def direct_user_to_plugin_directory_and_exit():
     click.secho("Could not determine the plugin directory location.")
     click.secho(
-        "Solution 1: try runing this command again, but this time from your initialized warnet directory."
+        "Solution 1: try runing this command again, but this time from your initialized Warnet directory."
     )
     click.secho(
         "Solution 2: consider setting environment variable pointing to your Warnet project directory:"
@@ -190,7 +201,7 @@ def check_if_plugin_enabled(path: Path) -> bool:
 
 def get_plugins_with_status(plugin_dir: Optional[Path] = None) -> list[tuple[Path, bool]]:
     if not plugin_dir:
-        plugin_dir = _get_plugins_directory()
+        plugin_dir = get_plugins_directory_or()
     candidates = [
         Path(os.path.join(plugin_dir, name))
         for name in os.listdir(plugin_dir)
