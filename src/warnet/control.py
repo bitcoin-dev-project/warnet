@@ -272,7 +272,13 @@ def run(
             return False
         if any(
             needle in str(path)
-            for needle in ["__init__.py", "commander.py", "test_framework", scenario_path.name]
+            for needle in [
+                "__init__.py",
+                "commander.py",
+                "test_framework",
+                "ln_framework",
+                scenario_path.name,
+            ]
         ):
             print(f"Including: {path}")
             return True

@@ -9,6 +9,8 @@ import click
 import inquirer
 import yaml
 
+from resources.scenarios.ln_framework.ln import Policy
+
 from .constants import DEFAULT_TAG, SUPPORTED_TAGS
 
 
@@ -257,23 +259,6 @@ def _import_network(graph_file_path, output_path):
 
     sorted_edges = sorted(graph["edges"], key=lambda x: int(x["channel_id"]))
 
-    supported_policies = [
-        "base_fee_msat",
-        "fee_rate_ppm",
-        "time_lock_delta",
-        "min_htlc_msat",
-        "max_htlc_msat",
-    ]
-
-    for_fuck_sake_lnd_what_is_your_fucking_problem = {"min_htlc": "min_htlc_msat"}
-
-    def import_policy(json_policy):
-        for ugh in for_fuck_sake_lnd_what_is_your_fucking_problem:
-            if ugh in json_policy:
-                new_key = for_fuck_sake_lnd_what_is_your_fucking_problem[ugh]
-                json_policy[new_key] = json_policy[ugh]
-        return {key: int(json_policy[key]) for key in supported_policies if key in json_policy}
-
     # By default we start including channel open txs in block 300
     block = 300
     # Coinbase occupies the 0 position!
@@ -281,14 +266,13 @@ def _import_network(graph_file_path, output_path):
     count = 0
     for edge in sorted_edges:
         source = pk_to_tank[edge["node1_pub"]]
-        amt = int(edge["capacity"]) // 2
         channel = {
             "id": {"block": block, "index": index},
             "target": pk_to_tank[edge["node2_pub"]] + "-ln",
-            "local_amt": amt,
-            "push_amt": amt - 1,
-            "source_policy": import_policy(edge["node1_policy"]),
-            "target_policy": import_policy(edge["node2_policy"]),
+            "capacity": int(edge["capacity"]),
+            "push_amt": int(edge["capacity"]) // 2,
+            "source_policy": Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict(),
+            "target_policy": Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict(),
         }
         tanks[source]["lnd"]["channels"].append(channel)
         index += 1

@@ -1,19 +1,18 @@
 import argparse
 import base64
 import configparser
-import http.client
 import json
 import logging
 import os
 import pathlib
 import random
 import signal
-import ssl
 import sys
 import tempfile
 from typing import Dict
 
 from kubernetes import client, config
+from ln_framework.ln import LND
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -23,13 +22,6 @@ from test_framework.test_framework import (
 )
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
-
-# hard-coded deterministic lnd credentials
-ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
-# Don't worry about lnd's self-signed certificates
-INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-INSECURE_CONTEXT.check_hostname = False
-INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
 # Figure out what namespace we are in
 with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
@@ -55,6 +47,7 @@ for pod in pods.items:
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
                 "rpc_user": "user",
                 "rpc_password": pod.metadata.labels["rpcpassword"],
+                "init_peers": pod.metadata.annotations["init_peers"],
             }
         )
 
@@ -80,45 +73,6 @@ AuthServiceProxy.oldrequest = AuthServiceProxy._request
 AuthServiceProxy._request = auth_proxy_request
 
 
-class LND:
-    def __init__(self, pod_name):
-        self.conn = http.client.HTTPSConnection(
-            host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
-        )
-
-    def get(self, uri):
-        self.conn.request(
-            method="GET", url=uri, headers={"Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX}
-        )
-        return self.conn.getresponse().read().decode("utf8")
-
-    def post(self, uri, data):
-        body = json.dumps(data)
-        self.conn.request(
-            method="POST",
-            url=uri,
-            body=body,
-            headers={
-                "Content-Type": "application/json",
-                "Content-Length": str(len(body)),
-                "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
-            },
-        )
-        # Stream output, otherwise we get a timeout error
-        res = self.conn.getresponse()
-        stream = ""
-        while True:
-            try:
-                data = res.read(1)
-                if len(data) == 0:
-                    break
-                else:
-                    stream += data.decode("utf8")
-            except Exception:
-                break
-        return stream
-
-
 class Commander(BitcoinTestFramework):
     # required by subclasses of BitcoinTestFramework
     def set_test_params(self):
@@ -138,6 +92,13 @@ class Commander(BitcoinTestFramework):
     @staticmethod
     def hex_to_b64(hex):
         return base64.b64encode(bytes.fromhex(hex)).decode()
+
+    @staticmethod
+    def b64_to_hex(b64, reverse=False):
+        if reverse:
+            return base64.b64decode(b64)[::-1].hex()
+        else:
+            return base64.b64decode(b64).hex()
 
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
@@ -193,6 +154,7 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
+            node.init_peers = int(tank["init_peers"])
 
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node
