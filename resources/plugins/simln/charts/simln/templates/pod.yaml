@@ -7,16 +7,20 @@ metadata:
     mission: {{ .Values.name }}
 spec:
   initContainers:
-    - name: "init-container"
+    - name: "init"
       image: "busybox"
       command:
         - "sh"
         - "-c"
       args:
         - >
-          cp /configmap/* /working;
-          cd /working;
-          cat admin.macaroon.hex | xxd -r -p > admin.macaroon
+          cp /configmap/* /working &&
+          cd /working &&
+          cat admin.macaroon.hex | xxd -r -p > admin.macaroon &&
+          while [ ! -f /working/sim.json ]; do
+            echo "Waiting for /working/sim.json to exist..."
+            sleep 1
+          done
       volumeMounts:
         - name: {{ .Values.workingVolume.name }}
           mountPath: {{ .Values.workingVolume.mountPath }}

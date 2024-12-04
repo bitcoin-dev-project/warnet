@@ -38,6 +38,12 @@ def plugins():
 
 
 @plugins.command()
+def run(plugin: str):
+    """Run a file"""
+    pass
+
+
+@plugins.command()
 @click.pass_context
 def ls(ctx):
     """List all available plugins and whether they are activated"""

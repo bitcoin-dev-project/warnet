@@ -319,7 +319,7 @@ def wait_for_pod_ready(name, namespace, timeout=300):
     return False
 
 
-def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
+def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None, quiet: bool = False):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     w = watch.Watch()
@@ -332,10 +332,12 @@ def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
                 continue
             for init_container_status in pod.status.init_container_statuses:
                 if init_container_status.state.running:
-                    print(f"initContainer in pod {pod_name} ({namespace}) is ready")
+                    if not quiet:
+                        print(f"initContainer in pod {pod_name} ({namespace}) is ready")
                     w.stop()
                     return True
-    print(f"Timeout waiting for initContainer in {pod_name} ({namespace})to be ready.")
+    if not quiet:
+        print(f"Timeout waiting for initContainer in {pod_name} ({namespace}) to be ready.")
     return False
 
 
@@ -389,7 +391,7 @@ def wait_for_pod(pod_name, timeout_seconds=10, namespace: Optional[str] = None):
 
 
 def write_file_to_container(
-    pod_name, container_name, dst_path, data, namespace: Optional[str] = None
+    pod_name, container_name, dst_path, data, namespace: Optional[str] = None, quiet: bool = False
 ):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
@@ -421,7 +423,8 @@ def write_file_to_container(
             stdout=True,
             tty=False,
         )
-        print(f"Successfully copied data to {pod_name}({container_name}):{dst_path}")
+        if not quiet:
+            print(f"Successfully copied data to {pod_name}({container_name}):{dst_path}")
         return True
     except Exception as e:
         print(f"Failed to copy data to {pod_name}({container_name}):{dst_path}:\n{e}")

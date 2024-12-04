@@ -1,6 +1,6 @@
 import json
 import logging
-import random
+import time
 from pathlib import Path
 from subprocess import run
 from time import sleep
@@ -17,7 +17,9 @@ from warnet.k8s import (
     get_default_namespace,
     get_mission,
     get_static_client,
+    wait_for_init,
     wait_for_pod,
+    write_file_to_container,
 )
 from warnet.plugins import get_plugins_directory_or
 from warnet.process import run_command
@@ -63,7 +65,7 @@ def warnet_register_plugin(register_command):
 
 
 # The group function name is then used in decorators to create commands. These commands are
-# available to users when the access your plugin from the command line in Warnet.
+# available to users when they access your plugin from the command line in Warnet.
 @simln.command()
 def run_demo():
     """Run the SimLN Plugin demo"""
@@ -128,13 +130,27 @@ def get_example_activity():
 
 def _launch_activity(activity: list[dict], user_dir: Optional[str] = None) -> str:
     """Launch a SimLN chart which includes the `activity`"""
-    random_digits = "".join(random.choices("0123456789", k=10))
     plugin_dir = get_plugins_directory_or(user_dir)
-    _generate_nodes_file(activity, plugin_dir / Path("simln/charts/simln/files/sim.json"))
-    command = f"helm upgrade --install simln-{random_digits} {plugin_dir}/simln/charts/simln"
-    log.info(f"generate activity: {command}")
+
+    timestamp = int(time.time())
+    name = f"simln-{timestamp}"
+
+    command = f"helm upgrade --install {timestamp} {plugin_dir}/simln/charts/simln"
     run_command(command)
-    return f"simln-simln-{random_digits}"
+
+    activity_json = _generate_activity_json(activity)
+    wait_for_init(name, namespace=get_default_namespace(), quiet=True)
+    if write_file_to_container(
+        name,
+        "init",
+        "/working/sim.json",
+        activity_json,
+        namespace=get_default_namespace(),
+        quiet=True,
+    ):
+        return name
+    else:
+        raise SimLNError(f"Could not write sim.json to the init container: {name}")
 
 
 # Take note of how click expects us to explicitly declare command line arguments.
@@ -142,8 +158,12 @@ def _launch_activity(activity: list[dict], user_dir: Optional[str] = None) -> st
 @click.argument("activity", type=str)
 @click.pass_context
 def launch_activity(ctx, activity: str):
-    """Takes a SimLN Activity which is a JSON list of objects."""
-    parsed_activity = json.loads(activity)
+    """Deploys a SimLN Activity which is a JSON list of objects"""
+    try:
+        parsed_activity = json.loads(activity)
+    except json.JSONDecodeError:
+        log.error("Invalid JSON input for activity.")
+        raise click.BadArgumentUsage("Activity must be a valid JSON string.") from None
     user_dir = ctx.obj.get(USER_DIR_TAG)
     print(_launch_activity(parsed_activity, user_dir))
 
@@ -283,7 +303,7 @@ def warnet(cmd: str = "--help"):
     return proc.stdout.decode()
 
 
-def _generate_nodes_file(activity: list[dict], output_file: Path = Path("nodes.json")):
+def _generate_activity_json(activity: list[dict]) -> str:
     nodes = []
 
     for i in get_mission(LIGHTNING_MISSION):
@@ -298,8 +318,7 @@ def _generate_nodes_file(activity: list[dict], output_file: Path = Path("nodes.j
 
     data = {"nodes": nodes, "activity": activity}
 
-    with open(output_file, "w") as f:
-        json.dump(data, f, indent=2)
+    return json.dumps(data, indent=2)
 
 
 def manual_open_channels():
@@ -342,7 +361,7 @@ def manual_open_channels():
     warnet("bitcoin rpc tank-0000 -generate 10")
 
 
-def _rpc(pod, method: str, params: tuple[str, ...]) -> str:
+def _sh(pod, method: str, params: tuple[str, ...]) -> str:
     namespace = get_default_namespace()
 
     sclient = get_static_client()
@@ -356,7 +375,7 @@ def _rpc(pod, method: str, params: tuple[str, ...]) -> str:
             sclient.connect_get_namespaced_pod_exec,
             pod,
             namespace,
-            container="simln",
+            container=CONTAINER,
             command=cmd,
             stderr=True,
             stdin=False,
@@ -383,6 +402,6 @@ def _rpc(pod, method: str, params: tuple[str, ...]) -> str:
 @click.argument("pod", type=str)
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def rpc(pod: str, method: str, params: tuple[str, ...]):
+def sh(pod: str, method: str, params: tuple[str, ...]):
     """Run commands on a pod"""
-    print(_rpc(pod, method, params))
+    print(_sh(pod, method, params))

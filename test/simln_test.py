@@ -15,10 +15,6 @@ from warnet.process import run_command
 
 lightning_selector = "mission=lightning"
 
-UP = "\033[A"
-DOWN = "\033[B"
-ENTER = "\n"
-
 
 class SimLNTest(TestBase):
     def __init__(self):
@@ -72,6 +68,7 @@ class SimLNTest(TestBase):
         activity_result = run_command(cmd)
         activity = json.loads(activity_result)
         pod_result = run_command(f"warnet plugins simln launch-activity '{json.dumps(activity)}'")
+        self.log.info(f"launched activity: {pod_result}")
         partial_func = partial(self.found_results_remotely, pod_result.strip())
         self.wait_for_predicate(partial_func)
         self.log.info("Successfully ran activity")
@@ -82,6 +79,7 @@ class SimLNTest(TestBase):
         activity_result = run_command(cmd)
         activity = json.loads(activity_result)
         pod_result = run_command(f"warnet plugins simln launch-activity '{json.dumps(activity)}'")
+        self.log.info(f"launched activity: {pod_result}")
         partial_func = partial(self.found_results_remotely, pod_result.strip())
         self.wait_for_predicate(partial_func)
         run_command("cd ../")
@@ -107,10 +105,10 @@ class SimLNTest(TestBase):
             pod_names = ast.literal_eval(pod_names_literal)
             pod = pod_names[0]
         self.log.info(f"Checking for results file in {pod}")
-        results_file = run_command(f"warnet plugins simln rpc {pod} ls /working/results").strip()
+        results_file = run_command(f"warnet plugins simln sh {pod} ls /working/results").strip()
         self.log.info(f"Results file: {results_file}")
         results = run_command(
-            f"warnet plugins simln rpc {pod} cat /working/results/{results_file}"
+            f"warnet plugins simln sh {pod} cat /working/results/{results_file}"
         ).strip()
         self.log.info(results)
         return results.find("Success") > 0
