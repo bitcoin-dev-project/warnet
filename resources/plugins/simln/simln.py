@@ -4,13 +4,14 @@ import random
 from pathlib import Path
 from subprocess import run
 from time import sleep
+from typing import Optional
 
 import click
 from kubernetes.stream import stream
 
 # When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
 # tag for "lightning" nodes is stored in LIGHTNING_MISSION.
-from warnet.constants import LIGHTNING_MISSION
+from warnet.constants import LIGHTNING_MISSION, USER_DIR_TAG
 from warnet.k8s import (
     download,
     get_default_namespace,
@@ -18,7 +19,7 @@ from warnet.k8s import (
     get_static_client,
     wait_for_pod,
 )
-from warnet.plugins import get_plugins_directory_or as get_plugin_directory
+from warnet.plugins import get_plugins_directory_or
 from warnet.process import run_command
 from warnet.status import _get_tank_status as network_status
 
@@ -86,9 +87,11 @@ def list_simln_podnames():
 
 
 @simln.command()
+@click.argument("pod_name", type=str)
 def download_results(pod_name: str):
     """Download SimLN results to the current directory"""
-    print(download(pod_name, source_path=Path("/working/results")))
+    dest = download(pod_name, source_path=Path("/working/results"))
+    print(f"Downloaded results to: {dest}")
 
 
 def prepare_and_launch_activity() -> str:
@@ -123,10 +126,10 @@ def get_example_activity():
     print(json.dumps(_get_example_activity()))
 
 
-def _launch_activity(activity: list[dict]) -> str:
+def _launch_activity(activity: list[dict], user_dir: Optional[str] = None) -> str:
     """Launch a SimLN chart which includes the `activity`"""
     random_digits = "".join(random.choices("0123456789", k=10))
-    plugin_dir = get_plugin_directory()
+    plugin_dir = get_plugins_directory_or(user_dir)
     _generate_nodes_file(activity, plugin_dir / Path("simln/charts/simln/files/sim.json"))
     command = f"helm upgrade --install simln-{random_digits} {plugin_dir}/simln/charts/simln"
     log.info(f"generate activity: {command}")
@@ -137,10 +140,12 @@ def _launch_activity(activity: list[dict]) -> str:
 # Take note of how click expects us to explicitly declare command line arguments.
 @simln.command()
 @click.argument("activity", type=str)
-def launch_activity(activity: str):
+@click.pass_context
+def launch_activity(ctx, activity: str):
     """Takes a SimLN Activity which is a JSON list of objects."""
     parsed_activity = json.loads(activity)
-    print(_launch_activity(parsed_activity))
+    user_dir = ctx.obj.get(USER_DIR_TAG)
+    print(_launch_activity(parsed_activity, user_dir))
 
 
 def _init_network():
