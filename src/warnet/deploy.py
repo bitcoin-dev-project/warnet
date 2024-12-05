@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import tempfile
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Optional
 
@@ -22,8 +22,10 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
 )
+from .control import _run
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -295,23 +297,41 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    queue = Queue()
     processes = []
+
     for node in network_file["nodes"]:
-        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace))
+        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace, queue))
         p.start()
         processes.append(p)
 
     for p in processes:
         p.join()
 
+    if any([queue.get() for _ in range(queue.qsize())]):
+        _run(
+            scenario_file=SCENARIOS_DIR / "ln_init.py",
+            debug=True,
+            source_dir=SCENARIOS_DIR,
+            additional_args=None,
+            namespace=namespace,
+        )
 
-def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
+
+def deploy_single_node(node, directory: Path, debug: bool, namespace: str, queue: Queue):
     defaults_file_path = directory / DEFAULTS_FILE
     click.echo(f"Deploying node: {node.get('name')}")
     temp_override_file_path = ""
     try:
         node_name = node.get("name")
         node_config_override = {k: v for k, v in node.items() if k != "name"}
+
+        if (
+            "lnd" in node_config_override
+            and "channels" in node_config_override["lnd"]
+            and len(node_config_override["lnd"]["channels"]) > 0
+        ):
+            queue.put(True)
 
         defaults_file_path = directory / DEFAULTS_FILE
         cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
