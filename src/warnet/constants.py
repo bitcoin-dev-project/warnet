@@ -18,13 +18,10 @@ WARGAMES_NAMESPACE_PREFIX = "wargames-"
 KUBE_INTERNAL_NAMESPACES = ["kube-node-lease", "kube-public", "kube-system", "kubernetes-dashboard"]
 HELM_COMMAND = "helm upgrade --install"
 
-MISSION_TAG = "mission"
 TANK_MISSION = "tank"
 COMMANDER_MISSION = "commander"
-PLUGIN_MISSION = "plugin"
 LIGHTNING_MISSION = "lightning"
 
-CONTAINER_TAG = "container"
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
 
@@ -36,18 +33,11 @@ NAMESPACES_DIR = RESOURCES_DIR.joinpath("namespaces")
 SCENARIOS_DIR = RESOURCES_DIR.joinpath("scenarios")
 CHARTS_DIR = RESOURCES_DIR.joinpath("charts")
 MANIFESTS_DIR = RESOURCES_DIR.joinpath("manifests")
+PLUGINS_DIR = RESOURCES_DIR.joinpath("plugins")
 NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
-
-# Plugin architecture
-PLUGIN_DIR_TAG = "plugin_dir"
-PLUGINS_TAG = "plugins"
-ENABLED_TAG = "enabled"
-PLUGIN_YAML = "plugin.yaml"
-PLUGINS_DIR = RESOURCES_DIR.joinpath(PLUGINS_TAG)
-WARNET_USER_DIR_ENV_VAR = "WARNET_USER_DIR"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))

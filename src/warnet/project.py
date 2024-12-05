@@ -24,7 +24,6 @@ from .constants import (
     KUBECTL_BLESSED_NAME_AND_CHECKSUMS,
     KUBECTL_BLESSED_VERSION,
     KUBECTL_DOWNLOAD_URL_STUB,
-    WARNET_USER_DIR_ENV_VAR,
 )
 from .graph import inquirer_create_network
 from .network import copy_network_defaults, copy_plugins_defaults, copy_scenario_defaults
@@ -439,11 +438,6 @@ def new_internal(directory: Path, from_init=False):
         )
         click.echo("\nWhen you're ready, run the following command to deploy this network:")
         click.echo(f"  warnet deploy {custom_network_path}")
-
-    click.secho(
-        "Consider setting an environment variable to make it easier to access your user directory:"
-    )
-    click.secho(f"export {WARNET_USER_DIR_ENV_VAR}={directory}", fg="yellow")
 
 
 @click.command()
