@@ -322,30 +322,32 @@ class LNInit(Commander):
 
         update_threads = []
         for ch in self.channels:
-            ts = threading.Thread(
-                target=update_policy,
-                args=(
-                    self,
-                    self.lns[ch["source"]],
-                    ch["txid"],
-                    ch["source_policy"],
-                    ch["capacity"],
-                ),
-            )
-            ts.start()
-            update_threads.append(ts)
-            tt = threading.Thread(
-                target=update_policy,
-                args=(
-                    self,
-                    self.lns[ch["target"]],
-                    ch["txid"],
-                    ch["target_policy"],
-                    ch["capacity"],
-                ),
-            )
-            tt.start()
-            update_threads.append(tt)
+            if "source_policy" in ch:
+                ts = threading.Thread(
+                    target=update_policy,
+                    args=(
+                        self,
+                        self.lns[ch["source"]],
+                        ch["txid"],
+                        ch["source_policy"],
+                        ch["capacity"],
+                    ),
+                )
+                ts.start()
+                update_threads.append(ts)
+            if "target_policy" in ch:
+                tt = threading.Thread(
+                    target=update_policy,
+                    args=(
+                        self,
+                        self.lns[ch["target"]],
+                        ch["txid"],
+                        ch["target_policy"],
+                        ch["capacity"],
+                    ),
+                )
+                tt.start()
+                update_threads.append(tt)
         count = len(update_threads)
 
         all(thread.join() is None for thread in update_threads)

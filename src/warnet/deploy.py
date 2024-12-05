@@ -20,8 +20,10 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
 )
+from .control import _run
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -238,12 +240,21 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    needs_ln_init = False
+
     for node in network_file["nodes"]:
         click.echo(f"Deploying node: {node.get('name')}")
         try:
             temp_override_file_path = ""
             node_name = node.get("name")
             node_config_override = {k: v for k, v in node.items() if k != "name"}
+
+            if (
+                "lnd" in node_config_override
+                and "channels" in node_config_override["lnd"]
+                and len(node_config_override["lnd"]["channels"]) > 0
+            ):
+                needs_ln_init = True
 
             cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
             if debug:
@@ -267,6 +278,15 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         finally:
             if temp_override_file_path:
                 Path(temp_override_file_path).unlink()
+
+    if needs_ln_init:
+        _run(
+            scenario_file=SCENARIOS_DIR / "ln_init.py",
+            debug=True,
+            source_dir=SCENARIOS_DIR,
+            additional_args=None,
+            namespace=namespace,
+        )
 
 
 def deploy_namespaces(directory: Path):
