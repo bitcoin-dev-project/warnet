@@ -11,10 +11,9 @@ import pexpect
 from ln_test import LNTest
 from test_base import TestBase
 
-from warnet.k8s import download, get_pods_with_label, pod_log, wait_for_pod
+from warnet.constants import LIGHTNING_MISSION
+from warnet.k8s import download, get_mission, pod_log, wait_for_pod
 from warnet.process import run_command
-
-lightning_selector = "mission=lightning"
 
 
 class SimLNTest(LNTest, TestBase):
@@ -49,11 +48,11 @@ class SimLNTest(LNTest, TestBase):
 
     def copy_results(self):
         self.log.info("Copying results")
-        pod = get_pods_with_label("mission=simln")[0]
+        pod = get_mission(f"{self.simln_exec} mission")[0]
         self.wait_for_gossip_sync(2)
         wait_for_pod(pod.metadata.name, 60)
 
-        log_resp = pod_log(pod.metadata.name, "simln")
+        log_resp = pod_log(pod.metadata.name, f"{self.simln_exec} primary-container")
         self.log.info(log_resp.data.decode("utf-8"))
 
         partial_func = partial(self.found_results_remotely, pod.metadata.name)
@@ -78,7 +77,7 @@ class SimLNTest(LNTest, TestBase):
         current = 0
         while current < expected:
             current = 0
-            pods = get_pods_with_label(lightning_selector)
+            pods = get_mission(LIGHTNING_MISSION)
             for v1_pod in pods:
                 node = v1_pod.metadata.name
                 chs = json.loads(run_command(f"warnet ln rpc {node} describegraph"))["edges"]
