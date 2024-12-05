@@ -4,7 +4,6 @@ from typing import Optional
 import click
 
 from .k8s import (
-    get_channels,
     get_default_namespace_or,
     get_pod,
 )
@@ -70,30 +69,3 @@ def _host(pod):
         return uris[0].split("@")[1]
     else:
         return ""
-
-
-@ln.command()
-def open_all_channels():
-    """
-    Open all channels with source policies defined in the network.yaml
-    <!> IGNORES HARD CODED CHANNEL IDs <!>
-    <!> Should only be run once or you'll end up with duplicate channels <!>
-    """
-    channels = get_channels()
-    commands = []
-    for ch in channels:
-        pk = _pubkey(ch["target"])
-        host = _host(ch["target"])
-        local_amt = ch["local_amt"]
-        push_amt = ch.get("push_amt", 0)
-        assert pk, f"{ch['target']} has no public key"
-        assert host, f"{ch['target']} has no host"
-        assert local_amt, "Channel has no local_amount"
-        commands.append(
-            (
-                ch["source"],
-                f"openchannel --node_key {pk} --connect {host} --local_amt {local_amt} --push_amt {push_amt}",
-            )
-        )
-    for command in commands:
-        _rpc(*command)

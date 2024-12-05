@@ -20,7 +20,6 @@ class LNTest(TestBase):
         try:
             self.import_network()
             self.setup_network()
-            self.run_ln_init_scenario()
             self.test_channel_policies()
             self.test_payments()
         finally:
@@ -33,13 +32,7 @@ class LNTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network...")
-        self.log.info(self.warnet(f"deploy {self.imported_network_dir}"))
-        self.wait_for_all_tanks_status(target="running")
-
-    def run_ln_init_scenario(self):
-        self.log.info("Running LN Init scenario")
-        stream_command(f"warnet run {self.scen_dir / 'ln_init.py'} --debug")
-        self.wait_for_all_scenarios()
+        stream_command(f"warnet deploy {self.imported_network_dir}")
 
     def test_channel_policies(self):
         self.log.info("Ensuring node-level channel policy settings")

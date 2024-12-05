@@ -45,7 +45,6 @@ jobs:
           - graph_test.py
           - logging_test.py
           - ln_test.py
-          - ln_basic_test.py
           - rpc_test.py
           - services_test.py
           - signet_test.py

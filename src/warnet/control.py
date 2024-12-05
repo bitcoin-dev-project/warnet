@@ -252,6 +252,16 @@ def run(
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
+    return _run(scenario_file, debug, source_dir, additional_args, namespace)
+
+
+def _run(
+    scenario_file: str,
+    debug: bool,
+    source_dir,
+    additional_args: tuple[str],
+    namespace: Optional[str],
+):
     namespace = get_default_namespace_or(namespace)
 
     scenario_path = Path(scenario_file).resolve()
