@@ -42,7 +42,7 @@ NAMESPACES_FILE = "namespaces.yaml"
 DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Plugin architecture
-USER_DIR_TAG = "user_dir"
+PLUGIN_DIR_TAG = "plugin_dir"
 PLUGINS_TAG = "plugins"
 ENABLED_TAG = "enabled"
 PLUGIN_YAML = "plugin.yaml"
