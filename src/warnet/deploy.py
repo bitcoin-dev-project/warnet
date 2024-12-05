@@ -16,6 +16,7 @@ from .constants import (
     FORK_OBSERVER_CHART,
     HELM_COMMAND,
     INGRESS_HELM_COMMANDS,
+    LOGGING_CRD_COMMANDS,
     LOGGING_HELM_COMMANDS,
     LOGGING_NAMESPACE,
     NAMESPACES_CHART_LOCATION,
@@ -87,6 +88,9 @@ def _deploy(directory, debug, namespace, to_all_users):
 
     if (directory / NETWORK_FILE).exists():
         processes = []
+        # Deploy logging CRD first to avoid synchronisation issues
+        deploy_logging_crd(directory, debug)
+
         logging_process = Process(target=deploy_logging_stack, args=(directory, debug))
         logging_process.start()
         processes.append(logging_process)
@@ -146,11 +150,30 @@ def check_logging_required(directory: Path):
     return False
 
 
+def deploy_logging_crd(directory: Path, debug: bool) -> bool:
+    """
+    This function exists so we can parallelise the rest of the loggin stack
+    installation
+    """
+    if not check_logging_required(directory):
+        return False
+
+    click.echo(
+        "Found collectLogs or metricsExport in network definition, Deploying logging stack CRD"
+    )
+
+    for command in LOGGING_CRD_COMMANDS:
+        if not stream_command(command):
+            print(f"Failed to run Helm command: {command}")
+            return False
+    return True
+
+
 def deploy_logging_stack(directory: Path, debug: bool) -> bool:
     if not check_logging_required(directory):
         return False
 
-    click.echo("Found collectLogs or metricsExport in network definition, Deploying logging stack")
+    click.echo("Deploying logging stack")
 
     for command in LOGGING_HELM_COMMANDS:
         if not stream_command(command):

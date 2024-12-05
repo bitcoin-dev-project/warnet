@@ -96,6 +96,12 @@ LOGGING_CONFIG = {
     },
 }
 
+LOGGING_CRD_COMMANDS = [
+    "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts",
+    "helm repo update",
+    "helm upgrade --install prometheus-operator-crds prometheus-community/prometheus-operator-crds",
+]
+
 # Helm commands for logging setup
 # TODO: also lots of hardcode stuff in these helm commands, will need to fix this when moving to helm charts
 LOGGING_HELM_COMMANDS = [
