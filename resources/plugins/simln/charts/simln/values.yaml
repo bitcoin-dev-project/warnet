@@ -11,4 +11,3 @@ configmapVolume:
   name: configmap-volume
   mountPath: /configmap
 
-defaultDataDir: /app/data
