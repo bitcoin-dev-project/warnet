@@ -10,7 +10,7 @@ from kubernetes.stream import stream
 
 # When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
 # tag for "lightning" nodes is stored in LIGHTNING_MISSION.
-from warnet.constants import LIGHTNING_MISSION, PLUGIN_DIR_TAG
+from warnet.constants import LIGHTNING_MISSION
 from warnet.k8s import (
     download,
     get_default_namespace,
@@ -30,7 +30,9 @@ MISSION = "simln"
 # explicit here using the variable name CONTAINER which Warnet uses internally in its log and status
 # systems.
 # Again, this should match the container name provided in the associated helm file.
-CONTAINER = MISSION
+PRIMARY_CONTAINER = MISSION
+
+PLUGIN_DIR_TAG = "plugin_dir"
 
 
 class SimLNError(Exception):
@@ -173,7 +175,7 @@ def _sh(pod, method: str, params: tuple[str, ...]) -> str:
             sclient.connect_get_namespaced_pod_exec,
             pod,
             namespace,
-            container=CONTAINER,
+            container=PRIMARY_CONTAINER,
             command=cmd,
             stderr=True,
             stdin=False,
@@ -203,6 +205,18 @@ def _sh(pod, method: str, params: tuple[str, ...]) -> str:
 def sh(pod: str, method: str, params: tuple[str, ...]):
     """Run shell commands in a pod"""
     print(_sh(pod, method, params))
+
+
+@simln.command()
+def mission():
+    """Return the SimLN mission name"""
+    click.secho(MISSION)
+
+
+@simln.command()
+def primary_container():
+    """Return the SimLN primary container name."""
+    click.secho(PRIMARY_CONTAINER)
 
 
 if __name__ == "__main__":
