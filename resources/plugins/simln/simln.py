@@ -4,14 +4,13 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 import click
 from kubernetes.stream import stream
 
 # When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
 # tag for "lightning" nodes is stored in LIGHTNING_MISSION.
-from warnet.constants import LIGHTNING_MISSION, USER_DIR_TAG
+from warnet.constants import LIGHTNING_MISSION, PLUGIN_DIR_TAG
 from warnet.k8s import (
     download,
     get_default_namespace,
@@ -20,7 +19,6 @@ from warnet.k8s import (
     wait_for_init,
     write_file_to_container,
 )
-from warnet.plugins import get_plugins_directory_or
 from warnet.process import run_command
 
 # To make a "mission" tag for your plugin, declare it using the variable name MISSION. This will
@@ -55,15 +53,9 @@ log.addHandler(console_handler)
 @click.pass_context
 def simln(ctx):
     """Commands for the SimLN plugin"""
-    try:
-        # check if we have set a user directory
-        ctx.obj.get(USER_DIR_TAG)
-    except Exception:
-        # if not, set the great-grandparent of this file as the user dir
-        ctx.ensure_object(dict)
-        user_dir = Path(__file__).resolve().parent.parent.parent
-        ctx.obj[USER_DIR_TAG] = Path(user_dir)
-    pass
+    ctx.ensure_object(dict)
+    plugin_dir = Path(__file__).resolve().parent
+    ctx.obj[PLUGIN_DIR_TAG] = Path(plugin_dir)
 
 
 # Make sure to register your plugin by adding the group function like so:
@@ -74,8 +66,8 @@ def warnet_register_plugin(register_command):
 # The group function name is then used in decorators to create commands. These commands are
 # available to users when they access your plugin from the command line in Warnet.
 @simln.command()
-def list_simln_podnames():
-    """Get a list of simln pod names"""
+def list_pod_names():
+    """Get a list of SimLN pod names"""
     print([pod.metadata.name for pod in get_mission(MISSION)])
 
 
@@ -111,14 +103,12 @@ def get_example_activity():
     print(json.dumps(_get_example_activity()))
 
 
-def _launch_activity(activity: list[dict], user_dir: Optional[str] = None) -> str:
+def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
     """Launch a SimLN chart which includes the `activity`"""
-    plugin_dir = get_plugins_directory_or(user_dir)
-
     timestamp = int(time.time())
     name = f"simln-{timestamp}"
 
-    command = f"helm upgrade --install {timestamp} {plugin_dir}/simln/charts/simln"
+    command = f"helm upgrade --install {timestamp} {plugin_dir}/charts/simln"
     run_command(command)
 
     activity_json = _generate_activity_json(activity)
@@ -147,8 +137,8 @@ def launch_activity(ctx, activity: str):
     except json.JSONDecodeError:
         log.error("Invalid JSON input for activity.")
         raise click.BadArgumentUsage("Activity must be a valid JSON string.") from None
-    user_dir = ctx.obj.get(USER_DIR_TAG)
-    print(_launch_activity(parsed_activity, user_dir))
+    plugin_dir = ctx.obj.get(PLUGIN_DIR_TAG)
+    print(_launch_activity(parsed_activity, plugin_dir))
 
 
 def _generate_activity_json(activity: list[dict]) -> str:

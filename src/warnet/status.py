@@ -1,4 +1,3 @@
-import itertools
 import sys
 
 import click
@@ -12,7 +11,6 @@ from urllib3.exceptions import MaxRetryError
 from .constants import COMMANDER_MISSION, TANK_MISSION
 from .k8s import get_mission
 from .network import _connected
-from .plugins import get_plugin_missions
 
 
 @click.command()
@@ -23,7 +21,6 @@ def status():
     try:
         tanks = _get_tank_status()
         scenarios = _get_deployed_scenarios()
-        plugins = _get_plugin_status()
     except ConfigException as e:
         print(e)
         print(
@@ -69,20 +66,6 @@ def status():
     else:
         table.add_row("Scenario", "No active scenarios", "")
 
-    # Add a separator if there are plugins
-    if plugins:
-        table.add_row("", "", "")
-
-    # Add plugins to the table
-    active_plugins = 0
-    if plugins:
-        for plugin in plugins:
-            table.add_row("Plugin", plugin["name"], plugin["status"], plugin["namespace"])
-            if plugin["status"] == "running" or plugin["status"] == "pending":
-                active_plugins += 1
-    else:
-        table.add_row("Plugin", "No active plugins", "")
-
     # Create a panel to wrap the table
     panel = Panel(
         table,
@@ -99,7 +82,6 @@ def status():
     summary = Text()
     summary.append(f"\nTotal Tanks: {len(tanks)}", style="bold cyan")
     summary.append(f" | Active Scenarios: {active}", style="bold green")
-    summary.append(f" | Active Plugins: {active_plugins}", style="bold green")
     console.print(summary)
     _connected(end="\r")
 
@@ -113,18 +95,6 @@ def _get_tank_status():
             "namespace": tank.metadata.namespace,
         }
         for tank in tanks
-    ]
-
-
-def _get_plugin_status():
-    plugin_pods = [get_mission(mission) for mission in get_plugin_missions()]
-    return [
-        {
-            "name": pod.metadata.name,
-            "status": pod.status.phase.lower(),
-            "namespace": pod.metadata.namespace,
-        }
-        for pod in list(itertools.chain.from_iterable(plugin_pods))  # flatten
     ]
 
 
