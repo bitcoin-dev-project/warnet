@@ -8,6 +8,7 @@ from time import sleep
 from typing import Optional
 
 import pexpect
+from ln_test import LNTest
 from test_base import TestBase
 
 from warnet.k8s import download, get_pods_with_label, pod_log, wait_for_pod
@@ -16,39 +17,34 @@ from warnet.process import run_command
 lightning_selector = "mission=lightning"
 
 
-class SimLNTest(TestBase):
+class SimLNTest(LNTest, TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
+        self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
 
     def run_test(self):
         try:
             os.chdir(self.tmpdir)
+            self.init_directory()
+
+            self.import_network()
             self.setup_network()
-            self.run_plugin()
+            self.run_ln_init_scenario()
+            self.run_simln()
+
             self.copy_results()
             self.run_activity()
             self.run_activity_with_user_dir()
         finally:
             self.cleanup()
 
-    def setup_network(self):
-        self.log.info("Setting up network")
-        self.log.info(self.warnet(f"deploy {self.network_dir}"))
-        self.wait_for_all_tanks_status(target="running")
-
-    def run_plugin(self):
+    def init_directory(self):
         self.log.info("Initializing SimLN plugin...")
         self.sut = pexpect.spawn("warnet init")
         self.sut.expect("network", timeout=10)
         self.sut.sendline("n")
         self.sut.close()
-
-        cmd = "warnet plugins simln run-demo"
-        self.log.info(f"Running: {cmd}")
-        run_command(cmd)
-        self.wait_for_predicate(self.found_results_remotely)
-        self.log.info("Ran SimLn plugin.")
 
     def copy_results(self):
         self.log.info("Copying results")
@@ -58,6 +54,9 @@ class SimLNTest(TestBase):
 
         log_resp = pod_log(pod.metadata.name, "simln")
         self.log.info(log_resp.data.decode("utf-8"))
+
+        partial_func = partial(self.found_results_remotely, pod.metadata.name)
+        self.wait_for_predicate(partial_func)
 
         download(pod.metadata.name, Path("/working/results"), Path("."), pod.metadata.namespace)
         self.wait_for_predicate(self.found_results_locally)

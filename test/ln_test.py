@@ -6,7 +6,7 @@ from pathlib import Path
 
 from test_base import TestBase
 
-from warnet.process import stream_command
+from warnet.process import run_command, stream_command
 
 
 class LNTest(TestBase):
@@ -15,6 +15,7 @@ class LNTest(TestBase):
         self.graph_file = Path(os.path.dirname(__file__)) / "data" / "LN_10.json"
         self.imported_network_dir = self.tmpdir / "imported_network"
         self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
+        self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
 
     def run_test(self):
         try:
@@ -22,6 +23,7 @@ class LNTest(TestBase):
             self.setup_network()
             self.test_channel_policies()
             self.test_payments()
+            self.run_simln()
         finally:
             self.cleanup()
 
@@ -80,6 +82,14 @@ class LNTest(TestBase):
         get_and_pay(1, 9)
         get_and_pay(8, 7)
         get_and_pay(4, 6)
+
+    def run_simln(self):
+        self.log.info("Running activity")
+        activity_cmd = f"{self.plugins_dir}/simln/simln.py get-example-activity"
+        activity = run_command(activity_cmd).strip()
+        self.log.info(f"Activity: {activity}")
+        command = f"{self.plugins_dir}/simln/simln.py launch-activity '{activity}'"
+        self.log.info(run_command(command))
 
 
 if __name__ == "__main__":
