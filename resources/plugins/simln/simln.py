@@ -207,17 +207,5 @@ def sh(pod: str, method: str, params: tuple[str, ...]):
     print(_sh(pod, method, params))
 
 
-@simln.command()
-def mission():
-    """Return the SimLN mission name"""
-    click.secho(MISSION)
-
-
-@simln.command()
-def primary_container():
-    """Return the SimLN primary container name."""
-    click.secho(PRIMARY_CONTAINER)
-
-
 if __name__ == "__main__":
     simln()
