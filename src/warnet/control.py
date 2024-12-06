@@ -6,6 +6,7 @@ import sys
 import time
 import zipapp
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Optional
 
@@ -112,10 +113,18 @@ def stop_scenario(scenario_name):
 
 
 def stop_all_scenarios(scenarios):
-    """Stop all active scenarios using Helm"""
-    with console.status("[bold yellow]Stopping all scenarios...[/bold yellow]"):
-        for scenario in scenarios:
-            stop_scenario(scenario)
+    """Stop all active scenarios in parallel using multiprocessing"""
+
+    def stop_single(scenario):
+        stop_scenario(scenario)
+        return f"Stopped scenario: {scenario}"
+
+    with console.status("[bold yellow]Stopping all scenarios...[/bold yellow]"), Pool() as pool:
+        results = pool.map(stop_single, scenarios)
+
+    for result in results:
+        console.print(f"[bold green]{result}[/bold green]")
+
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
 
 
