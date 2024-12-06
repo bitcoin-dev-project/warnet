@@ -65,12 +65,7 @@ def deploy(directory, debug, namespace, to_all_users, unknown_args):
     if unknown_args:
         raise click.BadParameter(f"Unknown args: {unknown_args}{HINT}")
 
-    if to_all_users:
-        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
-        for namespace in namespaces:
-            _deploy(directory, debug, namespace.metadata.name, False)
-    else:
-        _deploy(directory, debug, namespace, to_all_users)
+    _deploy(directory, debug, namespace, to_all_users)
 
 
 def _deploy(directory, debug, namespace, to_all_users):
@@ -81,7 +76,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         processes = []
         for namespace in namespaces:
-            p = Process(target=deploy, args=(directory, debug, namespace.metadata.name, False))
+            p = Process(target=_deploy, args=(directory, debug, namespace.metadata.name, False))
             p.start()
             processes.append(p)
         for p in processes:
