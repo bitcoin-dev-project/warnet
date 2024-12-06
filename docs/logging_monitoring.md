@@ -96,7 +96,7 @@ For example, the default metrics listed above would be explicitly configured as 
 nodes:
   - name: tank-0000
     metricsExport: true
-    metrics: blocks=getblockcount() inbounds=getnetworkinfo()["connections_in"] outbounds=getnetworkinfo()["connections_in"] mempool_size=getmempoolinfo()["size"]
+    metrics: blocks=getblockcount() inbounds=getnetworkinfo()["connections_in"] outbounds=getnetworkinfo()["connections_out"] mempool_size=getmempoolinfo()["size"]
 ```
 
 The data can be retrieved directly from the Prometheus exporter container in the tank pod via port `9332`, example:
@@ -108,7 +108,7 @@ blocks 704.0
 # HELP inbounds getnetworkinfo()["connections_in"]
 # TYPE inbounds gauge
 inbounds 0.0
-# HELP outbounds getnetworkinfo()["connections_in"]
+# HELP outbounds getnetworkinfo()["connections_out"]
 # TYPE outbounds gauge
 outbounds 0.0
 # HELP mempool_size getmempoolinfo()["size"]
