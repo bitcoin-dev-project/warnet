@@ -8,15 +8,14 @@ from time import sleep
 from typing import Optional
 
 import pexpect
-from ln_test import LNTest
 from test_base import TestBase
 
 from warnet.constants import LIGHTNING_MISSION
-from warnet.k8s import download, get_mission, pod_log, wait_for_pod
+from warnet.k8s import download, get_mission, wait_for_pod
 from warnet.process import run_command
 
 
-class SimLNTest(LNTest, TestBase):
+class SimLNTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
@@ -27,15 +26,8 @@ class SimLNTest(LNTest, TestBase):
         try:
             os.chdir(self.tmpdir)
             self.init_directory()
-
-            self.import_network()
-            self.setup_network()
-            self.test_channel_policies()
-            self.test_payments()
-            self.run_simln()
-
+            self.deploy_with_plugin()
             self.copy_results()
-            self.run_activity()
         finally:
             self.cleanup()
 
@@ -46,31 +38,19 @@ class SimLNTest(LNTest, TestBase):
         self.sut.sendline("n")
         self.sut.close()
 
+    def deploy_with_plugin(self):
+        self.log.info("Deploy the ln network with a SimLN plugin")
+        results = self.warnet(f"deploy {self.network_dir}")
+        self.log.info(results)
+        wait_for_pod(self.get_first_simln_pod())
+
     def copy_results(self):
-        self.log.info("Copying results")
-        pod = get_mission(f"{self.simln_exec} mission")[0]
-        self.wait_for_gossip_sync(2)
-        wait_for_pod(pod.metadata.name, 60)
-
-        log_resp = pod_log(pod.metadata.name, f"{self.simln_exec} primary-container")
-        self.log.info(log_resp.data.decode("utf-8"))
-
-        partial_func = partial(self.found_results_remotely, pod.metadata.name)
+        pod = self.get_first_simln_pod()
+        partial_func = partial(self.found_results_remotely, pod)
         self.wait_for_predicate(partial_func)
 
-        download(pod.metadata.name, Path("/working/results"), Path("."), pod.metadata.namespace)
+        download(pod, Path("/working/results"), Path("."))
         self.wait_for_predicate(self.found_results_locally)
-
-    def run_activity(self):
-        cmd = f"{self.simln_exec} get-example-activity"
-        self.log.info(f"Activity: {cmd}")
-        activity_result = run_command(cmd)
-        activity = json.loads(activity_result)
-        pod_result = run_command(f"{self.simln_exec} launch-activity '{json.dumps(activity)}'")
-        self.log.info(f"launched activity: {pod_result}")
-        partial_func = partial(self.found_results_remotely, pod_result.strip())
-        self.wait_for_predicate(partial_func)
-        self.log.info("Successfully ran activity")
 
     def wait_for_gossip_sync(self, expected: int):
         self.log.info(f"Waiting for sync (expecting {expected})...")
@@ -88,9 +68,7 @@ class SimLNTest(LNTest, TestBase):
 
     def found_results_remotely(self, pod: Optional[str] = None) -> bool:
         if pod is None:
-            pod_names_literal = run_command(f"{self.simln_exec} list-pod-names")
-            pod_names = ast.literal_eval(pod_names_literal)
-            pod = pod_names[0]
+            pod = self.get_first_simln_pod()
         self.log.info(f"Checking for results file in {pod}")
         results_file = run_command(f"{self.simln_exec} sh {pod} ls /working/results").strip()
         self.log.info(f"Results file: {results_file}")
@@ -99,6 +77,13 @@ class SimLNTest(LNTest, TestBase):
         ).strip()
         self.log.info(results)
         return results.find("Success") > 0
+
+    def get_first_simln_pod(self):
+        command = f"{self.simln_exec} list-pod-names"
+        pod_names_literal = run_command(command)
+        self.log.info(f"{command}: {pod_names_literal}")
+        pod_names = ast.literal_eval(pod_names_literal)
+        return pod_names[0]
 
     def found_results_locally(self) -> bool:
         directory = "results"
