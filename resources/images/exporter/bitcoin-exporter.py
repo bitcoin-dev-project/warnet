@@ -28,7 +28,7 @@ METRICS_PORT = int(os.environ.get("METRICS_PORT", "9332"))
 # label=method(params)[return object key][...]
 METRICS = os.environ.get(
     "METRICS",
-    'blocks=getblockcount() inbounds=getnetworkinfo()["connections_in"] outbounds=getnetworkinfo()["connections_in"] mempool_size=getmempoolinfo()["size"]',
+    'blocks=getblockcount() inbounds=getnetworkinfo()["connections_in"] outbounds=getnetworkinfo()["connections_out"] mempool_size=getmempoolinfo()["size"]',
 )
 
 # Set up bitcoind RPC client
