@@ -3,7 +3,8 @@ image:
   pullPolicy: Always
   tag: "27.0"
 
-chain: signet
+global:
+  chain: signet
 
 spec:
   restartPolicy: Never
