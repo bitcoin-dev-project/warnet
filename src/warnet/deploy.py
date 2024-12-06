@@ -34,7 +34,7 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
-from .process import stream_command
+from .process import run_command, stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
 
@@ -115,12 +115,27 @@ def _deploy(directory, debug, namespace, to_all_users):
         for p in processes:
             p.join()
 
+        run_plugins(directory)
+
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
         )
+
+
+def run_plugins(directory):
+    network_file_path = directory / NETWORK_FILE
+
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f)
+
+    plugins = network_file.get("plugins") or []
+    for plugin_cmd in plugins:
+        fully_qualified_cmd = f"{network_file_path.parent}/{plugin_cmd}"  # relative to network.yaml
+        print(fully_qualified_cmd)
+        print(run_command(fully_qualified_cmd))
 
 
 def check_logging_required(directory: Path):
@@ -137,7 +152,8 @@ def check_logging_required(directory: Path):
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
-    nodes = network_file.get("nodes", [])
+
+    nodes = network_file.get("nodes") or []
     for node in nodes:
         if node.get("collectLogs", False):
             return True

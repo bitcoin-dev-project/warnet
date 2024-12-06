@@ -105,6 +105,21 @@ def get_example_activity():
     print(json.dumps(_get_example_activity()))
 
 
+# Take note of how click expects us to explicitly declare command line arguments.
+@simln.command()
+@click.argument("activity", type=str)
+@click.pass_context
+def launch_activity(ctx, activity: str):
+    """Deploys a SimLN Activity which is a JSON list of objects"""
+    try:
+        parsed_activity = json.loads(activity)
+    except json.JSONDecodeError:
+        log.error("Invalid JSON input for activity.")
+        raise click.BadArgumentUsage("Activity must be a valid JSON string.") from None
+    plugin_dir = ctx.obj.get(PLUGIN_DIR_TAG)
+    print(_launch_activity(parsed_activity, plugin_dir))
+
+
 def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
     """Launch a SimLN chart which includes the `activity`"""
     timestamp = int(time.time())
@@ -126,21 +141,6 @@ def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
         return name
     else:
         raise SimLNError(f"Could not write sim.json to the init container: {name}")
-
-
-# Take note of how click expects us to explicitly declare command line arguments.
-@simln.command()
-@click.argument("activity", type=str)
-@click.pass_context
-def launch_activity(ctx, activity: str):
-    """Deploys a SimLN Activity which is a JSON list of objects"""
-    try:
-        parsed_activity = json.loads(activity)
-    except json.JSONDecodeError:
-        log.error("Invalid JSON input for activity.")
-        raise click.BadArgumentUsage("Activity must be a valid JSON string.") from None
-    plugin_dir = ctx.obj.get(PLUGIN_DIR_TAG)
-    print(_launch_activity(parsed_activity, plugin_dir))
 
 
 def _generate_activity_json(activity: list[dict]) -> str:
