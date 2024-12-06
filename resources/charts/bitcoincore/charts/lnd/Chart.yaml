@@ -1,11 +1,7 @@
 apiVersion: v2
-name: bitcoincore
-description: A Helm chart for Bitcoin Core
+name: lnd
 
-dependencies:
-  - name: lnd
-    version: 0.1.0
-    condition: ln.lnd
+description: A Helm chart for LND
 
 # A chart can be either an 'application' or a 'library' chart.
 #

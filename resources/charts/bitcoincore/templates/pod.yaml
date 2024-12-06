@@ -7,9 +7,11 @@ metadata:
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
-    chain: {{ .Values.chain }}
-    RPCPort: "{{ index .Values .Values.chain "RPCPort" }}"
-    rpcpassword: {{ .Values.rpcpassword }}
+    chain: {{ .Values.global.chain }}
+    RPCPort: "{{ index .Values.global .Values.global.chain "RPCPort" }}"
+    ZMQTxPort: "{{ .Values.global.ZMQTxPort }}"
+    ZMQBlockPort: "{{ .Values.global.ZMQBlockPort }}"
+    rpcpassword: {{ .Values.global.rpcpassword }}
     app: {{ include "bitcoincore.fullname" . }}
     {{- if .Values.collectLogs }}
     collect_logs: "true"
@@ -32,8 +34,8 @@ spec:
       args:
         - |
           apk add --no-cache curl
-          mkdir -p /root/.bitcoin/{{ .Values.chain }}
-          curl -L {{ .Values.loadSnapshot.url }} | tar -xz -C /root/.bitcoin/{{ .Values.chain }}
+          mkdir -p /root/.bitcoin/{{ .Values.global.chain }}
+          curl -L {{ .Values.loadSnapshot.url }} | tar -xz -C /root/.bitcoin/{{ .Values.global.chain }}
       volumeMounts:
         - name: data
           mountPath: /root/.bitcoin
@@ -46,23 +48,23 @@ spec:
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       ports:
         - name: rpc
-          containerPort: {{ index .Values .Values.chain "RPCPort" }}
+          containerPort: {{ index .Values.global .Values.global.chain "RPCPort" }}
           protocol: TCP
         - name: p2p
-          containerPort: {{ index .Values .Values.chain "P2PPort" }}
+          containerPort: {{ index .Values.global .Values.global.chain "P2PPort" }}
           protocol: TCP
         - name: zmq-tx
-          containerPort: {{ .Values.ZMQTxPort }}
+          containerPort: {{ .Values.global.ZMQTxPort }}
           protocol: TCP
         - name: zmq-block
-          containerPort: {{ .Values.ZMQBlockPort }}
+          containerPort: {{ .Values.global.ZMQBlockPort }}
           protocol: TCP
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
         {{- toYaml .Values.readinessProbe | nindent 8 }}
         tcpSocket:
-          port: {{ index .Values .Values.chain "RPCPort" }}
+          port: {{ index .Values.global .Values.global.chain "RPCPort" }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
@@ -86,11 +88,11 @@ spec:
         - name: BITCOIN_RPC_HOST
           value: "127.0.0.1"
         - name: BITCOIN_RPC_PORT
-          value: "{{ index .Values .Values.chain "RPCPort" }}"
+          value: "{{ index .Values.global .Values.global.chain "RPCPort" }}"
         - name: BITCOIN_RPC_USER
           value: user
         - name: BITCOIN_RPC_PASSWORD
-          value: {{ .Values.rpcpassword }}
+          value: {{ .Values.global.rpcpassword }}
         {{- if .Values.metrics }}
         - name: METRICS
           value: {{ .Values.metrics }}

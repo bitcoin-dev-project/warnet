@@ -83,11 +83,19 @@ def get_pod_exit_status(pod_name, namespace: Optional[str] = None):
         return None
 
 
-def get_edges(namespace: Optional[str] = None) -> any:
+def get_channels(namespace: Optional[str] = None) -> any:
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
-    configmap = sclient.read_namespaced_config_map(name="edges", namespace=namespace)
-    return json.loads(configmap.data["data"])
+    config_maps = sclient.list_namespaced_config_map(
+        namespace=namespace, label_selector="channels=true"
+    )
+    channels = []
+    for cm in config_maps.items:
+        channel_jsons = json.loads(cm.data["channels"])
+        for channel_json in channel_jsons:
+            channel_json["source"] = cm.data["source"]
+            channels.append(channel_json)
+    return channels
 
 
 def create_kubernetes_object(

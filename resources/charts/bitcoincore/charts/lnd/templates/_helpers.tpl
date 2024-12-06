@@ -1,12 +1,12 @@
 {{/*
-Expand the name of the chart.
+Expand the name of the PARENT chart.
 */}}
 {{- define "bitcoincore.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
+Create a default fully qualified PARENT app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
@@ -18,19 +18,40 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
+
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "lnd.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}-ln
+{{- end }}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "lnd.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s" .Release.Name | trunc 63 | trimSuffix "-" }}-ln
+{{- end }}
+{{- end }}
+
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "bitcoincore.chart" -}}
+{{- define "lnd.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "bitcoincore.labels" -}}
-helm.sh/chart: {{ include "bitcoincore.chart" . }}
-{{ include "bitcoincore.selectorLabels" . }}
+{{- define "lnd.labels" -}}
+helm.sh/chart: {{ include "lnd.chart" . }}
+{{ include "lnd.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -40,31 +61,18 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "bitcoincore.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "bitcoincore.name" . }}
+{{- define "lnd.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "lnd.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "bitcoincore.serviceAccountName" -}}
+{{- define "lnd.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "bitcoincore.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "lnd.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
-
-
-{{/*
-Add network section heading in bitcoin.conf
-Always add for custom semver, check version for valid semver
-*/}}
-{{- define "bitcoincore.check_semver" -}}
-{{- $custom := contains "-" .Values.image.tag -}}
-{{- $newer := semverCompare ">=0.17.0" .Values.image.tag -}}
-{{- if or $newer $custom -}}
-[{{ .Values.global.chain }}]
-{{- end -}}
-{{- end -}}
