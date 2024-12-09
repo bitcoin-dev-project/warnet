@@ -23,10 +23,7 @@ def build_image(
     arches: str,
     action: str,
 ):
-    if not build_args:
-        build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --disable-dependency-tracking "'
-    else:
-        build_args = f'"{build_args}"'
+    build_args = '"-DWITH_ZMQ=ON "' if not build_args else f'"{build_args}"'
 
     build_arches = []
     if not arches:
