@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 import ast
-import json
 import os
 from functools import partial
 from pathlib import Path
-from time import sleep
 from typing import Optional
 
 import pexpect
 from test_base import TestBase
 
-from warnet.constants import LIGHTNING_MISSION
-from warnet.k8s import download, get_mission, wait_for_pod
+from warnet.k8s import download, wait_for_pod
 from warnet.process import run_command
 
 
@@ -20,7 +17,7 @@ class SimLNTest(TestBase):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
         self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
-        self.simln_exec = "plugins/simln/simln.py"
+        self.simln_exec = "plugins/simln/plugin.py"
 
     def run_test(self):
         try:
@@ -51,20 +48,6 @@ class SimLNTest(TestBase):
 
         download(pod, Path("/working/results"), Path("."))
         self.wait_for_predicate(self.found_results_locally)
-
-    def wait_for_gossip_sync(self, expected: int):
-        self.log.info(f"Waiting for sync (expecting {expected})...")
-        current = 0
-        while current < expected:
-            current = 0
-            pods = get_mission(LIGHTNING_MISSION)
-            for v1_pod in pods:
-                node = v1_pod.metadata.name
-                chs = json.loads(run_command(f"warnet ln rpc {node} describegraph"))["edges"]
-                self.log.info(f"{node}: {len(chs)} channels")
-                current += len(chs)
-            sleep(1)
-        self.log.info("Synced")
 
     def found_results_remotely(self, pod: Optional[str] = None) -> bool:
         if pod is None:

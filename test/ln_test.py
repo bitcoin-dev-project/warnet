@@ -18,7 +18,7 @@ class LNTest(TestBase):
         self.imported_network_dir = self.tmpdir / "imported_network"
         self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
         self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
-        self.simln_exec = Path("simln/simln.py")
+        self.simln_exec = Path("simln/plugin.py")
 
     def run_test(self):
         try:
