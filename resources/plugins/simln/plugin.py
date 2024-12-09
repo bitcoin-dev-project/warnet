@@ -21,15 +21,11 @@ from warnet.k8s import (
 )
 from warnet.process import run_command
 
+# Tt is common for Warnet objects to have a "mission" tag to query them in the cluster.
 # To make a "mission" tag for your plugin, declare it using the variable name MISSION. This will
 # be read by the warnet log system and status system.
-# This should match the pod's "mission" value in this plugin's associated helm file.
+# This must match the pod's "mission" value in the plugin's associated helm file.
 MISSION = "simln"
-
-# Each pod we deploy should have a primary container. We make the name of that primary container
-# explicit here using the variable name CONTAINER which Warnet uses internally in its log and status
-# systems.
-# Again, this should match the container name provided in the associated helm file.
 PRIMARY_CONTAINER = MISSION
 
 PLUGIN_DIR_TAG = "plugin_dir"
@@ -50,7 +46,7 @@ log.addHandler(console_handler)
 
 # Warnet uses a python package called "click" to manage terminal interactions with the user.
 # Each plugin must declare a click "group" by decorating a function named after the plugin.
-# This makes your plugin available in the plugin section of Warnet.
+# Using click makes it easy for users to interact with your plugin.
 @click.group()
 @click.pass_context
 def simln(ctx):
@@ -60,13 +56,8 @@ def simln(ctx):
     ctx.obj[PLUGIN_DIR_TAG] = Path(plugin_dir)
 
 
-# Make sure to register your plugin by adding the group function like so:
-def warnet_register_plugin(register_command):
-    register_command(simln)  # <-- We added the group function here.
-
-
-# The group function name is then used in decorators to create commands. These commands are
-# available to users when they access your plugin from the command line in Warnet.
+# The group name is then used in decorators to create commands. These commands are
+# available to users when they access your plugin from the command line.
 @simln.command()
 def list_pod_names():
     """Get a list of SimLN pod names"""
@@ -81,11 +72,10 @@ def download_results(pod_name: str):
     print(f"Downloaded results to: {dest}")
 
 
-# When we want to use a command inside our plugin and also provide that command to the user, we like
-# to create a private function whose name starts with an underscore. We also make a public function
-# with the same name except that we leave off the underscore, decorate it with the command
-# decorator, and also provide an instructive doc string which Warnet will display in the help
-# section of the command line program.
+# When we want to use a command inside our plugin and also provide that command to the user, it
+# helps to create a private function whose name starts with an underscore. We also make a public
+# function with the same name except that we leave off the underscore, decorate it with the command
+# decorator, and also provide an instructive doc string for the user.
 def _get_example_activity() -> list[dict]:
     pods = get_mission(LIGHTNING_MISSION)
     try:

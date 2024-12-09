@@ -1,7 +1,7 @@
 name: "simln"
 image:
   repository: "mplsgrant/sim-ln"
-  tag: "d8c165d"
+  tag: "4d33f24"
   pullPolicy: IfNotPresent
 
 workingVolume:
