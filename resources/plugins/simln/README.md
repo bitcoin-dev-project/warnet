@@ -90,7 +90,7 @@ nodes:
       lnd: true
 
 plugins:
-  # Take note: the path to the plugin file is relative to the `network.yaml` file. The location of your `simln.py` file and `network.yaml` file may differ than what is shown below.
+  # Take note: the path to the plugin file is relative to the `network.yaml` file. The location of your `plugin.py` file and `network.yaml` file may differ than what is shown below.
   - "../../../resources/plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
 ````
 
