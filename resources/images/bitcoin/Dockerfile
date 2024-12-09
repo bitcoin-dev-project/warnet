@@ -7,8 +7,8 @@ ARG BUILD_ARGS
 RUN --mount=type=cache,target=/var/cache/apk \
     sed -i 's/http\:\/\/dl-cdn.alpinelinux.org/https\:\/\/alpine.global.ssl.fastly.net/g' /etc/apk/repositories \
     && apk --no-cache add \
-    autoconf \
-    automake \
+    cmake \
+    python3 \
     boost-dev \
     build-base \
     chrpath \
@@ -40,14 +40,14 @@ RUN set -ex \
     && git apply /tmp/isroutable.patch \
     && git apply /tmp/addrman.patch \
     && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
-    && ./autogen.sh \
-    && ./configure \
-    LDFLAGS=-L`ls -d /opt/db*`/lib/ \
-    CPPFLAGS="-g0 -I`ls -d /opt/db*`/include/ --param ggc-min-expand=1 --param ggc-min-heapsize=32768" \
-    --prefix=${BITCOIN_PREFIX} \
+    && cmake -B build \
+       -DAPPEND_CPPFLAGS="-g0 -I`ls -d /opt/db*`/include/ --param ggc-min-expand=1 --param ggc-min-heapsize=32768" \
+       -DAPPEND_LDFLAGS=-L`ls -d /opt/db*`/lib/ \
+       -DCMAKE_INSTALL_PREFIX=${BITCOIN_PREFIX} \
     ${BUILD_ARGS} \
-    && make -j$(nproc) \
-    && make install \
+    && cmake --build build -j$(nproc) \
+    && cmake --install build \
+
     && strip ${BITCOIN_PREFIX}/bin/bitcoin-cli \
     && strip ${BITCOIN_PREFIX}/bin/bitcoind \
     && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.a \
