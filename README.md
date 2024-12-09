@@ -17,6 +17,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 - [Installation](/docs/install.md)
 - [CLI Commands](/docs/warnet.md)
 - [Network configuration with yaml files](/docs/config.md)
+- [Plugins](/docs/plugins.md)
 - [Scenarios](/docs/scenarios.md)
 - [Monitoring](/docs/logging_monitoring.md)
 - [Snapshots](/docs/snapshots.md)
