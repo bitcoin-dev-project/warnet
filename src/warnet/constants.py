@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from importlib.resources import files
 from pathlib import Path
 
@@ -24,6 +25,12 @@ LIGHTNING_MISSION = "lightning"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
+
+
+class HookValue(Enum):
+    PRE_DEPLOY = "preDeploy"
+    POST_DEPLOY = "postDeploy"
+
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")

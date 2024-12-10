@@ -24,6 +24,7 @@ from .constants import (
     NETWORK_FILE,
     SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
+    HookValue,
 )
 from .control import _run
 from .k8s import (
@@ -72,6 +73,8 @@ def _deploy(directory, debug, namespace, to_all_users):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
+    run_plugins(directory, HookValue.PRE_DEPLOY)
+
     if to_all_users:
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         processes = []
@@ -115,7 +118,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         for p in processes:
             p.join()
 
-        run_plugins(directory)
+        run_plugins(directory, HookValue.POST_DEPLOY)
 
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
@@ -125,17 +128,20 @@ def _deploy(directory, debug, namespace, to_all_users):
         )
 
 
-def run_plugins(directory):
+def run_plugins(directory, hook_value: HookValue):
     network_file_path = directory / NETWORK_FILE
 
     with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
+        network_file = yaml.safe_load(f) or {}
+        if not isinstance(network_file, dict):
+            raise ValueError(f"Invalid network file structure: {network_file_path}")
 
-    plugins = network_file.get("plugins") or []
+    plugins_section = network_file.get("plugins", {})
+    plugins = plugins_section.get(hook_value.value) or []
     for plugin_cmd in plugins:
-        fully_qualified_cmd = f"{network_file_path.parent}/{plugin_cmd}"  # relative to network.yaml
-        print(fully_qualified_cmd)
-        print(run_command(fully_qualified_cmd))
+        fully_qualified_cmd = network_file_path.parent / plugin_cmd  # relative to network.yaml
+        print(f"Plugin command: {fully_qualified_cmd}")
+        print(run_command(str(fully_qualified_cmd)))
 
 
 def check_logging_required(directory: Path):

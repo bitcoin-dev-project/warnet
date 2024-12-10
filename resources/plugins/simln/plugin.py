@@ -45,7 +45,7 @@ log.addHandler(console_handler)
 
 
 # Warnet uses a python package called "click" to manage terminal interactions with the user.
-# Each plugin must declare a click "group" by decorating a function named after the plugin.
+# To use click, we must declare a click "group" by decorating a function named after the plugin.
 # Using click makes it easy for users to interact with your plugin.
 @click.group()
 @click.pass_context
