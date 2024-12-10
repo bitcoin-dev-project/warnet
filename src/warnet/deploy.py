@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import tempfile
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Optional
 
@@ -22,8 +22,11 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
+    HookValue,
 )
+from .control import _run
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -32,7 +35,7 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
-from .process import stream_command
+from .process import run_command, stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
 
@@ -63,12 +66,7 @@ def deploy(directory, debug, namespace, to_all_users, unknown_args):
     if unknown_args:
         raise click.BadParameter(f"Unknown args: {unknown_args}{HINT}")
 
-    if to_all_users:
-        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
-        for namespace in namespaces:
-            _deploy(directory, debug, namespace.metadata.name, False)
-    else:
-        _deploy(directory, debug, namespace, to_all_users)
+    _deploy(directory, debug, namespace, to_all_users)
 
 
 def _deploy(directory, debug, namespace, to_all_users):
@@ -79,7 +77,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         processes = []
         for namespace in namespaces:
-            p = Process(target=deploy, args=(directory, debug, namespace.metadata.name, False))
+            p = Process(target=_deploy, args=(directory, debug, namespace.metadata.name, False))
             p.start()
             processes.append(p)
         for p in processes:
@@ -87,6 +85,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         return
 
     if (directory / NETWORK_FILE).exists():
+        run_plugins(directory, HookValue.PRE_DEPLOY)
         processes = []
         # Deploy logging CRD first to avoid synchronisation issues
         deploy_logging_crd(directory, debug)
@@ -118,12 +117,30 @@ def _deploy(directory, debug, namespace, to_all_users):
         for p in processes:
             p.join()
 
+        run_plugins(directory, HookValue.POST_DEPLOY)
+
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
         )
+
+
+def run_plugins(directory, hook_value: HookValue):
+    network_file_path = directory / NETWORK_FILE
+
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f) or {}
+        if not isinstance(network_file, dict):
+            raise ValueError(f"Invalid network file structure: {network_file_path}")
+
+    plugins_section = network_file.get("plugins", {})
+    plugins = plugins_section.get(hook_value.value) or []
+    for plugin_cmd in plugins:
+        fully_qualified_cmd = network_file_path.parent / plugin_cmd  # relative to network.yaml
+        print(f"Plugin command: {fully_qualified_cmd}")
+        print(run_command(str(fully_qualified_cmd)))
 
 
 def check_logging_required(directory: Path):
@@ -140,7 +157,8 @@ def check_logging_required(directory: Path):
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
-    nodes = network_file.get("nodes", [])
+
+    nodes = network_file.get("nodes") or []
     for node in nodes:
         if node.get("collectLogs", False):
             return True
@@ -295,23 +313,42 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    queue = Queue()
     processes = []
-    for node in network_file["nodes"]:
-        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace))
+
+    nodes = network_file.get("nodes") or []
+    for node in nodes:
+        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace, queue))
         p.start()
         processes.append(p)
 
     for p in processes:
         p.join()
 
+    if any([queue.get() for _ in range(queue.qsize())]):
+        _run(
+            scenario_file=SCENARIOS_DIR / "ln_init.py",
+            debug=True,
+            source_dir=SCENARIOS_DIR,
+            additional_args=None,
+            namespace=namespace,
+        )
 
-def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
+
+def deploy_single_node(node, directory: Path, debug: bool, namespace: str, queue: Queue):
     defaults_file_path = directory / DEFAULTS_FILE
     click.echo(f"Deploying node: {node.get('name')}")
     temp_override_file_path = ""
     try:
         node_name = node.get("name")
         node_config_override = {k: v for k, v in node.items() if k != "name"}
+
+        if (
+            "lnd" in node_config_override
+            and "channels" in node_config_override["lnd"]
+            and len(node_config_override["lnd"]["channels"]) > 0
+        ):
+            queue.put(True)
 
         defaults_file_path = directory / DEFAULTS_FILE
         cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"

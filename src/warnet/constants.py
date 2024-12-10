@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from importlib.resources import files
 from pathlib import Path
 
@@ -20,9 +21,16 @@ HELM_COMMAND = "helm upgrade --install"
 
 TANK_MISSION = "tank"
 COMMANDER_MISSION = "commander"
+LIGHTNING_MISSION = "lightning"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
+
+
+class HookValue(Enum):
+    PRE_DEPLOY = "preDeploy"
+    POST_DEPLOY = "postDeploy"
+
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
@@ -32,6 +40,7 @@ NAMESPACES_DIR = RESOURCES_DIR.joinpath("namespaces")
 SCENARIOS_DIR = RESOURCES_DIR.joinpath("scenarios")
 CHARTS_DIR = RESOURCES_DIR.joinpath("charts")
 MANIFESTS_DIR = RESOURCES_DIR.joinpath("manifests")
+PLUGINS_DIR = RESOURCES_DIR.joinpath("plugins")
 NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 NAMESPACES_FILE = "namespaces.yaml"
@@ -39,6 +48,7 @@ DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
+LND_CHART_LOCATION = str(CHARTS_DIR.joinpath("lnd"))
 FORK_OBSERVER_CHART = str(CHARTS_DIR.joinpath("fork-observer"))
 COMMANDER_CHART = str(CHARTS_DIR.joinpath("commander"))
 NAMESPACES_CHART_LOCATION = CHARTS_DIR.joinpath("namespaces")
