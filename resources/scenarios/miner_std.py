@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from random import randint
 from time import sleep
 
 from commander import Commander
@@ -34,6 +35,12 @@ class MinerStd(Commander):
             default=60,
             type=int,
             help="Number of seconds between block generation (default 60 seconds)",
+        )
+        parser.add_argument(
+            "--random-interval",
+            dest="random_interval",
+            action="store_true",
+            help="Should the interval be randomized between 0 and the interval value",
         )
         parser.add_argument(
             "--mature",
@@ -71,7 +78,10 @@ class MinerStd(Commander):
                     )
                 except Exception as e:
                     self.log.error(f"node {miner.node.index} error: {e}")
-                sleep(self.options.interval)
+                if self.options.random_interval:
+                    sleep(randint(0, self.options.interval))
+                else:
+                    sleep(self.options.interval)
 
 
 def main():
