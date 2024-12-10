@@ -90,11 +90,25 @@ nodes:
       lnd: true
 
 plugins:
-  # Take note: the path to the plugin file is relative to the `network.yaml` file. The location of your `plugin.py` file and `network.yaml` file may differ than what is shown below.
-  - "../../../resources/plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
+  postDeploy:
+    # Take note: the path to the plugin file is relative to the `network.yaml` file. The location of your `plugin.py` file and `network.yaml` file may differ than what is shown below.
+    - "../../../resources/plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
 ````
 
 </details>
+
+### preDeploy and postDeploy
+When using `warnet deploy <network folder>`, Warnet will look for a `network.yaml` in the network folder, and it will deploy the nodes listed in the `nodes` section of the file. We can choose to execute our plugin functions before Warnet deploys the nodes by including those functions in the `preDeploy` section of the `network.yaml` file. We can also choose to run plugin commands after Warnet deploys the nodes by including the function in the `postDeploy` section.
+
+````yaml
+plugins:
+  preDeploy:
+    - path/to/plugin.py setup_function
+  postDeploy:
+    - path/to/plugin.py run
+    - path/to/other/plugin.py run
+````
+
 
 ## Generating your own SimLn image
 The SimLN plugin fetches a SimLN docker image from dockerhub. You can generate your own docker image if you choose:

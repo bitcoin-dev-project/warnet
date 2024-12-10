@@ -54,4 +54,7 @@ nodes:
       lnd: true
 
 plugins:
-  - "../../../resources/plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
+  preDeploy:
+    - "../../../resources/plugins/simln/plugin.py"
+  postDeploy:
+    - "../../../resources/plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
