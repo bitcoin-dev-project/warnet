@@ -73,8 +73,6 @@ def _deploy(directory, debug, namespace, to_all_users):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
-    run_plugins(directory, HookValue.PRE_DEPLOY)
-
     if to_all_users:
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         processes = []
@@ -87,6 +85,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         return
 
     if (directory / NETWORK_FILE).exists():
+        run_plugins(directory, HookValue.PRE_DEPLOY)
         processes = []
         # Deploy logging CRD first to avoid synchronisation issues
         deploy_logging_crd(directory, debug)
