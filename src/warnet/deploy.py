@@ -86,6 +86,7 @@ def _deploy(directory, debug, namespace, to_all_users):
 
     if (directory / NETWORK_FILE).exists():
         run_plugins(directory, HookValue.PRE_DEPLOY)
+
         processes = []
         # Deploy logging CRD first to avoid synchronisation issues
         deploy_logging_crd(directory, debug)
