@@ -30,6 +30,13 @@ COMMANDER_CONTAINER = "commander"
 class HookValue(Enum):
     PRE_DEPLOY = "preDeploy"
     POST_DEPLOY = "postDeploy"
+    PRE_NODE = "preNode"
+    POST_NODE = "postNode"
+
+
+class HookOptions(Enum):
+    EXEC = "exec"
+    WAIT_FOR = "waitFor"
 
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
