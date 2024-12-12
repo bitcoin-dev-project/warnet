@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,7 @@ from .constants import (
     NETWORK_FILE,
     SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
+    HookOptions,
     HookValue,
 )
 from .control import _run
@@ -35,7 +37,7 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
-from .process import run_command, stream_command
+from .process import run_command, stream_command, wait_for_run
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
 
@@ -129,6 +131,12 @@ def _deploy(directory, debug, namespace, to_all_users):
 
 
 def run_plugins(directory, hook_value: HookValue):
+    """ " Run the plugin commands within a given hook value"""
+
+    def is_relative(path: str) -> bool:
+        """Determine if the path is a command or a path to a command"""
+        return os.path.dirname(path) != ""
+
     network_file_path = directory / NETWORK_FILE
 
     with network_file_path.open() as f:
@@ -139,9 +147,39 @@ def run_plugins(directory, hook_value: HookValue):
     plugins_section = network_file.get("plugins", {})
     plugins = plugins_section.get(hook_value.value) or []
     for plugin_cmd in plugins:
-        fully_qualified_cmd = network_file_path.parent / plugin_cmd  # relative to network.yaml
-        print(f"Plugin command: {fully_qualified_cmd}")
-        print(run_command(str(fully_qualified_cmd)))
+        match plugin_cmd:
+            case {HookOptions.EXEC.value: cmd, HookOptions.WAIT_FOR.value: predicate}:
+                if is_relative(cmd):
+                    cmd = network_file_path.parent / cmd
+                print(f"{HookOptions.EXEC.value}: {cmd}")
+
+                if is_relative(predicate):
+                    predicate = network_file_path.parent / predicate
+                print(f"{HookOptions.WAIT_FOR.value}: {predicate}")
+
+                wait_for_run(str(predicate))
+                print(run_command(str(cmd)))
+
+            case {HookOptions.EXEC.value: cmd}:
+                if is_relative(cmd):
+                    cmd = network_file_path.parent / cmd
+                print(f"{HookOptions.EXEC.value}: {cmd}")
+                print(run_command(str(cmd)))
+
+            case str():
+                cmd = plugin_cmd
+                if is_relative(cmd):
+                    cmd = network_file_path.parent / plugin_cmd
+                print(f"{cmd}")
+                print(run_command(str(cmd)))
+
+            case _:
+                print(
+                    f"The following plugin command does not match known plugin command structures: {plugin_cmd}"
+                )
+                print(f"Known hook values: {[v.value for v in HookValue]}")
+                print(f"Known hook options: {[v.value for v in HookOptions]}")
+                sys.exit(1)
 
 
 def check_logging_required(directory: Path):
@@ -358,9 +396,14 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
+        run_plugins(directory, HookValue.PRE_NODE)
+
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
+
+        run_plugins(directory, HookValue.POST_NODE)
+
     except Exception as e:
         click.echo(f"Error: {e}")
         return

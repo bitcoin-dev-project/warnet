@@ -54,7 +54,15 @@ nodes:
       lnd: true
 
 plugins:
+  preNode:
+    - "echo This is preNode"
+  postNode:
+    - exec: "echo This is postNode"
+    - exec: "echo This is also postNode, but we waited for 'warnet status'"
+      waitFor: "warnet status"
   preDeploy:
-    - "../../../resources/plugins/simln/plugin.py"
+    - "echo This is preDeploy"
   postDeploy:
     - "../../../resources/plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
+    - exec: "../../../resources/plugins/simln/plugin.py list-pod-names"
+      waitFor: "../../../resources/plugins/simln/plugin.py get-example-activity"

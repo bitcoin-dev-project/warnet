@@ -1,4 +1,5 @@
 import subprocess
+from time import sleep
 
 
 def run_command(command: str) -> str:
@@ -29,3 +30,21 @@ def stream_command(command: str) -> bool:
     if return_code != 0:
         raise Exception(message)
     return True
+
+
+def wait_for_run(predicate, timeout=5 * 60, interval=5):
+    print(f"Waiting for predicate with timeout {timeout}s and interval {interval}s")
+    print(predicate)
+    while timeout > 0:
+        try:
+            if run_command(predicate):
+                return
+        except Exception:
+            pass
+        sleep(interval)
+        timeout -= interval
+    import inspect
+
+    raise Exception(
+        f"Timed out waiting for Truth from predicate: {inspect.getsource(predicate).strip()}"
+    )
