@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-
 import json
 import logging
 import time
 from pathlib import Path
 
 import click
+import yaml
 from kubernetes.stream import stream
 
 # When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
@@ -31,7 +31,7 @@ PRIMARY_CONTAINER = MISSION
 PLUGIN_DIR_TAG = "plugin_dir"
 
 
-class SimLNError(Exception):
+class PluginError(Exception):
     pass
 
 
@@ -54,6 +54,38 @@ def simln(ctx):
     ctx.ensure_object(dict)
     plugin_dir = Path(__file__).resolve().parent
     ctx.obj[PLUGIN_DIR_TAG] = Path(plugin_dir)
+
+
+@simln.command()
+@click.argument("network_file_path", type=str)
+@click.argument("hook_value", type=str)
+@click.pass_context
+def entrypoint(ctx, network_file_path: str, hook_value: str):
+    """Plugin entrypoint"""
+    network_file_path = Path(network_file_path)
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f) or {}
+        if not isinstance(network_file, dict):
+            raise ValueError(f"Invalid network file structure: {network_file_path}")
+
+    plugins_section = network_file.get("plugins", {})
+    hook_section = plugins_section.get(hook_value, {})
+
+    plugin_name = Path(__file__).resolve().parent.stem
+    plugin_data = hook_section.get(plugin_name)
+    if not plugin_data:
+        raise PluginError(f"Could not find {plugin_name} in {network_file_path}")
+
+    _entrypoint(ctx, plugin_data)
+
+
+def _entrypoint(ctx, plugin_data: dict):
+    """ "Called by entrypoint"""
+    # write your plugin startup commands here
+    activity = plugin_data.get("activity")
+    activity = json.loads(activity)
+    print(activity)
+    _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG))
 
 
 # The group name is then used in decorators to create commands. These commands are
@@ -82,7 +114,7 @@ def _get_example_activity() -> list[dict]:
         pod_a = pods[1].metadata.name
         pod_b = pods[2].metadata.name
     except Exception as err:
-        raise SimLNError(
+        raise PluginError(
             "Could not access the lightning nodes needed for the example.\n Try deploying some."
         ) from err
     return [{"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}]
@@ -116,10 +148,11 @@ def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
     name = f"simln-{timestamp}"
 
     command = f"helm upgrade --install {timestamp} {plugin_dir}/charts/simln"
-    run_command(command)
 
+    run_command(command)
     activity_json = _generate_activity_json(activity)
     wait_for_init(name, namespace=get_default_namespace(), quiet=True)
+
     if write_file_to_container(
         name,
         "init",
@@ -130,7 +163,7 @@ def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
     ):
         return name
     else:
-        raise SimLNError(f"Could not write sim.json to the init container: {name}")
+        raise PluginError(f"Could not write sim.json to the init container: {name}")
 
 
 def _generate_activity_json(activity: list[dict]) -> str:
