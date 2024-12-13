@@ -7,8 +7,6 @@ from pathlib import Path
 import click
 from kubernetes.stream import stream
 
-# When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
-# tag for "lightning" nodes is stored in LIGHTNING_MISSION.
 from warnet.constants import LIGHTNING_MISSION, PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.k8s import (
     download,
@@ -20,10 +18,6 @@ from warnet.k8s import (
 )
 from warnet.process import run_command
 
-# Tt is common for Warnet objects to have a "mission" tag to query them in the cluster.
-# To make a "mission" tag for your plugin, declare it using the variable name MISSION. This will
-# be read by the warnet log system and status system.
-# This must match the pod's "mission" value in the plugin's associated helm file.
 MISSION = "simln"
 PRIMARY_CONTAINER = MISSION
 
@@ -43,9 +37,6 @@ console_handler.setFormatter(formatter)
 log.addHandler(console_handler)
 
 
-# Warnet uses a python package called "click" to manage terminal interactions with the user.
-# To use click, we must declare a click "group" by decorating a function named after the plugin.
-# Using click makes it easy for users to interact with your plugin.
 @click.group()
 @click.pass_context
 def simln(ctx):
@@ -55,10 +46,6 @@ def simln(ctx):
     ctx.obj[PLUGIN_DIR_TAG] = Path(plugin_dir)
 
 
-# Each Warnet plugin must have an entrypoint function which takes a network_file_path and a
-# hook_value. Possible hook values can be found in the HookValue enum. It also takes a namespace
-# value and a variable number of arguments which is used by, for example, preNode and postNode to
-# pass along node names.
 @simln.command()
 @click.argument("plugin_content", type=str)
 @click.argument("warnet_content", type=str)
@@ -94,8 +81,6 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG))
 
 
-# The group name is then used in decorators to create commands. These commands are
-# available to users when they access your plugin from the command line.
 @simln.command()
 def list_pod_names():
     """Get a list of SimLN pod names"""
@@ -110,10 +95,6 @@ def download_results(pod_name: str):
     print(f"Downloaded results to: {dest}")
 
 
-# When we want to use a command inside our plugin and also provide that command to the user, it
-# helps to create a private function whose name starts with an underscore. We also make a public
-# function with the same name except that we leave off the underscore, decorate it with the command
-# decorator, and also provide an instructive doc string for the user.
 def _get_example_activity() -> list[dict]:
     pods = get_mission(LIGHTNING_MISSION)
     try:
@@ -126,14 +107,12 @@ def _get_example_activity() -> list[dict]:
     return [{"source": pod_a, "destination": pod_b, "interval_secs": 1, "amount_msat": 2000}]
 
 
-# Notice how the command that we make available to the user simply calls our internal command.
 @simln.command()
 def get_example_activity():
     """Get an activity representing node 2 sending msat to node 3"""
     print(json.dumps(_get_example_activity()))
 
 
-# Take note of how click expects us to explicitly declare command line arguments.
 @simln.command()
 @click.argument("activity", type=str)
 @click.pass_context
