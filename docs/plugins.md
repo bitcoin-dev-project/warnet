@@ -11,18 +11,37 @@ nodes:
   <<snip>>
 
 plugins:
-  preNode:  # Run commands before each node launches
-    - "echo This is preNode"  # This command is a simple string
-  postNode:  # Run commands after each node launches
-    - exec: "echo This is also postNode, but we waited for 'warnet status'"  # This command is also a simple string ...
-      waitFor: "warnet status"  # ... but it will execute after this command completes successfully
-    - exec: "echo This is postNode"  # Simply using 'exec' also just works
-  preDeploy:  # Run commands before Warnet runs the bulk of its `deploy` code
-    - "echo This is preDeploy"
-  postDeploy:  # Run these commands after Warnet has finished the bulk of its `deploy` code
-    - "../../plugins/simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"
-    - exec: "../../plugins/simln/plugin.py list-pod-names"
-      waitFor: "../../plugins/simln/plugin.py get-example-activity"
+  preDeploy:
+    hello:
+      entrypoint: "../plugins/hello"
+      podName: "hello-pre-deploy"
+      helloTo: "preDeploy!"
+  postDeploy:
+    simln:
+      entrypoint: "../../../resources/plugins/simln"
+      activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
+    hello:
+      entrypoint: "../plugins/hello"
+      podName: "hello-post-deploy"
+      helloTo: "postDeploy!"
+  preNode:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "preNode!"
+  postNode:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "postNode!"
+  preNetwork:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "preNetwork!"
+      podName: "hello-pre-network"
+  postNetwork:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "postNetwork!"
+      podName: "hello-post-network"
 ````
 
 Warnet will execute these plugin commands after each invocation of `warnet deploy`.
