@@ -86,7 +86,8 @@ class SimLNTest(TestBase):
 
     def assert_hello_plugin(self):
         self.log.info("Waiting for the 'hello' plugin pods.")
-        wait_for_pod("hello-pre-deploy")  # We don't use post-deploy (simln covers that)
+        wait_for_pod("hello-pre-deploy")
+        wait_for_pod("hello-post-deploy")
         wait_for_pod("hello-pre-network")
         wait_for_pod("hello-post-network")
         wait_for_pod("tank-0000-post-hello-pod")
