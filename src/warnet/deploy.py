@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import tempfile
@@ -96,6 +95,8 @@ def _deploy(directory, debug, namespace, to_all_users):
         logging_process.start()
         processes.append(logging_process)
 
+        run_plugins(directory, HookValue.PRE_NETWORK)
+
         network_process = Process(target=deploy_network, args=(directory, debug, namespace))
         network_process.start()
 
@@ -109,6 +110,8 @@ def _deploy(directory, debug, namespace, to_all_users):
 
         # Wait for the network process to complete
         network_process.join()
+
+        run_plugins(directory, HookValue.POST_NETWORK)
 
         # Start the fork observer process immediately after network process completes
         fork_observer_process = Process(target=deploy_fork_observer, args=(directory, debug))
@@ -130,11 +133,7 @@ def _deploy(directory, debug, namespace, to_all_users):
 
 
 def run_plugins(directory, hook_value: HookValue):
-    """ " Run the plugin commands within a given hook value"""
-
-    def is_relative(path: str) -> bool:
-        """Determine if the path is a command or a path to a command"""
-        return os.path.dirname(path) != ""
+    """Run the plugin commands within a given hook value"""
 
     network_file_path = directory / NETWORK_FILE
 
@@ -142,6 +141,8 @@ def run_plugins(directory, hook_value: HookValue):
         network_file = yaml.safe_load(f) or {}
         if not isinstance(network_file, dict):
             raise ValueError(f"Invalid network file structure: {network_file_path}")
+
+    processes = []
 
     plugins_section = network_file.get("plugins", {})
     hook_section = plugins_section.get(hook_value.value, {})
@@ -152,15 +153,22 @@ def run_plugins(directory, hook_value: HookValue):
                     entrypoint_path = Path(plugin_cmd[1].get("entrypoint"))
                 except Exception as err:
                     raise SyntaxError("Each plugin must have an 'entrypoint'") from err
+
                 cmd = f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint {network_file_path} {hook_value.value}"
-                print(f"Command: {cmd}")
-                print(run_command(cmd))
+                process = Process(target=run_command, args=(cmd,))
+                processes.append(process)
 
             case _:
                 print(
                     f"The following plugin command does not match known plugin command structures: {plugin_cmd}"
                 )
                 sys.exit(1)
+
+    for process in processes:
+        process.start()
+
+    for process in processes:
+        process.join()
 
 
 def check_logging_required(directory: Path):

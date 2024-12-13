@@ -32,6 +32,8 @@ class HookValue(Enum):
     POST_DEPLOY = "postDeploy"
     PRE_NODE = "preNode"
     POST_NODE = "postNode"
+    PRE_NETWORK = "preNetwork"
+    POST_NETWORK = "postNetwork"
 
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
