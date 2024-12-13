@@ -25,7 +25,6 @@ from .constants import (
     NETWORK_FILE,
     SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
-    HookOptions,
     HookValue,
 )
 from .control import _run
@@ -37,7 +36,7 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
-from .process import run_command, stream_command, wait_for_run
+from .process import run_command, stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
 
@@ -145,40 +144,22 @@ def run_plugins(directory, hook_value: HookValue):
             raise ValueError(f"Invalid network file structure: {network_file_path}")
 
     plugins_section = network_file.get("plugins", {})
-    plugins = plugins_section.get(hook_value.value) or []
-    for plugin_cmd in plugins:
+    hook_section = plugins_section.get(hook_value.value, {})
+    for plugin_cmd in hook_section.items():
         match plugin_cmd:
-            case {HookOptions.EXEC.value: cmd, HookOptions.WAIT_FOR.value: predicate}:
-                if is_relative(cmd):
-                    cmd = network_file_path.parent / cmd
-                print(f"{HookOptions.EXEC.value}: {cmd}")
-
-                if is_relative(predicate):
-                    predicate = network_file_path.parent / predicate
-                print(f"{HookOptions.WAIT_FOR.value}: {predicate}")
-
-                wait_for_run(str(predicate))
-                print(run_command(str(cmd)))
-
-            case {HookOptions.EXEC.value: cmd}:
-                if is_relative(cmd):
-                    cmd = network_file_path.parent / cmd
-                print(f"{HookOptions.EXEC.value}: {cmd}")
-                print(run_command(str(cmd)))
-
-            case str():
-                cmd = plugin_cmd
-                if is_relative(cmd):
-                    cmd = network_file_path.parent / plugin_cmd
-                print(f"{cmd}")
-                print(run_command(str(cmd)))
+            case (str(), dict()):
+                try:
+                    entrypoint_path = Path(plugin_cmd[1].get("entrypoint"))
+                except Exception as err:
+                    raise SyntaxError("Each plugin must have an 'entrypoint'") from err
+                cmd = f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint {network_file_path} {hook_value.value}"
+                print(f"Command: {cmd}")
+                print(run_command(cmd))
 
             case _:
                 print(
                     f"The following plugin command does not match known plugin command structures: {plugin_cmd}"
                 )
-                print(f"Known hook values: {[v.value for v in HookValue]}")
-                print(f"Known hook options: {[v.value for v in HookOptions]}")
                 sys.exit(1)
 
 

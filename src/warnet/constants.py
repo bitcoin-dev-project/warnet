@@ -34,11 +34,6 @@ class HookValue(Enum):
     POST_NODE = "postNode"
 
 
-class HookOptions(Enum):
-    EXEC = "exec"
-    WAIT_FOR = "waitFor"
-
-
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
 RESOURCES_DIR = files("resources")
