@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 import json
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 import click
-from kubernetes.stream import stream
 
 from warnet.constants import PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
-from warnet.k8s import (
-    get_default_namespace,
-    get_static_client,
-)
 from warnet.process import run_command
 
+# Tt is common for Warnet objects to have a "mission" tag to query them in the cluster.
 MISSION = "hello"
 PRIMARY_CONTAINER = MISSION
 
@@ -35,6 +32,23 @@ log.setLevel(logging.DEBUG)
 log.propagate = True
 
 
+# Plugins look like this in the network.yaml file:
+#
+# plugins:
+#   hello:
+#     podName: "a-pod-name"
+#     helloTo: "World!"
+#
+# "podName" and "helloTo" are essentially dictionary keys, and it helps to keep those keys in an
+# enum in order to prevent typos.
+class PluginContent(Enum):
+    POD_NAME = ("podName",)
+    HELLO_TO = "helloTo"
+
+
+# Warnet uses a python package called "click" to manage terminal interactions with the user.
+# To use click, we must declare a click "group" by decorating a function named after the plugin.
+# While optional, using click makes it easy for users to interact with your plugin.
 @click.group()
 @click.pass_context
 def hello(ctx):
@@ -44,6 +58,9 @@ def hello(ctx):
     ctx.obj[PLUGIN_DIR_TAG] = Path(plugin_dir)
 
 
+# Each Warnet plugin must have an entrypoint function which takes two JSON objects: plugin_content
+# and warnet_content. We have seen the PluginContent enum above. Warnet also has a WarnetContent
+# enum which holds the keys to the warnet_content dictionary.
 @hello.command()
 @click.argument("plugin_content", type=str)
 @click.argument("warnet_content", type=str)
@@ -104,55 +121,12 @@ def get_data(plugin_content: dict) -> Optional[dict]:
 def _launch_pod(
     ctx, install_name: str = "hello", podName: str = "hello-pod", helloTo: str = "World!"
 ):
-    command = f"helm upgrade --install {install_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/hello --set podName={podName} --set helloTo={helloTo}"
+    command = (
+        f"helm upgrade --install {install_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/hello "
+        f"--set podName={podName} --set helloTo={helloTo}"
+    )
     log.info(command)
     log.info(run_command(command))
-
-
-def _sh(pod, method: str, params: tuple[str, ...]) -> str:
-    namespace = get_default_namespace()
-
-    sclient = get_static_client()
-    if params:
-        cmd = [method]
-        cmd.extend(params)
-    else:
-        cmd = [method]
-    try:
-        resp = stream(
-            sclient.connect_get_namespaced_pod_exec,
-            pod,
-            namespace,
-            container=PRIMARY_CONTAINER,
-            command=cmd,
-            stderr=True,
-            stdin=False,
-            stdout=True,
-            tty=False,
-            _preload_content=False,
-        )
-        stdout = ""
-        stderr = ""
-        while resp.is_open():
-            resp.update(timeout=1)
-            if resp.peek_stdout():
-                stdout_chunk = resp.read_stdout()
-                stdout += stdout_chunk
-            if resp.peek_stderr():
-                stderr_chunk = resp.read_stderr()
-                stderr += stderr_chunk
-        return stdout + stderr
-    except Exception as err:
-        print(f"Could not execute stream: {err}")
-
-
-@hello.command(context_settings={"ignore_unknown_options": True})
-@click.argument("pod", type=str)
-@click.argument("method", type=str)
-@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
-def sh(pod: str, method: str, params: tuple[str, ...]):
-    """Run shell commands in a pod"""
-    print(_sh(pod, method, params))
 
 
 if __name__ == "__main__":
