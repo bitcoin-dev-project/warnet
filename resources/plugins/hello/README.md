@@ -1,10 +1,10 @@
 # Hello Plugin
 
 ## Hello World!
-*Hello* is an example plugin to demonstrate the features of Warnet's plugin architecture.
+*Hello* is an example plugin to demonstrate the features of Warnet's plugin architecture. It uses each of the hooks available in the `warnet deploy` command (see the example below for details).
 
 ## Usage
-In your python virtual environment with Warnet installed and started, create a new Warnet user folder (follow the prompts):
+In your python virtual environment with Warnet installed and setup, create a new Warnet user folder (follow the prompts):
 
 `$ warnet new user_folder`
 
@@ -18,14 +18,14 @@ While that is launching, take a look inside the `networks/hello/network.yaml` fi
 
 Also, take a look at the `plugins/hello/plugin.py` file to see how plugins work and to find out how to author your own plugin.
 
-To view the pods that the *hello* network launched, run `kubectl get all -A`
+Once `deploy` completes, view the pods of the *hello* network by invoking `kubectl get all -A`.
 
 To view the various "Hello World!" messages, run `kubectl logs pod/POD_NAME`
 
 ### A `network.yaml` example
 When you initialize a new Warnet network, Warnet will create a new `network.yaml` file. You can modify these files to fit your needs.
 
-For example, example `network.yaml` file includes the *hello* plugin, lightning nodes and the *simln* plugin.
+For example, the `network.yaml` file below includes the *hello* plugin, lightning nodes, and the *simln* plugin.
 
 <details>
 <summary>network.yaml</summary>

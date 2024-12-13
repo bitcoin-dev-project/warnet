@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+from enum import Enum
 from pathlib import Path
 
 import click
@@ -35,6 +36,10 @@ console_handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(formatter)
 log.addHandler(console_handler)
+
+
+class PluginContent(Enum):
+    ACTIVITY = "activity"
 
 
 @click.group()
@@ -75,7 +80,7 @@ def entrypoint(ctx, plugin_content: str, warnet_content: str):
 def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     """Called by entrypoint"""
     # write your plugin startup commands here
-    activity = plugin_content.get("activity")
+    activity = plugin_content.get(PluginContent.ACTIVITY.value)
     activity = json.loads(activity)
     print(activity)
     _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG))
@@ -114,7 +119,7 @@ def get_example_activity():
 
 
 @simln.command()
-@click.argument("activity", type=str)
+@click.argument(PluginContent.ACTIVITY.value, type=str)
 @click.pass_context
 def launch_activity(ctx, activity: str):
     """Deploys a SimLN Activity which is a JSON list of objects"""
@@ -164,7 +169,7 @@ def _generate_activity_json(activity: list[dict]) -> str:
         }
         nodes.append(node)
 
-    data = {"nodes": nodes, "activity": activity}
+    data = {"nodes": nodes, PluginContent.ACTIVITY.value: activity}
 
     return json.dumps(data, indent=2)
 
