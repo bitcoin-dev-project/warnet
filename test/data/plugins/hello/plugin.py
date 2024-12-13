@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
+import json
 import logging
 from pathlib import Path
 from typing import Optional
 
 import click
-import yaml
 from kubernetes.stream import stream
 
-from warnet.constants import HookValue
+from warnet.constants import PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.k8s import (
     get_default_namespace,
     get_static_client,
@@ -45,37 +45,35 @@ def hello(ctx):
 
 
 @hello.command()
-@click.argument("network_file_path", type=str)
-@click.argument("hook_value", type=str)
-@click.argument("namespace", type=str)
-@click.argument("nargs", nargs=-1)
+@click.argument("plugin_content", type=str)
+@click.argument("warnet_content", type=str)
 @click.pass_context
-def entrypoint(ctx, network_file_path: str, hook_value: str, namespace: str, nargs):
+def entrypoint(ctx, plugin_content: str, warnet_content: str):
     """Plugin entrypoint"""
+    plugin_content: dict = json.loads(plugin_content)
+    warnet_content: dict = json.loads(warnet_content)
+
+    hook_value = warnet_content.get(WarnetContent.HOOK_VALUE.value)
+
     assert hook_value in {
         item.value for item in HookValue
     }, f"{hook_value} is not a valid HookValue"
 
-    network_file_path = Path(network_file_path)
+    if warnet_content.get(PLUGIN_ANNEX):
+        for annex_member in [annex_item for annex_item in warnet_content.get(PLUGIN_ANNEX)]:
+            assert annex_member in {
+                item.value for item in AnnexMember
+            }, f"{annex_member} is not a valid AnnexMember"
 
-    with network_file_path.open() as f:
-        network_file = yaml.safe_load(f) or {}
-        if not isinstance(network_file, dict):
-            raise ValueError(f"Invalid network file structure: {network_file_path}")
+    warnet_content[WarnetContent.HOOK_VALUE.value] = HookValue(hook_value)
 
-    plugins_section = network_file.get("plugins", {})
-    hook_section = plugins_section.get(hook_value, {})
-
-    plugin_name = Path(__file__).resolve().parent.stem
-    plugin_data = hook_section.get(plugin_name)
-    if not plugin_data:
-        raise PluginError(f"Could not find {plugin_name} in {network_file_path}")
-
-    _entrypoint(ctx, plugin_data, HookValue(hook_value), namespace, nargs)
+    _entrypoint(ctx, plugin_content, warnet_content)
 
 
-def _entrypoint(ctx, plugin_data: dict, hook_value: HookValue, namespace: str, nargs):
+def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     """Called by entrypoint"""
+    hook_value = warnet_content[WarnetContent.HOOK_VALUE.value]
+
     match hook_value:
         case (
             HookValue.PRE_NETWORK
@@ -83,21 +81,23 @@ def _entrypoint(ctx, plugin_data: dict, hook_value: HookValue, namespace: str, n
             | HookValue.PRE_DEPLOY
             | HookValue.POST_DEPLOY
         ):
-            data = get_data(plugin_data)
+            data = get_data(plugin_content)
             if data:
                 _launch_pod(ctx, install_name=hook_value.value.lower() + "-hello", **data)
             else:
                 _launch_pod(ctx, install_name=hook_value.value.lower() + "-hello")
         case HookValue.PRE_NODE:
-            name = nargs[0] + "-pre-hello-pod"
+            name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-pre-hello-pod"
             _launch_pod(ctx, install_name=hook_value.value.lower() + "-" + name, podName=name)
         case HookValue.POST_NODE:
-            name = nargs[0] + "-post-hello-pod"
+            name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-post-hello-pod"
             _launch_pod(ctx, install_name=hook_value.value.lower() + "-" + name, podName=name)
 
 
-def get_data(plugin_data: dict) -> Optional[dict]:
-    data = {key: plugin_data.get(key) for key in ("podName", "helloTo") if plugin_data.get(key)}
+def get_data(plugin_content: dict) -> Optional[dict]:
+    data = {
+        key: plugin_content.get(key) for key in ("podName", "helloTo") if plugin_content.get(key)
+    }
     return data or None
 
 

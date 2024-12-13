@@ -5,12 +5,11 @@ import time
 from pathlib import Path
 
 import click
-import yaml
 from kubernetes.stream import stream
 
 # When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
 # tag for "lightning" nodes is stored in LIGHTNING_MISSION.
-from warnet.constants import LIGHTNING_MISSION, HookValue
+from warnet.constants import LIGHTNING_MISSION, PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.k8s import (
     download,
     get_default_namespace,
@@ -61,39 +60,35 @@ def simln(ctx):
 # value and a variable number of arguments which is used by, for example, preNode and postNode to
 # pass along node names.
 @simln.command()
-@click.argument("network_file_path", type=str)
-@click.argument("hook_value", type=str)
-@click.argument("namespace", type=str)
-@click.argument("nargs", nargs=-1)
+@click.argument("plugin_content", type=str)
+@click.argument("warnet_content", type=str)
 @click.pass_context
-def entrypoint(ctx, network_file_path: str, hook_value: str, namespace: str, nargs):
+def entrypoint(ctx, plugin_content: str, warnet_content: str):
     """Plugin entrypoint"""
+    plugin_content: dict = json.loads(plugin_content)
+    warnet_content: dict = json.loads(warnet_content)
+
+    hook_value = warnet_content.get(WarnetContent.HOOK_VALUE.value)
+
     assert hook_value in {
         item.value for item in HookValue
     }, f"{hook_value} is not a valid HookValue"
 
-    network_file_path = Path(network_file_path)
+    if warnet_content.get(PLUGIN_ANNEX):
+        for annex_member in [annex_item for annex_item in warnet_content.get(PLUGIN_ANNEX)]:
+            assert annex_member in {
+                item.value for item in AnnexMember
+            }, f"{annex_member} is not a valid AnnexMember"
 
-    with network_file_path.open() as f:
-        network_file = yaml.safe_load(f) or {}
-        if not isinstance(network_file, dict):
-            raise ValueError(f"Invalid network file structure: {network_file_path}")
+    warnet_content[WarnetContent.HOOK_VALUE.value] = HookValue(hook_value)
 
-    plugins_section = network_file.get("plugins", {})
-    hook_section = plugins_section.get(hook_value, {})
-
-    plugin_name = Path(__file__).resolve().parent.stem
-    plugin_data = hook_section.get(plugin_name)
-    if not plugin_data:
-        raise PluginError(f"Could not find {plugin_name} in {network_file_path}")
-
-    _entrypoint(ctx, plugin_data, HookValue(hook_value), namespace, nargs)
+    _entrypoint(ctx, plugin_content, warnet_content)
 
 
-def _entrypoint(ctx, plugin_data: dict, hook_value: HookValue, namespace: str, nargs):
+def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     """Called by entrypoint"""
     # write your plugin startup commands here
-    activity = plugin_data.get("activity")
+    activity = plugin_content.get("activity")
     activity = json.loads(activity)
     print(activity)
     _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG))
