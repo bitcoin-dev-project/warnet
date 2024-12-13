@@ -10,7 +10,7 @@ from kubernetes.stream import stream
 
 # When we want to select pods based on their role in Warnet, we use "mission" tags. The "mission"
 # tag for "lightning" nodes is stored in LIGHTNING_MISSION.
-from warnet.constants import LIGHTNING_MISSION
+from warnet.constants import LIGHTNING_MISSION, HookValue
 from warnet.k8s import (
     download,
     get_default_namespace,
@@ -56,13 +56,24 @@ def simln(ctx):
     ctx.obj[PLUGIN_DIR_TAG] = Path(plugin_dir)
 
 
+# Each Warnet plugin must have an entrypoint function which takes a network_file_path and a
+# hook_value. Possible hook values can be found in the HookValue enum. It also takes a namespace
+# value and a variable number of arguments which is used by, for example, preNode and postNode to
+# pass along node names.
 @simln.command()
 @click.argument("network_file_path", type=str)
 @click.argument("hook_value", type=str)
+@click.argument("namespace", type=str)
+@click.argument("nargs", nargs=-1)
 @click.pass_context
-def entrypoint(ctx, network_file_path: str, hook_value: str):
+def entrypoint(ctx, network_file_path: str, hook_value: str, namespace: str, nargs):
     """Plugin entrypoint"""
+    assert hook_value in {
+        item.value for item in HookValue
+    }, f"{hook_value} is not a valid HookValue"
+
     network_file_path = Path(network_file_path)
+
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f) or {}
         if not isinstance(network_file, dict):
@@ -76,11 +87,11 @@ def entrypoint(ctx, network_file_path: str, hook_value: str):
     if not plugin_data:
         raise PluginError(f"Could not find {plugin_name} in {network_file_path}")
 
-    _entrypoint(ctx, plugin_data)
+    _entrypoint(ctx, plugin_data, HookValue(hook_value), namespace, nargs)
 
 
-def _entrypoint(ctx, plugin_data: dict):
-    """ "Called by entrypoint"""
+def _entrypoint(ctx, plugin_data: dict, hook_value: HookValue, namespace: str, nargs):
+    """Called by entrypoint"""
     # write your plugin startup commands here
     activity = plugin_data.get("activity")
     activity = json.loads(activity)

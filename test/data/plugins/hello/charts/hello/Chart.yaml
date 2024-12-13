@@ -1,0 +1,5 @@
+apiVersion: v2
+name: hello-chart
+description: A Helm chart for a hello Pod
+version: 0.1.0
+appVersion: "1.0"
