@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import tempfile
@@ -22,9 +23,12 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    PLUGIN_ANNEX,
     SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
+    AnnexMember,
     HookValue,
+    WarnetContent,
 )
 from .control import _run
 from .k8s import (
@@ -132,7 +136,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         )
 
 
-def run_plugins(directory, hook_value: HookValue, namespace, *args):
+def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dict] = None):
     """Run the plugin commands within a given hook value"""
 
     network_file_path = directory / NETWORK_FILE
@@ -146,29 +150,44 @@ def run_plugins(directory, hook_value: HookValue, namespace, *args):
 
     plugins_section = network_file.get("plugins", {})
     hook_section = plugins_section.get(hook_value.value, {})
-    for plugin_cmd in hook_section.items():
-        match plugin_cmd:
+    for plugin_name, plugin_content in hook_section.items():
+        match (plugin_name, plugin_content):
             case (str(), dict()):
                 try:
-                    entrypoint_path = Path(plugin_cmd[1].get("entrypoint"))
+                    entrypoint_path = Path(plugin_content.get("entrypoint"))
                 except Exception as err:
                     raise SyntaxError("Each plugin must have an 'entrypoint'") from err
 
-                cmd = f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint {network_file_path} {hook_value.value} {namespace} {' '.join(map(str, args))}"
+                warnet_content = {
+                    WarnetContent.HOOK_VALUE.value: hook_value.value,
+                    WarnetContent.NAMESPACE.value: namespace,
+                    PLUGIN_ANNEX: annex,
+                }
+
+                cmd = (
+                    f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint "
+                    f"'{json.dumps(plugin_content)}' '{json.dumps(warnet_content)}'"
+                )
+                print(
+                    f"Queuing {hook_value.value} plugin command: {plugin_name} with {plugin_content}"
+                )
+
                 process = Process(target=run_command, args=(cmd,))
                 processes.append(process)
 
             case _:
                 print(
-                    f"The following plugin command does not match known plugin command structures: {plugin_cmd}"
+                    f"The following plugin command does not match known plugin command structures: {plugin_name} {plugin_content}"
                 )
                 sys.exit(1)
 
+    print(f"Starting {hook_value.value} plugins")
     for process in processes:
         process.start()
 
     for process in processes:
         process.join()
+    print(f"Completed {hook_value.value} plugins")
 
 
 def check_logging_required(directory: Path):
@@ -385,13 +404,20 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
-        run_plugins(directory, HookValue.PRE_NODE, namespace, node_name)
+        run_plugins(
+            directory, HookValue.PRE_NODE, namespace, annex={AnnexMember.NODE_NAME.value: node_name}
+        )
 
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
 
-        run_plugins(directory, HookValue.POST_NODE, namespace, node_name)
+        run_plugins(
+            directory,
+            HookValue.POST_NODE,
+            namespace,
+            annex={AnnexMember.NODE_NAME.value: node_name},
+        )
 
     except Exception as e:
         click.echo(f"Error: {e}")

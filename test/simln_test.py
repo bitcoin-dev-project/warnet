@@ -15,7 +15,7 @@ from warnet.process import run_command
 class SimLNTest(TestBase):
     def __init__(self):
         super().__init__()
-        self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
+        self.network_dir = Path(os.path.dirname(__file__)) / "data" / "plugins" / "ln"
         self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
         self.simln_exec = "plugins/simln/plugin.py"
 

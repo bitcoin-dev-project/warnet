@@ -36,6 +36,19 @@ class HookValue(Enum):
     POST_NETWORK = "postNetwork"
 
 
+class WarnetContent(Enum):
+    HOOK_VALUE = "hook_value"
+    NAMESPACE = "namespace"
+    ANNEX = "annex"
+
+
+class AnnexMember(Enum):
+    NODE_NAME = "node_name"
+
+
+PLUGIN_ANNEX = "annex"
+
+
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
 RESOURCES_DIR = files("resources")
