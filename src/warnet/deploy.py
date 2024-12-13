@@ -353,7 +353,11 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     for p in processes:
         p.join()
 
-    if any([queue.get() for _ in range(queue.qsize())]):
+    drained_items = []
+    while not queue.empty():
+        drained_items.append(queue.get())
+
+    if any(drained_items):
         _run(
             scenario_file=SCENARIOS_DIR / "ln_init.py",
             debug=True,
