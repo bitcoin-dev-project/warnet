@@ -25,6 +25,7 @@ class SimLNTest(TestBase):
             self.init_directory()
             self.deploy_with_plugin()
             self.copy_results()
+            self.assert_hello_plugin()
         finally:
             self.cleanup()
 
@@ -82,6 +83,24 @@ class SimLNTest(TestBase):
                         return True
         self.log.info(f"Did not find downloaded results in directory: {directory}.")
         return False
+
+    def assert_hello_plugin(self):
+        self.log.info("Waiting for the 'hello' plugin pods.")
+        wait_for_pod("hello-pre-deploy")  # We don't use post-deploy (simln covers that)
+        wait_for_pod("hello-pre-network")
+        wait_for_pod("hello-post-network")
+        wait_for_pod("tank-0000-post-hello-pod")
+        wait_for_pod("tank-0000-pre-hello-pod")
+        wait_for_pod("tank-0001-post-hello-pod")
+        wait_for_pod("tank-0001-pre-hello-pod")
+        wait_for_pod("tank-0002-post-hello-pod")
+        wait_for_pod("tank-0002-pre-hello-pod")
+        wait_for_pod("tank-0003-post-hello-pod")
+        wait_for_pod("tank-0003-pre-hello-pod")
+        wait_for_pod("tank-0004-post-hello-pod")
+        wait_for_pod("tank-0004-pre-hello-pod")
+        wait_for_pod("tank-0005-post-hello-pod")
+        wait_for_pod("tank-0005-pre-hello-pod")
 
 
 if __name__ == "__main__":

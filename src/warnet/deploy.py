@@ -85,7 +85,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         return
 
     if (directory / NETWORK_FILE).exists():
-        run_plugins(directory, HookValue.PRE_DEPLOY)
+        run_plugins(directory, HookValue.PRE_DEPLOY, namespace)
 
         processes = []
         # Deploy logging CRD first to avoid synchronisation issues
@@ -95,7 +95,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         logging_process.start()
         processes.append(logging_process)
 
-        run_plugins(directory, HookValue.PRE_NETWORK)
+        run_plugins(directory, HookValue.PRE_NETWORK, namespace)
 
         network_process = Process(target=deploy_network, args=(directory, debug, namespace))
         network_process.start()
@@ -111,7 +111,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         # Wait for the network process to complete
         network_process.join()
 
-        run_plugins(directory, HookValue.POST_NETWORK)
+        run_plugins(directory, HookValue.POST_NETWORK, namespace)
 
         # Start the fork observer process immediately after network process completes
         fork_observer_process = Process(target=deploy_fork_observer, args=(directory, debug))
@@ -122,7 +122,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         for p in processes:
             p.join()
 
-        run_plugins(directory, HookValue.POST_DEPLOY)
+        run_plugins(directory, HookValue.POST_DEPLOY, namespace)
 
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
@@ -132,7 +132,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         )
 
 
-def run_plugins(directory, hook_value: HookValue):
+def run_plugins(directory, hook_value: HookValue, namespace, *args):
     """Run the plugin commands within a given hook value"""
 
     network_file_path = directory / NETWORK_FILE
@@ -154,7 +154,7 @@ def run_plugins(directory, hook_value: HookValue):
                 except Exception as err:
                     raise SyntaxError("Each plugin must have an 'entrypoint'") from err
 
-                cmd = f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint {network_file_path} {hook_value.value}"
+                cmd = f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint {network_file_path} {hook_value.value} {namespace} {' '.join(map(str, args))}"
                 process = Process(target=run_command, args=(cmd,))
                 processes.append(process)
 
@@ -385,13 +385,13 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
-        run_plugins(directory, HookValue.PRE_NODE)
+        run_plugins(directory, HookValue.PRE_NODE, namespace, node_name)
 
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
 
-        run_plugins(directory, HookValue.POST_NODE)
+        run_plugins(directory, HookValue.POST_NODE, namespace, node_name)
 
     except Exception as e:
         click.echo(f"Error: {e}")

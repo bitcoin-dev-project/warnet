@@ -54,8 +54,31 @@ nodes:
       lnd: true
 
 plugins:
+  preDeploy:
+    hello:
+      entrypoint: "../plugins/hello"
+      podName: "hello-pre-deploy"
+      helloTo: "preDeploy!"
   postDeploy:
     simln:
       entrypoint: "../../../resources/plugins/simln"
       activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
+  preNode:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "preNode!"
+  postNode:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "preNode!"
+  preNetwork:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "preNetwork!"
+      podName: "hello-pre-network"
+  postNetwork:
+    hello:
+      entrypoint: "../plugins/hello"
+      helloTo: "postNetwork!"
+      podName: "hello-post-network"
 
