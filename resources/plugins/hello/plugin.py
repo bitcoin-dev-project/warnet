@@ -10,7 +10,7 @@ import click
 from warnet.constants import PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.process import run_command
 
-# Tt is common for Warnet objects to have a "mission" tag to query them in the cluster.
+# Tt is common for Warnet objects to have a "mission" label to help query for them in the cluster.
 MISSION = "hello"
 PRIMARY_CONTAINER = MISSION
 
@@ -32,7 +32,7 @@ log.setLevel(logging.DEBUG)
 log.propagate = True
 
 
-# Plugins look like this in the network.yaml file:
+# Plugins look like this in the `network.yaml` file:
 #
 # plugins:
 #   hello:
@@ -42,7 +42,7 @@ log.propagate = True
 # "podName" and "helloTo" are essentially dictionary keys, and it helps to keep those keys in an
 # enum in order to prevent typos.
 class PluginContent(Enum):
-    POD_NAME = ("podName",)
+    POD_NAME = "podName"
     HELLO_TO = "helloTo"
 
 
@@ -113,7 +113,9 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
 
 def get_data(plugin_content: dict) -> Optional[dict]:
     data = {
-        key: plugin_content.get(key) for key in ("podName", "helloTo") if plugin_content.get(key)
+        key: plugin_content.get(key)
+        for key in (PluginContent.POD_NAME.value, PluginContent.HELLO_TO.value)
+        if plugin_content.get(key)
     }
     return data or None
 
