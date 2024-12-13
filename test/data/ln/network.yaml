@@ -70,7 +70,7 @@ plugins:
   postNode:
     hello:
       entrypoint: "../plugins/hello"
-      helloTo: "preNode!"
+      helloTo: "postNode!"
   preNetwork:
     hello:
       entrypoint: "../plugins/hello"
