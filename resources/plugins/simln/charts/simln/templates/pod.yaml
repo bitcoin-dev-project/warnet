@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  labels:
+    app: {{ include "mychart.name" . }}
+    mission: {{ .Values.name }}
+spec:
+  initContainers:
+    - name: "init"
+      image: "busybox"
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          cp /configmap/* /working &&
+          cd /working &&
+          cat admin.macaroon.hex | xxd -r -p > admin.macaroon &&
+          while [ ! -f /working/sim.json ]; do
+            echo "Waiting for /working/sim.json to exist..."
+            sleep 1
+          done
+      volumeMounts:
+        - name: {{ .Values.workingVolume.name }}
+          mountPath: {{ .Values.workingVolume.mountPath }}
+        - name: {{ .Values.configmapVolume.name }}
+          mountPath: {{ .Values.configmapVolume.mountPath }}
+  containers:
+    - name: {{ .Values.name }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          cd /working;
+          sim-cli
+      volumeMounts:
+        - name: {{ .Values.workingVolume.name }}
+          mountPath: {{ .Values.workingVolume.mountPath }}
+        - name: {{ .Values.configmapVolume.name }}
+          mountPath: {{ .Values.configmapVolume.mountPath }}
+  volumes:
+    - name: {{ .Values.configmapVolume.name }}
+      configMap:
+        name: {{ include "mychart.fullname" . }}-data
+    - name: {{ .Values.workingVolume.name }}
+      emptyDir: {}

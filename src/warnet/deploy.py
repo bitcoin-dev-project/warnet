@@ -1,7 +1,8 @@
+import json
 import subprocess
 import sys
 import tempfile
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Optional
 
@@ -22,8 +23,14 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    PLUGIN_ANNEX,
+    SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
+    AnnexMember,
+    HookValue,
+    WarnetContent,
 )
+from .control import _run
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -32,7 +39,7 @@ from .k8s import (
     wait_for_ingress_controller,
     wait_for_pod_ready,
 )
-from .process import stream_command
+from .process import run_command, stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
 
@@ -63,12 +70,7 @@ def deploy(directory, debug, namespace, to_all_users, unknown_args):
     if unknown_args:
         raise click.BadParameter(f"Unknown args: {unknown_args}{HINT}")
 
-    if to_all_users:
-        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
-        for namespace in namespaces:
-            _deploy(directory, debug, namespace.metadata.name, False)
-    else:
-        _deploy(directory, debug, namespace, to_all_users)
+    _deploy(directory, debug, namespace, to_all_users)
 
 
 def _deploy(directory, debug, namespace, to_all_users):
@@ -79,7 +81,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
         processes = []
         for namespace in namespaces:
-            p = Process(target=deploy, args=(directory, debug, namespace.metadata.name, False))
+            p = Process(target=_deploy, args=(directory, debug, namespace.metadata.name, False))
             p.start()
             processes.append(p)
         for p in processes:
@@ -87,6 +89,8 @@ def _deploy(directory, debug, namespace, to_all_users):
         return
 
     if (directory / NETWORK_FILE).exists():
+        run_plugins(directory, HookValue.PRE_DEPLOY, namespace)
+
         processes = []
         # Deploy logging CRD first to avoid synchronisation issues
         deploy_logging_crd(directory, debug)
@@ -94,6 +98,8 @@ def _deploy(directory, debug, namespace, to_all_users):
         logging_process = Process(target=deploy_logging_stack, args=(directory, debug))
         logging_process.start()
         processes.append(logging_process)
+
+        run_plugins(directory, HookValue.PRE_NETWORK, namespace)
 
         network_process = Process(target=deploy_network, args=(directory, debug, namespace))
         network_process.start()
@@ -109,6 +115,8 @@ def _deploy(directory, debug, namespace, to_all_users):
         # Wait for the network process to complete
         network_process.join()
 
+        run_plugins(directory, HookValue.POST_NETWORK, namespace)
+
         # Start the fork observer process immediately after network process completes
         fork_observer_process = Process(target=deploy_fork_observer, args=(directory, debug))
         fork_observer_process.start()
@@ -118,12 +126,71 @@ def _deploy(directory, debug, namespace, to_all_users):
         for p in processes:
             p.join()
 
+        run_plugins(directory, HookValue.POST_DEPLOY, namespace)
+
     elif (directory / NAMESPACES_FILE).exists():
         deploy_namespaces(directory)
     else:
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
         )
+
+
+def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dict] = None):
+    """Run the plugin commands within a given hook value"""
+
+    network_file_path = directory / NETWORK_FILE
+
+    with network_file_path.open() as f:
+        network_file = yaml.safe_load(f) or {}
+        if not isinstance(network_file, dict):
+            raise ValueError(f"Invalid network file structure: {network_file_path}")
+
+    processes = []
+
+    plugins_section = network_file.get("plugins", {})
+    hook_section = plugins_section.get(hook_value.value, {})
+    for plugin_name, plugin_content in hook_section.items():
+        match (plugin_name, plugin_content):
+            case (str(), dict()):
+                try:
+                    entrypoint_path = Path(plugin_content.get("entrypoint"))
+                except Exception as err:
+                    raise SyntaxError("Each plugin must have an 'entrypoint'") from err
+
+                warnet_content = {
+                    WarnetContent.HOOK_VALUE.value: hook_value.value,
+                    WarnetContent.NAMESPACE.value: namespace,
+                    PLUGIN_ANNEX: annex,
+                }
+
+                cmd = (
+                    f"{network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint "
+                    f"'{json.dumps(plugin_content)}' '{json.dumps(warnet_content)}'"
+                )
+                print(
+                    f"Queuing {hook_value.value} plugin command: {plugin_name} with {plugin_content}"
+                )
+
+                process = Process(target=run_command, args=(cmd,))
+                processes.append(process)
+
+            case _:
+                print(
+                    f"The following plugin command does not match known plugin command structures: {plugin_name} {plugin_content}"
+                )
+                sys.exit(1)
+
+    if processes:
+        print(f"Starting {hook_value.value} plugins")
+
+        for process in processes:
+            process.start()
+
+        for process in processes:
+            process.join()
+
+        print(f"Completed {hook_value.value} plugins")
 
 
 def check_logging_required(directory: Path):
@@ -140,7 +207,8 @@ def check_logging_required(directory: Path):
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
-    nodes = network_file.get("nodes", [])
+
+    nodes = network_file.get("nodes") or []
     for node in nodes:
         if node.get("collectLogs", False):
             return True
@@ -295,23 +363,46 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    queue = Queue()
     processes = []
-    for node in network_file["nodes"]:
-        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace))
+
+    nodes = network_file.get("nodes") or []
+    for node in nodes:
+        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace, queue))
         p.start()
         processes.append(p)
 
     for p in processes:
         p.join()
 
+    drained_items = []
+    while not queue.empty():
+        drained_items.append(queue.get())
 
-def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
+    if any(drained_items):
+        _run(
+            scenario_file=SCENARIOS_DIR / "ln_init.py",
+            debug=True,
+            source_dir=SCENARIOS_DIR,
+            additional_args=None,
+            namespace=namespace,
+        )
+
+
+def deploy_single_node(node, directory: Path, debug: bool, namespace: str, queue: Queue):
     defaults_file_path = directory / DEFAULTS_FILE
     click.echo(f"Deploying node: {node.get('name')}")
     temp_override_file_path = ""
     try:
         node_name = node.get("name")
         node_config_override = {k: v for k, v in node.items() if k != "name"}
+
+        if (
+            "lnd" in node_config_override
+            and "channels" in node_config_override["lnd"]
+            and len(node_config_override["lnd"]["channels"]) > 0
+        ):
+            queue.put(True)
 
         defaults_file_path = directory / DEFAULTS_FILE
         cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
@@ -324,9 +415,21 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
+        run_plugins(
+            directory, HookValue.PRE_NODE, namespace, annex={AnnexMember.NODE_NAME.value: node_name}
+        )
+
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
+
+        run_plugins(
+            directory,
+            HookValue.POST_NODE,
+            namespace,
+            annex={AnnexMember.NODE_NAME.value: node_name},
+        )
+
     except Exception as e:
         click.echo(f"Error: {e}")
         return

@@ -1,0 +1,13 @@
+name: "simln"
+image:
+  repository: "mplsgrant/sim-ln"
+  tag: "4d33f24"
+  pullPolicy: IfNotPresent
+
+workingVolume:
+  name: working-volume
+  mountPath: /working
+configmapVolume:
+  name: configmap-volume
+  mountPath: /configmap
+

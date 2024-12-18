@@ -1,0 +1,134 @@
+# Default values for lnd.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+image:
+  repository: lightninglabs/lnd
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "v0.18.3-beta"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podLabels: 
+  app: "warnet"
+  mission: "lightning"
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+
+RPCPort: 10009
+P2PPort: 9735
+RestPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+
+livenessProbe:
+  exec:
+    command:
+    - pidof
+    - lnd
+  failureThreshold: 3
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 1
+readinessProbe:
+  failureThreshold: 1
+  periodSeconds: 1
+  successThreshold: 1
+  tcpSocket:
+    port: 10009
+  timeoutSeconds: 1
+startupProbe:
+  failureThreshold: 10
+  periodSeconds: 30
+  successThreshold: 1
+  timeoutSeconds: 60
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        PHRASE=`curl --silent --insecure https://localhost:8080/v1/genseed | grep -o '\[[^]]*\]'`
+        curl --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+baseConfig: |
+  norest=false
+  restlisten=0.0.0.0:8080
+  debuglevel=debug
+  accept-keysend=true
+  bitcoin.active=true
+  bitcoin.node=bitcoind
+  maxpendingchannels=64
+  trickledelay=1
+  rpclisten=0.0.0.0:10009
+  bitcoind.rpcuser=user
+  protocol.wumbo-channels=1
+  # zmq* and bitcoind.rpcpass are set in configmap.yaml
+
+config: ""
+
+defaultConfig: ""
+
+channels: []
