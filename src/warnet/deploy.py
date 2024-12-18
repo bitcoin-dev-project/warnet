@@ -183,12 +183,13 @@ def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dic
 
     if processes:
         print(f"Starting {hook_value.value} plugins")
-    for process in processes:
-        process.start()
 
-    for process in processes:
-        process.join()
-    if processes:
+        for process in processes:
+            process.start()
+
+        for process in processes:
+            process.join()
+
         print(f"Completed {hook_value.value} plugins")
 
 
