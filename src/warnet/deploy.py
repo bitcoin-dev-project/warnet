@@ -181,13 +181,15 @@ def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dic
                 )
                 sys.exit(1)
 
-    print(f"Starting {hook_value.value} plugins")
+    if processes:
+        print(f"Starting {hook_value.value} plugins")
     for process in processes:
         process.start()
 
     for process in processes:
         process.join()
-    print(f"Completed {hook_value.value} plugins")
+    if processes:
+        print(f"Completed {hook_value.value} plugins")
 
 
 def check_logging_required(directory: Path):
