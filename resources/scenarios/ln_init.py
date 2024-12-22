@@ -369,6 +369,11 @@ class LNInit(Commander):
                     # We assert this because it isn't updated as part of policy.
                     # If this fails we have a bigger issue
                     assert int(actual_ch["capacity"]) == capacity
+
+                    # Policies were not defined in network.yaml
+                    if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
+                        continue
+
                     # policy actual/expected source/target
                     polas = Policy.from_lnd_describegraph(actual_ch["node1_policy"])
                     polat = Policy.from_lnd_describegraph(actual_ch["node2_policy"])
