@@ -299,11 +299,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
 
     needs_ln_init = False
     for node in network_file["nodes"]:
-        if (
-            "lnd" in node 
-            and "channels" in node["lnd"]
-            and len(node["lnd"]["channels"]) > 0
-        ):
+        if "lnd" in node and "channels" in node["lnd"] and len(node["lnd"]["channels"]) > 0:
             needs_ln_init = True
             break
 
