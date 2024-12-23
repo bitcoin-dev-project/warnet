@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 from decimal import Decimal
+from random import randint
+import threading
+from time import sleep
 
 from commander import Commander
 from test_framework.key import ECKey
@@ -438,6 +441,50 @@ class ReplacementCycling(Commander):
         )
         assert mempool_accept_result[0]["allowed"]
 
+    @staticmethod
+    def miner_task(node, self):
+        counter = 0
+        while True:
+            if counter >= 10:
+                self.log.info("@MINER reached 10 blocks, exiting")
+                break
+            self.generate(node, 1)
+            time_sleep = randint(10, 60)
+            self.log.info(f"@MINER Mined block {node.getblockcount()}")
+            self.log.info(f"@MINER sleeping for {time_sleep} seconds")
+            sleep(time_sleep)
+
+    @staticmethod
+    def defender_task(defender_node, self):
+        defender_spend_tx = None
+        while True:
+            if defender_spend_tx is None:
+                multisig_tx = self.setup_multisig()
+                defender_spend_tx = self.spend_defender_transaction(multisig_tx)
+                self.log.info("@DEFENDER sent transaction")
+
+            self.log.info("@DEFENDER waiting for transaction to be mined")
+
+    @staticmethod
+    def attacker_task(attacker_node, additional_attacker_utxos, self):
+        attacker_tx = None
+        index = 0
+        while True:
+            if attacker_tx is None:
+                last_blockheight = self.get_defender_last_last_height()
+                self.log.info(f"@{last_blockheight} Start cycling attack...")
+                attack_tx = self.build_attacker_transaction(attacker_tx, multisig_tx, index)
+                attack_txid = self.attacker_wallet.sendrawtransaction(
+                    from_node=self.attacker, tx_hex=attack_tx.serialize().hex()
+                )
+                self.log.info(
+                    f"@{last_blockheight} {attack_txid[0:7]} Attack Tx "
+                    "- Broadcasted by: Attacker"
+                    f"- wtxid: {attack_tx.getwtxid()}"
+                )
+
+                self.sync_all()
+
     def run_test(self):
         # Simple test to demostrate replacement cycling time sensitive transactions
         # For ease of demostration we are using 2 nodes and wallets, 1 attacker and 1 defender
@@ -461,6 +508,9 @@ class ReplacementCycling(Commander):
         self.setup_attacker_junk_transaction()
         self.log.info(f"Balance attacker {self.attacker_wallet.get_balance()}")
         self.log.info(f"Balance defender {self.defender_wallet.get_balance()}")
+        miner_thread = threading.Thread(target=self.miner_task, args=(self.defender, self))
+        miner_thread.start()
+        self.log.info("Miner started")
 
         self.test_attacker_replaces_and_can_be_mined(additional_attacker_utxos)
         self.test_cycling_out_defender_tx(additional_attacker_utxos)
