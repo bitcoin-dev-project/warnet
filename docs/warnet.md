@@ -48,6 +48,15 @@ options:
 |--------|--------|------------|-----------|
 | force  | Bool   |            | False     |
 
+### `warnet import-network`
+Create a network from an imported lightning network graph JSON
+
+options:
+| name            | type   | required   | default   |
+|-----------------|--------|------------|-----------|
+| graph_file_path | Path   | yes        |           |
+| output_path     | Path   | yes        |           |
+
 ### `warnet init`
 Initialize a warnet project in the current directory
 
@@ -191,5 +200,34 @@ options:
 | build_args | String |            |           |
 | arches     | String |            |           |
 | action     | String |            | "load"    |
+
+## Ln
+
+### `warnet ln host`
+Get lightning node host from \<ln pod name>
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| pod    | String | yes        |           |
+
+### `warnet ln pubkey`
+Get lightning node pub key from \<ln pod name>
+
+options:
+| name   | type   | required   | default   |
+|--------|--------|------------|-----------|
+| pod    | String | yes        |           |
+
+### `warnet ln rpc`
+Call lightning cli rpc \<command> on \<ln pod name>
+
+options:
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| pod       | String | yes        |           |
+| method    | String | yes        |           |
+| params    | String |            |           |
+| namespace | String |            |           |
 
 
