@@ -252,6 +252,16 @@ def run(
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
+    return _run(scenario_file, debug, source_dir, additional_args, namespace)
+
+
+def _run(
+    scenario_file: str,
+    debug: bool,
+    source_dir,
+    additional_args: tuple[str],
+    namespace: Optional[str],
+):
     namespace = get_default_namespace_or(namespace)
 
     scenario_path = Path(scenario_file).resolve()
@@ -261,24 +271,7 @@ def run(
     if additional_args and ("--help" in additional_args or "-h" in additional_args):
         return subprocess.run([sys.executable, scenario_path, "--help"])
 
-    # Collect tank data for warnet.json
     name = f"commander-{scenario_name.replace('_', '')}-{int(time.time())}"
-    tankpods = get_mission("tank")
-    tanks = [
-        {
-            "tank": tank.metadata.name,
-            "chain": tank.metadata.labels["chain"],
-            "rpc_host": tank.status.pod_ip,
-            "rpc_port": int(tank.metadata.labels["RPCPort"]),
-            "rpc_user": "user",
-            "rpc_password": tank.metadata.labels["rpcpassword"],
-            "init_peers": [],
-        }
-        for tank in tankpods
-    ]
-
-    # Encode tank data for warnet.json
-    warnet_data = json.dumps(tanks).encode()
 
     # Create in-memory buffer to store python archive instead of writing to disk
     archive_buffer = io.BytesIO()
@@ -289,7 +282,13 @@ def run(
             return False
         if any(
             needle in str(path)
-            for needle in ["__init__.py", "commander.py", "test_framework", scenario_path.name]
+            for needle in [
+                "__init__.py",
+                "commander.py",
+                "test_framework",
+                "ln_framework",
+                scenario_path.name,
+            ]
         ):
             print(f"Including: {path}")
             return True
@@ -352,8 +351,6 @@ def run(
     # upload scenario files and network data to the init container
     wait_for_init(name, namespace=namespace)
     if write_file_to_container(
-        name, "init", "/shared/warnet.json", warnet_data, namespace=namespace
-    ) and write_file_to_container(
         name, "init", "/shared/archive.pyz", archive_data, namespace=namespace
     ):
         print(f"Successfully uploaded scenario data to commander: {scenario_name}")

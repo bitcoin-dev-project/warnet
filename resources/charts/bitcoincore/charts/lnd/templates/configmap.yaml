@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lnd.fullname" . }}
+  labels:
+    {{- include "lnd.labels" . | nindent 4 }}
+data:
+  lnd.conf: |
+    {{- .Values.baseConfig | nindent 4 }}
+    {{- .Values.defaultConfig | nindent 4 }}
+    {{- .Values.config | nindent 4 }}
+    bitcoin.{{ .Values.global.chain }}=1
+    bitcoind.rpcpass={{ .Values.global.rpcpassword }}
+    bitcoind.rpchost={{ include "bitcoincore.fullname" . }}:{{ index .Values.global .Values.global.chain "RPCPort" }}
+    bitcoind.zmqpubrawblock=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQBlockPort }}
+    bitcoind.zmqpubrawtx=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQTxPort }}
+    alias={{ include "lnd.fullname" . }}
+    externalhosts={{ include "lnd.fullname" . }}
+    tlsextradomain={{ include "lnd.fullname" . }}
+  tls.cert: |
+    -----BEGIN CERTIFICATE-----
+    MIIB8TCCAZagAwIBAgIUJDsR6mmY+TaO9pCfjtotlbOkzJMwCgYIKoZIzj0EAwIw
+    MjEfMB0GA1UECgwWbG5kIGF1dG9nZW5lcmF0ZWQgY2VydDEPMA0GA1UEAwwGd2Fy
+    bmV0MB4XDTI0MTExMTE2NTM1MFoXDTM0MTEwOTE2NTM1MFowMjEfMB0GA1UECgwW
+    bG5kIGF1dG9nZW5lcmF0ZWQgY2VydDEPMA0GA1UEAwwGd2FybmV0MFkwEwYHKoZI
+    zj0CAQYIKoZIzj0DAQcDQgAEBVltIvaTlAQI/3FFatTqVflZuZdRJ0SmRMSJrFLP
+    tp0fxE7hmteSt6gjQriy90fP8j9OJXBNAjt915kLY4zVvqOBiTCBhjAOBgNVHQ8B
+    Af8EBAMCAqQwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDwYDVR0TAQH/BAUwAwEB/zAd
+    BgNVHQ4EFgQU5d8QMrwhLgTkDjWA+eXZGz+dybUwLwYDVR0RBCgwJoIJbG9jYWxo
+    b3N0ggEqhwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMAoGCCqGSM49BAMCA0kAMEYC
+    IQDPofN0fEl5gTwCYhk3nZbjMqJhZ8BsSJ6K8XRhxr7zbwIhAPsgQCFOqUWg632O
+    NEO53OQ6CIqnpxSskjsFNH4ZBQOE
+    -----END CERTIFICATE-----
+  tls.key: |
+    -----BEGIN EC PRIVATE KEY-----
+    MHcCAQEEIIcFtWTLQv5JaRRxdkPKkO98OrvgeztbZ7h8Ev/4UbE4oAoGCCqGSM49
+    AwEHoUQDQgAEBVltIvaTlAQI/3FFatTqVflZuZdRJ0SmRMSJrFLPtp0fxE7hmteS
+    t6gjQriy90fP8j9OJXBNAjt915kLY4zVvg==
+    -----END EC PRIVATE KEY-----
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lnd.fullname" . }}-channels
+  labels:
+    channels: "true"
+    {{- include "lnd.labels" . | nindent 4 }}
+data:
+  source: {{ include "lnd.fullname" . }}
+  channels: |
+    {{ .Values.channels | toJson }}

@@ -22,8 +22,10 @@ from .constants import (
     NAMESPACES_CHART_LOCATION,
     NAMESPACES_FILE,
     NETWORK_FILE,
+    SCENARIOS_DIR,
     WARGAMES_NAMESPACE_PREFIX,
 )
+from .control import _run
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
@@ -295,6 +297,12 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    needs_ln_init = False
+    for node in network_file["nodes"]:
+        if "lnd" in node and "channels" in node["lnd"] and len(node["lnd"]["channels"]) > 0:
+            needs_ln_init = True
+            break
+
     processes = []
     for node in network_file["nodes"]:
         p = Process(target=deploy_single_node, args=(node, directory, debug, namespace))
@@ -303,6 +311,15 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
 
     for p in processes:
         p.join()
+
+    if needs_ln_init:
+        _run(
+            scenario_file=SCENARIOS_DIR / "ln_init.py",
+            debug=True,
+            source_dir=SCENARIOS_DIR,
+            additional_args=None,
+            namespace=namespace,
+        )
 
 
 def deploy_single_node(node, directory: Path, debug: bool, namespace: str):

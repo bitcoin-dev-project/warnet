@@ -1,4 +1,5 @@
 import argparse
+import base64
 import configparser
 import json
 import logging
@@ -10,6 +11,8 @@ import sys
 import tempfile
 from typing import Dict
 
+from kubernetes import client, config
+from ln_framework.ln import LND
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -20,13 +23,44 @@ from test_framework.test_framework import (
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
-WARNET_FILE = "/shared/warnet.json"
+# Figure out what namespace we are in
+with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
+    NAMESPACE = f.read().strip()
 
-try:
-    with open(WARNET_FILE) as file:
-        WARNET = json.load(file)
-except Exception:
-    WARNET = []
+# Use the in-cluster k8s client to determine what pods we have access to
+config.load_incluster_config()
+sclient = client.CoreV1Api()
+pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
+cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
+
+WARNET = {"tanks": [], "lightning": [], "channels": []}
+for pod in pods.items:
+    if "mission" not in pod.metadata.labels:
+        continue
+
+    if pod.metadata.labels["mission"] == "tank":
+        WARNET["tanks"].append(
+            {
+                "tank": pod.metadata.name,
+                "chain": pod.metadata.labels["chain"],
+                "rpc_host": pod.status.pod_ip,
+                "rpc_port": int(pod.metadata.labels["RPCPort"]),
+                "rpc_user": "user",
+                "rpc_password": pod.metadata.labels["rpcpassword"],
+                "init_peers": pod.metadata.annotations["init_peers"],
+            }
+        )
+
+    if pod.metadata.labels["mission"] == "lightning":
+        WARNET["lightning"].append(pod.metadata.name)
+
+for cm in cmaps.items:
+    if not cm.metadata.labels or "channels" not in cm.metadata.labels:
+        continue
+    channel_jsons = json.loads(cm.data["channels"])
+    for channel_json in channel_jsons:
+        channel_json["source"] = cm.data["source"]
+        WARNET["channels"].append(channel_json)
 
 
 # Ensure that all RPC calls are made with brand new http connections
@@ -55,6 +89,17 @@ class Commander(BitcoinTestFramework):
             node.createwallet("miner", descriptors=True)
         return node.get_wallet_rpc("miner")
 
+    @staticmethod
+    def hex_to_b64(hex):
+        return base64.b64encode(bytes.fromhex(hex)).decode()
+
+    @staticmethod
+    def b64_to_hex(b64, reverse=False):
+        if reverse:
+            return base64.b64decode(b64)[::-1].hex()
+        else:
+            return base64.b64decode(b64).hex()
+
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
         self.shutdown()
@@ -82,8 +127,10 @@ class Commander(BitcoinTestFramework):
 
         # Keep a separate index of tanks by pod name
         self.tanks: Dict[str, TestNode] = {}
+        self.lns: Dict[str, LND] = {}
+        self.channels = WARNET["channels"]
 
-        for i, tank in enumerate(WARNET):
+        for i, tank in enumerate(WARNET["tanks"]):
             self.log.info(
                 f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
             )
@@ -107,9 +154,13 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
-            node.init_peers = tank["init_peers"]
+            node.init_peers = int(tank["init_peers"])
+
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node
+
+        for ln in WARNET["lightning"]:
+            self.lns[ln] = LND(ln)
 
         self.num_nodes = len(self.nodes)
 

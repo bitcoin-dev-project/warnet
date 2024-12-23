@@ -8,19 +8,19 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ index .Values .Values.chain "RPCPort" }}
+    - port: {{ index .Values.global .Values.global.chain "RPCPort" }}
       targetPort: rpc
       protocol: TCP
       name: rpc
-    - port: {{ index .Values .Values.chain "P2PPort" }}
+    - port: {{ index .Values.global .Values.global.chain "P2PPort" }}
       targetPort: p2p
       protocol: TCP
       name: p2p
-    - port: {{ .Values.ZMQTxPort }}
+    - port: {{ .Values.global.ZMQTxPort }}
       targetPort: zmq-tx
       protocol: TCP
       name: zmq-tx
-    - port: {{ .Values.ZMQBlockPort }}
+    - port: {{ .Values.global.ZMQBlockPort }}
       targetPort: zmq-block
       protocol: TCP
       name: zmq-block

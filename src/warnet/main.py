@@ -5,8 +5,9 @@ from .bitcoin import bitcoin
 from .control import down, logs, run, snapshot, stop
 from .dashboard import dashboard
 from .deploy import deploy
-from .graph import create, graph
+from .graph import create, graph, import_network
 from .image import image
+from .ln import ln
 from .project import init, new, setup
 from .status import status
 from .users import auth
@@ -24,9 +25,11 @@ cli.add_command(deploy)
 cli.add_command(down)
 cli.add_command(dashboard)
 cli.add_command(graph)
+cli.add_command(import_network)
 cli.add_command(image)
 cli.add_command(init)
 cli.add_command(logs)
+cli.add_command(ln)
 cli.add_command(new)
 cli.add_command(run)
 cli.add_command(setup)
