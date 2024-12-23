@@ -7,6 +7,7 @@ from rich import print
 from .bitcoin import _rpc
 from .constants import (
     NETWORK_DIR,
+    PLUGINS_DIR,
     SCENARIOS_DIR,
 )
 from .k8s import get_mission
@@ -45,6 +46,16 @@ def copy_scenario_defaults(directory: Path):
         SCENARIOS_DIR.name,
         SCENARIOS_DIR,
         ["__pycache__", "test_scenarios"],
+    )
+
+
+def copy_plugins_defaults(directory: Path):
+    """Create the project structure for a warnet project's scenarios"""
+    copy_defaults(
+        directory,
+        PLUGINS_DIR.name,
+        PLUGINS_DIR,
+        ["__pycache__", "__init__"],
     )
 
 

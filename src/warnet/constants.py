@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from importlib.resources import files
 from pathlib import Path
 
@@ -20,9 +21,33 @@ HELM_COMMAND = "helm upgrade --install"
 
 TANK_MISSION = "tank"
 COMMANDER_MISSION = "commander"
+LIGHTNING_MISSION = "lightning"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
 COMMANDER_CONTAINER = "commander"
+
+
+class HookValue(Enum):
+    PRE_DEPLOY = "preDeploy"
+    POST_DEPLOY = "postDeploy"
+    PRE_NODE = "preNode"
+    POST_NODE = "postNode"
+    PRE_NETWORK = "preNetwork"
+    POST_NETWORK = "postNetwork"
+
+
+class WarnetContent(Enum):
+    HOOK_VALUE = "hook_value"
+    NAMESPACE = "namespace"
+    ANNEX = "annex"
+
+
+class AnnexMember(Enum):
+    NODE_NAME = "node_name"
+
+
+PLUGIN_ANNEX = "annex"
+
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
@@ -32,6 +57,7 @@ NAMESPACES_DIR = RESOURCES_DIR.joinpath("namespaces")
 SCENARIOS_DIR = RESOURCES_DIR.joinpath("scenarios")
 CHARTS_DIR = RESOURCES_DIR.joinpath("charts")
 MANIFESTS_DIR = RESOURCES_DIR.joinpath("manifests")
+PLUGINS_DIR = RESOURCES_DIR.joinpath("plugins")
 NETWORK_FILE = "network.yaml"
 DEFAULTS_FILE = "node-defaults.yaml"
 NAMESPACES_FILE = "namespaces.yaml"
