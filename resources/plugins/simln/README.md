@@ -103,9 +103,9 @@ plugins:
 The SimLN plugin fetches a SimLN docker image from dockerhub. You can generate your own docker image if you choose:
 
 1. Clone SimLN: `git clone git@github.com:bitcoin-dev-project/sim-ln.git`
-2. Follow the instructions to build a docker image as detailed int the SimLn repository.
+2. Follow the instructions to build a docker image as detailed in the SimLN repository.
 3. Tag the resulting docker image: `docker tag IMAGEID YOURUSERNAME/sim-ln:VERSION`
-4. Push the tagged image to you dockerhub account.
+4. Push the tagged image to your dockerhub account.
 5. Modify the `values.yaml` file in the plugin's chart to reflect your username and version number:
 ```YAML
   repository: "YOURUSERNAME/sim-ln"
