@@ -1,7 +1,7 @@
 name: "simln"
 image:
-  repository: "mplsgrant/sim-ln"
-  tag: "4d33f24"
+  repository: "bitcoindevproject/simln"
+  tag: "0.2.3"
   pullPolicy: IfNotPresent
 
 workingVolume:

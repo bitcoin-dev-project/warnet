@@ -25,7 +25,7 @@ Since SimLN already has access to those LND connection details, it means you can
 ### Launch activity definitions from the command line
 The SimLN plugin takes "activity" definitions like so:
 
-`./simln/plugin.py launch-activiy '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"''`
+`./simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"''`
 
 ### Launch activity definitions from within `network.yaml`
 When you initialize a new Warnet network, Warnet will create a new `network.yaml` file.  If your `network.yaml` file includes lightning nodes, then you can use SimLN to produce activity between those nodes like this:
@@ -106,7 +106,7 @@ The SimLN plugin fetches a SimLN docker image from dockerhub. You can generate y
 2. Follow the instructions to build a docker image as detailed int the SimLn repository.
 3. Tag the resulting docker image: `docker tag IMAGEID YOURUSERNAME/sim-ln:VERSION`
 4. Push the tagged image to you dockerhub account.
-5Modify the `values.yaml` file in the plugin's chart to reflect your username and version number:
+5. Modify the `values.yaml` file in the plugin's chart to reflect your username and version number:
 ```YAML
   repository: "YOURUSERNAME/sim-ln"
   tag: "VERSION"

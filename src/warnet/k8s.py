@@ -61,22 +61,6 @@ def get_pod(name: str, namespace: Optional[str] = None) -> V1Pod:
     return sclient.read_namespaced_pod(name=name, namespace=namespace)
 
 
-def get_pods_with_label(label_selector: str, namespace: Optional[str] = None) -> list[V1Pod]:
-    """Get a list of pods by label.
-    Label example: "mission=lightning"
-    """
-    namespace = get_default_namespace_or(namespace)
-    v1 = get_static_client()
-
-    try:
-        pods = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
-        v1_pods = [pod for pod in pods.items]
-        return v1_pods
-    except client.exceptions.ApiException as e:
-        print(f"Error fetching pods: {e}")
-        return []
-
-
 def get_mission(mission: str) -> list[V1Pod]:
     pods = get_pods()
     crew: list[V1Pod] = []

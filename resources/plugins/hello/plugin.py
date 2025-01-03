@@ -10,7 +10,7 @@ import click
 from warnet.constants import PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.process import run_command
 
-# Tt is common for Warnet objects to have a "mission" label to help query for them in the cluster.
+# It is common for Warnet objects to have a "mission" label to help query them in the cluster.
 MISSION = "hello"
 PRIMARY_CONTAINER = MISSION
 
