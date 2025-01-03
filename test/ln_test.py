@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-
+import ast
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 from test_base import TestBase
 
-from warnet.process import stream_command
+from warnet.k8s import wait_for_pod
+from warnet.process import run_command, stream_command
 
 
 class LNTest(TestBase):
@@ -15,6 +17,8 @@ class LNTest(TestBase):
         self.graph_file = Path(os.path.dirname(__file__)) / "data" / "LN_10.json"
         self.imported_network_dir = self.tmpdir / "imported_network"
         self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
+        self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
+        self.simln_exec = Path("simln/plugin.py")
 
     def run_test(self):
         try:
@@ -22,6 +26,7 @@ class LNTest(TestBase):
             self.setup_network()
             self.test_channel_policies()
             self.test_payments()
+            self.run_simln()
         finally:
             self.cleanup()
 
@@ -80,6 +85,38 @@ class LNTest(TestBase):
         get_and_pay(1, 9)
         get_and_pay(8, 7)
         get_and_pay(4, 6)
+
+    def run_simln(self):
+        self.log.info("Running SimLN...")
+        activity_cmd = f"{self.plugins_dir}/{self.simln_exec} get-example-activity"
+        activity = run_command(activity_cmd)
+        launch_cmd = f"{self.plugins_dir}/{self.simln_exec} launch-activity '{activity}'"
+        pod = run_command(launch_cmd).strip()
+        wait_for_pod(pod)
+        self.log.info("Checking SimLN...")
+        self.wait_for_predicate(self.found_results_remotely)
+        self.log.info("SimLN was successful.")
+
+    def found_results_remotely(self, pod: Optional[str] = None) -> bool:
+        if pod is None:
+            pod = self.get_first_simln_pod()
+        self.log.info(f"Checking for results file in {pod}")
+        results_file = run_command(
+            f"{self.plugins_dir}/{self.simln_exec} sh {pod} ls /working/results"
+        ).strip()
+        self.log.info(f"Results file: {results_file}")
+        results = run_command(
+            f"{self.plugins_dir}/{self.simln_exec} sh {pod} cat /working/results/{results_file}"
+        ).strip()
+        self.log.info(results)
+        return results.find("Success") > 0
+
+    def get_first_simln_pod(self):
+        command = f"{self.plugins_dir}/{self.simln_exec} list-pod-names"
+        pod_names_literal = run_command(command)
+        self.log.info(f"{command}: {pod_names_literal}")
+        pod_names = ast.literal_eval(pod_names_literal)
+        return pod_names[0]
 
 
 if __name__ == "__main__":

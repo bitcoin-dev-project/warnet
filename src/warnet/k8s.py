@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 from time import sleep
@@ -302,7 +303,7 @@ def wait_for_pod_ready(name, namespace, timeout=300):
     return False
 
 
-def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
+def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None, quiet: bool = False):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
     w = watch.Watch()
@@ -315,10 +316,12 @@ def wait_for_init(pod_name, timeout=300, namespace: Optional[str] = None):
                 continue
             for init_container_status in pod.status.init_container_statuses:
                 if init_container_status.state.running:
-                    print(f"initContainer in pod {pod_name} ({namespace}) is ready")
+                    if not quiet:
+                        print(f"initContainer in pod {pod_name} ({namespace}) is ready")
                     w.stop()
                     return True
-    print(f"Timeout waiting for initContainer in {pod_name} ({namespace})to be ready.")
+    if not quiet:
+        print(f"Timeout waiting for initContainer in {pod_name} ({namespace}) to be ready.")
     return False
 
 
@@ -372,7 +375,7 @@ def wait_for_pod(pod_name, timeout_seconds=10, namespace: Optional[str] = None):
 
 
 def write_file_to_container(
-    pod_name, container_name, dst_path, data, namespace: Optional[str] = None
+    pod_name, container_name, dst_path, data, namespace: Optional[str] = None, quiet: bool = False
 ):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
@@ -404,7 +407,8 @@ def write_file_to_container(
             stdout=True,
             tty=False,
         )
-        print(f"Successfully copied data to {pod_name}({container_name}):{dst_path}")
+        if not quiet:
+            print(f"Successfully copied data to {pod_name}({container_name}):{dst_path}")
         return True
     except Exception as e:
         print(f"Failed to copy data to {pod_name}({container_name}):{dst_path}:\n{e}")
@@ -545,3 +549,50 @@ def write_kubeconfig(kube_config: dict, kubeconfig_path: str) -> None:
     except Exception as e:
         os.remove(temp_file.name)
         raise K8sError(f"Error writing kubeconfig: {kubeconfig_path}") from e
+
+
+def download(
+    pod_name: str,
+    source_path: Path,
+    destination_path: Path = Path("."),
+    namespace: Optional[str] = None,
+) -> Path:
+    """Download the item from the `source_path` to the `destination_path`"""
+
+    namespace = get_default_namespace_or(namespace)
+
+    v1 = get_static_client()
+
+    target_folder = destination_path / source_path.stem
+    os.makedirs(target_folder, exist_ok=True)
+
+    command = ["tar", "cf", "-", "-C", str(source_path.parent), str(source_path.name)]
+
+    resp = stream(
+        v1.connect_get_namespaced_pod_exec,
+        name=pod_name,
+        namespace=namespace,
+        command=command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+
+    tar_file = target_folder.with_suffix(".tar")
+    with open(tar_file, "wb") as f:
+        while resp.is_open():
+            resp.update(timeout=1)
+            if resp.peek_stdout():
+                f.write(resp.read_stdout().encode("utf-8"))
+            if resp.peek_stderr():
+                print(resp.read_stderr())
+        resp.close()
+
+    with tarfile.open(tar_file, "r") as tar:
+        tar.extractall(path=destination_path)
+
+    os.remove(tar_file)
+
+    return destination_path

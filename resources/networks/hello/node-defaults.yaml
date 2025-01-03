@@ -1,0 +1,8 @@
+image:
+  repository: bitcoindevproject/bitcoin
+  pullPolicy: IfNotPresent
+  tag: "27.0"
+
+lnd:
+  defaultConfig: |
+    color=#000000

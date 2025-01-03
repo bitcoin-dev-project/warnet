@@ -1,0 +1,13 @@
+name: "simln"
+image:
+  repository: "bitcoindevproject/simln"
+  tag: "0.2.3"
+  pullPolicy: IfNotPresent
+
+workingVolume:
+  name: working-volume
+  mountPath: /working
+configmapVolume:
+  name: configmap-volume
+  mountPath: /configmap
+
