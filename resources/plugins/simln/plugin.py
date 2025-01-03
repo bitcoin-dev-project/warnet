@@ -4,6 +4,7 @@ import logging
 import time
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
 import click
 from kubernetes.stream import stream
@@ -81,8 +82,9 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     """Called by entrypoint"""
     # write your plugin startup commands here
     activity = plugin_content.get(PluginContent.ACTIVITY.value)
-    activity = json.loads(activity)
-    print(activity)
+    if activity:
+        activity = json.loads(activity)
+        print(activity)
     _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG))
 
 
@@ -132,8 +134,8 @@ def launch_activity(ctx, activity: str):
     print(_launch_activity(parsed_activity, plugin_dir))
 
 
-def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
-    """Launch a SimLN chart which includes the `activity`"""
+def _launch_activity(activity: Optional[list[dict]], plugin_dir: str) -> str:
+    """Launch a SimLN chart which optionally includes the `activity`"""
     timestamp = int(time.time())
     name = f"simln-{timestamp}"
 
@@ -156,7 +158,7 @@ def _launch_activity(activity: list[dict], plugin_dir: str) -> str:
         raise PluginError(f"Could not write sim.json to the init container: {name}")
 
 
-def _generate_activity_json(activity: list[dict]) -> str:
+def _generate_activity_json(activity: Optional[list[dict]]) -> str:
     nodes = []
 
     for i in get_mission(LIGHTNING_MISSION):
@@ -169,7 +171,10 @@ def _generate_activity_json(activity: list[dict]) -> str:
         }
         nodes.append(node)
 
-    data = {"nodes": nodes, PluginContent.ACTIVITY.value: activity}
+    if activity:
+        data = {"nodes": nodes, PluginContent.ACTIVITY.value: activity}
+    else:
+        data = {"nodes": nodes}
 
     return json.dumps(data, indent=2)
 
