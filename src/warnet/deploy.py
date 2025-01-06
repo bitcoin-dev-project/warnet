@@ -30,13 +30,14 @@ from .constants import (
     HookValue,
     WarnetContent,
 )
-from .control import _run
+from .control import _logs, _run
 from .k8s import (
     get_default_namespace,
     get_default_namespace_or,
     get_mission,
     get_namespaces_by_type,
     wait_for_ingress_controller,
+    wait_for_pod,
     wait_for_pod_ready,
 )
 from .process import run_command, stream_command
@@ -379,13 +380,15 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         p.join()
 
     if needs_ln_init:
-        _run(
+        name = _run(
             scenario_file=SCENARIOS_DIR / "ln_init.py",
-            debug=True,
+            debug=False,
             source_dir=SCENARIOS_DIR,
             additional_args=None,
             namespace=namespace,
         )
+        wait_for_pod(name, namespace=namespace)
+        _logs(pod_name=name, follow=True, namespace=namespace)
 
 
 def deploy_single_node(node, directory: Path, debug: bool, namespace: str):

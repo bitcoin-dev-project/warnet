@@ -261,7 +261,7 @@ def _run(
     source_dir,
     additional_args: tuple[str],
     namespace: Optional[str],
-):
+) -> str:
     namespace = get_default_namespace_or(namespace)
 
     scenario_path = Path(scenario_file).resolve()
@@ -361,6 +361,8 @@ def _run(
         _logs(pod_name=name, follow=True, namespace=namespace)
         print("Deleting pod...")
         delete_pod(name, namespace=namespace)
+
+    return name
 
 
 @click.command()
