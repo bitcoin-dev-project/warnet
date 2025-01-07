@@ -49,6 +49,7 @@ jobs:
           - rpc_test.py
           - services_test.py
           - signet_test.py
+          - simln_test.py
           - scenarios_test.py
           - namespace_admin_test.py
     steps:

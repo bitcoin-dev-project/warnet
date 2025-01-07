@@ -8,6 +8,7 @@ from rich.table import Table
 from rich.text import Text
 from urllib3.exceptions import MaxRetryError
 
+from .constants import COMMANDER_MISSION, TANK_MISSION
 from .k8s import get_mission
 from .network import _connected
 
@@ -86,7 +87,7 @@ def status():
 
 
 def _get_tank_status():
-    tanks = get_mission("tank")
+    tanks = get_mission(TANK_MISSION)
     return [
         {
             "name": tank.metadata.name,
@@ -98,7 +99,7 @@ def _get_tank_status():
 
 
 def _get_deployed_scenarios():
-    commanders = get_mission("commander")
+    commanders = get_mission(COMMANDER_MISSION)
     return [
         {
             "name": c.metadata.name,
