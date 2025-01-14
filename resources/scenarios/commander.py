@@ -9,6 +9,8 @@ import random
 import signal
 import sys
 import tempfile
+import threading
+from time import sleep
 from typing import Dict
 
 from kubernetes import client, config
@@ -99,6 +101,30 @@ class Commander(BitcoinTestFramework):
             return base64.b64decode(b64)[::-1].hex()
         else:
             return base64.b64decode(b64).hex()
+
+    def wait_for_tanks_connected(self):
+        def tank_connected(self, tank):
+            while True:
+                peers = tank.getpeerinfo()
+                count = sum(
+                    1
+                    for peer in peers
+                    if peer.get("connection_type") == "manual" or peer.get("addnode") is True
+                )
+                self.log.info(f"Tank {tank.tank} connected to {count}/{tank.init_peers} peers")
+                if count >= tank.init_peers:
+                    break
+                else:
+                    sleep(1)
+
+        conn_threads = [
+            threading.Thread(target=tank_connected, args=(self, tank)) for tank in self.nodes
+        ]
+        for thread in conn_threads:
+            thread.start()
+
+        all(thread.join() is None for thread in conn_threads)
+        self.log.info("Network connected")
 
     def handle_sigterm(self, signum, frame):
         print("SIGTERM received, stopping...")
