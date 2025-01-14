@@ -20,29 +20,7 @@ class LNInit(Commander):
         # L1 P2P
         ##
         self.log.info("Waiting for L1 p2p network connections...")
-
-        def tank_connected(self, tank):
-            while True:
-                peers = tank.getpeerinfo()
-                count = sum(
-                    1
-                    for peer in peers
-                    if peer.get("connection_type") == "manual" or peer.get("addnode") is True
-                )
-                self.log.info(f"Tank {tank.tank} connected to {count}/{tank.init_peers} peers")
-                if count >= tank.init_peers:
-                    break
-                else:
-                    sleep(1)
-
-        conn_threads = [
-            threading.Thread(target=tank_connected, args=(self, tank)) for tank in self.nodes
-        ]
-        for thread in conn_threads:
-            thread.start()
-
-        all(thread.join() is None for thread in conn_threads)
-        self.log.info("Network connected")
+        self.wait_for_tanks_connected()
 
         ##
         # MINER
