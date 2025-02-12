@@ -240,19 +240,21 @@ def get_active_network(namespace):
     "--source_dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), required=False
 )
 @click.argument("additional_args", nargs=-1, type=click.UNPROCESSED)
+@click.option("--admin", is_flag=True, default=False, show_default=False)
 @click.option("--namespace", default=None, show_default=True)
 def run(
     scenario_file: str,
     debug: bool,
     source_dir,
     additional_args: tuple[str],
+    admin: bool,
     namespace: Optional[str],
 ):
     """
     Run a scenario from a file.
     Pass `-- --help` to get individual scenario help
     """
-    return _run(scenario_file, debug, source_dir, additional_args, namespace)
+    return _run(scenario_file, debug, source_dir, additional_args, admin, namespace)
 
 
 def _run(
@@ -260,6 +262,7 @@ def _run(
     debug: bool,
     source_dir,
     additional_args: tuple[str],
+    admin: bool,
     namespace: Optional[str],
 ) -> str:
     namespace = get_default_namespace_or(namespace)
@@ -329,6 +332,8 @@ def _run(
         ]
 
         # Add additional arguments
+        if admin:
+            helm_command.extend(["--set", "admin=true"])
         if additional_args:
             helm_command.extend(["--set", f"args={' '.join(additional_args)}"])
 

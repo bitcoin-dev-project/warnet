@@ -385,6 +385,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             debug=False,
             source_dir=SCENARIOS_DIR,
             additional_args=None,
+            admin=False,
             namespace=namespace,
         )
         wait_for_pod(name, namespace=namespace)
