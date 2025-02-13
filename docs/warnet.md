@@ -90,6 +90,7 @@ options:
 | debug           | Bool   |            | False     |
 | source_dir      | Path   |            |           |
 | additional_args | String |            |           |
+| admin           | Bool   |            | False     |
 | namespace       | String |            |           |
 
 ### `warnet setup`
