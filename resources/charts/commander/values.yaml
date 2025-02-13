@@ -66,3 +66,5 @@ volumeMounts: []
 port:
 
 args: ""
+
+admin: false

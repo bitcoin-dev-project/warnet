@@ -1,0 +1,5 @@
+users:
+  - name: warnet-user
+    roles:
+      - pod-viewer
+      - pod-manager

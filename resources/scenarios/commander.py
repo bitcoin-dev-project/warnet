@@ -29,11 +29,19 @@ from test_framework.util import PortSeed, get_rpc_proxy
 with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
     NAMESPACE = f.read().strip()
 
-# Use the in-cluster k8s client to determine what pods we have access to
+# Get the in-cluster k8s client to determine what we have access to
 config.load_incluster_config()
 sclient = client.CoreV1Api()
-pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
-cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
+
+try:
+    # An admin with cluster access can list everything.
+    # A wargames player with namespaced access will get a FORBIDDEN error here
+    pods = sclient.list_pod_for_all_namespaces()
+    cmaps = sclient.list_config_map_for_all_namespaces()
+except Exception:
+    # Just get whatever we have access to in this namespace only
+    pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
+    cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
 
 WARNET = {"tanks": [], "lightning": [], "channels": []}
 for pod in pods.items:
