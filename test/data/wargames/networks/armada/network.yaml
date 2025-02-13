@@ -1,0 +1,6 @@
+nodes:
+- name: armada
+  image:
+    tag: '27.0'
+  addnode:
+    - miner.default

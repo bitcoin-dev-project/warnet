@@ -1,0 +1,6 @@
+global:
+  chain: regtest
+image:
+  repository: bitcoindevproject/bitcoin
+  pullPolicy: IfNotPresent
+  tag: '27.0'

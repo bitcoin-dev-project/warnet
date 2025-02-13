@@ -1,0 +1,10 @@
+nodes:
+- name: miner
+  image:
+    tag: '27.0'
+- name: target-red
+  addnode:
+    - miner
+  image:
+    tag: '27.0'
+    

@@ -352,6 +352,7 @@ def _run(
     except subprocess.CalledProcessError as e:
         print(f"Failed to deploy scenario commander: {scenario_name}")
         print(f"Error: {e.stderr}")
+        return None
 
     # upload scenario files and network data to the init container
     wait_for_init(name, namespace=namespace)
