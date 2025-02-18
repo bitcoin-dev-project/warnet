@@ -112,15 +112,33 @@ def stop_scenario(scenario_name):
     )
 
 
-def stop_all_scenarios(scenarios):
-    """Stop all active scenarios in parallel using multiprocessing"""
+def _stop_single(scenario: str) -> str:
+    """
+    Stop a single scenario
 
-    def stop_single(scenario):
-        stop_scenario(scenario)
-        return f"Stopped scenario: {scenario}"
+    Args:
+        scenario: Name of the scenario to stop
+
+    Returns:
+        str: Message indicating the scenario has been stopped
+    """
+    stop_scenario(scenario)
+    return f"Stopped scenario: {scenario}"
+
+
+def stop_all_scenarios(scenarios) -> None:
+    """
+    Stop all active scenarios in parallel using multiprocessing
+
+    Args:
+        scenarios: List of scenario names to stop
+
+    Returns:
+        None
+    """
 
     with console.status("[bold yellow]Stopping all scenarios...[/bold yellow]"), Pool() as pool:
-        results = pool.map(stop_single, scenarios)
+        results = pool.map(_stop_single, scenarios)
 
     for result in results:
         console.print(f"[bold green]{result}[/bold green]")

@@ -1,3 +1,5 @@
+import importlib.metadata
+
 import click
 
 from .admin import admin
@@ -17,6 +19,14 @@ from .users import auth
 def cli():
     pass
 
+@click.command()
+def version() -> None:
+    """Display the installed version of warnet"""
+    try:
+        version = importlib.metadata.version("warnet")
+        click.echo(f"warnet version {version}")
+    except importlib.metadata.PackageNotFoundError:
+        click.echo("warnet version unknown (package not installed)")
 
 cli.add_command(admin)
 cli.add_command(auth)
@@ -37,7 +47,7 @@ cli.add_command(snapshot)
 cli.add_command(status)
 cli.add_command(stop)
 cli.add_command(create)
-
+cli.add_command(version)
 
 if __name__ == "__main__":
     cli()

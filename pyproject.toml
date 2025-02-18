@@ -34,7 +34,7 @@ warcli = "warnet.main:cli"
 
 [project.urls]
 Homepage = "https://warnet.dev"
-GitHub = "https://github.com/bitcoindevproject/warnet"
+GitHub = "https://github.com/bitcoin-dev-project/warnet"
 Pypi = "https://pypi.org/project/warnet/"
 
 [project.optional-dependencies]
