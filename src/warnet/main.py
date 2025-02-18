@@ -1,5 +1,6 @@
-import click
 import importlib.metadata
+
+import click
 
 from .admin import admin
 from .bitcoin import bitcoin

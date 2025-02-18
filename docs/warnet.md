@@ -11,8 +11,6 @@ parameters in <angle brackets>.
 
 `warnet` commands are organized in a hierarchy of categories and subcommands.
 
-Check the version of warnet using `warnet version`.
-
 ## API Commands
 
 ### `warnet auth`
