@@ -19,6 +19,7 @@ from .users import auth
 def cli():
     pass
 
+
 @click.command()
 def version() -> None:
     """Display the installed version of warnet"""
@@ -27,6 +28,7 @@ def version() -> None:
         click.echo(f"warnet version {version}")
     except importlib.metadata.PackageNotFoundError:
         click.echo("warnet version unknown (package not installed)")
+
 
 cli.add_command(admin)
 cli.add_command(auth)
