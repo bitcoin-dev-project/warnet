@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "eclair.fullname" . }}
+  labels:
+    {{- include "eclair.labels" . | nindent 4 }}
+    app: {{ include "eclair.fullname" . }} 
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.ServerPort }}
+      targetPort: server
+      protocol: TCP
+      name: server
+    - port: {{ .Values.APIPort }}
+      targetPort: api
+      protocol: TCP
+      name: api
+  selector:
+    {{- include "eclair.selectorLabels" . | nindent 4 }}
