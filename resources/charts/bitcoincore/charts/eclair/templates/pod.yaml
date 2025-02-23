@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Pod
+metadata:
+  name: {{ include "eclair.fullname" . }}
+  labels:
+    {{- include "eclair.labels" . | nindent 4 }}
+    {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+    app: {{ include "eclair.fullname" . }}
+    {{- if .Values.collectLogs }}
+    collect_logs: "true"
+    {{- end }}
+    chain: {{ .Values.global.chain }}
+spec:
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: {{ .Chart.Name }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 12 }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+          protocol: TCP
+      livenessProbe:
+        {{- toYaml .Values.livenessProbe | nindent 12 }}
+      readinessProbe:
+        {{- toYaml .Values.readinessProbe | nindent 12 }}
+      resources:
+        {{- toYaml .Values.resources | nindent 12 }}
+
+      {{- with .Values.volumeMounts }}
+      volumeMounts:
+          {{- toYaml . | nindent 12 }}
+      {{- end }}
+  {{- with .Values.volumes }}
+  volumes:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
+  {{- with .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
+  {{- with .Values.affinity }}
+  affinity:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
+  {{- with .Values.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
