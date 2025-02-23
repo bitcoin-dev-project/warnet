@@ -6,6 +6,9 @@ dependencies:
   - name: lnd
     version: 0.1.0
     condition: ln.lnd
+  - name: eclair
+    version: 0.1.0
+    condition: ln.eclair
 
 # A chart can be either an 'application' or a 'library' chart.
 #
