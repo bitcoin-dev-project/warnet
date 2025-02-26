@@ -30,7 +30,7 @@ def version() -> None:
         # e.g. "1.1.11.dev1+g123456[.dirty]"
         click.echo(f"warnet version {version}")
     except ImportError:
-        click.echo("warnet version unknown (package not installed)")
+        click.echo("warnet version unknown")
 
 
 cli.add_command(admin)
