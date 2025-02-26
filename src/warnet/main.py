@@ -24,9 +24,12 @@ def cli():
 def version() -> None:
     """Display the installed version of warnet"""
     try:
-        version = importlib.metadata.version("warnet")
+        from warnet._version import __version__
+        version = __version__
+        # If running from source/git, setuptools_scm will append git info
+        # e.g. "1.1.11.dev1+g123456[.dirty]"
         click.echo(f"warnet version {version}")
-    except importlib.metadata.PackageNotFoundError:
+    except ImportError:
         click.echo("warnet version unknown (package not installed)")
 
 
