@@ -1,5 +1,3 @@
-import importlib.metadata
-
 import click
 
 from .admin import admin
@@ -25,6 +23,7 @@ def version() -> None:
     """Display the installed version of warnet"""
     try:
         from warnet._version import __version__
+
         version = __version__
         # If running from source/git, setuptools_scm will append git info
         # e.g. "1.1.11.dev1+g123456[.dirty]"
