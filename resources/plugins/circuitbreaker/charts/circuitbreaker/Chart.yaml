@@ -1,0 +1,5 @@
+apiVersion: v2
+name: circuitbreaker
+description: A Helm chart to deploy Circuit Breaker
+version: 0.1.0
+appVersion: "0.1.0"

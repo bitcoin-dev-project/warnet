@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  labels:
+    app: {{ include "mychart.name" . }}
+    mission: {{ .Values.name }}
+spec:
+  containers:
+    - name: {{ .Values.name }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command: ["sh", "-c"]
+      args:
+      - echo "Hello {{ .Values.mode }}";
+      resources: {}
+     
