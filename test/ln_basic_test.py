@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 from pathlib import Path
 from time import sleep
 
@@ -24,10 +25,17 @@ class LNBasicTest(TestBase):
             "tank-0005-ln",
         ]
 
+        self.cb_port = 9235
+        self.cb_node = "tank-0003-ln"
+        self.port_forward = None
+
     def run_test(self):
         try:
             # Wait for all nodes to wake up. ln_init will start automatically
             self.setup_network()
+
+            # Test circuit breaker API
+            self.test_circuit_breaker_api()
 
             # Send a payment across channels opened automatically by ln_init
             self.pay_invoice(sender="tank-0005-ln", recipient="tank-0003-ln")
@@ -119,6 +127,23 @@ class LNBasicTest(TestBase):
         scenario_file = self.scen_dir / "test_scenarios" / "ln_init.py"
         self.log.info(f"Running scenario from: {scenario_file}")
         self.warnet(f"run {scenario_file} --source_dir={self.scen_dir} --debug")
+
+    def test_circuit_breaker_api(self):
+        self.log.info("Testing Circuit Breaker API with direct kubectl commands")
+
+        # Test /info endpoint
+        info_cmd = f"kubectl exec {self.cb_node} -c circuitbreaker -- wget -qO - 127.0.0.1:{self.cb_port}/api/info"
+        info = json.loads(subprocess.check_output(info_cmd, shell=True).decode())
+        assert "nodeKey" in info, "Circuit breaker info missing nodeKey"
+        self.log.info(f"Got node info: {info}")
+
+        # Test /limits endpoint
+        limits_cmd = f"kubectl exec {self.cb_node} -c circuitbreaker -- wget -qO - 127.0.0.1:{self.cb_port}/api/limits"
+        limits = json.loads(subprocess.check_output(limits_cmd, shell=True).decode())
+        assert "limits" in limits, "Circuit breaker limits missing"
+        self.log.info(f"Got limits: {limits}")
+
+        self.log.info("✅ Circuit Breaker API tests passed")
 
 
 if __name__ == "__main__":
