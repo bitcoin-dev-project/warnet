@@ -11,6 +11,15 @@ import click
 from warnet.constants import PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.process import run_command
 
+from warnet.k8s import (
+    download,
+    get_default_namespace,
+    get_mission,
+    get_static_client,
+    wait_for_init,
+    write_file_to_container,
+)
+
 MISSION = "circuitbreaker"
 PRIMARY_CONTAINER = MISSION
 
@@ -84,15 +93,15 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
         ):
             data = get_data(plugin_content)
             if data:
-                _launch_circuit_breaker(ctx, node_name=hook_value.value.lower())
+                _launch_circuit_breaker(ctx, node_name=hook_value.value.lower()+"breaker",hook_value=hook_value.value)
             else:
-                _launch_circuit_breaker(ctx, node_name=hook_value.value.lower())
+                _launch_circuit_breaker(ctx, node_name=hook_value.value.lower()+"breaker",hook_value=hook_value.value)
         case HookValue.PRE_NODE:
             name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-pre-pod"
-            _launch_circuit_breaker(ctx, node_name=hook_value.value.lower() + "-" + name)
+            _launch_circuit_breaker(ctx, node_name=hook_value.value.lower() + "-" + name, hook_value=hook_value.value)
         case HookValue.POST_NODE:
             name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-post-pod"
-            _launch_circuit_breaker(ctx, node_name=hook_value.value.lower() + "-" + name)
+            _launch_circuit_breaker(ctx, node_name=hook_value.value.lower() + "-" + name, hook_value=hook_value.value)
             
 def get_data(plugin_content: dict) -> Optional[dict]:
     data = {
@@ -103,14 +112,20 @@ def get_data(plugin_content: dict) -> Optional[dict]:
     return data or None
 
 
-def _launch_circuit_breaker(ctx, node_name: str):
+def _launch_circuit_breaker(ctx, node_name: str, hook_value: str):
     timestamp = int(time.time())
-    release_name = f"cb-{node_name}-{timestamp}"
+    release_name = f"cb-{node_name}"
     
-    command = f"helm upgrade --install {node_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker --set node={node_name}"
-    
+    # command = f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker"
+    command = (
+        f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
+        f"--set name={release_name}"
+    )
     log.info(command)
-    log.info(run_command(command))
+    run_command(command)
+    
+    if(hook_value==HookValue.POST_DEPLOY):
+        wait_for_init(release_name, namespace=get_default_namespace(), quiet=True)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,13 @@ plugins:  # Each plugin section has a number of hooks available (preDeploy, post
       entrypoint: "../../plugins/hello"  # This entrypoint path is relative to the network.yaml file
       podName: "hello-pre-deploy"
       helloTo: "preDeploy!"
+    circuitbreaker:
+      entrypoint: "../../plugins/circuitbreaker"
+      url: "http://127.0.0.1:9235"
+      apiUrl: "/api"
+      mode: "fail"  # Operating mode: fail, queue, or queue_peer_initiated
+      maxPendingHtlcs: 10  # Default maximum pending HTLCs per peer
+      rateLimit: 1  # Minimum seconds between HTLCs (token bucket rate limit)
   postDeploy:
     hello:
       entrypoint: "../../plugins/hello"
@@ -67,21 +74,56 @@ plugins:  # Each plugin section has a number of hooks available (preDeploy, post
     simln:  # You can have multiple plugins per hook
       entrypoint: "../../plugins/simln"
       activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
+    circuitbreaker:
+      entrypoint: "../../plugins/circuitbreaker"
+      url: "http://127.0.0.1:9235"
+      apiUrl: "/api"
+      mode: "fail"  # Operating mode: fail, queue, or queue_peer_initiated
+      maxPendingHtlcs: 10  # Default maximum pending HTLCs per peer
+      rateLimit: 1  # Minimum seconds between HTLCs (token bucket rate limit)
   preNode:  # preNode plugins run before each node is deployed
     hello:
       entrypoint: "../../plugins/hello"
       helloTo: "preNode!"
+    circuitbreaker:
+      entrypoint: "../../plugins/circuitbreaker"
+      url: "http://127.0.0.1:9235"
+      apiUrl: "/api"
+      mode: "fail"  # Operating mode: fail, queue, or queue_peer_initiated
+      maxPendingHtlcs: 10  # Default maximum pending HTLCs per peer
+      rateLimit: 1  # Minimum seconds between HTLCs (token bucket rate limit)
   postNode:
     hello:
       entrypoint: "../../plugins/hello"
       helloTo: "postNode!"
+    circuitbreaker:
+      entrypoint: "../../plugins/circuitbreaker"
+      url: "http://127.0.0.1:9235"
+      apiUrl: "/api"
+      mode: "fail"  # Operating mode: fail, queue, or queue_peer_initiated
+      maxPendingHtlcs: 10  # Default maximum pending HTLCs per peer
+      rateLimit: 1  # Minimum seconds between HTLCs (token bucket rate limit)
   preNetwork:
     hello:
       entrypoint: "../../plugins/hello"
       helloTo: "preNetwork!"
       podName: "hello-pre-network"
+    circuitbreaker:
+      entrypoint: "../../plugins/circuitbreaker"
+      url: "http://127.0.0.1:9235"
+      apiUrl: "/api"
+      mode: "fail"  # Operating mode: fail, queue, or queue_peer_initiated
+      maxPendingHtlcs: 10  # Default maximum pending HTLCs per peer
+      rateLimit: 1  # Minimum seconds between HTLCs (token bucket rate limit)
   postNetwork:
     hello:
       entrypoint: "../../plugins/hello"
       helloTo: "postNetwork!"
       podName: "hello-post-network"
+    circuitbreaker:
+      entrypoint: "../../plugins/circuitbreaker"
+      url: "http://127.0.0.1:9235"
+      apiUrl: "/api"
+      mode: "fail"  # Operating mode: fail, queue, or queue_peer_initiated
+      maxPendingHtlcs: 10  # Default maximum pending HTLCs per peer
+      rateLimit: 1  # Minimum seconds between HTLCs (token bucket rate limit)

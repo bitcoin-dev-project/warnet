@@ -1,5 +1,5 @@
 name: "circuitbreaker"
 image:
   repository: "camillarhi/circuitbreaker"
-  tag: "0.2.3"
+  tag: "latest"
   pullPolicy: IfNotPresent
