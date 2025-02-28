@@ -431,6 +431,12 @@ def new_internal(directory: Path, from_init=False):
     if proj_answers["custom_network"]:
         click.secho("\nGenerating custom network...", fg="yellow", bold=True)
         custom_network_path = inquirer_create_network(directory)
+    else:
+        click.echo(
+            f"No custom network specified, see example network files in {project_path}/networks/"
+        )
+        click.echo("Deploy any of these networks by running:")
+        click.echo(f"  warnet deploy {project_path}/networks/<example-network-name>")
 
     if custom_network_path:
         click.echo(
