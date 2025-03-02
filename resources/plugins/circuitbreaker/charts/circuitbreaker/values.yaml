@@ -1,4 +1,6 @@
-name: "circuitbreaker"
+podName: "circuitbreaker-pod"
+rpcserver: "localhost:10009"
+httplisten: "0.0.0.0:9235"
 image:
   repository: "camillarhi/circuitbreaker"
   tag: "latest"

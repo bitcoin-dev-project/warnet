@@ -3,6 +3,7 @@ import json
 import logging
 from enum import Enum
 from pathlib import Path
+import subprocess
 import time
 from typing import Optional
 
@@ -25,10 +26,8 @@ PRIMARY_CONTAINER = MISSION
 
 PLUGIN_DIR_TAG = "plugin_dir"
 
-
 class PluginError(Exception):
     pass
-
 
 log = logging.getLogger(MISSION)
 if not log.hasHandlers():
@@ -41,9 +40,9 @@ log.setLevel(logging.DEBUG)
 log.propagate = True
 
 class PluginContent(Enum):
-    MODE = "mode"
-    MAX_PENDING_HTLCS = "maxPendingHtlcs"
-    RATE_LIMIT = "rateLimit"
+    POD_NAME = "podName"
+    LND_RPC_SERVER = "rpcserver"
+    HTTP_LISTEN = "httplisten"
 
 @click.group()
 @click.pass_context
@@ -85,47 +84,141 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     hook_value = warnet_content[WarnetContent.HOOK_VALUE.value]
 
     match hook_value:
-        case (
-            HookValue.PRE_NETWORK
-            | HookValue.POST_NETWORK
-            | HookValue.PRE_DEPLOY
-            | HookValue.POST_DEPLOY
-        ):
-            data = get_data(plugin_content)
-            if data:
-                _launch_circuit_breaker(ctx, node_name=hook_value.value.lower()+"breaker",hook_value=hook_value.value)
-            else:
-                _launch_circuit_breaker(ctx, node_name=hook_value.value.lower()+"breaker",hook_value=hook_value.value)
-        case HookValue.PRE_NODE:
-            name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-pre-pod"
-            _launch_circuit_breaker(ctx, node_name=hook_value.value.lower() + "-" + name, hook_value=hook_value.value)
-        case HookValue.POST_NODE:
-            name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-post-pod"
-            _launch_circuit_breaker(ctx, node_name=hook_value.value.lower() + "-" + name, hook_value=hook_value.value)
+        case HookValue.POST_DEPLOY:
+            # data = get_data(plugin_content)
+            # if data:
+            #     log.info(f"Launching circuit breaker with data: {data}")
+            # _create_secrets()
+            _launch_circuit_breaker(ctx, plugin_content)
+            # else:
+            #     _launch_circuit_breaker(ctx, install_name="circuitbreaker")
+        case _:
+            log.info(f"No action required for hook {hook_value}")
             
 def get_data(plugin_content: dict) -> Optional[dict]:
     data = {
         key: plugin_content.get(key)
-        for key in (PluginContent.MAX_PENDING_HTLCS.value, PluginContent.RATE_LIMIT.value)
+        for key in (PluginContent.POD_NAME.value, PluginContent.LND_RPC_SERVER.value, PluginContent.HTTP_LISTEN.value)
         if plugin_content.get(key)
     }
     return data or None
 
+# def _create_secrets():
+#     """Use local LND files for testing"""
+#     log.info("Using local LND files for testing")
+#     tls_cert_path = Path.home() / ".lnd" / "tls.cert"
+#     admin_macaroon_path = Path.home() / ".lnd" / "data" / "chain" / "bitcoin" / "signet" / "admin.macaroon"
 
-def _launch_circuit_breaker(ctx, node_name: str, hook_value: str):
+#     if not tls_cert_path.exists():
+#         raise PluginError(f"TLS certificate not found at {tls_cert_path}")
+#     if not admin_macaroon_path.exists():
+#         raise PluginError(f"Admin macaroon not found at {admin_macaroon_path}")
+
+#     log.info(f"Using TLS certificate: {tls_cert_path}")
+#     log.info(f"Using admin macaroon: {admin_macaroon_path}")
+    
+# def _create_secrets():
+#     """Create Kubernetes secrets for each LND node"""
+#     lnd_pods = subprocess.check_output(["kubectl", "get", "pods", "-l", "mission=lightning", "-o", "name"]).decode().splitlines()
+#     # lnd_pods = subprocess.check_output(["kubectl", "get", "pods", "-l", "app=warnet", "-l", "mission=lightning", "-o", "name"]).decode().splitlines()
+#     for node in lnd_pods:
+#         node_name = node.split('/')[-1]
+#         log.info(f"Waiting for {node_name} to be ready...")
+#         wait_for_init(node_name, namespace=get_default_namespace(), quiet=True)
+#         log.info(f"Creating secrets for {node_name}")
+#         subprocess.run(["kubectl", "cp", f"{node}:/root/.lnd/tls.cert", "./tls.cert"], check=True)
+#         subprocess.run(["kubectl", "cp", f"{node}:/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon", "./admin.macaroon"], check=True)
+#         subprocess.run(["kubectl", "create", "secret", "generic", f"lnd-tls-cert-{node_name}", "--from-file=tls.cert=./tls.cert"], check=True)
+#         subprocess.run(["kubectl", "create", "secret", "generic", f"lnd-macaroon-{node_name}", "--from-file=admin.macaroon=./admin.macaroon"], check=True)
+        
+def _create_secrets():
+    """Create Kubernetes secrets for each LND node"""
+    lnd_pods = subprocess.check_output(
+        ["kubectl", "get", "pods", "-l", "mission=lightning", "-o", "name"]
+    ).decode().splitlines()
+
+    for node in lnd_pods:
+        node_name = node.split('/')[-1]
+        log.info(f"Waiting for {node_name} to be ready...")
+
+        # Wait for the pod to be ready
+        max_retries = 10
+        retry_delay = 10  # seconds
+        for attempt in range(max_retries):
+            try:
+                # Check if the pod is ready
+                pod_status = subprocess.check_output(
+                    ["kubectl", "get", "pod", node_name, "-o", "jsonpath='{.status.phase}'"]
+                ).decode().strip("'")
+
+                if pod_status == "Running":
+                    log.info(f"{node_name} is ready.")
+                    break
+                else:
+                    log.info(f"{node_name} is not ready yet (status: {pod_status}). Retrying in {retry_delay} seconds...")
+            except subprocess.CalledProcessError as e:
+                log.error(f"Failed to check pod status for {node_name}: {e}")
+                if attempt == max_retries - 1:
+                    raise PluginError(f"Pod {node_name} did not become ready after {max_retries} attempts.")
+
+            time.sleep(retry_delay)
+
+        # Create secrets for the pod
+        log.info(f"Creating secrets for {node_name}")
+        try:
+            subprocess.run(
+                ["kubectl", "cp", f"{node_name}:/root/.lnd/tls.cert", "./tls.cert"],
+                check=True
+            )
+            subprocess.run(
+                ["kubectl", "cp", f"{node_name}:/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon", "./admin.macaroon"],
+                check=True
+            )
+            subprocess.run(
+                ["kubectl", "create", "secret", "generic", f"lnd-tls-cert-{node_name}", "--from-file=tls.cert=./tls.cert"],
+                check=True
+            )
+            subprocess.run(
+                ["kubectl", "create", "secret", "generic", f"lnd-macaroon-{node_name}", "--from-file=admin.macaroon=./admin.macaroon"],
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            log.error(f"Failed to create secrets for {node_name}: {e}")
+            raise PluginError(f"Failed to create secrets for {node_name}.")
+
+def _launch_circuit_breaker(ctx, 
+                            plugin_content: dict,
+                            install_name: str="circuitbreaker", 
+                            podName: str ="circuitbreaker-pod",
+                            rpcserver: str = "localhost:10009", 
+                            httplisten: str = "0.0.0.0:9235"):
     timestamp = int(time.time())
-    release_name = f"cb-{node_name}"
+    # release_name = f"cb-{install_name}"
     
+    lnd_pods = subprocess.check_output(["kubectl", "get", "pods", "-l", "app=warnet", "-l", "mission=lightning", "-o", "name"]).decode().splitlines()
+    for node in lnd_pods:
+        node_name = node.split('/')[-1]
+        log.info(f"Launching Circuit Breaker for {node_name}")
+        release_name = f"circuitbreaker-{node_name}"
+        
+        command = (
+            f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
+            f"--set podName={release_name} --set rpcserver=localhost:10009 --set httplisten=0.0.0.0:9235"
+        )
+        
     # command = f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker"
-    command = (
-        f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
-        f"--set name={release_name}"
-    )
-    log.info(command)
-    run_command(command)
+    # command = (
+    #     f"helm upgrade --install {install_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
+    #     f"--set podName={podName} --set rpcserver={rpcserver} --set httplisten={httplisten}"
+    # )
+        log.info(command)
+        try:
+            run_command(command)
     
-    if(hook_value==HookValue.POST_DEPLOY):
-        wait_for_init(release_name, namespace=get_default_namespace(), quiet=True)
+    # if(hook_value==HookValue.POST_DEPLOY):
+            wait_for_init(release_name, namespace=get_default_namespace(), quiet=True)
+        except Exception as e:
+            log.error(f"Failed to launch Circuit Breaker for {node_name}: {e}")
 
 
 if __name__ == "__main__":
