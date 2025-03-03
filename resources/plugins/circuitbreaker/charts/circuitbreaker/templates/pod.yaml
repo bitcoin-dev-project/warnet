@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  labels:
+    app: {{ include "mychart.name" . }}
+    mission: {{ .Values.name }}
+spec:
+  initContainers:
+    - name: "init"
+      image: "busybox"
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          mkdir -p /shared/.lnd/data/chain/bitcoin/mainnet &&
+          cp /configmap/tls.cert /shared/.lnd/tls.cert &&
+          cat /configmap/admin.macaroon.hex | xxd -r -p > /shared/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
+      volumeMounts:
+        - name: shared-volume
+          mountPath: /shared
+        - name: configmap-volume
+          mountPath: /configmap
+  containers:
+    - name: {{ .Values.name }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          mkdir -p /root/.lnd/data/chain/bitcoin/mainnet &&
+          ln -s /shared/.lnd/tls.cert /root/.lnd/tls.cert &&
+          ln -s /shared/.lnd/data/chain/bitcoin/mainnet/admin.macaroon /root/.lnd/data/chain/bitcoin/mainnet/admin.macaroon &&
+          circuitbreaker --rpcserver={{ .Values.lnd.rpcserver }} --httplisten={{ .Values.lnd.httplisten }}
+      volumeMounts:
+        - name: shared-volume
+          mountPath: /shared
+  volumes:
+    - name: configmap-volume
+      configMap:
+        name: {{ include "mychart.fullname" . }}-data
+    - name: shared-volume
+      emptyDir: {}

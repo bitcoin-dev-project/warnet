@@ -1,7 +1,14 @@
-podName: "circuitbreaker-pod"
-rpcserver: "localhost:10009"
-httplisten: "0.0.0.0:9235"
+name: "circuitbreaker"
 image:
   repository: "camillarhi/circuitbreaker"
   tag: "latest"
   pullPolicy: IfNotPresent
+workingVolume:
+  name: working-volume
+  mountPath: /working
+configmapVolume:
+  name: configmap-volume
+  mountPath: /configmap
+lnd:
+  rpcserver: "host.docker.internal:10009"  # Default LND RPC server address
+  httplisten: "0.0.0.0:9235"  # Default HTTP listen address

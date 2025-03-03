@@ -85,13 +85,11 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
 
     match hook_value:
         case HookValue.POST_DEPLOY:
-            # data = get_data(plugin_content)
-            # if data:
-            #     log.info(f"Launching circuit breaker with data: {data}")
-            # _create_secrets()
-            _launch_circuit_breaker(ctx, plugin_content)
-            # else:
-            #     _launch_circuit_breaker(ctx, install_name="circuitbreaker")
+            data = get_data(plugin_content)
+            if data:
+                _launch_pod(ctx, install_name="circuitbreaker", **data)
+            else:
+                _launch_pod(ctx, install_name="circuitbreaker")
         case _:
             log.info(f"No action required for hook {hook_value}")
             
@@ -186,40 +184,21 @@ def _create_secrets():
             log.error(f"Failed to create secrets for {node_name}: {e}")
             raise PluginError(f"Failed to create secrets for {node_name}.")
 
-def _launch_circuit_breaker(ctx, 
-                            plugin_content: dict,
-                            install_name: str="circuitbreaker", 
-                            podName: str ="circuitbreaker-pod",
-                            rpcserver: str = "localhost:10009", 
-                            httplisten: str = "0.0.0.0:9235"):
+def _launch_pod(ctx,
+                install_name: str = "circuitbreaker", 
+                podName: str = "circuitbreaker-pod", 
+                rpcserver: str = "localhost:10009", 
+                httplisten: str = "0.0.0.0:9235"):
     timestamp = int(time.time())
     # release_name = f"cb-{install_name}"
     
-    lnd_pods = subprocess.check_output(["kubectl", "get", "pods", "-l", "app=warnet", "-l", "mission=lightning", "-o", "name"]).decode().splitlines()
-    for node in lnd_pods:
-        node_name = node.split('/')[-1]
-        log.info(f"Launching Circuit Breaker for {node_name}")
-        release_name = f"circuitbreaker-{node_name}"
-        
-        command = (
-            f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
-            f"--set podName={release_name} --set rpcserver=localhost:10009 --set httplisten=0.0.0.0:9235"
-        )
-        
-    # command = f"helm upgrade --install {release_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker"
-    # command = (
-    #     f"helm upgrade --install {install_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
-    #     f"--set podName={podName} --set rpcserver={rpcserver} --set httplisten={httplisten}"
-    # )
-        log.info(command)
-        try:
-            run_command(command)
+    command = (
+        f"helm upgrade --install {install_name} {ctx.obj[PLUGIN_DIR_TAG]}/charts/circuitbreaker "
+        f"--set podName={podName} --set rpcserver={rpcserver} --set httplisten={httplisten}"
+    )
     
-    # if(hook_value==HookValue.POST_DEPLOY):
-            wait_for_init(release_name, namespace=get_default_namespace(), quiet=True)
-        except Exception as e:
-            log.error(f"Failed to launch Circuit Breaker for {node_name}: {e}")
-
+    log.info(command)
+    log.info(run_command(command))
 
 if __name__ == "__main__":
     circuitbreaker()
