@@ -70,7 +70,7 @@ plugins:  # Each plugin section has a number of hooks available (preDeploy, post
     circuitbreaker:
       entrypoint: "../../plugins/circuitbreaker"
       podName: "circuitbreaker-pod"
-      rpcserver: "tank-0000-ln:10009"
+      rpcserver: "172.29.34.166:10009"
       httplisten: "0.0.0.0:9235"
   preNode:  # preNode plugins run before each node is deployed
     hello:

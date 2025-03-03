@@ -197,6 +197,9 @@ def _launch_pod(ctx,
         f"--set podName={podName} --set rpcserver={rpcserver} --set httplisten={httplisten}"
     )
     
+    # Use this to port-forward the circuitbreaker pod to localhost
+    #  kubectl port-forward pod/circuitbreaker-circuitbreaker 9235:9235
+    
     log.info(command)
     log.info(run_command(command))
 
