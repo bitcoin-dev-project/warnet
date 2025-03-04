@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mychart.fullname" . }}-service
+  labels:
+    app: {{ include "mychart.name" . }}
+spec:
+  type: NodePort
+  ports:
+    - port: 9235
+      targetPort: 9235
+      nodePort: 30000  # Choose a port between 30000-32767
+  selector:
+    app: {{ include "mychart.name" . }}
