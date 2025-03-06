@@ -8,15 +8,7 @@ def version(version) -> str:
     Format the version string.
     This function is called by setuptools_scm to determine the distribution version.
     """
-    # Use base_version if available, otherwise fall back to a default
-    if hasattr(version, "base_version") and version.base_version:
-        vers = version.base_version
-    elif hasattr(version, "tag") and version.tag:
-        # If we have a tag but no base_version, try to extract from tag
-        vers = str(version.tag).lstrip("v")
-    else:
-        # Default fallback version if nothing else is available
-        vers = "0.0.0"
+    vers = str(version.tag).lstrip("v") if hasattr(version, "tag") else "0.0.0"
 
     return vers
 
