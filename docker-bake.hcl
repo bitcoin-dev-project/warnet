@@ -47,17 +47,37 @@ group "vulnerable" {
 }
 
 target "maintained-base" {
-  dockerfile = "./Dockerfile"
   context = "./resources/images/bitcoin"
   args = {
-    REPO = "bitcoin"
-    BUILD_ARGS = "--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings "
+    REPO = "bitcoin/bitcoin"
+    BUILD_ARGS = "--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings"
   }
   platforms = ["linux/amd64", "linux/arm64", "linux/arm/v7"]
 }
 
-target "bitcoin-28" {
+target "cmake-base" {
   inherits = ["maintained-base"]
+  dockerfile = "./Dockerfile.dev"
+  args = {
+    BUILD_ARGS = "-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON"
+  }
+}
+
+target "autogen-base" {
+  inherits = ["maintained-base"]
+  dockerfile = "./Dockerfile"
+}
+
+target "bitcoin-master" {
+  inherits = ["cmake-base"]
+  tags = ["bitcoindevproject/bitcoin:28.1"]
+  args = {
+    COMMIT_SHA = "bd0ee07310c3dcdd08633c69eac330e2e567b235"
+  }
+}
+
+target "bitcoin-28" {
+  inherits = ["autogen-base"]
   tags = ["bitcoindevproject/bitcoin:28.0"]
   args = {
     COMMIT_SHA = "110183746150428e6385880c79f8c5733b1361ba"
@@ -65,7 +85,7 @@ target "bitcoin-28" {
 }
 
 target "bitcoin-27" {
-  inherits = ["maintained-base"]
+  inherits = ["autogen-base"]
   tags = ["bitcoindevproject/bitcoin:27.2"]
   args = {
     COMMIT_SHA = "bf03c458e994abab9be85486ed8a6d8813313579"
@@ -73,7 +93,7 @@ target "bitcoin-27" {
 }
 
 target "bitcoin-26" {
-  inherits = ["maintained-base"]
+  inherits = ["autogen-base"]
   tags = ["bitcoindevproject/bitcoin:26.2"]
   args = {
     COMMIT_SHA = "7b7041019ba5e7df7bde1416aa6916414a04f3db"
