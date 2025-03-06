@@ -26,10 +26,11 @@ def version() -> None:
     # First try to get the version from the installed package
     try:
         from warnet._version import __version__
+
         version_str = __version__
     except ImportError:
         version_str = "0.0.0"
-    
+
     # Try to get git commit to append
     try:
         # Check if we're in a git repository
@@ -44,7 +45,7 @@ def version() -> None:
 
         # If we have a commit hash, append it to the version
         # Don't append if already has a hash
-        if commit and "-" not in version_str:  
+        if commit and "-" not in version_str:
             version_str = f"{version_str}-{commit}"
 
         click.echo(f"warnet version {version_str}")
