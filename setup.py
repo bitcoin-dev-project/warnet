@@ -23,12 +23,9 @@ def version(version) -> str:
 
 def local_version(version) -> str:
     """
-    Format the local version using the git hash and status of the working directory.
-    If all succeeds, the returned string will be something like "63fe5aa1-dirty"
+    Format the local version to include only the git commit hash.
     This function is called by setuptools_scm to determine the local version part.
     """
-    suffix = ""
-
     try:
         # Get the short git hash
         result = subprocess.run(
@@ -37,20 +34,12 @@ def local_version(version) -> str:
         commit = result.stdout.strip()
 
         if commit:
-            suffix = f"{commit}"
-
-            # Check if working directory is dirty
-            status_result = subprocess.run(
-                ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
-            )
-
-            if status_result.stdout.strip():
-                suffix += "-dirty"
+            return f"-{commit}"
     except (subprocess.SubprocessError, FileNotFoundError):
         # Ignore errors from git commands
         pass
 
-    return suffix
+    return ""
 
 
 # Using setuptools_scm with custom version functions

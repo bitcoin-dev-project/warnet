@@ -23,62 +23,34 @@ def cli():
 @click.command()
 def version() -> None:
     """Display the installed version of warnet"""
-    # Try to get dynamic version from the Git repository
-    # This allows a developer to get up-to-date version information
-    # depending on the state of their local git repository
-    # (e.g. when installed from source in editable mode).
+    # First try to get the version from the installed package
+    try:
+        from warnet._version import __version__
+        version_str = __version__
+    except ImportError:
+        version_str = "0.0.0"
+    
+    # Try to get git commit to append
     try:
         # Check if we're in a git repository
         subprocess.check_output(
             ["git", "rev-parse", "--is-inside-work-tree"], stderr=subprocess.DEVNULL
         )
 
-        # Get the base version from the latest tag
-        try:
-            tag = (
-                subprocess.check_output(
-                    ["git", "describe", "--tags", "--abbrev=0"],
-                    stderr=subprocess.DEVNULL,
-                    text=True,
-                )
-                .strip()
-                .lstrip("v")
-            )
-        except subprocess.SubprocessError:
-            # No tags found
-            tag = "0.0.0"
-
         # Get the short commit hash
         commit = subprocess.check_output(
             ["git", "rev-parse", "--short=8", "HEAD"], stderr=subprocess.DEVNULL, text=True
         ).strip()
 
-        # Check if there are uncommitted changes
-        status = subprocess.check_output(
-            ["git", "status", "--porcelain"], stderr=subprocess.DEVNULL, text=True
-        ).strip()
+        # If we have a commit hash, append it to the version
+        # Don't append if already has a hash
+        if commit and "-" not in version_str:  
+            version_str = f"{version_str}-{commit}"
 
-        # Format the version string to match setup.py
-        version_str = tag
-        if commit:
-            version_str += f".{commit}"
-            if status:
-                version_str += "-dirty"
-
-        click.echo(f"warnet version {version_str} (from git)")
-        return
+        click.echo(f"warnet version {version_str}")
     except (subprocess.SubprocessError, FileNotFoundError):
-        # Git commands failed or git not available, fall back to installed version
-        pass
-
-    # Fall back to the version file generated during installation
-    try:
-        from warnet._version import __version__
-
-        version = __version__
-        click.echo(f"warnet version {version}")
-    except ImportError:
-        click.echo("warnet version unknown")
+        # Git commands failed or git not available, just use the version without the commit
+        click.echo(f"warnet version {version_str}")
 
 
 cli.add_command(admin)
