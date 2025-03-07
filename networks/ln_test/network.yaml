@@ -1,0 +1,79 @@
+caddy:
+  enabled: true
+fork_observer:
+  configQueryInterval: 20
+  enabled: true
+nodes:
+- addnode:
+  - tank-0001
+  - tank-0002
+  image:
+    tag: '27.0'
+  name: tank-0000
+  ln:
+    lnd: true
+  lnd:
+    config: |
+      bitcoin.timelockdelta=33
+    metricsExport: true
+    channels:
+      - id:
+          block: 300
+          index: 3
+        target: tank-0001-ln
+        capacity: 100000
+        push_amt: 50000
+    extraContainers:
+      - name: lnd-exporter
+        image: bitdonkey/lnd-exporter:0.1.1 #This is not released yet
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 9332
+- addnode:
+  - tank-0000
+  image:
+    tag: '27.0'
+  name: tank-0001
+  ln:
+    lnd: true
+  lnd:
+    config: |
+      bitcoin.timelockdelta=33
+    metricsExport: true
+    channels:
+      - id:
+          block: 300
+          index: 1
+        target: tank-0000-ln
+        capacity: 100000
+        push_amt: 50000
+    extraContainers:
+      - name: lnd-exporter
+        image: bitdonkey/lnd-exporter:0.1.1
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 9332
+- addnode:
+  - tank-0000
+  image:
+    tag: '27.0'
+  name: tank-0002
+  ln:
+    lnd: true
+  lnd:
+    metricsExport: true
+    channels:
+      - id:
+          block: 300
+          index: 2
+        target: tank-0001-ln
+        capacity: 50000
+        push_amt: 25000
+# plugins:
+#   postDeploy:
+#     simln:
+#       entrypoint: "../../plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
+#       activity: >
+#         [{"source": "tank-0002-ln", "destination": "tank-0000-ln", "interval_secs": 1, "amount_msat": 4000},
+#         {"source": "tank-0000-ln", "destination": "tank-0001-ln", "interval_secs": 1, "amount_msat": 2000},
+#         {"source": "tank-0001-ln", "destination": "tank-0002-ln", "interval_secs": 1, "amount_msat": 2000}]

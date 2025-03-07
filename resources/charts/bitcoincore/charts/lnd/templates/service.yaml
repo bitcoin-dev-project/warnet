@@ -20,5 +20,10 @@ spec:
       targetPort: rest
       protocol: TCP
       name: rest
+# Add this to expose service - temporarily
+    - port: 9332
+      targetPort: prom-metrics
+      protocol: TCP
+      name: prometheus-metrics
   selector:
     {{- include "lnd.selectorLabels" . | nindent 4 }}

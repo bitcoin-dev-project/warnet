@@ -61,6 +61,9 @@ spec:
       image: pinheadmz/circuitbreaker:278737d
       imagePullPolicy: IfNotPresent
     {{- end}}
+    {{- with .Values.extraContainers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   volumes:
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}
