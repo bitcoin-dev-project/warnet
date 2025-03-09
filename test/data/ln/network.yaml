@@ -2,26 +2,46 @@ nodes:
   - name: tank-0000
     addnode:
       - tank-0001
-    ln:
-      lnd: true
-
+      - tank-0002
+    lnd:
+      channels:
+        - id:
+            block: 300
+            index: 6
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
   - name: tank-0001
     addnode:
-      - tank-0002
-    ln:
-      lnd: true
-
+      - tank-0000
+    lnd:
+      channels:
+        - id:
+            block: 300
+            index: 5
+          target: tank-0000-ln
+          capacity: 50000
+          push_amt: 25000
+        - id:
+            block: 300
+            index: 4
+          target: tank-0002-ln
+          capacity: 100000
+          push_amt: 50000
   - name: tank-0002
     addnode:
-      - tank-0000
-    ln:
-      lnd: true
-
+      - tank-0001
+    lnd:
+      channels:
+        - id:
+            block: 300
+            index: 2
+          target: tank-0001-ln
+          capacity: 50000
+          push_amt: 25000
   - name: tank-0003
     addnode:
-      - tank-0000
-    ln:
-      lnd: true
+      - tank-0002
     lnd:
       config: |
         bitcoin.timelockdelta=33
@@ -32,23 +52,25 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
-
   - name: tank-0004
     addnode:
       - tank-0000
-    ln:
-      lnd: true
     lnd:
       channels:
         - id:
             block: 300
-            index: 2
+            index: 3
           target: tank-0005-ln
           capacity: 50000
           push_amt: 25000
-
   - name: tank-0005
     addnode:
-      - tank-0000
-    ln:
-      lnd: true
+      - tank-0004
+plugins:
+  postDeploy:
+    simln:
+      entrypoint: "../../../resources/plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
+      activity: >
+        [{"source": "tank-0002-ln", "destination": "tank-0000-ln", "interval_secs": 1, "amount_msat": 400000},
+        {"source": "tank-0000-ln", "destination": "tank-0001-ln", "interval_secs": 1, "amount_msat": 200000},
+        {"source": "tank-0001-ln", "destination": "tank-0002-ln", "interval_secs": 1, "amount_msat": 20000}]

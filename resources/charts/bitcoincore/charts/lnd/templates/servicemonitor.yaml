@@ -1,0 +1,15 @@
+{{- if .Values.metricsExport }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "lnd.fullname" . }}
+  labels:
+    app.kubernetes.io/name: lnd-metrics
+    release: prometheus
+spec:
+  endpoints:
+    - port: prometheus-metrics
+  selector:
+    matchLabels:
+      app: {{ include "lnd.fullname" . }}
+{{- end }}
