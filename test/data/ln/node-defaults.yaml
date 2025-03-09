@@ -6,8 +6,8 @@ image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
   tag: '27.0'
-collectLogs: true
-metricsExport: true
+collectLogs: false
+metricsExport: false
 
 #LN configs
 ln:
@@ -17,7 +17,7 @@ lnd:
     color=#000000
   config: |
     bitcoin.timelockdelta=33
-  metricsExport: true
+  metricsExport: false
   prometheusMetricsPort: 9332
   extraContainers:
     - name: lnd-exporter

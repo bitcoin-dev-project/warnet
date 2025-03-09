@@ -66,11 +66,3 @@ nodes:
   - name: tank-0005
     addnode:
       - tank-0004
-plugins:
-  postDeploy:
-    simln:
-      entrypoint: "../../../resources/plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
-      activity: >
-        [{"source": "tank-0002-ln", "destination": "tank-0000-ln", "interval_secs": 1, "amount_msat": 400000},
-        {"source": "tank-0000-ln", "destination": "tank-0001-ln", "interval_secs": 1, "amount_msat": 200000},
-        {"source": "tank-0001-ln", "destination": "tank-0002-ln", "interval_secs": 1, "amount_msat": 20000}]

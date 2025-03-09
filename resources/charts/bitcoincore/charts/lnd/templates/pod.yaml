@@ -12,6 +12,7 @@ metadata:
     collect_logs: "true"
     {{- end }}
     chain: {{ .Values.global.chain }}
+kubectl.kubernetes.io/default-container: "lnd"
 spec:
   {{- with .Values.imagePullSecrets }}
   imagePullSecrets:
