@@ -1,5 +1,3 @@
-import subprocess
-
 import click
 
 from .admin import admin
@@ -23,35 +21,44 @@ def cli():
 @click.command()
 def version() -> None:
     """Display the installed version of warnet"""
-    # First try to get the version from the installed package
     try:
         from warnet._version import __version__
 
-        version_str = __version__
+        # For PyPI releases, this will be the exact tag (e.g. "1.1.11")
+        # For dev installs, it will be something like "1.1.11.post1.dev17+g27af3a7.d20250309"
+        # Which is <tag>.post<postN>.dev<devN>+g<git commit hash>.d<YYYYMMDD>
+        # <postN> is the number of local commits since the checkout commit
+        # <devN> is the number of commits since the last tag
+        raw_version = __version__
+
+        # Format the version string to our desired format
+        if "+" in raw_version:
+            version_part, git_date_part = raw_version.split("+", 1)
+
+            # Get just the git commit hash
+            commit_hash = (
+                git_date_part[1:].split(".", 1)[0]
+                if git_date_part.startswith("g")
+                else git_date_part.split(".", 1)[0]
+            )
+
+            # Remove .dev component (from "no-guess-dev" scheme)
+            clean_version = version_part
+            if ".dev" in clean_version:
+                clean_version = clean_version.split(".dev")[0]
+
+            # Apply dirty status (from "no-guess-dev" scheme)
+            if ".post" in clean_version:
+                base = clean_version.split(".post")[0]
+                version_str = f"{base}-{commit_hash}-dirty"
+            else:
+                version_str = f"{clean_version}-{commit_hash}"
+        else:
+            version_str = raw_version
+
+        click.echo(f"warnet version {version_str}")
     except ImportError:
-        version_str = "0.0.0"
-
-    # Try to get git commit to append
-    try:
-        # Check if we're in a git repository
-        subprocess.check_output(
-            ["git", "rev-parse", "--is-inside-work-tree"], stderr=subprocess.DEVNULL
-        )
-
-        # Get the short commit hash
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "--short=8", "HEAD"], stderr=subprocess.DEVNULL, text=True
-        ).strip()
-
-        # If we have a commit hash, append it to the version
-        # Don't append if already has a hash
-        if commit and "-" not in version_str:
-            version_str = f"{version_str}-{commit}"
-
-        click.echo(f"warnet version {version_str}")
-    except (subprocess.SubprocessError, FileNotFoundError):
-        # Git commands failed or git not available, just use the version without the commit
-        click.echo(f"warnet version {version_str}")
+        click.echo("warnet version unknown")
 
 
 cli.add_command(admin)
