@@ -1,6 +1,6 @@
 [project]
 name = "warnet"
-version = "1.1.11"
+dynamic = ["version"]
 description = "Monitor and analyze the emergent behaviours of bitcoin networks"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -34,7 +34,7 @@ warcli = "warnet.main:cli"
 
 [project.urls]
 Homepage = "https://warnet.dev"
-GitHub = "https://github.com/bitcoindevproject/warnet"
+GitHub = "https://github.com/bitcoin-dev-project/warnet"
 Pypi = "https://pypi.org/project/warnet/"
 
 [project.optional-dependencies]
@@ -56,3 +56,8 @@ include = ["warnet*", "test_framework*", "resources*"]
 
 [tool.setuptools.package-data]
 "resources" = ["**/*"]
+
+[tool.setuptools_scm]
+write_to = "src/warnet/_version.py"
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"

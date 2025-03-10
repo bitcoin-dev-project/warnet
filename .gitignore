@@ -7,3 +7,4 @@ warnet.egg-info
 dist/
 build/
 **/kubeconfigs/
+src/warnet/_version.py
