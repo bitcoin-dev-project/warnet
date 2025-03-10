@@ -120,6 +120,10 @@ options:
 |---------------|--------|------------|-----------|
 | scenario_name | String |            |           |
 
+### `warnet version`
+Display the installed version of warnet
+
+
 ## Admin
 
 ### `warnet admin create-kubeconfigs`
