@@ -166,7 +166,7 @@ def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dic
                 }
 
                 cmd = (
-                    f"python3 {network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint "
+                    f"{sys.executable} {network_file_path.parent / entrypoint_path / Path('plugin.py')} entrypoint "
                     f"'{json.dumps(plugin_content)}' '{json.dumps(warnet_content)}'"
                 )
                 print(
