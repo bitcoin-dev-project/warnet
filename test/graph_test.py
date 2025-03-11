@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import json
-import os, time
+import os
+import time
 
 import pexpect
 from test_base import TestBase
@@ -39,25 +40,25 @@ class GraphTest(TestBase):
             self.sut = pexpect.spawn("warnet create")
             self.sut.expect("name", timeout=10)
             self.sut.sendline("ANewNetwork")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("many", timeout=10)
             self.sut.sendline("")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("connections", timeout=10)
             self.sut.sendline("")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("version", timeout=10)
             self.sut.sendline("")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("enable fork-observer", timeout=10)
             self.sut.sendline("")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("seconds", timeout=10)
             self.sut.sendline("")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("enable grafana", timeout=10)
             self.sut.sendline("")
-            time.sleep(.1)
+            time.sleep(0.1)
             self.sut.expect("successfully", timeout=50)
         except Exception as e:
             print(f"\nReceived prompt text:\n  {self.sut.before.decode('utf-8')}\n")
