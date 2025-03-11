@@ -1,11 +1,12 @@
+# Enable caddy, collectLogs and metricsExport to activate publish lnd-exporter metrics
 caddy:
-  enabled: true
+  enabled: false
 
 #Core configs
 image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
-  tag: '27.0'
+  tag: "27.0"
 collectLogs: false
 metricsExport: false
 

@@ -94,6 +94,7 @@ class LoggingTest(TestBase):
 
         self.wait_for_predicate(lambda: get_five_values_for_metric("blocks"))
         self.wait_for_predicate(lambda: get_five_values_for_metric("txrate"))
+        self.wait_for_predicate(lambda: get_five_values_for_metric("lnd_block_height"))
 
         # Verify default dashboard exists
         dbs = requests.get(f"{self.grafana_url}/api/search").json()

@@ -2,46 +2,15 @@ nodes:
   - name: tank-0000
     addnode:
       - tank-0001
-      - tank-0002
-    lnd:
-      channels:
-        - id:
-            block: 300
-            index: 6
-          target: tank-0001-ln
-          capacity: 100000
-          push_amt: 50000
   - name: tank-0001
     addnode:
-      - tank-0000
-    lnd:
-      channels:
-        - id:
-            block: 300
-            index: 5
-          target: tank-0000-ln
-          capacity: 50000
-          push_amt: 25000
-        - id:
-            block: 300
-            index: 4
-          target: tank-0002-ln
-          capacity: 100000
-          push_amt: 50000
+      - tank-0002
   - name: tank-0002
     addnode:
-      - tank-0001
-    lnd:
-      channels:
-        - id:
-            block: 300
-            index: 2
-          target: tank-0001-ln
-          capacity: 50000
-          push_amt: 25000
+      - tank-0000
   - name: tank-0003
     addnode:
-      - tank-0002
+      - tank-0000
     lnd:
       config: |
         bitcoin.timelockdelta=33
@@ -59,10 +28,10 @@ nodes:
       channels:
         - id:
             block: 300
-            index: 3
+            index: 2
           target: tank-0005-ln
           capacity: 50000
           push_amt: 25000
   - name: tank-0005
     addnode:
-      - tank-0004
+      - tank-0000

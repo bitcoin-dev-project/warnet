@@ -120,12 +120,11 @@ mempool_size 0.0
 
 Lightning nodes can also be configured to export metrics to prometheus using `lnd-exporter`.
 Example configuration is provided in `test/data/ln/`. Review `node-defauts.yaml` for a typical logging configuration. All default metrics reported to prometheus are prefixed with `lnd_`
-lnd-exporter
 
 [lnd-exporter configuration reference](https://github.com/macgyver13/lnd-exporter/tree/main?tab=readme-ov-file#configuration)
-lnd-exporter assumes same macarroon referenced in ln_framework (can be overridden by env variable)
+lnd-exporter assumes same macaroon referenced in ln_framework (can be overridden by env variable)
 
-**Note: `test/data/ln` takes advantage of **extraContainers** configuration option to add containers to default `lnd/templates/pod`*
+**Note: `test/data/ln` and `test/data/logging` take advantage of **extraContainers** configuration option to add containers to default `lnd/templates/pod`*
 
 ### Grafana
 
