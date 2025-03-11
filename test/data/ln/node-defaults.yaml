@@ -22,7 +22,7 @@ lnd:
   prometheusMetricsPort: 9332
   extraContainers:
     - name: lnd-exporter
-      image: bitdonkey/lnd-exporter:0.1.1
+      image: bitdonkey/lnd-exporter:0.1.2
       imagePullPolicy: IfNotPresent
       env:
         - name: ADMIN_MACAROON_HEX
