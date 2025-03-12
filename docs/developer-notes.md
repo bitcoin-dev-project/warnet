@@ -89,3 +89,17 @@ docker buildx bake bitcoin-5k-inv
 # build the same image, but set platform to only linux/amd64
 docker buildx bake bitcoin-5k-inv --set bitcoin-5k-inv.platform=linux/amd64
 ```
+
+To load the single-platform build result to `docker images`, run:
+
+```bash
+docker buildx bake --load bitcoin-5k-inv
+```
+
+Push the build result to a registry by running:
+
+```bash
+docker buildx bake --push bitcoin-5k-inv
+```
+
+It will automatically push the build result to registry.
