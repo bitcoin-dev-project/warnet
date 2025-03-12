@@ -19,6 +19,23 @@ spec:
   {{- end }}
   securityContext:
     {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  {{- with .Values.extraContainers }}  
+  initContainers:
+    - name: prepare-files
+      image: busybox
+      command:
+        - sh
+        - -c
+        - |
+          cp /root/.lnd/tls.cert /root/.lnd/tls_copy.cert
+          chmod 644 /root/.lnd/tls_copy.cert
+      volumeMounts:
+        - name: lnd-data
+          mountPath: /root/.lnd
+        - name: config
+          mountPath: /root/.lnd/tls.cert
+          subPath: tls.cert
+  {{- end }}
   containers:
     - name: {{ .Chart.Name }}
       securityContext:
@@ -44,6 +61,8 @@ spec:
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
+        - name: lnd-data
+          mountPath: /root/.lnd
         {{- with .Values.volumeMounts }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -56,12 +75,12 @@ spec:
         - mountPath: /root/.lnd/tls.cert
           name: config
           subPath: tls.cert
-    {{- if .Values.circuitBreaker }}
-    - name: circuitbreaker
-      image: pinheadmz/circuitbreaker:278737d
-      imagePullPolicy: IfNotPresent
-    {{- end}}
+    {{- with .Values.extraContainers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   volumes:
+    - name: lnd-data
+      emptyDir: {}
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}
     {{- end }}

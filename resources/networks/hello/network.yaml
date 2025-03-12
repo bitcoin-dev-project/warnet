@@ -32,6 +32,38 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
+      extraContainers:
+        - name: circuitbreaker
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          image: camillarhi/circuitbreaker:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--network=regtest"
+            - "--rpcserver=localhost:10009"
+            - "--tlscertpath=/root/.lnd/tls_copy.cert"
+            - "--macaroonpath=/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon"
+            - "--httplisten=0.0.0.0:9235"
+          volumeMounts:
+            - name: lnd-data
+              mountPath: /root/.lnd
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Check if tls.cert exists and is readable
+                  test -f /root/.lnd/tls.cert && echo "tls.cert found" || exit 1
+                  # Check if admin.macaroon exists and is readable
+                  test -f /root/.lnd/data/chain/bitcoin/regtest/admin.macaroon && echo "macaroon found" || exit 1
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
 
   - name: tank-0004
     addnode:
