@@ -1,6 +1,4 @@
-# Enable caddy, collectLogs and metricsExport to activate publish lnd-exporter metrics
-caddy:
-  enabled: false
+# enable collectLogs and metricsExport to activate publish lnd-exporter metrics
 
 #Core configs
 image:
@@ -22,11 +20,13 @@ lnd:
   prometheusMetricsPort: 9332
   extraContainers:
     - name: lnd-exporter
-      image: bitdonkey/lnd-exporter:0.1.2
+      image: bitdonkey/lnd-exporter:0.1.3
       imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - mountPath: /macaroon.hex
+          name: config
+          subPath: MACAROON_HEX
       env:
-        - name: ADMIN_MACAROON_HEX
-          value: 0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6
         - name: METRICS
           value: >
             lnd_balance_channels=parse("/v1/balance/channels","balance") 
