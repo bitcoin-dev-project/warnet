@@ -20,5 +20,11 @@ spec:
       targetPort: rest
       protocol: TCP
       name: rest
+{{- if .Values.metricsExport }}
+    - port: {{ .Values.prometheusMetricsPort }}
+      targetPort: prom-metrics
+      protocol: TCP
+      name: prometheus-metrics
+{{- end }}
   selector:
     {{- include "lnd.selectorLabels" . | nindent 4 }}
