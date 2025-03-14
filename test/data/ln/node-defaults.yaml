@@ -23,8 +23,8 @@ lnd:
       image: bitdonkey/lnd-exporter:0.1.3
       imagePullPolicy: IfNotPresent
       volumeMounts:
-        - mountPath: /macaroon.hex
-          name: config
+        - name: config
+          mountPath: /macaroon.hex
           subPath: MACAROON_HEX
       env:
         - name: METRICS
