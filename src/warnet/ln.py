@@ -7,7 +7,7 @@ from .k8s import (
     get_default_namespace_or,
     get_pod,
 )
-from .process import run_command
+from .process import run_command, stream_command
 
 
 @click.group(name="ln")
@@ -69,3 +69,16 @@ def _host(pod):
         return uris[0].split("@")[1]
     else:
         return ""
+
+@ln.command()
+@click.argument("pod", type=str)
+@click.argument("local_port", type=int)
+def port_forward(
+    pod: str,
+    local_port: int
+):
+    """
+    Port forward lightning node from <ln pod name>
+    """
+    command = f"kubectl port-forward {pod} {local_port}:10009"
+    return stream_command(command)
