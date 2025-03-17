@@ -72,3 +72,34 @@ python3 -m build
 # Upload to Pypi
 python3 -m twine upload dist/*
 ```
+
+## Building docker images
+
+The Bitcoin Core docker images used by warnet are specified in the *docker-bake.hcl* file.
+This uses the (experimental) `bake` build functionality of docker buildx.
+We use [HCL language](https://github.com/hashicorp/hcl) in the declaration file itself.
+See the `bake` [documentation](https://docs.docker.com/build/bake/) for more information on specifications, and how to e.g. override arguments.
+
+In order to build (or "bake") a certain image, find the image's target (name) in the *docker-bake.hcl* file, and then run `docker buildx bake <target>`.
+
+```bash
+# build the  dummy image that will crash on 5k invs
+docker buildx bake bitcoin-5k-inv
+
+# build the same image, but set platform to only linux/amd64
+docker buildx bake bitcoin-5k-inv --set bitcoin-5k-inv.platform=linux/amd64
+```
+
+To load the single-platform build result to `docker images`, run:
+
+```bash
+docker buildx bake --load bitcoin-5k-inv
+```
+
+Push the build result to a registry by running:
+
+```bash
+docker buildx bake --push bitcoin-5k-inv
+```
+
+It will automatically push the build result to registry.
