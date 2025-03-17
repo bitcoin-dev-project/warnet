@@ -11,5 +11,27 @@ nodes:
   - name: tank-0002
     addnode:
       - tank-0000
+    ln:
+      lnd: true
+    lnd:
+      metricsExport: true
+      prometheusMetricsPort: 9332
+      extraContainers:
+        - name: lnd-exporter
+          image: bitdonkey/lnd-exporter:0.1.3
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: /macaroon.hex
+              subPath: MACAROON_HEX
+          env:
+            - name: METRICS
+              value: >
+                lnd_block_height=parse("/v1/getinfo","block_height")
+                lnd_peers=parse("/v1/getinfo","num_peers")
+          ports:
+            - name: prom-metrics
+              containerPort: 9332
+              protocol: TCP
 caddy:
   enabled: true

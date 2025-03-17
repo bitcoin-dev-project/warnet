@@ -1,8 +1,40 @@
+# enable collectLogs and metricsExport to activate publish lnd-exporter metrics
+
+#Core configs
 image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
   tag: "27.0"
+collectLogs: false
+metricsExport: false
 
+#LN configs
+ln:
+  lnd: true
 lnd:
   defaultConfig: |
     color=#000000
+  config: |
+    bitcoin.timelockdelta=33
+  metricsExport: false
+  prometheusMetricsPort: 9332
+  extraContainers:
+    - name: lnd-exporter
+      image: bitdonkey/lnd-exporter:0.1.3
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - name: config
+          mountPath: /macaroon.hex
+          subPath: MACAROON_HEX
+      env:
+        - name: METRICS
+          value: >
+            lnd_balance_channels=parse("/v1/balance/channels","balance") 
+            lnd_local_balance_channels=parse("/v1/balance/channels","local_balance.sat") 
+            lnd_remote_balance_channels=parse("/v1/balance/channels","remote_balance.sat") 
+            lnd_block_height=parse("/v1/getinfo","block_height") 
+            lnd_peers=parse("/v1/getinfo","num_peers")
+      ports:
+        - name: prom-metrics
+          containerPort: 9332
+          protocol: TCP

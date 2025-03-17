@@ -12,6 +12,8 @@ metadata:
     collect_logs: "true"
     {{- end }}
     chain: {{ .Values.global.chain }}
+  annotations:
+    kubectl.kubernetes.io/default-container: "lnd"
 spec:
   {{- with .Values.imagePullSecrets }}
   imagePullSecrets:
@@ -56,11 +58,9 @@ spec:
         - mountPath: /root/.lnd/tls.cert
           name: config
           subPath: tls.cert
-    {{- if .Values.circuitBreaker }}
-    - name: circuitbreaker
-      image: pinheadmz/circuitbreaker:278737d
-      imagePullPolicy: IfNotPresent
-    {{- end}}
+    {{- with .Values.extraContainers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   volumes:
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}
