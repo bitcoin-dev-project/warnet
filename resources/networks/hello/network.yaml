@@ -32,7 +32,27 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
-
+      sharedVolume: # Shared volume configuration for storing shared data (e.g., macaroons or other files). This volume is mounted at the specified mountPath and can be used for inter-container communication.
+        name: shared-data
+        mountPath: /shared-data
+      enableInitContainers: true # Controls whether the initContainers should be included in the pod spec
+      extraContainers:
+        - name: circuitbreaker
+          image: camillarhi/circuitbreaker:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--network=regtest"
+            - "--rpcserver=localhost:10009"
+            - "--tlscertpath=/tls.cert"
+            - "--macaroonpath=/shared-data/admin.macaroon"
+            - "--httplisten=0.0.0.0:9235"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared-data
+            - name: config
+              mountPath: /tls.cert
+              subPath: tls.cert
+          
   - name: tank-0004
     addnode:
       - tank-0000
