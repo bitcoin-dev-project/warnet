@@ -54,7 +54,6 @@ class GraphTest(TestBase):
             self.sut.expect("successfully", timeout=50)
         except Exception as e:
             print(f"\nReceived prompt text:\n  {self.sut.before.decode('utf-8')}\n")
-            print(os.listdir(self.tmpdir))
             raise e
 
     def run_created_network(self):
