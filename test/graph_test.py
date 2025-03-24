@@ -2,7 +2,6 @@
 
 import json
 import os
-import time
 
 import pexpect
 from test_base import TestBase
