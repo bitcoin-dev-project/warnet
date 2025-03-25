@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cln.fullname" . }}
+  labels:
+    {{- include "cln.labels" . | nindent 4 }}
+data:
+  cln.conf: |
+    {{- .Values.baseConfig | nindent 4 }}
+    {{- .Values.defaultConfig | nindent 4 }}
+    {{- .Values.config | nindent 4 }}
+    network={{ .Values.global.chain }}
+    bitcoin-rpcconnect={{ include "bitcoincore.fullname" . }}
+    bitcoin-rpcport={{ index .Values.global .Values.global.chain "RPCPort" }}
+    bitcoin-rpcpassword={{ .Values.global.rpcpassword }}
+    alias={{ include "cln.fullname" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cln.fullname" . }}-channels
+  labels:
+    channels: "true"
+    {{- include "cln.labels" . | nindent 4 }}
+data:
+  source: {{ include "cln.fullname" . }}
+  channels: |
+    {{ .Values.channels | toJson }}

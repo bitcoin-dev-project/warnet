@@ -1,0 +1,15 @@
+{{- if .Values.metricsExport }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cln.fullname" . }}
+  labels:
+    app.kubernetes.io/name: cln-metrics
+    release: prometheus
+spec:
+  endpoints:
+    - port: prometheus-metrics
+  selector:
+    matchLabels:
+      app: {{ include "cln.fullname" . }}
+{{- end }}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cln.fullname" . }}
+  labels:
+    {{- include "cln.labels" . | nindent 4 }}
+    app: {{ include "cln.fullname" . }} 
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.P2PPort }}
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+  selector:
+    {{- include "cln.selectorLabels" . | nindent 4 }}
