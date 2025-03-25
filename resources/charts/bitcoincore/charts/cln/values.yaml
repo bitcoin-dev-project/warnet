@@ -66,13 +66,26 @@ resources: {}
   #   memory: 128Mi
 
 livenessProbe:
-  httpGet:
-    path: /
-    port: http
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "lightning-cli --network=regtest getinfo >/dev/null 2>&1"
+  failureThreshold: 3
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 1
 readinessProbe:
-  httpGet:
-    path: /
-    port: http
+  failureThreshold: 10
+  periodSeconds: 30
+  successThreshold: 1
+  timeoutSeconds: 60
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "lightning-cli --network=regtest getinfo 2>/dev/null | grep -q 'id' || exit 1"
 
 # Additional volumes on the output Deployment definition.
 volumes: []

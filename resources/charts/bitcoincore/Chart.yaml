@@ -9,6 +9,9 @@ dependencies:
   - name: eclair
     version: 0.1.0
     condition: ln.eclair
+  - name: cln
+    version: 0.1.0
+    condition: ln.cln
 
 # A chart can be either an 'application' or a 'library' chart.
 #

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "cln.labels" . | nindent 4 }}
 data:
-  cln.conf: |
+  config: |
     {{- .Values.baseConfig | nindent 4 }}
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
