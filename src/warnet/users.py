@@ -41,6 +41,8 @@ def auth(auth_config):
     if not is_first_config:
         for category in ["clusters", "users", "contexts"]:
             if category in auth_config:
+                if not base_config[category]:
+                    base_config[category] = []
                 merge_entries(category, base_config, auth_config)
 
     new_current_context = auth_config.get("current-context")
