@@ -76,6 +76,14 @@ target "bitcoin-master" {
   }
 }
 
+target "bitcoin-29rc2" {
+  inherits = ["cmake-base"]
+  tags = ["bitcoindevproject/bitcoin:29rc2"]
+  args = {
+    COMMIT_SHA = "d6db87165c6dc2123a759c79ec236ea1ed90c0e3"
+  }
+}
+
 target "bitcoin-28" {
   inherits = ["autogen-base"]
   tags = ["bitcoindevproject/bitcoin:28.0"]
