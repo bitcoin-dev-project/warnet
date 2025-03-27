@@ -143,3 +143,4 @@ loadSnapshot:
 ln:
   lnd: false
   eclair: false
+  cln: false

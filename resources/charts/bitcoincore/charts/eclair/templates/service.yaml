@@ -12,9 +12,9 @@ spec:
       targetPort: server
       protocol: TCP
       name: server
-    - port: {{ .Values.APIPort }}
-      targetPort: api
+    - port: {{ .Values.RestPort }}
+      targetPort: rest
       protocol: TCP
-      name: api
+      name: rest
   selector:
     {{- include "eclair.selectorLabels" . | nindent 4 }}
