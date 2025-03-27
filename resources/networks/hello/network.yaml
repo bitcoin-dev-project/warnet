@@ -32,7 +32,24 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
-
+      extraContainers:
+        - name: circuitbreaker
+          image: camillarhi/circuitbreaker:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--network=regtest"
+            - "--rpcserver=localhost:10009"
+            - "--tlscertpath=/tls.cert"
+            - "--macaroonpath=/macaroon.hex"
+            - "--httplisten=0.0.0.0:9235"
+          volumeMounts:
+            - name: config
+              mountPath: /macaroon.hex
+              subPath: MACAROON_HEX
+            - name: config
+              mountPath: /tls.cert
+              subPath: tls.cert
+          
   - name: tank-0004
     addnode:
       - tank-0000
@@ -85,3 +102,4 @@ plugins:  # Each plugin section has a number of hooks available (preDeploy, post
       entrypoint: "../../plugins/hello"
       helloTo: "postNetwork!"
       podName: "hello-post-network"
+      

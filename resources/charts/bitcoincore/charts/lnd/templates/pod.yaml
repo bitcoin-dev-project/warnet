@@ -58,6 +58,9 @@ spec:
         - mountPath: /root/.lnd/tls.cert
           name: config
           subPath: tls.cert
+        - mountPath: /root/.lnd/macaroon.hex
+          name: config
+          subPath: MACAROON_HEX
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
