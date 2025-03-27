@@ -1,0 +1,17 @@
+# enable collectLogs and metricsExport to activate publish lnd-exporter metrics
+
+#Core configs
+image:
+  repository: bitcoindevproject/bitcoin
+  pullPolicy: IfNotPresent
+  tag: "27.0"
+collectLogs: false
+metricsExport: false
+
+#LN configs
+ln:
+  eclair: true
+eclair:
+  defaultConfig: |
+    eclair.node-color=49daaa
+  metricsExport: false

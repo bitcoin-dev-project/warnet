@@ -1,23 +1,24 @@
-# Default values for bitcoincore.
+# Default values for cln.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 namespace: warnet
 
-restartPolicy: Never
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 1
 
 image:
-  repository: bitcoindevproject/bitcoin
+  repository: elementsproject/lightningd
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "27.0"
+  tag: "v25.02"
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-podLabels: 
+podAnnotations: {}
+podLabels:
   app: "warnet"
-  mission: "tank"
+  mission: "lightning"
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -33,6 +34,9 @@ securityContext: {}
 service:
   type: ClusterIP
 
+P2PPort: 9735
+
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
   className: ""
@@ -61,23 +65,27 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-
 livenessProbe:
   exec:
     command:
-    - pidof
-    - bitcoind
-  failureThreshold: 12
+      - "/bin/sh"
+      - "-c"
+      - "lightning-cli --network=regtest getinfo >/dev/null 2>&1"
+  failureThreshold: 3
   initialDelaySeconds: 5
   periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 10
+  timeoutSeconds: 1
 readinessProbe:
-  failureThreshold: 12
-  periodSeconds: 5
+  failureThreshold: 10
+  periodSeconds: 30
   successThreshold: 1
-  timeoutSeconds: 10
-
+  timeoutSeconds: 60
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "lightning-cli --network=regtest getinfo 2>/dev/null | grep -q 'id' || exit 1"
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -98,49 +106,14 @@ tolerations: []
 
 affinity: {}
 
-collectLogs: false
-metricsExport: false
-prometheusMetricsPort: 9332
-
-# These are values that are propogated to the sub-charts (i.e. lightning nodes)
-global:
-  chain: regtest
-  regtest:
-    RPCPort: 18443
-    P2PPort: 18444
-  signet:
-    RPCPort: 38332
-    P2PPort: 38333
-  ZMQTxPort: 28333
-  ZMQBlockPort: 28332
-  rpcpassword: gn0cchi
-
 baseConfig: |
-  checkmempool=0
-  debuglogfile=debug.log
-  logips=1
-  logtimemicros=1
-  capturemessages=1
-  fallbackfee=0.00001000
-  listen=1
-  rpcuser=user
-  # rpcpassword MUST be set as a chart value
-  rpcallowip=0.0.0.0/0
-  rpcbind=0.0.0.0
-  rest=1
-  # rpcport and zmq endpoints are configured by chain in configmap.yaml
+  log-level=debug
+  bind-addr=0.0.0.0:9735
+  bitcoin-rpcuser=user
+  # bitcoind.rpcpass are set in configmap.yaml
 
 config: ""
 
 defaultConfig: ""
 
-addnode: []
-
-loadSnapshot:
-  enabled: false
-  url: ""
-
-ln:
-  lnd: false
-  eclair: false
-  cln: false
+channels: []
