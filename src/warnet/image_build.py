@@ -3,7 +3,7 @@ from importlib.resources import files
 
 ARCHES = ["amd64", "arm64", "armhf"]
 
-dockerfile_path = files("resources.images.bitcoin").joinpath("Dockerfile")
+dockerfile_path = files("resources.images.bitcoin").joinpath("Dockerfile.dev")
 
 
 def run_command(command):
@@ -24,7 +24,7 @@ def build_image(
     action: str,
 ):
     if not build_args:
-        build_args = '"--disable-tests --without-gui --disable-bench --disable-fuzz-binary --enable-suppress-external-warnings --disable-dependency-tracking "'
+        build_args = '"-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON "'
     else:
         build_args = f'"{build_args}"'
 
