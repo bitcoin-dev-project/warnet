@@ -261,9 +261,9 @@ class LNInit(Commander):
             block_height = block["height"]
             for ch in channels:
                 assert ch["id"]["block"] == block_height, f"Actual block:{block_height}\n{ch}"
-                assert (
-                    block_txs[ch["id"]["index"]] == ch["txid"]
-                ), f"Actual txid:{block_txs[ch["id"]["index"]]}\n{ch}"
+                assert block_txs[ch["id"]["index"]] == ch["txid"], (
+                    f"Actual txid:{block_txs[ch['id']['index']]}\n{ch}"
+                )
             self.log.info("👍")
 
         gen(5)
@@ -294,9 +294,9 @@ class LNInit(Commander):
         def update_policy(self, ln, txid_hex, policy, capacity):
             self.log.info(f"Sending update from {ln.name} for channel with outpoint: {txid_hex}:0")
             res = ln.update(txid_hex, policy, capacity)
-            assert (
-                len(res["failed_updates"]) == 0
-            ), f" Failed updates: {res["failed_updates"]}\n txid: {txid_hex}\n policy:{policy}"
+            assert len(res["failed_updates"]) == 0, (
+                f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}"
+            )
 
         update_threads = []
         for ch in self.channels:

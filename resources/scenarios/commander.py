@@ -11,10 +11,10 @@ import sys
 import tempfile
 import threading
 from time import sleep
-from typing import Dict
 
 from kubernetes import client, config
 from ln_framework.ln import LND
+
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -160,8 +160,8 @@ class Commander(BitcoinTestFramework):
         self.log.addHandler(ch)
 
         # Keep a separate index of tanks by pod name
-        self.tanks: Dict[str, TestNode] = {}
-        self.lns: Dict[str, LND] = {}
+        self.tanks: dict[str, TestNode] = {}
+        self.lns: dict[str, LND] = {}
         self.channels = WARNET["channels"]
 
         for i, tank in enumerate(WARNET["tanks"]):
