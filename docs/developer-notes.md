@@ -30,17 +30,17 @@ Refer to the `uv` documentation for installation methods: https://docs.astral.sh
 With `uv` installed you can add/remove dependencies using `uv add <dep>` or `uv remove <dep>.
 This will update the [`uv.lock`](https://docs.astral.sh/uv/guides/projects/#uvlock) file automatically.
 
-We use ruff version 0.6.8 in this project currently. This can be installed as a stand-alone binary (see documentation), or via `uv` using:
+We use ruff version 0.11.0 in this project currently. This can be installed as a stand-alone binary (see documentation), or via `uv` using:
 
 ```bash
 # install
-$ uv tool install ruff@0.6.8
+$ uv tool install ruff@0.11.0
 
 # lint
-$ uvx ruff@0.6.8 check .
+$ uvx ruff@0.11.0 check .
 
 # format
-$ uvx ruff@0.6.8 format .
+$ uvx ruff@0.11.0 format .
 ```
 
 ## Release process
