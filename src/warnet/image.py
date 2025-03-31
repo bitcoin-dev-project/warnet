@@ -22,7 +22,7 @@ def image():
 @click.option("--build-args", required=False, type=str)
 @click.option("--arches", required=False, type=str)
 @click.option("--action", required=False, type=str, default="load")
-def build(repo, commit_sha, registry, tags, build_args, arches, action):
+def build(repo, commit_sha, tags, build_args, arches, action):
     """Build a Bitcoin Core Docker image with specified parameters.
 
     \b
