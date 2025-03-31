@@ -26,8 +26,11 @@ def build(repo, commit_sha, tags, build_args, arches, action):
     """Build a Bitcoin Core Docker image with specified parameters.
 
     \b
-    Usage:
-        warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --action push
+    Usage Examples:
+        # Build an image for Warnet repository
+            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --arches amd64,arm64,armhf --action push
+        # Build an image for local testing
+            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --action load
     """
     res = build_image(repo, commit_sha, tags, build_args, arches, action)
     if not res:
