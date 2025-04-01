@@ -85,6 +85,7 @@ def custom_graph(
 
     # Configure logging
     defaults_yaml_content["collectLogs"] = logging
+    defaults_yaml_content["metricsExport"] = logging
 
     with open(os.path.join(datadir, "node-defaults.yaml"), "w") as f:
         yaml.dump(defaults_yaml_content, f, default_flow_style=False, sort_keys=False)
