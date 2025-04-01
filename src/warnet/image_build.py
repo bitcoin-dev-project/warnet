@@ -17,7 +17,6 @@ def run_command(command):
 def build_image(
     repo: str,
     commit_sha: str,
-    docker_registry: str,
     tags: str,
     build_args: str,
     arches: str,
@@ -41,7 +40,6 @@ def build_image(
 
     print(f"{repo=:}")
     print(f"{commit_sha=:}")
-    print(f"{docker_registry=:}")
     print(f"{tags=:}")
     print(f"{build_args=:}")
     print(f"{build_arches=:}")
