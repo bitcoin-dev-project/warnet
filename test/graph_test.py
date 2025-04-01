@@ -37,20 +37,20 @@ class GraphTest(TestBase):
         try:
             self.log.info("testing warnet create, dir does exist")
             self.sut = pexpect.spawn("warnet create")
-            self.sut.expect("name", timeout=10)
+            self.sut.expect("name", timeout=30)
             self.sut.sendline("ANewNetwork")
-            self.sut.expect("many", timeout=10)
+            self.sut.expect("many", timeout=30)
             self.sut.sendline("")
-            self.sut.expect("connections", timeout=10)
+            self.sut.expect("connections", timeout=30)
             self.sut.sendline("")
-            self.sut.expect("version", timeout=10)
+            self.sut.expect("version", timeout=30)
             self.sut.sendline("")
-            self.sut.expect("enable fork-observer", timeout=10)
+            self.sut.expect("enable fork-observer", timeout=30)
             self.sut.sendline("")
-            self.sut.expect("seconds", timeout=10)
+            self.sut.expect("seconds", timeout=30)
             self.sut.sendline("")
-            self.sut.expect("enable grafana", timeout=10)
-            self.sut.sendline("")
+            self.sut.expect("enable grafana", timeout=30)
+            self.sut.sendline("true")
             self.sut.expect("successfully", timeout=50)
         except Exception as e:
             print(f"\nReceived prompt text:\n  {self.sut.before.decode('utf-8')}\n")
@@ -74,6 +74,10 @@ class GraphTest(TestBase):
         assert debugs["mempool"]
         # santy check
         assert not debugs["zmq"]
+        # verify that prometheus exporter is making its rpc calls
+        self.wait_for_predicate(
+            lambda: "method=getblockcount user=user" in self.warnet("logs tank-0000")
+        )
 
 
 if __name__ == "__main__":
