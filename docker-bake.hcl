@@ -1,6 +1,6 @@
 group "all" {
   targets = [
-    "bitcoin-28",
+    "bitcoin-28-1",
     "bitcoin-27",
     "bitcoin-26",
     "v0-21-1",
@@ -19,7 +19,7 @@ group "all" {
 
 group "maintained" {
   targets = [
-    "bitcoin-28",
+    "bitcoin-28-1",
     "bitcoin-27",
     "bitcoin-26"
   ]
@@ -68,19 +68,11 @@ target "autogen-base" {
   dockerfile = "./Dockerfile"
 }
 
-target "bitcoin-master" {
-  inherits = ["cmake-base"]
+target "bitcoin-28-1" {
+  inherits = ["autogen-base"]
   tags = ["bitcoindevproject/bitcoin:28.1"]
   args = {
-    COMMIT_SHA = "bd0ee07310c3dcdd08633c69eac330e2e567b235"
-  }
-}
-
-target "bitcoin-28" {
-  inherits = ["autogen-base"]
-  tags = ["bitcoindevproject/bitcoin:28.0"]
-  args = {
-    COMMIT_SHA = "110183746150428e6385880c79f8c5733b1361ba"
+    COMMIT_SHA = "32efe850438ef22e2de39e562af557872a402c31"
   }
 }
 
