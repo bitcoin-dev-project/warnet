@@ -371,6 +371,10 @@ def _run(
         print(f"Failed to deploy scenario commander: {scenario_name}")
         print(f"Error: {e.stderr}")
         return None
+    except FileNotFoundError as e:
+        click.secho(e)
+        click.secho("Please install Helm, or run `warnet setup`.", fg="red")
+        return None
 
     # upload scenario files and network data to the init container
     wait_for_init(name, namespace=namespace)
