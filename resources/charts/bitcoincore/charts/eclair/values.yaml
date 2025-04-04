@@ -1,23 +1,26 @@
-# Default values for bitcoincore.
+# Default values for eclair.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 namespace: warnet
 
-restartPolicy: Never
-
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: bitcoindevproject/bitcoin
+  repository: acinq/eclair
+  # This sets the pull policy for images.
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "27.0"
+  tag: "latest"
 
+# This is for the secretes for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: 
   app: "warnet"
-  mission: "tank"
+  mission: "lightning"
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -33,6 +36,10 @@ securityContext: {}
 service:
   type: ClusterIP
 
+ServerPort: 9735
+RestPort: 8080
+
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
   className: ""
@@ -61,23 +68,31 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
+  httpGet:
+    path: /getinfo
+    port: 8080
+  failureThreshold: 3
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  timeoutSeconds: 5
+readinessProbe:
+  initialDelaySeconds: 10
+  failureThreshold: 3
+  periodSeconds: 10
+  tcpSocket:
+    port: 8080
+startupProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  failureThreshold: 5
+  timeoutSeconds: 30
   exec:
     command:
-    - pidof
-    - bitcoind
-  failureThreshold: 12
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  successThreshold: 1
-  timeoutSeconds: 10
-readinessProbe:
-  failureThreshold: 12
-  periodSeconds: 5
-  successThreshold: 1
-  timeoutSeconds: 10
-
+      - sh
+      - -c
+      - 'curl -s http://localhost:8080/getinfo | grep -q "blockHeight"'
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -98,49 +113,16 @@ tolerations: []
 
 affinity: {}
 
-collectLogs: false
-metricsExport: false
-prometheusMetricsPort: 9332
-
-# These are values that are propogated to the sub-charts (i.e. lightning nodes)
-global:
-  chain: regtest
-  regtest:
-    RPCPort: 18443
-    P2PPort: 18444
-  signet:
-    RPCPort: 38332
-    P2PPort: 38333
-  ZMQTxPort: 28333
-  ZMQBlockPort: 28332
-  rpcpassword: gn0cchi
-
 baseConfig: |
-  checkmempool=0
-  debuglogfile=debug.log
-  logips=1
-  logtimemicros=1
-  capturemessages=1
-  fallbackfee=0.00001000
-  listen=1
-  rpcuser=user
-  # rpcpassword MUST be set as a chart value
-  rpcallowip=0.0.0.0/0
-  rpcbind=0.0.0.0
-  rest=1
-  # rpcport and zmq endpoints are configured by chain in configmap.yaml
-
+  eclair.server.port=9735
+  eclair.api.enabled=true
+  eclair.api.password=foo
+  eclair.api.port=8080
+  eclair.bitcoind.rpcuser=user
+  # zmq* and eclair.bitcoind.rpcpassword are set in configmap.yaml
+ 
 config: ""
 
 defaultConfig: ""
 
-addnode: []
-
-loadSnapshot:
-  enabled: false
-  url: ""
-
-ln:
-  lnd: false
-  eclair: false
-  cln: false
+channels: []
