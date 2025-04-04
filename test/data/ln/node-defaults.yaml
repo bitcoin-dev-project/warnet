@@ -38,3 +38,19 @@ lnd:
         - name: prom-metrics
           containerPort: 9332
           protocol: TCP
+    - name: circuitbreaker
+      image: camillarhi/circuitbreaker:latest
+      imagePullPolicy: IfNotPresent
+      args:
+        - "--network=regtest"
+        - "--rpcserver=localhost:10009"
+        - "--tlscertpath=/tls.cert"
+        - "--macaroonpath=/macaroon.hex"
+        - "--httplisten=0.0.0.0:9235"
+      volumeMounts:
+        - name: config
+          mountPath: /macaroon.hex
+          subPath: MACAROON_HEX
+        - name: config
+          mountPath: /tls.cert
+          subPath: tls.cert
