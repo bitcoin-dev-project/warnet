@@ -1,11 +1,15 @@
+from abc import ABC, abstractmethod
 import http.client
+import logging
 import json
 import ssl
-import time
+from time import sleep
 
 # hard-coded deterministic lnd credentials
 ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
-# Don't worry about lnd's self-signed certificates
+# hard-coded deterministic cln credentials - rune
+ADMIN_RUNE = "_y4Av-cXE9OKqclcNEVblZEMfxNjV1C-Jbc7KBqB2To9MA=="
+# Don't worry about ln's self-signed certificates
 INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 INSECURE_CONTEXT.check_hostname = False
 INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
@@ -72,13 +76,158 @@ class Policy:
             "min_htlc_msat_specified": True,
         }
 
-
-class LND:
+class LNNode(ABC):
+    @abstractmethod
     def __init__(self, pod_name):
+        self.log = logging.getLogger(self.__class__.__name__)
         self.name = pod_name
+
+    @abstractmethod
+    def get(self, uri, max_tries=10) -> str:
+        pass
+
+    @abstractmethod
+    def post(self, uri, data, max_tries=10) -> str:
+        pass
+
+    @abstractmethod
+    def newaddress(self, max_tries=10) -> tuple[bool, str]:
+        pass
+
+    @abstractmethod
+    def uri(self) -> str:
+        pass
+
+    @abstractmethod
+    def walletbalance(self) -> int:
+        pass
+
+    @abstractmethod
+    def graph(self):
+        pass
+
+
+class CLN(LNNode):
+    def __init__(self, pod_name):
+        super().__init__(pod_name)
+        self.headers = {"Rune": ADMIN_RUNE}
+        self.impl = "cln"
+        self.reset_connection()
+    
+    def reset_connection(self):
+        self.conn = http.client.HTTPSConnection(
+            host=self.name, port=3010, timeout=5, context=INSECURE_CONTEXT
+        )
+    
+    def get(self, uri, max_tries=2):
+        attempt=0
+        while attempt < max_tries:
+            attempt+=1
+            try:
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers=self.headers,
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception as e:
+                self.log.info(f"GET clnrest error: {e}")
+                self.reset_connection()
+                sleep(1)
+        return None
+
+    def post(self, uri, data = {}, max_tries=2):
+        body = json.dumps(data)
+        attempt=0
+        while attempt < max_tries:
+            attempt+=1
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers=self.headers,
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception as e:
+                print(f"POST clnrest error: {e}")
+                self.reset_connection()
+                sleep(2)
+        return None
+
+    def newaddress(self, max_tries=2):
+        attempt=0
+        while attempt < max_tries:
+            attempt+=1
+            response = self.post("/v1/newaddr")
+            res = json.loads(response)
+            if "bech32" in res:
+                return True, res["bech32"]
+            else:
+                self.log.info(
+                    f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
+                )
+            sleep(1)
+        return False, ""
+
+    def uri(self):
+        res = json.loads(self.post("/v1/getinfo"))
+        if len(res["address"]) < 1:
+            return None
+        return f'{res["id"]}@{res["address"][0]["address"]}:{res["address"][0]["port"]}'
+
+    def walletbalance(self):
+        res = json.loads(self.post("/v1/listfunds"))
+        return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
+    
+    def connect(self, target_uri, max_tries=2):
+        pk, host = target_uri.split("@")
+        attempt=0
+        while attempt < max_tries:
+            attempt+=1
+            res = self.post("/v1/connect", data={"id": pk, "host": host})
+            if res:
+                return json.loads(res)
+            else:
+                print(f"connect response: {res}")
+                sleep(5)
+        return ""
+    
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5):
+        attempt=0
+        while attempt < max_tries:
+            attempt+=1
+            res = self.post(
+                "/v1/fundchannel",
+                data={
+                    "amount": capacity,
+                    "push_msat": push_amt,
+                    "id": pk,
+                    "feerate": fee_rate,
+                },
+            )
+            if res:
+                return json.loads(res)
+            else:
+                print(f"channel response: {res}")
+                sleep(5)
+        return ""
+
+    def graph(self):
+        res = self.post("/v1/graph")
+        return json.loads(res)
+
+class LND(LNNode):
+    def __init__(self, pod_name):
+        super().__init__(pod_name)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
+        self.headers = {
+                        "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+                        "Connection": "close",
+                        }
+        self.impl = "lnd"
 
     def get(self, uri):
         while True:
@@ -86,14 +235,17 @@ class LND:
                 self.conn.request(
                     method="GET",
                     url=uri,
-                    headers={"Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX, "Connection": "close"},
+                    headers=self.headers,
                 )
                 return self.conn.getresponse().read().decode("utf8")
             except Exception:
-                time.sleep(1)
+                sleep(1)
 
     def post(self, uri, data):
         body = json.dumps(data)
+        post_header=self.headers
+        post_header["Content-Length"]=str(len(body))
+        post_header["Content-Type"] = "application/json"
         attempt = 0
         while True:
             attempt += 1
@@ -102,12 +254,7 @@ class LND:
                     method="POST",
                     url=uri,
                     body=body,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Content-Length": str(len(body)),
-                        "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
-                        "Connection": "close",
-                    },
+                    headers=post_header,
                 )
                 # Stream output, otherwise we get a timeout error
                 res = self.conn.getresponse()
@@ -123,11 +270,22 @@ class LND:
                         break
                 return stream
             except Exception:
-                time.sleep(1)
+                sleep(1)
 
-    def newaddress(self):
-        res = self.get("/v1/newaddress")
-        return json.loads(res)
+    def newaddress(self, max_tries=10):
+        attempt=0
+        while attempt < max_tries:
+            attempt+=1
+            response = self.get("/v1/newaddress")
+            res = json.loads(response)
+            if "address" in res:
+                return True, res["address"]
+            else:
+                self.log.info(
+                    f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
+                )
+            sleep(1)
+        return False, ""
 
     def walletbalance(self):
         res = self.get("/v1/balance/blockchain")

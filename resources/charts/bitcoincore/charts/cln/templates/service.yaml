@@ -12,5 +12,9 @@ spec:
       targetPort: p2p
       protocol: TCP
       name: p2p
+    - port: {{ .Values.RestPort }}
+      targetPort: rest
+      protocol: TCP
+      name: rest
   selector:
     {{- include "cln.selectorLabels" . | nindent 4 }}

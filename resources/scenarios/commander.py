@@ -14,7 +14,7 @@ from time import sleep
 from typing import Dict
 
 from kubernetes import client, config
-from ln_framework.ln import LND
+from ln_framework.ln import CLN, LND, LNNode
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -161,7 +161,7 @@ class Commander(BitcoinTestFramework):
 
         # Keep a separate index of tanks by pod name
         self.tanks: Dict[str, TestNode] = {}
-        self.lns: Dict[str, LND] = {}
+        self.lns: Dict[str, LNNode] = {}
         self.channels = WARNET["channels"]
 
         for i, tank in enumerate(WARNET["tanks"]):
@@ -194,7 +194,11 @@ class Commander(BitcoinTestFramework):
             self.tanks[tank["tank"]] = node
 
         for ln in WARNET["lightning"]:
-            self.lns[ln] = LND(ln)
+            #create the correct implementation based on pod name
+            if "-cln" in ln:
+                self.lns[ln] = CLN(ln)
+            else:
+                self.lns[ln] = LND(ln)
 
         self.num_nodes = len(self.nodes)
 

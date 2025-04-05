@@ -47,8 +47,8 @@ class LNBasicTest(TestBase):
 
     def fund_wallets(self):
         outputs = ""
-        for lnd in self.lns:
-            addr = json.loads(self.warnet(f"ln rpc {lnd} newaddress p2wkh"))["address"]
+        for ln in self.lns:
+            addr = json.loads(self.warnet(f"ln rpc {ln} newaddress p2wkh"))["address"]
             outputs += f',"{addr}":10'
         # trim first comma
         outputs = outputs[1:]

@@ -114,7 +114,15 @@ def _deploy(directory, debug, namespace, to_all_users):
         processes.append(caddy_process)
 
         # Wait for the network process to complete
-        network_process.join()
+        print(f"Waiting for network process thread {network_process.pid} join")
+        network_process.join(timeout=300)
+        if network_process.is_alive():
+            print("Process hit the timeout (still running after 300 seconds)")
+            # Optionally terminate the process if it timed out
+            network_process.terminate()
+        else:
+            print(f"Network process completed before time limit")
+        # input("Press Enter to continue...")
 
         run_plugins(directory, HookValue.POST_NETWORK, namespace)
 
@@ -366,7 +374,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
 
     needs_ln_init = False
     for node in network_file["nodes"]:
-        if "lnd" in node and "channels" in node["lnd"] and len(node["lnd"]["channels"]) > 0:
+        if any(node.get("ln", {}).get(key, False) for key in ["lnd", "cln", "eclair"]):
             needs_ln_init = True
             break
 

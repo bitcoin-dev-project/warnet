@@ -3,9 +3,6 @@
 # Declare variables to be passed into your templates.
 namespace: warnet
 
-# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-replicaCount: 1
-
 image:
   repository: elementsproject/lightningd
   pullPolicy: IfNotPresent
@@ -35,6 +32,7 @@ service:
   type: ClusterIP
 
 P2PPort: 9735
+RestPort: 3010
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -89,10 +87,6 @@ readinessProbe:
 
 # Additional volumes on the output Deployment definition.
 volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
@@ -108,8 +102,10 @@ affinity: {}
 
 baseConfig: |
   log-level=debug
-  bind-addr=0.0.0.0:9735
+  developer
+  dev-fast-gossip
   bitcoin-rpcuser=user
+  clnrest-host=0.0.0.0
   # bitcoind.rpcpass are set in configmap.yaml
 
 config: ""

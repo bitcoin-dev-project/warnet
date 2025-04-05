@@ -31,9 +31,19 @@ spec:
         - name: p2p
           containerPort: {{ .Values.P2PPort }}
           protocol: TCP
+        - name: rest
+          containerPort: {{ .Values.RestPort }}
+          protocol: TCP
       command:
-        - "lightningd"
-        - "--conf=/root/.lightning/config"
+        - /bin/sh
+        - -c
+        - | 
+          lightningd --conf=/root/.lightning/config --recover=35b8182d6db5cec40d9bead20607b7c9b91ed89997a290bc0e0f07e5922e4714 &
+          pid=$!;
+          sleep 10;
+          kill $pid;
+          sleep 1;
+          lightningd --conf=/root/.lightning/config
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
@@ -49,6 +59,12 @@ spec:
         - mountPath: /root/.lightning/config
           name: config
           subPath: config
+        - mountPath: /root/.lightning/cert
+          name: config
+          subPath: tls.cert
+        - mountPath: /root/.lightning/key
+          name: config
+          subPath: tls.key
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

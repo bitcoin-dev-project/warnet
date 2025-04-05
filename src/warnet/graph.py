@@ -253,7 +253,7 @@ def _import_network(graph_file_path, output_path):
         tank = f"tank-{index:04d}"
         pk_to_tank[node["pub_key"]] = tank
         tank_to_pk[tank] = node["pub_key"]
-        tanks[tank] = {"name": tank, "ln": {"lnd": True}, "lnd": {"channels": []}}
+        tanks[tank] = {"name": tank, "ln": {"lnd": True, "channels": []}}
         index += 1
     print(f"Imported {index} nodes")
 
@@ -274,7 +274,7 @@ def _import_network(graph_file_path, output_path):
             "source_policy": Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict(),
             "target_policy": Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict(),
         }
-        tanks[source]["lnd"]["channels"].append(channel)
+        tanks[source]["ln"]["channels"].append(channel)
         index += 1
         if index > 1000:
             index = 1
