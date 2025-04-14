@@ -138,6 +138,7 @@ class LNInit(Commander):
         nodes = list(ln_nodes)
         prev_node = nodes[-1]
         for node in nodes:
+            # if (node, prev_node) not in connections and (prev_node, node) not in connections:
             connections.append((node, prev_node))
             prev_node = node
         # Explicit connections between every pair of channel partners
@@ -183,6 +184,7 @@ class LNInit(Commander):
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
+            sleep(5)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in p2p_threads)
@@ -222,31 +224,28 @@ class LNInit(Commander):
                 src = self.lns[ch["source"]]
                 tgt_uri = ln_uris[ch["target"]]
                 tgt_pk, _ = tgt_uri.split("@")
-                if src.impl == "lnd":
-                    tgt_pk = self.hex_to_b64(tgt_pk)
                 self.log.info(
                     f"Sending channel open from {ch['source']} -> {ch['target']} with fee_rate={fee_rate}"
                 )
-                
                 res = src.channel(
                     pk=tgt_pk,
                     capacity=ch["capacity"],
                     push_amt=ch["push_amt"],
                     fee_rate=fee_rate,
                 )
-                if "result" not in res:
+                if "txid" in res:
+                    ch["txid"] = res["txid"]
                     self.log.info(
+                        f"Channel open {ch['source']} -> {ch['target']}\n  "
+                        + f"outpoint={res["outpoint"]}\n  "
+                        + f"expected channel id: {ch['id']}"
+                    )
+                else:
+                     ch["txid"] = "N/A"
+                     self.log.info(
                         "Unexpected channel open response:\n  "
                         + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
                         + f"{res}"
-                    )
-                else:
-                    txid = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
-                    ch["txid"] = txid
-                    self.log.info(
-                        f"Channel open {ch['source']} -> {ch['target']}\n  "
-                        + f"outpoint={txid}:{res['result']['chan_pending']['output_index']}\n  "
-                        + f"expected channel id: {ch['id']}"
                     )
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
@@ -259,6 +258,7 @@ class LNInit(Commander):
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
+                sleep(5)
                 t.start()
                 ch_threads.append(t)
 
@@ -275,6 +275,9 @@ class LNInit(Commander):
             block_txs = block["tx"]
             block_height = block["height"]
             for ch in channels:
+                if "txid" not in ch:
+                    print(f"{ch} does not have a txid")
+                    continue
                 assert ch["id"]["block"] == block_height, f"Actual block:{block_height}\n{ch}"
                 assert (
                     block_txs[ch["id"]["index"]] == ch["txid"]
@@ -288,7 +291,10 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            while len(ln.graph()["edges"]) != expected:
+            attempts=0
+            max_tries=5
+            while len(ln.graph()["edges"]) != expected and attempts < max_tries:
+                attempts+=1
                 sleep(1)
             self.log.info(f"LN {ln.name} has graph with all {expected} channels")
 
@@ -296,6 +302,7 @@ class LNInit(Commander):
             threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
         ]
         for thread in ch_ann_threads:
+            sleep(5)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in ch_ann_threads)

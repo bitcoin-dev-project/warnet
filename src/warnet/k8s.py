@@ -596,3 +596,38 @@ def download(
     os.remove(tar_file)
 
     return destination_path
+
+
+def read_file_from_container(
+    pod_name, source_path: Path, container_name: str = "", namespace: Optional[str] = None, quiet: bool = False
+) -> str:
+    """Download the file from the `source_path` to the `destination_path`"""
+
+    namespace = get_default_namespace_or(namespace)
+
+    v1 = get_static_client()
+
+    command = ["cat", str(source_path)]
+
+    resp = stream(
+        v1.connect_get_namespaced_pod_exec,
+        name=pod_name,
+        namespace=namespace,
+        container=container_name,
+        command=command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _preload_content=False,
+    )
+    
+    result = ""
+    while resp.is_open():
+        resp.update(timeout=5)
+        if resp.peek_stdout():
+            result+=resp.read_stdout()
+        if resp.peek_stderr():
+            raise Exception(resp.read_stderr())
+    resp.close()
+    return result

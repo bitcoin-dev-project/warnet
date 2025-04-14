@@ -102,10 +102,9 @@ affinity: {}
 
 baseConfig: |
   log-level=debug
-  developer
-  dev-fast-gossip
+  # developer
+  # dev-fast-gossip
   bitcoin-rpcuser=user
-  clnrest-host=0.0.0.0
   # bitcoind.rpcpass are set in configmap.yaml
 
 config: ""

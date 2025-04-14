@@ -17,6 +17,7 @@ from warnet.k8s import (
     get_static_client,
     wait_for_init,
     write_file_to_container,
+    read_file_from_container,
 )
 from warnet.process import run_command
 
@@ -145,6 +146,8 @@ def _launch_activity(activity: Optional[list[dict]], plugin_dir: str) -> str:
     activity_json = _generate_activity_json(activity)
     wait_for_init(name, namespace=get_default_namespace(), quiet=True)
 
+    #write cert files to container
+    transfer_cln_certs(name)
     if write_file_to_container(
         name,
         "init",
@@ -162,13 +165,18 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
     nodes = []
 
     for i in get_mission(LIGHTNING_MISSION):
-        name = i.metadata.name
-        node = {
-            "id": name,
-            "address": f"https://{name}:10009",
-            "macaroon": "/working/admin.macaroon",
-            "cert": "/working/tls.cert",
-        }
+        ln_name = i.metadata.name
+        port = 10009
+        node = {"id": ln_name}
+        if "cln" in ln_name:
+            port = 9735
+            node["ca_cert"] = f"/working/{ln_name}-ca.pem"
+            node["client_cert"] = f"/working/{ln_name}-client.pem"
+            node["client_key"] = f"/working/{ln_name}-client-key.pem"
+        else:
+            node["macaroon"] = "/working/admin.macaroon"
+            node["cert"] = "/working/tls.cert"
+        node["address"] = f"{ln_name}:{port}"
         nodes.append(node)
 
     if activity:
@@ -177,6 +185,30 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
         data = {"nodes": nodes}
 
     return json.dumps(data, indent=2)
+
+def transfer_cln_certs(name):
+    dst_container = "init"
+    cln_root = "/root/.lightning/regtest"
+    for i in get_mission(LIGHTNING_MISSION):
+        ln_name = i.metadata.name
+        if "cln" in ln_name:
+            copyfile(ln_name, "cln", f"{cln_root}/ca.pem", name, dst_container, f"/working/{ln_name}-ca.pem")
+            copyfile(ln_name, "cln", f"{cln_root}/client.pem", name, dst_container, f"/working/{ln_name}-client.pem")
+            copyfile(ln_name, "cln", f"{cln_root}/client-key.pem", name, dst_container, f"/working/{ln_name}-client-key.pem")
+
+
+def copyfile(pod_name, src_container, source_path, dst_name, dst_container, dst_path):
+    namespace=get_default_namespace()
+    file_data = read_file_from_container(pod_name, source_path, src_container, namespace)
+    if not write_file_to_container(
+        dst_name, 
+        dst_container, 
+        dst_path, 
+        file_data,
+        namespace=namespace,
+        quiet=True,
+    ):
+        print(f"Failed to copy {source_path} from {pod_name} to {dst_name}:{dst_path}")
 
 
 def _sh(pod, method: str, params: tuple[str, ...]) -> str:
