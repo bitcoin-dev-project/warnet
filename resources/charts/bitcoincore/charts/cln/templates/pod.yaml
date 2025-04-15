@@ -31,6 +31,9 @@ spec:
         - name: p2p
           containerPort: {{ .Values.P2PPort }}
           protocol: TCP
+        - name: rpc
+          containerPort: {{ .Values.RPCPort }}
+          protocol: TCP
       command:
         - /bin/sh
         - -c

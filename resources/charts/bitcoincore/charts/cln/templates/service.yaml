@@ -12,5 +12,9 @@ spec:
       targetPort: p2p
       protocol: TCP
       name: p2p
+    - port: {{ .Values.RPCPort }}
+      targetPort: rpc
+      protocol: TCP
+      name: rpc
   selector:
     {{- include "cln.selectorLabels" . | nindent 4 }}

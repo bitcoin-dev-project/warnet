@@ -18,6 +18,7 @@ data:
     announce-addr=dns:{{ include "cln.fullname" . }}:{{ .Values.P2PPort }}
     database-upgrade=true
     bitcoin-retry-timeout=600
+    grpc-port={{ .Values.RPCPort }}
 ---
 apiVersion: v1
 kind: ConfigMap

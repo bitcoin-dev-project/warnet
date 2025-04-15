@@ -32,7 +32,7 @@ service:
   type: ClusterIP
 
 P2PPort: 9735
-RestPort: 3010
+RPCPort: 10013
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
