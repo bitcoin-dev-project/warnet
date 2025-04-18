@@ -10,7 +10,7 @@ data:
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
     network={{ .Values.global.chain }}
-    bind-addr=0.0.0.0:{{ .Values.P2PPort }}
+    addr=0.0.0.0:{{ .Values.P2PPort }}
     bitcoin-rpcconnect={{ include "bitcoincore.fullname" . }}
     bitcoin-rpcport={{ index .Values.global .Values.global.chain "RPCPort" }}
     bitcoin-rpcpassword={{ .Values.global.rpcpassword }}
@@ -19,6 +19,7 @@ data:
     database-upgrade=true
     bitcoin-retry-timeout=600
     grpc-port={{ .Values.RPCPort }}
+    grpc-host=0.0.0.0
 ---
 apiVersion: v1
 kind: ConfigMap

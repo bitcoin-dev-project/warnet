@@ -169,7 +169,7 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
         port = 10009
         node = {"id": ln_name}
         if "cln" in ln_name:
-            port = 10013
+            port = 9736
             node["ca_cert"] = f"/working/{ln_name}-ca.pem"
             node["client_cert"] = f"/working/{ln_name}-client.pem"
             node["client_key"] = f"/working/{ln_name}-client-key.pem"
