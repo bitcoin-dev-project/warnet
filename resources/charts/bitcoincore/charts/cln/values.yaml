@@ -101,9 +101,9 @@ tolerations: []
 affinity: {}
 
 baseConfig: |
-  log-level=debug
-  # developer
-  # dev-fast-gossip
+  log-level=info
+  developer
+  dev-fast-gossip
   bitcoin-rpcuser=user
   # bitcoind.rpcpass are set in configmap.yaml
 

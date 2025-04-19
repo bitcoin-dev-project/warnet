@@ -103,6 +103,28 @@ class Policy:
             "min_htlc_msat_specified": True,
         }
 
+# Create a custom formatter
+class ColorFormatter(logging.Formatter):
+    """Custom formatter to add color based on log level."""
+    # Define ANSI color codes
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    GREEN = '\033[92m'
+    RESET = '\033[0m'
+
+    FORMATS = {
+        logging.DEBUG: f"{RESET}%(asctime)s - (name)-8s - Thread-%(thread)d - %(message)s{RESET}",
+        logging.INFO: f"{RESET}%(asctime)s - (name)-8s - %(message)s{RESET}",
+        logging.WARNING: f"{YELLOW}%(asctime)s - (name)-8s - %(message)s{RESET}",
+        logging.ERROR: f"{RED}%(asctime)s - (name)-8s - %(message)s{RESET}",
+        logging.CRITICAL: f"{RED}##%(asctime)s - (name)-8s - %(message)s##{RESET}"
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+    
 class LNNode(ABC):
     @abstractmethod
     def __init__(self, pod_name):
@@ -111,8 +133,7 @@ class LNNode(ABC):
         # Configure logger if it has no handlers
         if not self.log.handlers:
             handler = logging.StreamHandler()
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            handler.setFormatter(formatter)
+            handler.setFormatter(ColorFormatter())
             self.log.addHandler(handler)
             self.log.setLevel(logging.INFO)
 
@@ -165,7 +186,7 @@ class CLN(LNNode):
                     continue
                 return response
             except Exception as e:
-                self.log.info(f"CLN rpc error: {e}")
+                self.log.error(f"CLN rpc error: {e}, wait and retry...")
                 sleep(2)
         return None
 
@@ -181,7 +202,7 @@ class CLN(LNNode):
             if "bech32" in res:
                 return True, res["bech32"]
             else:
-                self.log.info(
+                self.log.warning(
                     f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
                 )
             sleep(2)
@@ -207,23 +228,21 @@ class CLN(LNNode):
             
     def connect(self, target_uri, max_tries=5):
         attempt=0
-        self.log.info(f"CLN connect {self.name} to {target_uri}")
         while attempt < max_tries:
             attempt+=1
             response = self.rpc("connect", [target_uri])
             if response:
                 res = json.loads(response)
                 if "id" in res:
-                    self.log.debug(f"finished connect response: {response}")
                     return {}
                 elif "code" in res and res["code"] == 402:
-                    self.log.info(f"failed connect response: {response}")
+                    self.log.warning(f"failed connect 402: {response}, wait and retry...")
                     sleep(5)
                 else:
                     return res
             else:
-                self.log.debug(f"connect response: {response}")
-                sleep(5)
+                self.log.debug(f"connect response: {response}, wait and retry...")
+                sleep(2)
         return ""
     
     def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5):
@@ -240,13 +259,13 @@ class CLN(LNNode):
             if response:
                 res = json.loads(response)
                 if "txid" in res:
-                    self.log.debug(f"open channel succeeded: {res}")
                     return {"txid": res["txid"], "outpoint": f'{res["txid"]}:{res["outnum"]}'}
                 else:
-                    self.log.info(f"unable to open channel: {res}")
+                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    sleep(1)
             else:
-                self.log.debug(f"channel response: {response}")
-                sleep(5)
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(2)
         return ""
 
     def graph(self, max_tries=2):
@@ -257,34 +276,25 @@ class CLN(LNNode):
             if response:
                 res = json.loads(response)
                 if "channels" in res:
-                    return {"edges": res["channels"]}
+                    # Map to desired output
+                    filtered_channels = [ch for ch in res['channels'] if ch['direction'] == 1]
+                    # Sort by short_channel_id - block -> index -> output
+                    sorted_channels = sorted(filtered_channels, key=lambda x: x['short_channel_id'])
+                    # Add capacity by dividing amount_msat by 1000
+                    for channel in sorted_channels:
+                        channel['capacity'] = channel['amount_msat'] // 1000
+                    return {'edges': sorted_channels}
                 else:
-                    self.log.info(f"unable to open channel: {res}")
+                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    sleep(1)
             else:
-                self.log.debug(f"channel response: {response}")
-                sleep(5)
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(2)
         return ""
     
     def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2):
-        self.log.info("Channel Policy Updates not supported by CLN yet!")
+        self.log.warning("Channel Policy Updates not supported by CLN yet!")
         return
-        # ln_policy = Policy.from_dict(policy).to_lnd_chanpolicy(capacity)
-        # data = {"chan_point": {"funding_txid_str": txid_hex, "output_index": 0}, **ln_policy}
-        # attempt=0
-        # while attempt < max_tries:
-        #     attempt+=1
-        #     response = self.rpc("setchannel")
-        #     if response:
-        #         res = json.loads(response)
-        #         if "channels" in res:
-        #             print(f"graph succeeded: {res}")
-        #             return {"edges": res["channels"]}
-        #         else:
-        #             print(f"unable to open channel: {res}")
-        #     else:
-        #         print(f"channel response: {response}")
-        #         sleep(5)
-        # return ""
 
 class LND(LNNode):
     def __init__(self, pod_name):
@@ -350,7 +360,7 @@ class LND(LNNode):
             if "address" in res:
                 return True, res["address"]
             else:
-                self.log.info(
+                self.log.warning(
                     f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
                 )
             sleep(1)
@@ -388,9 +398,8 @@ class LND(LNNode):
             if "result" in res:
                 res["txid"] = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
                 res["outpoint"] = f'{res["txid"]}:{res["result"]["chan_pending"]["output_index"]}'
-                self.log.info(f"LND channel RESPONSE: {res}")
         except Exception as e:
-            self.log.info(f"Error opening LND channel: {e}")
+            self.log.error(f"Error opening LND channel: {e}")
         return res
 
     def update(self, txid_hex: str, policy: dict, capacity: int):

@@ -200,7 +200,7 @@ def transfer_cln_certs(name):
 def copyfile(pod_name, src_container, source_path, dst_name, dst_container, dst_path):
     namespace=get_default_namespace()
     file_data = read_file_from_container(pod_name, source_path, src_container, namespace)
-    if not write_file_to_container(
+    if write_file_to_container(
         dst_name, 
         dst_container, 
         dst_path, 
@@ -208,7 +208,9 @@ def copyfile(pod_name, src_container, source_path, dst_name, dst_container, dst_
         namespace=namespace,
         quiet=True,
     ):
-        print(f"Failed to copy {source_path} from {pod_name} to {dst_name}:{dst_path}")
+        log.info(f"Copied {source_path} to {dst_path}")
+    else:
+        log.error(f"Failed to copy {source_path} from {pod_name} to {dst_name}:{dst_path}")
 
 
 def _sh(pod, method: str, params: tuple[str, ...]) -> str:

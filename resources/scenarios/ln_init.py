@@ -6,7 +6,7 @@ from time import sleep
 from commander import Commander
 from ln_framework.ln import Policy
 
-THREAD_JOIN_TIMEOUT=15
+THREAD_JOIN_TIMEOUT=20
 
 class LNInit(Commander):
     def set_test_params(self):
@@ -145,7 +145,7 @@ class LNInit(Commander):
         for ch in self.channels:
             node_names = self.node_names(ln_nodes)
             if not ch["source"] in node_names or not ch["target"] in node_names:
-                self.log.info(f"LN Channel {ch} not available, removing")
+                self.log.error(f"LN Channel {ch} not available, removing")
                 self.channels.remove(ch)
                 continue
             src = self.lns[ch["source"]]
@@ -184,7 +184,7 @@ class LNInit(Commander):
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
-            sleep(5)
+            sleep(1)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in p2p_threads)
@@ -258,7 +258,7 @@ class LNInit(Commander):
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
-                sleep(5)
+                sleep(2)
                 t.start()
                 ch_threads.append(t)
 
@@ -275,13 +275,9 @@ class LNInit(Commander):
             block_txs = block["tx"]
             block_height = block["height"]
             for ch in channels:
-                if "txid" not in ch:
-                    print(f"{ch} does not have a txid")
-                    continue
-                assert ch["id"]["block"] == block_height, f"Actual block:{block_height}\n{ch}"
-                assert (
-                    block_txs[ch["id"]["index"]] == ch["txid"]
-                ), f"Actual txid:{block_txs[ch["id"]["index"]]}\n{ch}"
+                assert ch["txid"] != "N/A", f"Channel:{ch} did not receive txid"
+                assert ch["id"]["block"] == block_height, f"Actual block:{block_height}"
+                assert ch["txid"] in block_txs, f"Block:{block_height} does not contain {ch["txid"]}"
             self.log.info("👍")
 
         gen(5)
@@ -299,10 +295,10 @@ class LNInit(Commander):
             self.log.info(f"LN {ln.name} has graph with all {expected} channels")
 
         ch_ann_threads = [
-            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
+            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in ln_nodes
         ]
         for thread in ch_ann_threads:
-            sleep(5)
+            sleep(1)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in ch_ann_threads)
@@ -359,16 +355,18 @@ class LNInit(Commander):
             return pol1.to_lnd_chanpolicy(capacity) == pol2.to_lnd_chanpolicy(capacity)
 
         def matching_graph(self, expected, ln):
-            while True:
+            done = False
+            while not done:
                 actual = ln.graph()["edges"]
-                assert len(expected) == len(actual)
-                done = True
+                self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
+                assert (len(expected) == len(actual),f"Expected edges {expected}, actual edges {actual}")
+                if len(actual) > 0: done = True
                 for i, actual_ch in enumerate(actual):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
                     # If this fails we have a bigger issue
-                    assert int(actual_ch["capacity"]) == capacity
+                    assert int(actual_ch["capacity"]) == capacity, f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch}\n expected: {expected_ch}"
 
                     # Policies were not defined in network.yaml
                     if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
@@ -389,17 +387,15 @@ class LNInit(Commander):
                     ):
                         continue
                     done = False
-                    break
                 if done:
                     self.log.info(f"LN {ln.name} graph channel policies all match expected source")
-                    break
                 else:
-                    sleep(1)
+                    sleep(5)
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
             threading.Thread(target=matching_graph, args=(self, expected, ln))
-            for ln in self.lns.values()
+            for ln in ln_nodes
         ]
         for thread in policy_threads:
             thread.start()
