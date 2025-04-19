@@ -144,7 +144,7 @@ class Commander(BitcoinTestFramework):
                 if count >= tank.init_peers:
                     break
                 else:
-                    sleep(1)
+                    sleep(5)
 
         conn_threads = [
             threading.Thread(target=tank_connected, args=(self, tank)) for tank in self.nodes

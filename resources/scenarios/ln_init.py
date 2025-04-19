@@ -184,7 +184,6 @@ class LNInit(Commander):
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
-            sleep(1)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in p2p_threads)
@@ -258,7 +257,6 @@ class LNInit(Commander):
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
-                sleep(2)
                 t.start()
                 ch_threads.append(t)
 
@@ -288,20 +286,25 @@ class LNInit(Commander):
         def ln_all_chs(self, ln):
             expected = len(self.channels)
             attempts=0
-            max_tries=5
-            while len(ln.graph()["edges"]) != expected and attempts < max_tries:
+            actual = 0
+            while actual != expected:
+                actual = len(ln.graph()["edges"])
+                if attempts > 10:
+                    break
                 attempts+=1
-                sleep(1)
-            self.log.info(f"LN {ln.name} has graph with all {expected} channels")
+                sleep(5)
+            if actual == expected:
+                self.log.info(f"LN {ln.name} has graph with all {expected} channels")
+            else:
+                self.log.error(f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels")
 
         ch_ann_threads = [
             threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in ln_nodes
         ]
         for thread in ch_ann_threads:
-            sleep(1)
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in ch_ann_threads)
+        all(thread.join(timeout=THREAD_JOIN_TIMEOUT*2) is None for thread in ch_ann_threads)
         self.log.info("All LN nodes have complete graph")
 
         ##
@@ -359,14 +362,15 @@ class LNInit(Commander):
             while not done:
                 actual = ln.graph()["edges"]
                 self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
-                assert (len(expected) == len(actual),f"Expected edges {expected}, actual edges {actual}")
-                if len(actual) > 0: done = True
+                if len(actual) > 0: 
+                    done = True
+                    assert len(expected) == len(actual), f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
                 for i, actual_ch in enumerate(actual):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
                     # If this fails we have a bigger issue
-                    assert int(actual_ch["capacity"]) == capacity, f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch}\n expected: {expected_ch}"
+                    assert int(actual_ch["capacity"]) == capacity, f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch["capacity"]}\n expected: {capacity}"
 
                     # Policies were not defined in network.yaml
                     if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
