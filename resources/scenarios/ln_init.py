@@ -6,7 +6,8 @@ from time import sleep
 from commander import Commander
 from ln_framework.ln import Policy
 
-THREAD_JOIN_TIMEOUT=20
+THREAD_JOIN_TIMEOUT = 20
+
 
 class LNInit(Commander):
     def set_test_params(self):
@@ -119,9 +120,7 @@ class LNInit(Commander):
                     break
                 sleep(1)
 
-        uri_threads = [
-            threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in ln_nodes
-        ]
+        uri_threads = [threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in ln_nodes]
         for thread in uri_threads:
             thread.start()
 
@@ -144,7 +143,7 @@ class LNInit(Commander):
         # Explicit connections between every pair of channel partners
         for ch in self.channels:
             node_names = self.node_names(ln_nodes)
-            if not ch["source"] in node_names or not ch["target"] in node_names:
+            if ch["source"] not in node_names or ch["target"] not in node_names:
                 self.log.error(f"LN Channel {ch} not available, removing")
                 self.channels.remove(ch)
                 continue
@@ -156,7 +155,7 @@ class LNInit(Commander):
 
         def connect_ln(self, pair):
             while True:
-                if not pair[1].name in ln_uris:
+                if pair[1].name not in ln_uris:
                     self.log.info(f"LN URIs for {pair[1].name} not found")
                     break
                 res = pair[0].connect(ln_uris[pair[1].name])
@@ -197,7 +196,7 @@ class LNInit(Commander):
         # so their channel ids are deterministic
         ch_by_block = {}
         for ch in self.channels:
-            if not "id" in ch or not "block" in ch["id"]:
+            if "id" not in ch or "block" not in ch["id"]:
                 self.log.info(f"LN Channel {ch} not found")
                 continue
             block = ch["id"]["block"]
@@ -218,7 +217,7 @@ class LNInit(Commander):
                 gen(need - 1)
 
             def open_channel(self, ch, fee_rate):
-                if not ch["source"] in self.lns or not ch["target"] in ln_uris:
+                if ch["source"] not in self.lns or ch["target"] not in ln_uris:
                     return
                 src = self.lns[ch["source"]]
                 tgt_uri = ln_uris[ch["target"]]
@@ -236,12 +235,12 @@ class LNInit(Commander):
                     ch["txid"] = res["txid"]
                     self.log.info(
                         f"Channel open {ch['source']} -> {ch['target']}\n  "
-                        + f"outpoint={res["outpoint"]}\n  "
+                        + f"outpoint={res['outpoint']}\n  "
                         + f"expected channel id: {ch['id']}"
                     )
                 else:
-                     ch["txid"] = "N/A"
-                     self.log.info(
+                    ch["txid"] = "N/A"
+                    self.log.info(
                         "Unexpected channel open response:\n  "
                         + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
                         + f"{res}"
@@ -287,26 +286,26 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            attempts=0
+            attempts = 0
             actual = 0
             while actual != expected:
                 actual = len(ln.graph()["edges"])
                 if attempts > 10:
                     break
-                attempts+=1
+                attempts += 1
                 sleep(5)
             if actual == expected:
                 self.log.info(f"LN {ln.name} has graph with all {expected} channels")
             else:
-                self.log.error(f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels")
+                self.log.error(
+                    f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels"
+                )
 
-        ch_ann_threads = [
-            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in ln_nodes
-        ]
+        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in ln_nodes]
         for thread in ch_ann_threads:
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT*2) is None for thread in ch_ann_threads)
+        all(thread.join(timeout=THREAD_JOIN_TIMEOUT * 2) is None for thread in ch_ann_threads)
         self.log.info("All LN nodes have complete graph")
 
         ##
@@ -364,15 +363,19 @@ class LNInit(Commander):
             while not done:
                 actual = ln.graph()["edges"]
                 self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
-                if len(actual) > 0: 
+                if len(actual) > 0:
                     done = True
-                    assert len(expected) == len(actual), f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
+                    assert len(expected) == len(actual), (
+                        f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
+                    )
                 for i, actual_ch in enumerate(actual):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
                     # If this fails we have a bigger issue
-                    assert int(actual_ch["capacity"]) == capacity, f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch["capacity"]}\n expected: {capacity}"
+                    assert int(actual_ch["capacity"]) == capacity, (
+                        f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
+                    )
 
                     # Policies were not defined in network.yaml
                     if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
@@ -400,8 +403,7 @@ class LNInit(Commander):
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln))
-            for ln in ln_nodes
+            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in ln_nodes
         ]
         for thread in policy_threads:
             thread.start()

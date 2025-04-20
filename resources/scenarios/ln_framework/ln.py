@@ -1,41 +1,44 @@
-from abc import ABC, abstractmethod
 import base64
 import http.client
-import logging
 import json
+import logging
 import ssl
+from abc import ABC, abstractmethod
 from time import sleep
 from typing import Optional
+
 from kubernetes import client, config
 from kubernetes.stream import stream
 
 # hard-coded deterministic lnd credentials
 ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
-# Don't worry about ln's self-signed certificates
+# Don't worry about lnd's self-signed certificates
 INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 INSECURE_CONTEXT.check_hostname = False
 INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
+
+# execute kubernetes command
 def run_command(name, command: list[str], namespace: Optional[str] = "default") -> str:
     config.load_incluster_config()
     sclient = client.CoreV1Api()
     resp = stream(
-            sclient.connect_get_namespaced_pod_exec,
-            name,
-            namespace,
-            command=command,
-            stderr=True,
-            stdin=False,
-            stdout=True,
-            tty=False,
-            _request_timeout=20,
-            _preload_content=False,
-        )
+        sclient.connect_get_namespaced_pod_exec,
+        name,
+        namespace,
+        command=command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+        _request_timeout=20,
+        _preload_content=False,
+    )
     result = ""
     while resp.is_open():
         resp.update(timeout=5)
         if resp.peek_stdout():
-            result+=resp.read_stdout()
+            result += resp.read_stdout()
         if resp.peek_stderr():
             raise Exception(resp.read_stderr())
     resp.close()
@@ -103,28 +106,31 @@ class Policy:
             "min_htlc_msat_specified": True,
         }
 
+
 # Create a custom formatter
 class ColorFormatter(logging.Formatter):
     """Custom formatter to add color based on log level."""
+
     # Define ANSI color codes
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    GREEN = '\033[92m'
-    RESET = '\033[0m'
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
 
     FORMATS = {
         logging.DEBUG: f"{RESET}%(asctime)s - (name)-8s - Thread-%(thread)d - %(message)s{RESET}",
         logging.INFO: f"{RESET}%(asctime)s - (name)-8s - %(message)s{RESET}",
         logging.WARNING: f"{YELLOW}%(asctime)s - (name)-8s - %(message)s{RESET}",
         logging.ERROR: f"{RED}%(asctime)s - (name)-8s - %(message)s{RESET}",
-        logging.CRITICAL: f"{RED}##%(asctime)s - (name)-8s - %(message)s##{RESET}"
+        logging.CRITICAL: f"{RED}##%(asctime)s - (name)-8s - %(message)s##{RESET}",
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
-    
+
+
 class LNNode(ABC):
     @abstractmethod
     def __init__(self, pod_name):
@@ -139,7 +145,7 @@ class LNNode(ABC):
 
     @staticmethod
     def param_dict_to_list(params: dict) -> list[str]:
-        return [f'{k}={v}' for k,v in params.items()]
+        return [f"{k}={v}" for k, v in params.items()]
 
     @staticmethod
     def hex_to_b64(hex):
@@ -165,21 +171,41 @@ class LNNode(ABC):
         pass
 
     @abstractmethod
-    def graph(self):
+    def connect(self, target_uri) -> dict:
         pass
+
+    @abstractmethod
+    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+        pass
+
+    @abstractmethod
+    def graph(self) -> dict:
+        pass
+
+    @abstractmethod
+    def update(self, txid_hex: str, policy: dict, capacity: int) -> dict:
+        pass
+
 
 class CLN(LNNode):
     def __init__(self, pod_name):
         super().__init__(pod_name)
         self.headers = {}
         self.impl = "cln"
-   
-    def rpc(self, method: str, params: list[str] = [], namespace: Optional[str] = "default", max_tries=5):
+
+    def rpc(
+        self,
+        method: str,
+        params: list[str] = None,
+        namespace: Optional[str] = "default",
+        max_tries=5,
+    ):
         cmd = ["lightning-cli", method]
-        cmd.extend(params)
-        attempt=0
+        if params:
+            cmd.extend(params)
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             try:
                 response = run_command(self.name, cmd, namespace)
                 if not response:
@@ -191,9 +217,9 @@ class CLN(LNNode):
         return None
 
     def newaddress(self, max_tries=2):
-        attempt=0
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             response = self.rpc("newaddr")
             if not response:
                 sleep(2)
@@ -212,12 +238,12 @@ class CLN(LNNode):
         res = json.loads(self.rpc("getinfo"))
         if len(res["address"]) < 1:
             return None
-        return f'{res["id"]}@{res["address"][0]["address"]}:{res["address"][0]["port"]}'
+        return f"{res['id']}@{res['address'][0]['address']}:{res['address'][0]['port']}"
 
     def walletbalance(self, max_tries=2):
-        attempt=0
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             response = self.rpc("listfunds")
             if not response:
                 sleep(2)
@@ -225,11 +251,11 @@ class CLN(LNNode):
             res = json.loads(response)
             return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
         return 0
-            
-    def connect(self, target_uri, max_tries=5):
-        attempt=0
+
+    def connect(self, target_uri, max_tries=5) -> dict:
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             response = self.rpc("connect", [target_uri])
             if response:
                 res = json.loads(response)
@@ -243,58 +269,59 @@ class CLN(LNNode):
             else:
                 self.log.debug(f"connect response: {response}, wait and retry...")
                 sleep(2)
-        return ""
-    
-    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5):
-        data={
+        return None
+
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5) -> dict:
+        data = {
             "amount": capacity,
             "push_msat": push_amt,
             "id": pk,
             "feerate": fee_rate,
         }
-        attempt=0
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             response = self.rpc("fundchannel", self.param_dict_to_list(data))
             if response:
                 res = json.loads(response)
                 if "txid" in res:
-                    return {"txid": res["txid"], "outpoint": f'{res["txid"]}:{res["outnum"]}'}
+                    return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
                 else:
                     self.log.warning(f"unable to open channel: {res}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
                 sleep(2)
-        return ""
+        return None
 
-    def graph(self, max_tries=2):
-        attempt=0
+    def graph(self, max_tries=2) -> dict:
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             response = self.rpc("listchannels")
             if response:
                 res = json.loads(response)
                 if "channels" in res:
                     # Map to desired output
-                    filtered_channels = [ch for ch in res['channels'] if ch['direction'] == 1]
+                    filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
                     # Sort by short_channel_id - block -> index -> output
-                    sorted_channels = sorted(filtered_channels, key=lambda x: x['short_channel_id'])
+                    sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
                     # Add capacity by dividing amount_msat by 1000
                     for channel in sorted_channels:
-                        channel['capacity'] = channel['amount_msat'] // 1000
-                    return {'edges': sorted_channels}
+                        channel["capacity"] = channel["amount_msat"] // 1000
+                    return {"edges": sorted_channels}
                 else:
                     self.log.warning(f"unable to open channel: {res}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
                 sleep(2)
-        return ""
-    
-    def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2):
+        return None
+
+    def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
         self.log.warning("Channel Policy Updates not supported by CLN yet!")
-        return
+        return None
+
 
 class LND(LNNode):
     def __init__(self, pod_name):
@@ -303,9 +330,9 @@ class LND(LNNode):
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
         self.headers = {
-                        "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
-                        "Connection": "close",
-                        }
+            "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+            "Connection": "close",
+        }
         self.impl = "lnd"
 
     def get(self, uri):
@@ -322,8 +349,8 @@ class LND(LNNode):
 
     def post(self, uri, data):
         body = json.dumps(data)
-        post_header=self.headers
-        post_header["Content-Length"]=str(len(body))
+        post_header = self.headers
+        post_header["Content-Length"] = str(len(body))
         post_header["Content-Type"] = "application/json"
         attempt = 0
         while True:
@@ -352,9 +379,9 @@ class LND(LNNode):
                 sleep(1)
 
     def newaddress(self, max_tries=10):
-        attempt=0
+        attempt = 0
         while attempt < max_tries:
-            attempt+=1
+            attempt += 1
             response = self.get("/v1/newaddress")
             res = json.loads(response)
             if "address" in res:
@@ -397,7 +424,7 @@ class LND(LNNode):
             res = json.loads(response)
             if "result" in res:
                 res["txid"] = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
-                res["outpoint"] = f'{res["txid"]}:{res["result"]["chan_pending"]["output_index"]}'
+                res["outpoint"] = f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
         except Exception as e:
             self.log.error(f"Error opening LND channel: {e}")
         return res

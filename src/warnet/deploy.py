@@ -114,15 +114,7 @@ def _deploy(directory, debug, namespace, to_all_users):
         processes.append(caddy_process)
 
         # Wait for the network process to complete
-        print(f"Waiting for network process thread {network_process.pid} join")
-        network_process.join(timeout=500)
-        if network_process.is_alive():
-            print("Process hit the timeout (still running after 500 seconds)")
-            # Optionally terminate the process if it timed out
-            network_process.terminate()
-        else:
-            print(f"Network process completed before time limit")
-        # input("Press Enter to continue...")
+        network_process.join()
 
         run_plugins(directory, HookValue.POST_NETWORK, namespace)
 

@@ -599,7 +599,11 @@ def download(
 
 
 def read_file_from_container(
-    pod_name, source_path: Path, container_name: str = "", namespace: Optional[str] = None, quiet: bool = False
+    pod_name,
+    source_path: Path,
+    container_name: str = "",
+    namespace: Optional[str] = None,
+    quiet: bool = False,
 ) -> str:
     """Download the file from the `source_path` to the `destination_path`"""
 
@@ -621,12 +625,12 @@ def read_file_from_container(
         tty=False,
         _preload_content=False,
     )
-    
+
     result = ""
     while resp.is_open():
         resp.update(timeout=5)
         if resp.peek_stdout():
-            result+=resp.read_stdout()
+            result += resp.read_stdout()
         if resp.peek_stderr():
             raise Exception(resp.read_stderr())
     resp.close()

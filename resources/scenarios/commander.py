@@ -90,27 +90,30 @@ def auth_proxy_request(self, method, path, postdata):
 AuthServiceProxy.oldrequest = AuthServiceProxy._request
 AuthServiceProxy._request = auth_proxy_request
 
+
 # Create a custom formatter
 class ColorFormatter(logging.Formatter):
     """Custom formatter to add color based on log level."""
+
     # Define ANSI color codes
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    GREEN = '\033[92m'
-    RESET = '\033[0m'
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
 
     FORMATS = {
         logging.DEBUG: f"{RESET}%(name)-8s - Thread-%(thread)d - %(message)s{RESET}",
         logging.INFO: f"{RESET}%(name)-8s - %(message)s{RESET}",
         logging.WARNING: f"{YELLOW}%(name)-8s - %(message)s{RESET}",
         logging.ERROR: f"{RED}%(name)-8s - %(message)s{RESET}",
-        logging.CRITICAL: f"{RED}##%(name)-8s - %(message)s##{RESET}"
+        logging.CRITICAL: f"{RED}##%(name)-8s - %(message)s##{RESET}",
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
+
 
 class Commander(BitcoinTestFramework):
     # required by subclasses of BitcoinTestFramework
@@ -222,7 +225,7 @@ class Commander(BitcoinTestFramework):
             self.tanks[tank["tank"]] = node
 
         for ln in WARNET["lightning"]:
-            #create the correct implementation based on pod name
+            # create the correct implementation based on pod name
             if "-cln" in ln:
                 self.lns[ln] = CLN(ln)
             else:
