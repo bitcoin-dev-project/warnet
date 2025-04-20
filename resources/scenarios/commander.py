@@ -227,9 +227,9 @@ class Commander(BitcoinTestFramework):
         for ln in WARNET["lightning"]:
             # create the correct implementation based on pod name
             if "-cln" in ln:
-                self.lns[ln] = CLN(ln)
+                self.lns[ln] = CLN(ln, self.log)
             else:
-                self.lns[ln] = LND(ln)
+                self.lns[ln] = LND(ln, self.log)
 
         self.num_nodes = len(self.nodes)
 

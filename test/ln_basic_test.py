@@ -16,12 +16,12 @@ class LNBasicTest(TestBase):
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln"
         self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
         self.lns = [
-            "tank-0000-ln",
-            "tank-0001-ln",
-            "tank-0002-ln",
-            "tank-0003-ln",
-            "tank-0004-ln",
-            "tank-0005-ln",
+            "tank-0000-lnd",
+            "tank-0001-lnd",
+            "tank-0002-lnd",
+            "tank-0003-lnd",
+            "tank-0004-lnd",
+            "tank-0005-lnd",
         ]
 
     def run_test(self):
@@ -30,13 +30,13 @@ class LNBasicTest(TestBase):
             self.setup_network()
 
             # Send a payment across channels opened automatically by ln_init
-            self.pay_invoice(sender="tank-0005-ln", recipient="tank-0003-ln")
+            self.pay_invoice(sender="tank-0005-lnd", recipient="tank-0003-lnd")
 
             # Manually open two more channels between first three nodes
             # and send a payment using warnet RPC
             self.manual_open_channels()
             self.wait_for_gossip_sync(self.lns[:3], 2 + 2)
-            self.pay_invoice(sender="tank-0000-ln", recipient="tank-0002-ln")
+            self.pay_invoice(sender="tank-0000-lnd", recipient="tank-0002-lnd")
 
         finally:
             self.cleanup()
@@ -63,27 +63,27 @@ class LNBasicTest(TestBase):
 
     def manual_open_channels(self):
         # 0 -> 1 -> 2
-        pk1 = self.warnet("ln pubkey tank-0001-ln")
-        pk2 = self.warnet("ln pubkey tank-0002-ln")
+        pk1 = self.warnet("ln pubkey tank-0001-lnd")
+        pk2 = self.warnet("ln pubkey tank-0002-lnd")
 
         host1 = ""
         host2 = ""
 
         while not host1 or not host2:
             if not host1:
-                host1 = self.warnet("ln host tank-0001-ln")
+                host1 = self.warnet("ln host tank-0001-lnd")
             if not host2:
-                host2 = self.warnet("ln host tank-0002-ln")
+                host2 = self.warnet("ln host tank-0002-lnd")
             sleep(1)
 
         print(
             self.warnet(
-                f"ln rpc tank-0000-ln openchannel --node_key {pk1} --local_amt 100000 --connect {host1}"
+                f"ln rpc tank-0000-lnd openchannel --node_key {pk1} --local_amt 100000 --connect {host1}"
             )
         )
         print(
             self.warnet(
-                f"ln rpc tank-0001-ln openchannel --node_key {pk2} --local_amt 100000 --connect {host2}"
+                f"ln rpc tank-0001-lnd openchannel --node_key {pk2} --local_amt 100000 --connect {host2}"
             )
         )
 

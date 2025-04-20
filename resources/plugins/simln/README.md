@@ -65,7 +65,7 @@ nodes:
         - id:
             block: 300
             index: 1
-          target: tank-0004-ln
+          target: tank-0004-lnd
           capacity: 100000
           push_amt: 50000
 
@@ -79,7 +79,7 @@ nodes:
         - id:
             block: 300
             index: 2
-          target: tank-0005-ln
+          target: tank-0005-lnd
           capacity: 50000
           push_amt: 25000
 
@@ -93,7 +93,7 @@ plugins:
   postDeploy:
     simln:
       entrypoint: "../../plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
-      activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
+      activity: '[{"source": "tank-0003-lnd", "destination": "tank-0005-lnd", "interval_secs": 1, "amount_msat": 2000}]'
 ````
 
 </details>

@@ -62,7 +62,7 @@ nodes:
         - id:
             block: 300
             index: 1
-          target: tank-0004-ln
+          target: tank-0004-lnd
           capacity: 100000
           push_amt: 50000
 
@@ -76,7 +76,7 @@ nodes:
         - id:
             block: 300
             index: 2
-          target: tank-0005-ln
+          target: tank-0005-lnd
           capacity: 50000
           push_amt: 25000
 
@@ -99,7 +99,7 @@ plugins:  # Each plugin section has a number of hooks available (preDeploy, post
       helloTo: "postDeploy!"
     simln:  # You can have multiple plugins per hook
       entrypoint: "../../plugins/simln"
-      activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'      
+      activity: '[{"source": "tank-0003-lnd", "destination": "tank-0005-lnd", "interval_secs": 1, "amount_msat": 2000}]'      
   preNode:  # preNode plugins run before each node is deployed
     hello:
       entrypoint: "../../plugins/hello"

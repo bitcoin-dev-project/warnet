@@ -43,7 +43,7 @@ class LNTest(TestBase):
         self.log.info("Ensuring node-level channel policy settings")
         graphs = []
         for n in range(10):
-            ln = f"tank-{n:04d}-ln"
+            ln = f"tank-{n:04d}-lnd"
             res = self.warnet(f"ln rpc {ln} describegraph")
             graphs.append(json.loads(res)["edges"])
 
@@ -73,8 +73,8 @@ class LNTest(TestBase):
 
     def test_payments(self):
         def get_and_pay(src, tgt):
-            src = f"tank-{src:04d}-ln"
-            tgt = f"tank-{tgt:04d}-ln"
+            src = f"tank-{src:04d}-lnd"
+            tgt = f"tank-{tgt:04d}-lnd"
             invoice = json.loads(self.warnet(f"ln rpc {tgt} addinvoice --amt 230118"))[
                 "payment_request"
             ]

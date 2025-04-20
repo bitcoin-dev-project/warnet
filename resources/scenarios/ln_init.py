@@ -137,8 +137,8 @@ class LNInit(Commander):
         nodes = list(ln_nodes)
         prev_node = nodes[-1]
         for node in nodes:
-            # if (node, prev_node) not in connections and (prev_node, node) not in connections:
-            connections.append((node, prev_node))
+            if node != prev_node:
+                connections.append((node, prev_node))
             prev_node = node
         # Explicit connections between every pair of channel partners
         for ch in self.channels:
@@ -174,10 +174,12 @@ class LNInit(Commander):
                         )
                         sleep(1)
                     else:
-                        self.log.info(
+                        self.log.error(
                             f"Unexpected response attempting to connect {pair[0].name} -> {pair[1].name}:\n  {res}\n  ABORTING"
                         )
-                        break
+                        raise Exception(
+                            f"Unable to connect {pair[0].name} -> {pair[1].name}:\n  {res}"
+                        )
 
         p2p_threads = [
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
@@ -231,7 +233,7 @@ class LNInit(Commander):
                     push_amt=ch["push_amt"],
                     fee_rate=fee_rate,
                 )
-                if "txid" in res:
+                if res and "txid" in res:
                     ch["txid"] = res["txid"]
                     self.log.info(
                         f"Channel open {ch['source']} -> {ch['target']}\n  "

@@ -269,7 +269,7 @@ def _import_network(graph_file_path, output_path):
         source = pk_to_tank[edge["node1_pub"]]
         channel = {
             "id": {"block": block, "index": index},
-            "target": pk_to_tank[edge["node2_pub"]] + "-ln",
+            "target": pk_to_tank[edge["node2_pub"]] + "-lnd",
             "capacity": int(edge["capacity"]),
             "push_amt": int(edge["capacity"]) // 2,
             "source_policy": Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict(),

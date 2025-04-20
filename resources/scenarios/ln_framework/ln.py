@@ -1,7 +1,6 @@
 import base64
 import http.client
 import json
-import logging
 import ssl
 from abc import ABC, abstractmethod
 from time import sleep
@@ -107,41 +106,11 @@ class Policy:
         }
 
 
-# Create a custom formatter
-class ColorFormatter(logging.Formatter):
-    """Custom formatter to add color based on log level."""
-
-    # Define ANSI color codes
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    GREEN = "\033[92m"
-    RESET = "\033[0m"
-
-    FORMATS = {
-        logging.DEBUG: f"{RESET}%(asctime)s - (name)-8s - Thread-%(thread)d - %(message)s{RESET}",
-        logging.INFO: f"{RESET}%(asctime)s - (name)-8s - %(message)s{RESET}",
-        logging.WARNING: f"{YELLOW}%(asctime)s - (name)-8s - %(message)s{RESET}",
-        logging.ERROR: f"{RED}%(asctime)s - (name)-8s - %(message)s{RESET}",
-        logging.CRITICAL: f"{RED}##%(asctime)s - (name)-8s - %(message)s##{RESET}",
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-
 class LNNode(ABC):
     @abstractmethod
-    def __init__(self, pod_name):
-        self.log = logging.getLogger(self.__class__.__name__)
+    def __init__(self, pod_name, logger):
+        self.log = logger
         self.name = pod_name
-        # Configure logger if it has no handlers
-        if not self.log.handlers:
-            handler = logging.StreamHandler()
-            handler.setFormatter(ColorFormatter())
-            self.log.addHandler(handler)
-            self.log.setLevel(logging.INFO)
 
     @staticmethod
     def param_dict_to_list(params: dict) -> list[str]:
@@ -188,8 +157,8 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name):
-        super().__init__(pod_name)
+    def __init__(self, pod_name, logger):
+        super().__init__(pod_name, logger)
         self.headers = {}
         self.impl = "cln"
 
@@ -324,8 +293,8 @@ class CLN(LNNode):
 
 
 class LND(LNNode):
-    def __init__(self, pod_name):
-        super().__init__(pod_name)
+    def __init__(self, pod_name, logger):
+        super().__init__(pod_name, logger)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
@@ -409,25 +378,35 @@ class LND(LNNode):
         res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
         return json.loads(res)
 
-    def channel(self, pk, capacity, push_amt, fee_rate):
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=2):
         b64_pk = self.hex_to_b64(pk)
-        response = self.post(
-            "/v1/channels/stream",
-            data={
-                "local_funding_amount": capacity,
-                "push_sat": push_amt,
-                "node_pubkey": b64_pk,
-                "sat_per_vbyte": fee_rate,
-            },
-        )
-        try:
-            res = json.loads(response)
-            if "result" in res:
-                res["txid"] = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
-                res["outpoint"] = f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
-        except Exception as e:
-            self.log.error(f"Error opening LND channel: {e}")
-        return res
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post(
+                "/v1/channels/stream",
+                data={
+                    "local_funding_amount": capacity,
+                    "push_sat": push_amt,
+                    "node_pubkey": b64_pk,
+                    "sat_per_vbyte": fee_rate,
+                },
+            )
+            try:
+                res = json.loads(response)
+                if "result" in res:
+                    res["txid"] = self.b64_to_hex(
+                        res["result"]["chan_pending"]["txid"], reverse=True
+                    )
+                    res["outpoint"] = (
+                        f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
+                    )
+                    return res
+                self.log.warning(f"Open LND channel error: {res}")
+            except Exception as e:
+                self.log.error(f"Error opening LND channel: {e}")
+            sleep(2)
+        return None
 
     def update(self, txid_hex: str, policy: dict, capacity: int):
         ln_policy = Policy.from_dict(policy).to_lnd_chanpolicy(capacity)

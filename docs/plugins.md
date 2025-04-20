@@ -34,7 +34,7 @@ plugins:
   postDeploy:  # Plugins will run after all the `deploy` code has run.
     simln:
       entrypoint: "../plugins/simln"
-      activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
+      activity: '[{"source": "tank-0003-lnd", "destination": "tank-0005-lnd", "interval_secs": 1, "amount_msat": 2000}]'
     hello:
       entrypoint: "../plugins/hello"
       podName: "hello-post-deploy"
