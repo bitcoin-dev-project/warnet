@@ -19,6 +19,7 @@ class ScenariosTest(TestBase):
 
     def run_test(self):
         try:
+            self.check_help()
             self.setup_network()
             self.run_and_check_miner_scenario_from_file()
             self.run_and_check_scenario_from_file()
@@ -72,6 +73,14 @@ class ScenariosTest(TestBase):
             pass
 
         return count >= start + target_blocks
+
+    def check_help(self):
+        scenario_file = self.scen_dir / "miner_std.py"
+        self.log.info(f"Running scenario from file with -- --help: {scenario_file}")
+        help_text = self.warnet(f"run {scenario_file} -- --help")
+        assert "usage" in help_text
+        # no commander pods actually deployed
+        assert len(scenarios_deployed()) == 0
 
     def run_and_check_miner_scenario_from_file(self):
         scenario_file = self.scen_dir / "miner_std.py"

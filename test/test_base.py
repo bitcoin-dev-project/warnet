@@ -60,9 +60,9 @@ class TestBase:
             self.log_msg_assertions_passed = True
 
     def assert_log_msgs(self):
-        assert (
-            self.log_msg_assertions_passed
-        ), f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
+        assert self.log_msg_assertions_passed, (
+            f"Log assertion failed. Expected message not found: {self.log_expected_msgs}"
+        )
         self.log_msg_assertions_passed = False
 
     def warnet(self, cmd):

@@ -11,7 +11,6 @@ import sys
 import tempfile
 import threading
 from time import sleep
-from typing import Dict
 
 from kubernetes import client, config
 from ln_framework.ln import CLN, LND, LNNode
@@ -25,23 +24,32 @@ from test_framework.test_framework import (
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
 
-# Figure out what namespace we are in
-with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
-    NAMESPACE = f.read().strip()
-
-# Get the in-cluster k8s client to determine what we have access to
-config.load_incluster_config()
-sclient = client.CoreV1Api()
+NAMESPACE = None
+pods = client.V1PodList(items=[])
+cmaps = client.V1ConfigMapList(items=[])
 
 try:
-    # An admin with cluster access can list everything.
-    # A wargames player with namespaced access will get a FORBIDDEN error here
-    pods = sclient.list_pod_for_all_namespaces()
-    cmaps = sclient.list_config_map_for_all_namespaces()
+    # Get the in-cluster k8s client to determine what we have access to
+    config.load_incluster_config()
+    sclient = client.CoreV1Api()
+
+    # Figure out what namespace we are in
+    with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
+        NAMESPACE = f.read().strip()
+
+    try:
+        # An admin with cluster access can list everything.
+        # A wargames player with namespaced access will get a FORBIDDEN error here
+        pods = sclient.list_pod_for_all_namespaces()
+        cmaps = sclient.list_config_map_for_all_namespaces()
+    except Exception:
+        # Just get whatever we have access to in this namespace only
+        pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
+        cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
 except Exception:
-    # Just get whatever we have access to in this namespace only
-    pods = sclient.list_namespaced_pod(namespace=NAMESPACE)
-    cmaps = sclient.list_namespaced_config_map(namespace=NAMESPACE)
+    # If there is no cluster config, the user might just be
+    # running the scenario file locally with --help
+    pass
 
 WARNET = {"tanks": [], "lightning": [], "channels": []}
 for pod in pods.items:
@@ -180,8 +188,8 @@ class Commander(BitcoinTestFramework):
         self.log.addHandler(ch)
 
         # Keep a separate index of tanks by pod name
-        self.tanks: Dict[str, TestNode] = {}
-        self.lns: Dict[str, LNNode] = {}
+        self.tanks: dict[str, TestNode] = {}
+        self.lns: dict[str, LNNode] = {}
         self.channels = WARNET["channels"]
 
         for i, tank in enumerate(WARNET["tanks"]):

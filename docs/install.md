@@ -110,3 +110,6 @@ warnet init
 # Or in a directory of choice
 warnet new <directory>
 ```
+
+> [!TIP]
+> If you are having stability issues it could be due to resource constraints. Check out these tips for [scaling](scaling.md).

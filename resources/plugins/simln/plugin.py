@@ -64,15 +64,15 @@ def entrypoint(ctx, plugin_content: str, warnet_content: str):
 
     hook_value = warnet_content.get(WarnetContent.HOOK_VALUE.value)
 
-    assert hook_value in {
-        item.value for item in HookValue
-    }, f"{hook_value} is not a valid HookValue"
+    assert hook_value in {item.value for item in HookValue}, (
+        f"{hook_value} is not a valid HookValue"
+    )
 
     if warnet_content.get(PLUGIN_ANNEX):
         for annex_member in [annex_item for annex_item in warnet_content.get(PLUGIN_ANNEX)]:
-            assert annex_member in {
-                item.value for item in AnnexMember
-            }, f"{annex_member} is not a valid AnnexMember"
+            assert annex_member in {item.value for item in AnnexMember}, (
+                f"{annex_member} is not a valid AnnexMember"
+            )
 
     warnet_content[WarnetContent.HOOK_VALUE.value] = HookValue(hook_value)
 

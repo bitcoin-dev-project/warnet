@@ -192,15 +192,20 @@ options:
 ## Image
 
 ### `warnet image build`
-Build bitcoind and bitcoin-cli from \<repo> at \<commit_sha> with the specified \<tags>.
-    Optionally deploy to remote registry using --action=push, otherwise image is loaded to local registry.
+Build a Bitcoin Core Docker image with specified parameters.
+
+    
+    Usage Examples:
+        # Build an image for Warnet repository
+            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --arches amd64,arm64,armhf --action push
+        # Build an image for local testing
+            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --action load
 
 options:
 | name       | type   | required   | default   |
 |------------|--------|------------|-----------|
 | repo       | String | yes        |           |
 | commit_sha | String | yes        |           |
-| registry   | String | yes        |           |
 | tags       | String | yes        |           |
 | build_args | String |            |           |
 | arches     | String |            |           |
