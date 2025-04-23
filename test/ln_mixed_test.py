@@ -64,16 +64,16 @@ class LNMultiTest(TestBase):
     def manual_open_channels(self):
         # 1 -> 4
         pk1 = self.warnet("ln pubkey tank-0004-lnd")  # prefer -> self.node("tank-0004-lnd").uri()
-        cln1_lnd4_channel = self.node("tank-0001-cln").channel(pk1, 444444, 200000, 5000)
-        assert "txid" in cln1_lnd4_channel, "Failed to create channel between CLN and LND"
-        print(cln1_lnd4_channel["txid"])
+        channel = self.node("tank-0001-cln").channel(pk1, 444444, 200000, 5000)
+        assert "txid" in channel, "Failed to create channel between CLN and LND"
+        self.log.info(f'Channel txid {channel["txid"]}')
 
         # 4 -> 2
-        # lnd4_cln2_channel = self.node("tank-0004-lnd").channel(
+        # channel = self.node("tank-0004-lnd").channel(
         #     self.lns[1].uri(), 333333, 150000, 5000
         # )
-        # assert "txid" in lnd4_cln2_channel, "Failed to create channel between LND and CLN"
-        # print(lnd4_cln2_channel["txid"])
+        # assert "txid" in channel, "Failed to create channel between LND and CLN"
+        # self.log.info(f'Channel txid {channel["txid"]}')
 
         self.wait_for_txs(1)
 
@@ -84,18 +84,18 @@ class LNMultiTest(TestBase):
             for node in nodes:
                 chs = node.graph()["edges"]
                 if len(chs) >= expected:
-                    print(f"Too many edges for {node}")
+                    self.log.info(f"Too many edges for {node}")
             sleep(1)
 
     def pay_invoice_rpc(self, sender: str, recipient: str):
-        print("pay invoice using ln rpc")
+        self.log.info("pay invoice using ln rpc")
         init_balance = self.node(recipient).channelbalance()
-        print("initial balance", init_balance)
+        self.log.info(f"initial balance {init_balance}")
         # create cln invoice
         inv = json.loads(self.warnet(f"ln rpc {recipient} invoice 1000000 label description"))
-        print(inv)
+        self.log.info(inv)
         # pay from lightning
-        print(self.warnet(f"ln rpc {sender} payinvoice -f {inv['bolt11']}"))
+        self.log.info(self.warnet(f"ln rpc {sender} payinvoice -f {inv['bolt11']}"))
 
         def wait_for_success():
             return self.node(recipient).channelbalance() == init_balance + 1000
