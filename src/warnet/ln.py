@@ -32,7 +32,7 @@ def _rpc(pod_name: str, method: str, params: str = "", namespace: Optional[str] 
     namespace = get_default_namespace_or(namespace)
     chain = pod.metadata.labels["chain"]
     ln_client = "lncli"
-    if "-cln" in pod_name:
+    if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
         ln_client = "lightning-cli"
     cmd = f"kubectl -n {namespace} exec {pod_name} -- {ln_client} --network {chain} {method} {' '.join(map(str, params))}"
     return run_command(cmd)
@@ -49,10 +49,11 @@ def pubkey(
     print(_pubkey(pod))
 
 
-def _pubkey(pod: str):
-    info = _rpc(pod, "getinfo")
+def _pubkey(pod_name: str):
+    info = _rpc(pod_name, "getinfo")
+    pod = get_pod(pod_name)
     pubkey_key = "identity_pubkey"
-    if "-cln" in pod:
+    if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
         pubkey_key = "id"
     return json.loads(info)[pubkey_key]
 
@@ -68,9 +69,10 @@ def host(
     print(_host(pod))
 
 
-def _host(pod):
-    info = _rpc(pod, "getinfo")
-    if "-cln" in pod:
+def _host(pod_name: str):
+    info = _rpc(pod_name, "getinfo")
+    pod = get_pod(pod_name)
+    if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
         return json.loads(info)["alias"]
     else:
         uris = json.loads(info)["uris"]

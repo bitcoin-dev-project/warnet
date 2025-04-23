@@ -168,7 +168,7 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
         ln_name = i.metadata.name
         port = 10009
         node = {"id": ln_name}
-        if "-cln" in ln_name:
+        if "cln" in i.metadata.labels["app.kubernetes.io/name"]:
             port = 9736
             node["ca_cert"] = f"/working/{ln_name}-ca.pem"
             node["client_cert"] = f"/working/{ln_name}-client.pem"
@@ -192,7 +192,7 @@ def transfer_cln_certs(name):
     cln_root = "/root/.lightning/regtest"
     for i in get_mission(LIGHTNING_MISSION):
         ln_name = i.metadata.name
-        if "cln" in ln_name:
+        if "cln" in i.metadata.labels["app.kubernetes.io/name"]:
             copyfile(
                 ln_name,
                 "cln",

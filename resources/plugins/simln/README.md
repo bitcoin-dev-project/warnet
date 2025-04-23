@@ -13,7 +13,7 @@ SimLN also requires access details for each node; however, the SimLN plugin will
 
 ```` JSON
 {
-  "id": <node_id>-lnd,
+  "id": <node_id>,
   "address": https://<ip:port or domain:port>,
   "macaroon": <path_to_selected_macaroon>,
   "cert": <path_to_tls_cert>
@@ -22,11 +22,11 @@ SimLN also requires access details for each node; however, the SimLN plugin will
 SimLN also supports Core Lightning (CLN).  CLN nodes connection details are transfered from the CLN node to SimLN node during launch-activity processing.
 ```` JSON
 {
-  "id": <node_id>-cln,
+  "id": <node_id>,
   "address": https://<domain:port>,
-  "ca_cert": /working/<node_id>-cln-ca.pem,
-  "client_cert": /working/<node_id>-cln-client.pem,
-  "client_key": /working/<node_id>-cln-client-key.pem
+  "ca_cert": /working/<node_id>-ca.pem,
+  "client_cert": /working/<node_id>-client.pem,
+  "client_key": /working/<node_id>-client-key.pem
 }
 ````
 
@@ -35,7 +35,7 @@ Since SimLN already has access to those LND and CLN connection details, it means
 ### Launch activity definitions from the command line
 The SimLN plugin takes "activity" definitions like so:
 
-`./simln/plugin.py launch-activity '[{\"source\": \"tank-0003-lnd\", \"destination\": \"tank-0005-lnd\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"''`
+`./simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"''`
 
 ### Launch activity definitions from within `network.yaml`
 When you initialize a new Warnet network, Warnet will create a new `network.yaml` file.  If your `network.yaml` file includes lightning nodes, then you can use SimLN to produce activity between those nodes like this:
@@ -75,7 +75,7 @@ nodes:
         - id:
             block: 300
             index: 1
-          target: tank-0004-lnd
+          target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
 
@@ -89,7 +89,7 @@ nodes:
         - id:
             block: 300
             index: 2
-          target: tank-0005-lnd
+          target: tank-0005-ln
           capacity: 50000
           push_amt: 25000
 
@@ -103,7 +103,7 @@ plugins:
   postDeploy:
     simln:
       entrypoint: "../../plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
-      activity: '[{"source": "tank-0003-lnd", "destination": "tank-0005-lnd", "interval_secs": 1, "amount_msat": 2000}]'
+      activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
 ````
 
 </details>

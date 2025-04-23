@@ -17,11 +17,11 @@ class LNMultiTest(TestBase):
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln_mixed"
         self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
         self.lns = [
-            CLN("tank-0001-ln"),
-            CLN("tank-0002-ln"),
-            LND("tank-0003-ln"),
-            LND("tank-0004-ln"),
-            LND("tank-0005-ln"),
+            CLN("tank-0001-ln", self.log),
+            CLN("tank-0002-ln", self.log),
+            LND("tank-0003-ln", self.log),
+            LND("tank-0004-ln", self.log),
+            LND("tank-0005-ln", self.log),
         ]
 
     def node(self, name: str) -> LNNode:
