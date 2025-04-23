@@ -70,7 +70,10 @@ for pod in pods.items:
         )
 
     if pod.metadata.labels["mission"] == "lightning":
-        WARNET["lightning"].append(pod.metadata.name)
+        lnnode = LND(pod.metadata.name)
+        if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
+            lnnode = CLN(pod.metadata.name)
+        WARNET["lightning"].append(lnnode)
 
 for cm in cmaps.items:
     if not cm.metadata.labels or "channels" not in cm.metadata.labels:
@@ -225,11 +228,8 @@ class Commander(BitcoinTestFramework):
             self.tanks[tank["tank"]] = node
 
         for ln in WARNET["lightning"]:
-            # create the correct implementation based on pod name
-            if "-cln" in ln:
-                self.lns[ln] = CLN(ln, self.log)
-            else:
-                self.lns[ln] = LND(ln, self.log)
+            ln.setLogger(self.log)
+            self.lns[ln.name] = ln
 
         self.num_nodes = len(self.nodes)
 

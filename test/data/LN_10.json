@@ -987,7 +987,7 @@
         {
             "node1_pub": "02b705ad9fff5b30e69dd3810d100372332c1a750db5a50edf7353c77ab486643e",
             "node2_pub": "037659a0ac8eb3b8d0a720114efc861d3a940382dcfa1403746b4f8f6b2e8810ba",
-            "channel_id": "908655100992880641",
+            "channel_id": "891818279431438336",
             "chan_point": "316bc4974bc4382554b80ba30eaaecf18c3f45f03fed41f99e9600d1c5dd3029:0",
             "last_update": 1710800025,
             "capacity": "2000000",
@@ -1016,7 +1016,7 @@
         {
             "node1_pub": "02b705ad9fff5b30e69dd3810d100372332c1a750db5a50edf7353c77ab486643e",
             "node2_pub": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
-            "channel_id": "891818279431438336",
+            "channel_id": "908655100992880641",
             "chan_point": "0acfd2470db4eb06268b3f22b4c45c0fdcc11d10b6519577662e54823a0f264e:1",
             "last_update": 1710841427,
             "capacity": "10000000",

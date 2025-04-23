@@ -18,7 +18,7 @@ nodes:
         - id:
             block: 300
             index: 1
-          target: tank-0004-lnd
+          target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
   - name: tank-0004
@@ -29,7 +29,7 @@ nodes:
         - id:
             block: 300
             index: 2
-          target: tank-0005-lnd
+          target: tank-0005-ln
           capacity: 50000
           push_amt: 25000
   - name: tank-0005

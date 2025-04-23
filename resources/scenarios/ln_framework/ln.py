@@ -112,9 +112,12 @@ class Policy:
 
 class LNNode(ABC):
     @abstractmethod
-    def __init__(self, pod_name, logger):
-        self.log = logger
+    def __init__(self, pod_name):
+        self.log = None
         self.name = pod_name
+
+    def setLogger(self, logger):
+        self.log = logger
 
     @staticmethod
     def param_dict_to_list(params: dict) -> list[str]:
@@ -161,8 +164,8 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name, logger):
-        super().__init__(pod_name, logger)
+    def __init__(self, pod_name):
+        super().__init__(pod_name)
         self.headers = {}
         self.impl = "cln"
 
@@ -326,8 +329,8 @@ class CLN(LNNode):
 
 
 class LND(LNNode):
-    def __init__(self, pod_name, logger):
-        super().__init__(pod_name, logger)
+    def __init__(self, pod_name):
+        super().__init__(pod_name)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )

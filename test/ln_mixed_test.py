@@ -17,11 +17,11 @@ class LNMultiTest(TestBase):
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "ln_mixed"
         self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
         self.lns = [
-            CLN("tank-0001-cln", self.log),
-            CLN("tank-0002-cln", self.log),
-            LND("tank-0003-lnd", self.log),
-            LND("tank-0004-lnd", self.log),
-            LND("tank-0005-lnd", self.log),
+            CLN("tank-0001-ln"),
+            CLN("tank-0002-ln"),
+            LND("tank-0003-ln"),
+            LND("tank-0004-ln"),
+            LND("tank-0005-ln"),
         ]
 
     def node(self, name: str) -> LNNode:
@@ -39,15 +39,15 @@ class LNMultiTest(TestBase):
                 f"{self.lns[0]} has does not have a wallet balance"
             )
             # Send a payment across channels opened automatically by ln_init
-            self.pay_invoice_rpc(sender="tank-0003-lnd", recipient="tank-0001-cln")
-            # self.pay_invoice_node(sender="tank-0001-cln", recipient="tank-0003-lnd")
+            self.pay_invoice_rpc(sender="tank-0003-ln", recipient="tank-0001-ln")
+            # self.pay_invoice_node(sender="tank-0001-ln", recipient="tank-0003-ln")
 
             # Manually open more channels between first three nodes
             # and send a payment using warnet RPC
             self.manual_open_channels()
             # FIXME: need to decide how to interact with LND via REST outside cluster
             # self.wait_for_gossip_sync(self.lns, 5)
-            # self.pay_invoice(sender="tank-0004-lnd", recipient="tank-0002-cln")
+            # self.pay_invoice(sender="tank-0004-ln", recipient="tank-0002-ln")
 
         finally:
             self.cleanup()
@@ -63,13 +63,13 @@ class LNMultiTest(TestBase):
 
     def manual_open_channels(self):
         # 1 -> 4
-        pk1 = self.warnet("ln pubkey tank-0004-lnd")  # prefer -> self.node("tank-0004-lnd").uri()
-        channel = self.node("tank-0001-cln").channel(pk1, 444444, 200000, 5000)
+        pk1 = self.warnet("ln pubkey tank-0004-ln")  # prefer -> self.node("tank-0004-ln").uri()
+        channel = self.node("tank-0001-ln").channel(pk1, 444444, 200000, 5000)
         assert "txid" in channel, "Failed to create channel between CLN and LND"
         self.log.info(f"Channel txid {channel['txid']}")
 
         # 4 -> 2
-        # channel = self.node("tank-0004-lnd").channel(
+        # channel = self.node("tank-0004-ln").channel(
         #     self.lns[1].uri(), 333333, 150000, 5000
         # )
         # assert "txid" in channel, "Failed to create channel between LND and CLN"
