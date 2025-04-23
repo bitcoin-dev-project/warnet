@@ -185,6 +185,7 @@ class LNInit(Commander):
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
+            sleep(0.25)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in p2p_threads)
@@ -258,6 +259,7 @@ class LNInit(Commander):
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
+                sleep(0.25)
                 t.start()
                 ch_threads.append(t)
 
@@ -305,6 +307,7 @@ class LNInit(Commander):
 
         ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in ln_nodes]
         for thread in ch_ann_threads:
+            sleep(0.25)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT * 2) is None for thread in ch_ann_threads)
@@ -335,6 +338,7 @@ class LNInit(Commander):
                         ch["capacity"],
                     ),
                 )
+                sleep(0.25)
                 ts.start()
                 update_threads.append(ts)
             if "target_policy" in ch:
@@ -348,6 +352,7 @@ class LNInit(Commander):
                         ch["capacity"],
                     ),
                 )
+                sleep(0.25)
                 tt.start()
                 update_threads.append(tt)
         count = len(update_threads)
@@ -408,6 +413,7 @@ class LNInit(Commander):
             threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in ln_nodes
         ]
         for thread in policy_threads:
+            sleep(0.25)
             thread.start()
 
         all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in policy_threads)

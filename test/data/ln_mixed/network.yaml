@@ -1,0 +1,66 @@
+nodes:
+  - name: tank-0001
+    addnode:
+      - tank-0003
+    ln:
+      cln: true
+    cln:
+      channels:
+        - id:
+            block: 300
+            index: 4
+          target: tank-0003-lnd
+          capacity: 50001
+          push_amt: 25003
+  - name: tank-0002
+    addnode:
+      - tank-0001
+    ln:
+      cln: true
+    cln:
+      channels:
+        - id:
+            block: 300
+            index: 5
+          target: tank-0001-cln
+          capacity: 50002
+          push_amt: 25001
+  - name: tank-0003
+    addnode:
+      - tank-0004
+    ln:
+      lnd: true
+    lnd:
+      channels:
+        - id:
+            block: 300
+            index: 1
+          target: tank-0004-lnd
+          capacity: 100003
+          push_amt: 50004
+  - name: tank-0004
+    addnode:
+      - tank-0003
+    ln:
+      lnd: true
+    lnd:
+      channels:
+        - id:
+            block: 300
+            index: 2
+          target: tank-0005-lnd
+          capacity: 50004
+          push_amt: 25005
+  - name: tank-0005
+    addnode:
+      - tank-0003
+    ln:
+      lnd: true
+    lnd:
+      channels:
+        - id:
+            block: 300
+            index: 3
+          target: tank-0002-cln
+          capacity: 100005
+          push_amt: 50002

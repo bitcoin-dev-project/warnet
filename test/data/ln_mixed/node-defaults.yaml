@@ -1,12 +1,14 @@
-#Core configs
 image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
   tag: "27.0"
 
-#LN configs
-ln:
-  cln: true
+lnd:
+  defaultConfig: |
+    color=#000000
+  config: |
+    bitcoin.timelockdelta=33
+
 cln:
   defaultConfig: |
     rgb=ff3155

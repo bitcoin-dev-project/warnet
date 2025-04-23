@@ -1,6 +1,7 @@
 import base64
 import http.client
 import json
+import os
 import ssl
 from abc import ABC, abstractmethod
 from time import sleep
@@ -19,7 +20,10 @@ INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
 # execute kubernetes command
 def run_command(name, command: list[str], namespace: Optional[str] = "default") -> str:
-    config.load_incluster_config()
+    if os.getenv("KUBERNETES_SERVICE_HOST") and os.getenv("KUBERNETES_SERVICE_PORT"):
+        config.load_incluster_config()
+    else:
+        config.load_kube_config()
     sclient = client.CoreV1Api()
     resp = stream(
         sclient.connect_get_namespaced_pod_exec,
@@ -209,7 +213,7 @@ class CLN(LNNode):
             return None
         return f"{res['id']}@{res['address'][0]['address']}:{res['address'][0]['port']}"
 
-    def walletbalance(self, max_tries=2):
+    def walletbalance(self, max_tries=2) -> int:
         attempt = 0
         while attempt < max_tries:
             attempt += 1
@@ -219,6 +223,18 @@ class CLN(LNNode):
                 continue
             res = json.loads(response)
             return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
+        return 0
+
+    def channelbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.rpc("listfunds")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(sum(o["our_amount_msat"] for o in res["channels"]) / 1000)
         return 0
 
     def connect(self, target_uri, max_tries=5) -> dict:
@@ -263,6 +279,23 @@ class CLN(LNNode):
                 sleep(2)
         return None
 
+    def createinvoice(self, sats, label, description="new invoice") -> str:
+        response = self.rpc("invoice", [sats * 1000, label, description])
+        if response:
+            res = json.loads(response)
+            return res["bolt11"]
+        return None
+
+    def payinvoice(self, payment_request) -> str:
+        response = self.rpc("pay", [payment_request])
+        if response:
+            res = json.loads(response)
+            if "code" in res:
+                return res["message"]
+            else:
+                return res["payment_hash"]
+        return None
+
     def graph(self, max_tries=2) -> dict:
         attempt = 0
         while attempt < max_tries:
@@ -304,7 +337,13 @@ class LND(LNNode):
         }
         self.impl = "lnd"
 
+    def reset_connection(self):
+        self.conn = http.client.HTTPSConnection(
+            host=self.name, port=8080, timeout=5, context=INSECURE_CONTEXT
+        )
+
     def get(self, uri):
+        attempt = 0
         while True:
             try:
                 self.conn.request(
@@ -313,7 +352,12 @@ class LND(LNNode):
                     headers=self.headers,
                 )
                 return self.conn.getresponse().read().decode("utf8")
-            except Exception:
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error LND POST, Abort: {e}")
+                    return None
                 sleep(1)
 
     def post(self, uri, data):
@@ -323,7 +367,6 @@ class LND(LNNode):
         post_header["Content-Type"] = "application/json"
         attempt = 0
         while True:
-            attempt += 1
             try:
                 self.conn.request(
                     method="POST",
@@ -344,7 +387,12 @@ class LND(LNNode):
                     except Exception:
                         break
                 return stream
-            except Exception:
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error LND POST, Abort: {e}")
+                    return None
                 sleep(1)
 
     def newaddress(self, max_tries=10):
@@ -362,9 +410,13 @@ class LND(LNNode):
             sleep(1)
         return False, ""
 
-    def walletbalance(self):
+    def walletbalance(self) -> int:
         res = self.get("/v1/balance/blockchain")
         return int(json.loads(res)["confirmed_balance"])
+
+    def channelbalance(self) -> int:
+        res = self.get("/v1/balance/channels")
+        return int(json.loads(res)["balance"])
 
     def uri(self):
         res = self.get("/v1/getinfo")
@@ -419,6 +471,28 @@ class LND(LNNode):
             data=data,
         )
         return json.loads(res)
+
+    def createinvoice(self, sats, label, description="new invoice") -> str:
+        b64_desc = base64.b64encode(description.encode("utf-8"))
+        response = self.post(
+            "/v1/invoices", data={"value": sats, "memo": label, "description_hash": b64_desc}
+        )
+        if response:
+            res = json.loads(response)
+            return res["payment_request"]
+        return None
+
+    def payinvoice(self, payment_request) -> str:
+        response = self.post(
+            "/v1/channels/transaction-stream", data={"payment_request": payment_request}
+        )
+        if response:
+            res = json.loads(response)
+            if "payment_error" in res:
+                return res["payment_error"]
+            else:
+                return res["payment_hash"]
+        return None
 
     def graph(self):
         res = self.get("/v1/graph")
