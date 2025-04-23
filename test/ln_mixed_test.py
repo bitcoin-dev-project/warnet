@@ -66,7 +66,7 @@ class LNMultiTest(TestBase):
         pk1 = self.warnet("ln pubkey tank-0004-lnd")  # prefer -> self.node("tank-0004-lnd").uri()
         channel = self.node("tank-0001-cln").channel(pk1, 444444, 200000, 5000)
         assert "txid" in channel, "Failed to create channel between CLN and LND"
-        self.log.info(f'Channel txid {channel["txid"]}')
+        self.log.info(f"Channel txid {channel['txid']}")
 
         # 4 -> 2
         # channel = self.node("tank-0004-lnd").channel(
