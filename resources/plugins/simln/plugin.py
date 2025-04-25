@@ -11,11 +11,11 @@ from kubernetes.stream import stream
 
 from warnet.constants import LIGHTNING_MISSION, PLUGIN_ANNEX, AnnexMember, HookValue, WarnetContent
 from warnet.k8s import (
+    copyfile,
     download,
     get_default_namespace,
     get_mission,
     get_static_client,
-    read_file_from_container,
     wait_for_init,
     write_file_to_container,
 )
@@ -189,7 +189,7 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
 
 def transfer_cln_certs(name):
     dst_container = "init"
-    cln_root = "/root/.lightning/regtest"
+    cln_root = "/root/.lightning/regtest"  # FIXME: figure out chain
     for i in get_mission(LIGHTNING_MISSION):
         ln_name = i.metadata.name
         if "cln" in i.metadata.labels["app.kubernetes.io/name"]:
@@ -217,22 +217,6 @@ def transfer_cln_certs(name):
                 dst_container,
                 f"/working/{ln_name}-client-key.pem",
             )
-
-
-def copyfile(pod_name, src_container, source_path, dst_name, dst_container, dst_path):
-    namespace = get_default_namespace()
-    file_data = read_file_from_container(pod_name, source_path, src_container, namespace)
-    if write_file_to_container(
-        dst_name,
-        dst_container,
-        dst_path,
-        file_data,
-        namespace=namespace,
-        quiet=True,
-    ):
-        log.info(f"Copied {source_path} to {dst_path}")
-    else:
-        log.error(f"Failed to copy {source_path} from {pod_name} to {dst_name}:{dst_path}")
 
 
 def _sh(pod, method: str, params: tuple[str, ...]) -> str:

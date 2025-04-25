@@ -2,14 +2,11 @@ import base64
 import http.client
 import json
 import logging
-import os
 import ssl
 from abc import ABC, abstractmethod
 from time import sleep
-from typing import Optional
 
-from kubernetes import client, config
-from kubernetes.stream import stream
+import requests
 
 # hard-coded deterministic lnd credentials
 ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
@@ -17,36 +14,6 @@ ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd612
 INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 INSECURE_CONTEXT.check_hostname = False
 INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
-
-
-# execute kubernetes command
-def run_command(name, command: list[str], namespace: Optional[str] = "default") -> str:
-    if os.getenv("KUBERNETES_SERVICE_HOST") and os.getenv("KUBERNETES_SERVICE_PORT"):
-        config.load_incluster_config()
-    else:
-        config.load_kube_config()
-    sclient = client.CoreV1Api()
-    resp = stream(
-        sclient.connect_get_namespaced_pod_exec,
-        name,
-        namespace,
-        command=command,
-        stderr=True,
-        stdin=False,
-        stdout=True,
-        tty=False,
-        _request_timeout=20,
-        _preload_content=False,
-    )
-    result = ""
-    while resp.is_open():
-        resp.update(timeout=5)
-        if resp.peek_stdout():
-            result += resp.read_stdout()
-        if resp.peek_stderr():
-            raise Exception(resp.read_stderr())
-    resp.close()
-    return result
 
 
 # https://github.com/lightningcn/lightning-rfc/blob/master/07-routing-gossip.md#the-channel_update-message
@@ -113,18 +80,15 @@ class Policy:
 
 class LNNode(ABC):
     @abstractmethod
-    def __init__(self, pod_name):
+    def __init__(self, pod_name, ip_address):
         self.name = pod_name
+        self.ip_address = ip_address
         self.log = logging.getLogger(pod_name)
         handler = logging.StreamHandler()
-        formatter = logging.Formatter(f'%(name)-8s - %(levelname)s: %(message)s')
+        formatter = logging.Formatter("%(name)-8s - %(levelname)s: %(message)s")
         handler.setFormatter(formatter)
         self.log.addHandler(handler)
         self.log.setLevel(logging.INFO)
-
-    @staticmethod
-    def param_dict_to_list(params: dict) -> list[str]:
-        return [f"{k}={v}" for k, v in params.items()]
 
     @staticmethod
     def hex_to_b64(hex):
@@ -167,13 +131,12 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name):
-        super().__init__(pod_name)
-        self.conn = http.client.HTTPSConnection(
-            host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
-        )
+    def __init__(self, pod_name, ip_address):
+        super().__init__(pod_name, ip_address)
+        self.conn = None
         self.headers = {}
         self.impl = "cln"
+        self.reset_connection()
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
@@ -181,9 +144,7 @@ class CLN(LNNode):
         )
 
     def setRune(self, rune):
-        self.headers = {
-            "Rune": rune
-        }
+        self.headers = {"Rune": rune}
 
     def get(self, uri):
         attempt = 0
@@ -204,7 +165,9 @@ class CLN(LNNode):
                     return None
                 sleep(1)
 
-    def post(self, uri, data={}):
+    def post(self, uri, data=None):
+        if not data:
+            data = {}
         body = json.dumps(data)
         post_header = self.headers
         post_header["Content-Length"] = str(len(body))
@@ -239,37 +202,15 @@ class CLN(LNNode):
                     return None
                 sleep(1)
 
-    def rpc(
-        self,
-        method: str,
-        params: list[str] = None,
-        namespace: Optional[str] = "default",
-        max_tries=5,
-    ):
-        cmd = ["lightning-cli", method]
-        if params:
-            cmd.extend(params)
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            try:
-                response = run_command(self.name, cmd, namespace)
-                if not response:
-                    continue
-                return response
-            except Exception as e:
-                self.log.error(f"CLN rpc error: {e}, wait and retry...")
-                sleep(2)
-        return None
-    
     def createrune(self, max_tries=2):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("createrune")
+            response = requests.get(f"http://{self.ip_address}:8080/rune.json", timeout=5).text
             if not response:
                 sleep(2)
                 continue
+            self.log.debug(response)
             res = json.loads(response)
             self.setRune(res["rune"])
             return
@@ -367,14 +308,16 @@ class CLN(LNNode):
         return None
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
-        response = self.post("invoice", {"amount_msat": sats * 1000, "label": label, "description": description})
+        response = self.post(
+            "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
+        )
         if response:
             res = json.loads(response)
             return res["bolt11"]
         return None
 
     def payinvoice(self, payment_request) -> str:
-        response = self.rpc("pay", {"bolt11": payment_request})
+        response = self.post("/v1/pay", {"bolt11": payment_request})
         if response:
             res = json.loads(response)
             if "code" in res:
@@ -413,8 +356,8 @@ class CLN(LNNode):
 
 
 class LND(LNNode):
-    def __init__(self, pod_name):
-        super().__init__(pod_name)
+    def __init__(self, pod_name, ip_address):
+        super().__init__(pod_name, ip_address)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )

@@ -635,3 +635,19 @@ def read_file_from_container(
             raise Exception(resp.read_stderr())
     resp.close()
     return result
+
+
+def copyfile(pod_name, src_container, source_path, dst_name, dst_container, dst_path):
+    namespace = get_default_namespace()
+    file_data = read_file_from_container(pod_name, source_path, src_container, namespace)
+    if write_file_to_container(
+        dst_name,
+        dst_container,
+        dst_path,
+        file_data,
+        namespace=namespace,
+        quiet=True,
+    ):
+        print(f"Copied {source_path} to {dst_path}")
+    else:
+        print(f"Failed to copy {source_path} from {pod_name} to {dst_name}:{dst_path}")

@@ -41,7 +41,12 @@ spec:
         - /bin/sh
         - -c
         - |
-          lightningd --conf=/root/.lightning/config
+          lightningd --conf=/root/.lightning/config &
+          sleep 1
+          lightning-cli createrune > /working/rune.json
+          echo "Here is the rune file contents"
+          cat /working/rune.json
+          wait
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
@@ -60,6 +65,20 @@ spec:
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    - name: http-server
+      image: busybox
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Starting HTTP server..."
+          busybox httpd -f -p 8080 -h /working
+      ports:
+        - containerPort: 8080
+          name: http
+      volumeMounts:
+        {{- with .Values.volumeMounts }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
   volumes:
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}

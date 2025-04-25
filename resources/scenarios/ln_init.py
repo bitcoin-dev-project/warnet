@@ -113,7 +113,9 @@ class LNInit(Commander):
                     break
                 sleep(1)
 
-        uri_threads = [threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in self.lns.values()]
+        uri_threads = [
+            threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in self.lns.values()
+        ]
         for thread in uri_threads:
             thread.start()
 
@@ -286,7 +288,9 @@ class LNInit(Commander):
                     f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels"
                 )
 
-        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()]
+        ch_ann_threads = [
+            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
+        ]
         for thread in ch_ann_threads:
             sleep(0.25)
             thread.start()
@@ -391,7 +395,8 @@ class LNInit(Commander):
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in self.lns.values()
+            threading.Thread(target=matching_graph, args=(self, expected, ln))
+            for ln in self.lns.values()
         ]
         for thread in policy_threads:
             sleep(0.25)

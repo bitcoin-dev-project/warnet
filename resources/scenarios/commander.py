@@ -70,9 +70,9 @@ for pod in pods.items:
         )
 
     if pod.metadata.labels["mission"] == "lightning":
-        lnnode = LND(pod.metadata.name)
+        lnnode = LND(pod.metadata.name, pod.status.pod_ip)
         if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
-            lnnode = CLN(pod.metadata.name)
+            lnnode = CLN(pod.metadata.name, pod.status.pod_ip)
         WARNET["lightning"].append(lnnode)
 
 for cm in cmaps.items:
