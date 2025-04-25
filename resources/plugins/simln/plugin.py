@@ -189,10 +189,11 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
 
 def transfer_cln_certs(name):
     dst_container = "init"
-    cln_root = "/root/.lightning/regtest"  # FIXME: figure out chain
     for i in get_mission(LIGHTNING_MISSION):
         ln_name = i.metadata.name
         if "cln" in i.metadata.labels["app.kubernetes.io/name"]:
+            chain = i.metadata.labels["chain"]
+            cln_root = f"/root/.lightning/{chain}"
             copyfile(
                 ln_name,
                 "cln",
