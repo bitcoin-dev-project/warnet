@@ -401,7 +401,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             namespace=namespace,
         )
         click.echo("deploy_network->_run finished")
-        wait_for_pod(name, namespace=namespace)
+        wait_for_pod_ready(name, namespace=namespace)
         click.echo("wait_for_pod finished")
         _logs(pod_name=name, follow=True, namespace=namespace)
     click.echo("deploy_network finished")
