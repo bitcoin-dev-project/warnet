@@ -34,6 +34,9 @@ spec:
         - name: rpc
           containerPort: {{ .Values.RPCPort }}
           protocol: TCP
+        - name: rest
+          containerPort: {{ .Values.RestPort }}
+          protocol: TCP
       command:
         - /bin/sh
         - -c

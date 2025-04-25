@@ -20,6 +20,8 @@ data:
     bitcoin-retry-timeout=600
     grpc-port={{ .Values.RPCPort }}
     grpc-host=0.0.0.0
+    clnrest-host=0.0.0.0
+    clnrest-port=3010
 ---
 apiVersion: v1
 kind: ConfigMap

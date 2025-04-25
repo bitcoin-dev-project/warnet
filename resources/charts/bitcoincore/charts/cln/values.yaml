@@ -33,6 +33,7 @@ service:
 
 P2PPort: 9735
 RPCPort: 9736
+RestPort: 3010
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:

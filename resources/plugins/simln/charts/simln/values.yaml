@@ -4,8 +4,6 @@ image:
   tag: "0.2.3"
   pullPolicy: IfNotPresent
 
-restartPolicy: Never
-
 workingVolume:
   name: working-volume
   mountPath: /working

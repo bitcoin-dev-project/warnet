@@ -6,8 +6,6 @@ from time import sleep
 from commander import Commander
 from ln_framework.ln import Policy
 
-THREAD_JOIN_TIMEOUT = 20
-
 
 class LNInit(Commander):
     def set_test_params(self):
@@ -16,9 +14,6 @@ class LNInit(Commander):
     def add_options(self, parser):
         parser.description = "Fund LN wallets and open channels"
         parser.usage = "warnet run /path/to/ln_init.py"
-
-    def node_names(self, nodes):
-        return [item.name for item in nodes]
 
     def run_test(self):
         ##
@@ -45,13 +40,11 @@ class LNInit(Commander):
         ##
         self.log.info("Getting LN wallet addresses...")
         ln_addrs = []
-        ln_nodes = []
 
         def get_ln_addr(self, ln):
             success, address = ln.newaddress()
             if success:
                 ln_addrs.append(address)
-                ln_nodes.append(ln)
                 self.log.info(f"Got wallet address {address} from {ln.name}")
             else:
                 self.log.info(f"Couldn't get wallet address from {ln.name}")
@@ -62,7 +55,7 @@ class LNInit(Commander):
         for thread in addr_threads:
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in addr_threads)
+        all(thread.join() is None for thread in addr_threads)
         self.log.info(f"Got {len(ln_addrs)} addresses from {len(self.lns)} LN nodes")
 
         ##
@@ -96,12 +89,12 @@ class LNInit(Commander):
                 sleep(1)
 
         fund_threads = [
-            threading.Thread(target=confirm_ln_balance, args=(self, ln)) for ln in ln_nodes
+            threading.Thread(target=confirm_ln_balance, args=(self, ln)) for ln in self.lns.values()
         ]
         for thread in fund_threads:
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in fund_threads)
+        all(thread.join() is None for thread in fund_threads)
         self.log.info("All LN nodes are funded")
 
         ##
@@ -120,11 +113,11 @@ class LNInit(Commander):
                     break
                 sleep(1)
 
-        uri_threads = [threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in ln_nodes]
+        uri_threads = [threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in self.lns.values()]
         for thread in uri_threads:
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in uri_threads)
+        all(thread.join() is None for thread in uri_threads)
         self.log.info("Got URIs from all LN nodes")
 
         ##
@@ -134,19 +127,13 @@ class LNInit(Commander):
         # (source: LND, target_uri: str) tuples of LND instances
         connections = []
         # Cycle graph through all LN nodes
-        nodes = list(ln_nodes)
+        nodes = list(self.lns.values())
         prev_node = nodes[-1]
         for node in nodes:
-            if node != prev_node:
-                connections.append((node, prev_node))
+            connections.append((node, prev_node))
             prev_node = node
         # Explicit connections between every pair of channel partners
         for ch in self.channels:
-            node_names = self.node_names(ln_nodes)
-            if ch["source"] not in node_names or ch["target"] not in node_names:
-                self.log.error(f"LN Channel {ch} not available, removing")
-                self.channels.remove(ch)
-                continue
             src = self.lns[ch["source"]]
             tgt = self.lns[ch["target"]]
             # Avoid duplicates and reciprocals
@@ -155,9 +142,6 @@ class LNInit(Commander):
 
         def connect_ln(self, pair):
             while True:
-                if pair[1].name not in ln_uris:
-                    self.log.info(f"LN URIs for {pair[1].name} not found")
-                    break
                 res = pair[0].connect(ln_uris[pair[1].name])
                 if res == {}:
                     self.log.info(f"Connected LN nodes {pair[0].name} -> {pair[1].name}")
@@ -188,7 +172,7 @@ class LNInit(Commander):
             sleep(0.25)
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in p2p_threads)
+        all(thread.join() is None for thread in p2p_threads)
         self.log.info("Established all LN p2p connections")
 
         ##
@@ -200,8 +184,7 @@ class LNInit(Commander):
         ch_by_block = {}
         for ch in self.channels:
             if "id" not in ch or "block" not in ch["id"]:
-                self.log.info(f"LN Channel {ch} not found")
-                continue
+                raise Exception(f"LN Channel {ch} not found")
             block = ch["id"]["block"]
             if block not in ch_by_block:
                 ch_by_block[block] = [ch]
@@ -220,8 +203,6 @@ class LNInit(Commander):
                 gen(need - 1)
 
             def open_channel(self, ch, fee_rate):
-                if ch["source"] not in self.lns or ch["target"] not in ln_uris:
-                    return
                 src = self.lns[ch["source"]]
                 tgt_uri = ln_uris[ch["target"]]
                 tgt_pk, _ = tgt_uri.split("@")
@@ -263,7 +244,7 @@ class LNInit(Commander):
                 t.start()
                 ch_threads.append(t)
 
-            all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in ch_threads)
+            all(thread.join() is None for thread in ch_threads)
             self.log.info(f"Waiting for {len(channels)} channel opens in mempool...")
             self.wait_until(
                 lambda channels=channels: self.nodes[0].getmempoolinfo()["size"] >= len(channels),
@@ -305,12 +286,12 @@ class LNInit(Commander):
                     f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels"
                 )
 
-        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in ln_nodes]
+        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()]
         for thread in ch_ann_threads:
             sleep(0.25)
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT * 2) is None for thread in ch_ann_threads)
+        all(thread.join() is None for thread in ch_ann_threads)
         self.log.info("All LN nodes have complete graph")
 
         ##
@@ -357,7 +338,7 @@ class LNInit(Commander):
                 update_threads.append(tt)
         count = len(update_threads)
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in update_threads)
+        all(thread.join() is None for thread in update_threads)
         self.log.info(f"Sent {count} channel policy updates")
 
         self.log.info("Waiting for all channel policy gossip to synchronize...")
@@ -410,13 +391,13 @@ class LNInit(Commander):
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in ln_nodes
+            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in self.lns.values()
         ]
         for thread in policy_threads:
             sleep(0.25)
             thread.start()
 
-        all(thread.join(timeout=THREAD_JOIN_TIMEOUT) is None for thread in policy_threads)
+        all(thread.join() is None for thread in policy_threads)
         self.log.info("All LN nodes have matching graph!")
 
 

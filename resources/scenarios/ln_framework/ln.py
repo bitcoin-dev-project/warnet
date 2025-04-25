@@ -1,6 +1,7 @@
 import base64
 import http.client
 import json
+import logging
 import os
 import ssl
 from abc import ABC, abstractmethod
@@ -112,12 +113,14 @@ class Policy:
 
 class LNNode(ABC):
     @abstractmethod
-    def __init__(self, pod_name, logger=None):
-        self.log = logger
+    def __init__(self, pod_name):
         self.name = pod_name
-
-    def setLogger(self, logger):
-        self.log = logger
+        self.log = logging.getLogger(pod_name)
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(f'%(name)-8s - %(levelname)s: %(message)s')
+        handler.setFormatter(formatter)
+        self.log.addHandler(handler)
+        self.log.setLevel(logging.INFO)
 
     @staticmethod
     def param_dict_to_list(params: dict) -> list[str]:
@@ -164,10 +167,77 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name, logger=None):
-        super().__init__(pod_name, logger)
+    def __init__(self, pod_name):
+        super().__init__(pod_name)
+        self.conn = http.client.HTTPSConnection(
+            host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
+        )
         self.headers = {}
         self.impl = "cln"
+
+    def reset_connection(self):
+        self.conn = http.client.HTTPSConnection(
+            host=self.name, port=3010, timeout=5, context=INSECURE_CONTEXT
+        )
+
+    def setRune(self, rune):
+        self.headers = {
+            "Rune": rune
+        }
+
+    def get(self, uri):
+        attempt = 0
+        while True:
+            try:
+                self.log.warning(f"headers: {self.headers}")
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers=self.headers,
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error CLN GET, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def post(self, uri, data={}):
+        body = json.dumps(data)
+        post_header = self.headers
+        post_header["Content-Length"] = str(len(body))
+        post_header["Content-Type"] = "application/json"
+        attempt = 0
+        while True:
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers=post_header,
+                )
+                # Stream output, otherwise we get a timeout error
+                res = self.conn.getresponse()
+                stream = ""
+                while True:
+                    try:
+                        data = res.read(1)
+                        if len(data) == 0:
+                            break
+                        else:
+                            stream += data.decode("utf8")
+                    except Exception:
+                        break
+                return stream
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error CLN POST, Abort: {e}")
+                    return None
+                sleep(1)
 
     def rpc(
         self,
@@ -191,12 +261,26 @@ class CLN(LNNode):
                 self.log.error(f"CLN rpc error: {e}, wait and retry...")
                 sleep(2)
         return None
-
-    def newaddress(self, max_tries=2):
+    
+    def createrune(self, max_tries=2):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("newaddr")
+            response = self.rpc("createrune")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            self.setRune(res["rune"])
+            return
+        raise Exception(f"Unable to fetch rune from {self.name}")
+
+    def newaddress(self, max_tries=2):
+        self.createrune()
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/v1/newaddr")
             if not response:
                 sleep(2)
                 continue
@@ -211,7 +295,7 @@ class CLN(LNNode):
         return False, ""
 
     def uri(self):
-        res = json.loads(self.rpc("getinfo"))
+        res = json.loads(self.post("/v1/getinfo"))
         if len(res["address"]) < 1:
             return None
         return f"{res['id']}@{res['address'][0]['address']}:{res['address'][0]['port']}"
@@ -220,7 +304,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("listfunds")
+            response = self.post("/v1/listfunds")
             if not response:
                 sleep(2)
                 continue
@@ -232,7 +316,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("listfunds")
+            response = self.post("/v1/listfunds")
             if not response:
                 sleep(2)
                 continue
@@ -244,7 +328,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("connect", [target_uri])
+            response = self.post("/v1/connect", {"id": target_uri})
             if response:
                 res = json.loads(response)
                 if "id" in res:
@@ -269,7 +353,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("fundchannel", self.param_dict_to_list(data))
+            response = self.post("/v1/fundchannel", data)
             if response:
                 res = json.loads(response)
                 if "txid" in res:
@@ -283,14 +367,14 @@ class CLN(LNNode):
         return None
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
-        response = self.rpc("invoice", [sats * 1000, label, description])
+        response = self.post("invoice", {"amount_msat": sats * 1000, "label": label, "description": description})
         if response:
             res = json.loads(response)
             return res["bolt11"]
         return None
 
     def payinvoice(self, payment_request) -> str:
-        response = self.rpc("pay", [payment_request])
+        response = self.rpc("pay", {"bolt11": payment_request})
         if response:
             res = json.loads(response)
             if "code" in res:
@@ -303,7 +387,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.rpc("listchannels")
+            response = self.post("/v1/listchannels")
             if response:
                 res = json.loads(response)
                 if "channels" in res:
@@ -329,8 +413,8 @@ class CLN(LNNode):
 
 
 class LND(LNNode):
-    def __init__(self, pod_name, logger=None):
-        super().__init__(pod_name, logger)
+    def __init__(self, pod_name):
+        super().__init__(pod_name)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )

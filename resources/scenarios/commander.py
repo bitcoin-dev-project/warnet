@@ -228,7 +228,6 @@ class Commander(BitcoinTestFramework):
             self.tanks[tank["tank"]] = node
 
         for ln in WARNET["lightning"]:
-            ln.setLogger(self.log)
             self.lns[ln.name] = ln
 
         self.num_nodes = len(self.nodes)
