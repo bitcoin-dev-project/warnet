@@ -37,7 +37,6 @@ from .k8s import (
     get_mission,
     get_namespaces_by_type,
     wait_for_ingress_controller,
-    wait_for_pod,
     wait_for_pod_ready,
 )
 from .process import run_command, stream_command
@@ -391,7 +390,6 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         p.join()
 
     if needs_ln_init:
-        click.echo("deploy_network->_run started")
         name = _run(
             scenario_file=SCENARIOS_DIR / "ln_init.py",
             debug=False,
@@ -400,11 +398,8 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             admin=False,
             namespace=namespace,
         )
-        click.echo("deploy_network->_run finished")
         wait_for_pod_ready(name, namespace=namespace)
-        click.echo("wait_for_pod finished")
         _logs(pod_name=name, follow=True, namespace=namespace)
-    click.echo("deploy_network finished")
 
 
 def deploy_single_node(node, directory: Path, debug: bool, namespace: str):

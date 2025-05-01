@@ -19,7 +19,7 @@ SimLN also requires access details for each node; however, the SimLN plugin will
   "cert": <path_to_tls_cert>
 }
 ````
-SimLN also supports Core Lightning (CLN).  CLN nodes connection details are transfered from the CLN node to SimLN node during launch-activity processing.
+SimLN plugin also supports Core Lightning (CLN).  CLN nodes connection details are transfered from the CLN node to SimLN node during launch-activity processing.
 ```` JSON
 {
   "id": <node_id>,
@@ -83,8 +83,8 @@ nodes:
     addnode:
       - tank-0000
     ln:
-      lnd: true
-    lnd:
+      cln: true
+    cln:
       channels:
         - id:
             block: 300

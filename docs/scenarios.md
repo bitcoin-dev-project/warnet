@@ -72,9 +72,3 @@ Total Tanks: 6 | Active Scenarios: 0
 ## Running a custom scenario
 
 You can write your own scenario file and run it in the same way.
-
-## Scenarios with lightning nodes
-
-When defining network.yaml all lnd nodes should be indexed in the same block before any cln nodes otherwise node responsiveness causes the expected index to get out of order with actual regardless of how the channels are opened
-Review `test/data/ln_mixed/network.yaml` for an example
-
