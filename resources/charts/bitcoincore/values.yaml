@@ -142,3 +142,4 @@ loadSnapshot:
 
 ln:
   lnd: false
+  cln: false

@@ -19,8 +19,18 @@ SimLN also requires access details for each node; however, the SimLN plugin will
   "cert": <path_to_tls_cert>
 }
 ````
+SimLN plugin also supports Core Lightning (CLN).  CLN nodes connection details are transfered from the CLN node to SimLN node during launch-activity processing.
+```` JSON
+{
+  "id": <node_id>,
+  "address": https://<domain:port>,
+  "ca_cert": /working/<node_id>-ca.pem,
+  "client_cert": /working/<node_id>-client.pem,
+  "client_key": /working/<node_id>-client-key.pem
+}
+````
 
-Since SimLN already has access to those LND connection details, it means you can focus on the "activity" definitions.
+Since SimLN already has access to those LND and CLN connection details, it means you can focus on the "activity" definitions.
 
 ### Launch activity definitions from the command line
 The SimLN plugin takes "activity" definitions like so:
@@ -73,8 +83,8 @@ nodes:
     addnode:
       - tank-0000
     ln:
-      lnd: true
-    lnd:
+      cln: true
+    cln:
       channels:
         - id:
             block: 300

@@ -1,14 +1,6 @@
 apiVersion: v2
-name: bitcoincore
-description: A Helm chart for Bitcoin Core
-
-dependencies:
-  - name: lnd
-    version: 0.1.0
-    condition: ln.lnd
-  - name: cln
-    version: 0.1.0
-    condition: ln.cln
+name: cln
+description: A Helm chart for CLN
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -29,4 +21,4 @@ version: 0.1.0
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: 0.1.0
+appVersion: "0.1.0"

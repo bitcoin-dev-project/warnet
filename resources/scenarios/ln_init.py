@@ -42,18 +42,12 @@ class LNInit(Commander):
         ln_addrs = []
 
         def get_ln_addr(self, ln):
-            while True:
-                res = ln.newaddress()
-                if "address" in res:
-                    addr = res["address"]
-                    ln_addrs.append(addr)
-                    self.log.info(f"Got wallet address {addr} from {ln.name}")
-                    break
-                else:
-                    self.log.info(
-                        f"Couldn't get wallet address from {ln.name}:\n  {res}\n  wait and retry..."
-                    )
-                    sleep(1)
+            success, address = ln.newaddress()
+            if success:
+                ln_addrs.append(address)
+                self.log.info(f"Got wallet address {address} from {ln.name}")
+            else:
+                self.log.info(f"Couldn't get wallet address from {ln.name}")
 
         addr_threads = [
             threading.Thread(target=get_ln_addr, args=(self, ln)) for ln in self.lns.values()
@@ -166,15 +160,18 @@ class LNInit(Commander):
                         )
                         sleep(1)
                     else:
-                        self.log.info(
+                        self.log.error(
                             f"Unexpected response attempting to connect {pair[0].name} -> {pair[1].name}:\n  {res}\n  ABORTING"
                         )
-                        break
+                        raise Exception(
+                            f"Unable to connect {pair[0].name} -> {pair[1].name}:\n  {res}"
+                        )
 
         p2p_threads = [
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
+            sleep(0.25)
             thread.start()
 
         all(thread.join() is None for thread in p2p_threads)
@@ -188,7 +185,8 @@ class LNInit(Commander):
         # so their channel ids are deterministic
         ch_by_block = {}
         for ch in self.channels:
-            # TODO: if "id" not in ch ...
+            if "id" not in ch or "block" not in ch["id"]:
+                raise Exception(f"LN Channel {ch} not found")
             block = ch["id"]["block"]
             if block not in ch_by_block:
                 ch_by_block[block] = [ch]
@@ -214,24 +212,24 @@ class LNInit(Commander):
                     f"Sending channel open from {ch['source']} -> {ch['target']} with fee_rate={fee_rate}"
                 )
                 res = src.channel(
-                    pk=self.hex_to_b64(tgt_pk),
+                    pk=tgt_pk,
                     capacity=ch["capacity"],
                     push_amt=ch["push_amt"],
                     fee_rate=fee_rate,
                 )
-                if "result" not in res:
+                if res and "txid" in res:
+                    ch["txid"] = res["txid"]
+                    self.log.info(
+                        f"Channel open {ch['source']} -> {ch['target']}\n  "
+                        + f"outpoint={res['outpoint']}\n  "
+                        + f"expected channel id: {ch['id']}"
+                    )
+                else:
+                    ch["txid"] = "N/A"
                     self.log.info(
                         "Unexpected channel open response:\n  "
                         + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
                         + f"{res}"
-                    )
-                else:
-                    txid = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
-                    ch["txid"] = txid
-                    self.log.info(
-                        f"Channel open {ch['source']} -> {ch['target']}\n  "
-                        + f"outpoint={txid}:{res['result']['chan_pending']['output_index']}\n  "
-                        + f"expected channel id: {ch['id']}"
                     )
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
@@ -244,6 +242,7 @@ class LNInit(Commander):
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
+                sleep(0.25)
                 t.start()
                 ch_threads.append(t)
 
@@ -260,6 +259,7 @@ class LNInit(Commander):
             block_txs = block["tx"]
             block_height = block["height"]
             for ch in channels:
+                assert ch["txid"] != "N/A", f"Channel:{ch} did not receive txid"
                 assert ch["id"]["block"] == block_height, f"Actual block:{block_height}\n{ch}"
                 assert block_txs[ch["id"]["index"]] == ch["txid"], (
                     f"Actual txid:{block_txs[ch['id']['index']]}\n{ch}"
@@ -273,14 +273,26 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            while len(ln.graph()["edges"]) != expected:
-                sleep(1)
-            self.log.info(f"LN {ln.name} has graph with all {expected} channels")
+            attempts = 0
+            actual = 0
+            while actual != expected:
+                actual = len(ln.graph()["edges"])
+                if attempts > 10:
+                    break
+                attempts += 1
+                sleep(5)
+            if actual == expected:
+                self.log.info(f"LN {ln.name} has graph with all {expected} channels")
+            else:
+                self.log.error(
+                    f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels"
+                )
 
         ch_ann_threads = [
             threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
         ]
         for thread in ch_ann_threads:
+            sleep(0.25)
             thread.start()
 
         all(thread.join() is None for thread in ch_ann_threads)
@@ -311,6 +323,7 @@ class LNInit(Commander):
                         ch["capacity"],
                     ),
                 )
+                sleep(0.25)
                 ts.start()
                 update_threads.append(ts)
             if "target_policy" in ch:
@@ -324,6 +337,7 @@ class LNInit(Commander):
                         ch["capacity"],
                     ),
                 )
+                sleep(0.25)
                 tt.start()
                 update_threads.append(tt)
         count = len(update_threads)
@@ -337,16 +351,23 @@ class LNInit(Commander):
             return pol1.to_lnd_chanpolicy(capacity) == pol2.to_lnd_chanpolicy(capacity)
 
         def matching_graph(self, expected, ln):
-            while True:
+            done = False
+            while not done:
                 actual = ln.graph()["edges"]
-                assert len(expected) == len(actual)
-                done = True
+                self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
+                if len(actual) > 0:
+                    done = True
+                    assert len(expected) == len(actual), (
+                        f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
+                    )
                 for i, actual_ch in enumerate(actual):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
                     # If this fails we have a bigger issue
-                    assert int(actual_ch["capacity"]) == capacity
+                    assert int(actual_ch["capacity"]) == capacity, (
+                        f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
+                    )
 
                     # Policies were not defined in network.yaml
                     if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
@@ -367,12 +388,10 @@ class LNInit(Commander):
                     ):
                         continue
                     done = False
-                    break
                 if done:
                     self.log.info(f"LN {ln.name} graph channel policies all match expected source")
-                    break
                 else:
-                    sleep(1)
+                    sleep(5)
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
@@ -380,6 +399,7 @@ class LNInit(Commander):
             for ln in self.lns.values()
         ]
         for thread in policy_threads:
+            sleep(0.25)
             thread.start()
 
         all(thread.join() is None for thread in policy_threads)

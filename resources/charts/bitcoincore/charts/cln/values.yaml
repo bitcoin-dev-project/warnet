@@ -1,0 +1,102 @@
+# Default values for cln.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+image:
+  repository: elementsproject/lightningd
+  pullPolicy: IfNotPresent
+  tag: "v25.02"
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels:
+  app: "warnet"
+  mission: "lightning"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+
+P2PPort: 9735
+RPCPort: 9736
+RestPort: 3010
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "lightning-cli getinfo >/dev/null 2>&1"
+  failureThreshold: 3
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 1
+readinessProbe:
+  failureThreshold: 10
+  periodSeconds: 30
+  successThreshold: 1
+  timeoutSeconds: 60
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "lightning-cli getinfo 2>/dev/null | grep -q 'id' || exit 1"
+
+# Additional volumes on the output Deployment definition.
+volumes:
+  - name: working
+    emptyDir: {}
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts:
+  - name: working
+    mountPath: "/working"
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+baseConfig: |
+  log-level=info
+  developer
+  dev-fast-gossip
+  bitcoin-rpcuser=user
+  # bitcoind.rpcpass are set in configmap.yaml
+
+config: ""
+
+defaultConfig: ""
+
+channels: []

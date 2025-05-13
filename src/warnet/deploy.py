@@ -37,7 +37,6 @@ from .k8s import (
     get_mission,
     get_namespaces_by_type,
     wait_for_ingress_controller,
-    wait_for_pod,
     wait_for_pod_ready,
 )
 from .process import run_command, stream_command
@@ -365,10 +364,21 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         network_file = yaml.safe_load(f)
 
     needs_ln_init = False
+    supported_ln_projects = ["lnd", "cln"]
     for node in network_file["nodes"]:
-        if "lnd" in node and "channels" in node["lnd"] and len(node["lnd"]["channels"]) > 0:
-            needs_ln_init = True
+        ln_config = node.get("ln", {})
+        for key in supported_ln_projects:
+            if ln_config.get(key, False) and key in node and "channels" in node[key]:
+                needs_ln_init = True
+                break
+        if needs_ln_init:
             break
+
+    default_file_path = directory / DEFAULTS_FILE
+    with default_file_path.open() as f:
+        default_file = yaml.safe_load(f)
+    if any(default_file.get("ln", {}).get(key, False) for key in supported_ln_projects):
+        needs_ln_init = True
 
     processes = []
     for node in network_file["nodes"]:
@@ -388,7 +398,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             admin=False,
             namespace=namespace,
         )
-        wait_for_pod(name, namespace=namespace)
+        wait_for_pod_ready(name, namespace=namespace)
         _logs(pod_name=name, follow=True, namespace=namespace)
 
 
