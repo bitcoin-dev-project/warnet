@@ -132,3 +132,8 @@ config: ""
 defaultConfig: ""
 
 channels: []
+
+circuitbreaker:
+  enabled: false  # Default to disabled
+  image: carlakirkcohen/circuitbreaker:attackathon-test
+  httpPort: 9235

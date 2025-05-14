@@ -58,8 +58,27 @@ spec:
         - mountPath: /root/.lnd/tls.cert
           name: config
           subPath: tls.cert
+        - name: shared-volume
+          mountPath: /root/.lnd/
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.circuitbreaker.enabled }}
+    - name: circuitbreaker
+      image: {{ .Values.circuitbreaker.image | quote }}
+      imagePullPolicy: IfNotPresent
+      args:
+        - "--network={{ .Values.global.chain }}"
+        - "--rpcserver=localhost:{{ .Values.RPCPort }}"
+        - "--tlscertpath=/tls.cert"
+        - "--macaroonpath=/root/.lnd/data/chain/bitcoin/{{ .Values.global.chain }}/admin.macaroon"
+        - "--httplisten=0.0.0.0:{{ .Values.circuitbreaker.httpPort }}"
+      volumeMounts:
+        - name: shared-volume
+          mountPath: /root/.lnd/
+        - name: config
+          mountPath: /tls.cert
+          subPath: tls.cert
     {{- end }}
   volumes:
     {{- with .Values.volumes }}
@@ -68,6 +87,8 @@ spec:
     - configMap:
         name: {{ include "lnd.fullname" . }}
       name: config
+    - name: shared-volume
+      emptyDir: {}
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}

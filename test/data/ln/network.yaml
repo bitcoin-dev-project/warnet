@@ -21,6 +21,10 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
+      circuitbreaker:
+        enabled: true
+        httpPort: 9235
+
   - name: tank-0004
     addnode:
       - tank-0000
