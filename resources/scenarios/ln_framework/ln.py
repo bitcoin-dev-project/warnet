@@ -354,6 +354,204 @@ class CLN(LNNode):
         self.log.warning("Channel Policy Updates not supported by CLN yet!")
         return None
 
+class ECLAIR(LNNode):
+    def __init__(self, pod_name, ip_address):
+        super().__init__(pod_name, ip_address)
+        self.conn = None
+        self.headers = {"Authorization": "Basic OjIxc2F0b3NoaQ=="}
+        self.impl = "eclair"
+        self.reset_connection()
+
+    def reset_connection(self):
+        self.conn = http.client.HTTPConnection(
+            host=self.name, port=8080, timeout=5
+        )
+
+    def get(self, uri):
+        attempt = 0
+        while True:
+            try:
+                self.log.warning(f"headers: {self.headers}")
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers=self.headers,
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error ECLAIR GET, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def post(self, uri, data=None):
+        if not data:
+            data = {}
+        body = json.dumps(data)
+        post_header = self.headers
+        post_header["Content-Length"] = str(len(body))
+        post_header["Content-Type"] = "application/x-www-form-urlencoded"
+        attempt = 0
+        while True:
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers=post_header,
+                )
+                # Stream output, otherwise we get a timeout error
+                res = self.conn.getresponse()
+                stream = ""
+                while True:
+                    try:
+                        data = res.read(1)
+                        if len(data) == 0:
+                            break
+                        else:
+                            stream += data.decode("utf8")
+                    except Exception:
+                        break
+                return stream
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error ECLAIR POST, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def newaddress(self, max_tries=20):
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/getnewaddress")
+            if not response:
+                sleep(5)
+                continue
+            return True, response.strip("\"")
+        return False, ""
+
+    def uri(self):
+        res = json.loads(self.post("/getinfo"))
+        if len(res["publicAddresses"]) < 1:
+            return None
+        return f"{res['nodeId']}@{res['publicAddresses'][0]}"
+
+    def walletbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/v1/listfunds")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
+        return 0
+
+    def channelbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/v1/listfunds")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(sum(o["our_amount_msat"] for o in res["channels"]) / 1000)
+        return 0
+
+    def connect(self, target_uri, max_tries=5) -> dict:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/v1/connect", {"id": target_uri})
+            if response:
+                res = json.loads(response)
+                if "id" in res:
+                    return {}
+                elif "code" in res and res["code"] == 402:
+                    self.log.warning(f"failed connect 402: {response}, wait and retry...")
+                    sleep(5)
+                else:
+                    return res
+            else:
+                self.log.debug(f"connect response: {response}, wait and retry...")
+                sleep(2)
+        return None
+
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5) -> dict:
+        data = {
+            "amount": capacity,
+            "push_msat": push_amt,
+            "id": pk,
+            "feerate": fee_rate,
+        }
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/v1/fundchannel", data)
+            if response:
+                res = json.loads(response)
+                if "txid" in res:
+                    return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
+                else:
+                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    sleep(1)
+            else:
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(2)
+        return None
+
+    def createinvoice(self, sats, label, description="new invoice") -> str:
+        response = self.post(
+            "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
+        )
+        if response:
+            res = json.loads(response)
+            return res["bolt11"]
+        return None
+
+    def payinvoice(self, payment_request) -> str:
+        response = self.post("/v1/pay", {"bolt11": payment_request})
+        if response:
+            res = json.loads(response)
+            if "code" in res:
+                return res["message"]
+            else:
+                return res["payment_hash"]
+        return None
+
+    def graph(self, max_tries=2) -> dict:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/v1/listchannels")
+            if response:
+                res = json.loads(response)
+                if "channels" in res:
+                    # Map to desired output
+                    filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
+                    # Sort by short_channel_id - block -> index -> output
+                    sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
+                    # Add capacity by dividing amount_msat by 1000
+                    for channel in sorted_channels:
+                        channel["capacity"] = channel["amount_msat"] // 1000
+                    return {"edges": sorted_channels}
+                else:
+                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    sleep(1)
+            else:
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(2)
+        return None
+
+    def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
+        self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
+        return None
 
 class LND(LNNode):
     def __init__(self, pod_name, ip_address):

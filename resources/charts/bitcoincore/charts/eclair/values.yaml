@@ -1,0 +1,100 @@
+# Default values for eclair.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+image:
+  repository: acinq/eclair
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podLabels: 
+  app: "warnet"
+  mission: "lightning"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+
+ServerPort: 9735
+RestPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "eclair-cli -p 21satoshi getinfo >/dev/null 2>&1"
+  failureThreshold: 3
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 1
+readinessProbe:
+  failureThreshold: 10
+  periodSeconds: 30
+  successThreshold: 1
+  timeoutSeconds: 60
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "eclair-cli -p 21satoshi getinfo 2>/dev/null | grep -q 'id' || exit 1"
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+baseConfig: |
+  eclair.server.port = 9735
+  eclair.api.enabled = true
+  eclair.api.binding-ip = 0.0.0.0
+  eclair.api.password = 21satoshi
+  eclair.api.port = 8080
+  eclair.bitcoind.rpcuser = user
+  eclair.bitcoind.rpc-timeout = 120
+ 
+config: ""
+
+defaultConfig: ""
+
+channels: []

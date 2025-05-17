@@ -364,7 +364,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         network_file = yaml.safe_load(f)
 
     needs_ln_init = False
-    supported_ln_projects = ["lnd", "cln"]
+    supported_ln_projects = ["lnd", "cln", "eclair"]
     for node in network_file["nodes"]:
         ln_config = node.get("ln", {})
         for key in supported_ln_projects:
