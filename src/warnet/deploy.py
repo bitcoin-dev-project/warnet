@@ -29,6 +29,8 @@ from .constants import (
     AnnexMember,
     HookValue,
     WarnetContent,
+    FORK_OBSERVER_RPC_USER,
+    FORK_OBSERVER_RPC_PASSWORD,
 )
 from .control import _logs, _run
 from .k8s import (
@@ -331,8 +333,8 @@ name = "{node_name}"
 description = "{node_name}.{default_namespace}.svc:{int(p2pport)}"
 rpc_host = "{node_name}.{default_namespace}.svc"
 rpc_port = {int(rpcport)}
-rpc_user = "forkobserver"
-rpc_password = "tabconf2024"
+rpc_user = "{FORK_OBSERVER_RPC_USER}"
+rpc_password = "{FORK_OBSERVER_RPC_PASSWORD}"
 """
 
         override_string += node_config
