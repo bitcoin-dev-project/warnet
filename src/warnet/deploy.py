@@ -366,9 +366,8 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     needs_ln_init = False
     supported_ln_projects = ["lnd", "cln", "eclair"]
     for node in network_file["nodes"]:
-        ln_config = node.get("ln", {})
         for key in supported_ln_projects:
-            if ln_config.get(key, False) and key in node and "channels" in node[key]:
+            if key in node and node[key].get("enabled", False):
                 needs_ln_init = True
                 break
         if needs_ln_init:

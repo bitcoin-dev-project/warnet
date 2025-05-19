@@ -3,6 +3,8 @@
 # Declare variables to be passed into your templates.
 namespace: warnet
 
+restartPolicy: Never
+
 image:
   repository: acinq/eclair
   pullPolicy: IfNotPresent
@@ -55,17 +57,17 @@ livenessProbe:
     command:
       - "/bin/sh"
       - "-c"
-      - "eclair-cli -p 21satoshi getinfo >/dev/null 2>&1"
+      - "eclair-cli -p 21satoshi getinfo 2>/dev/null 2>&1"
   failureThreshold: 3
   initialDelaySeconds: 5
   periodSeconds: 5
   successThreshold: 1
   timeoutSeconds: 1
 readinessProbe:
-  failureThreshold: 10
-  periodSeconds: 30
+  failureThreshold: 1
+  periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 60
+  timeoutSeconds: 5
   exec:
     command:
       - "/bin/sh"
@@ -91,7 +93,6 @@ baseConfig: |
   eclair.api.password = 21satoshi
   eclair.api.port = 8080
   eclair.bitcoind.rpcuser = user
-  eclair.bitcoind.rpc-timeout = 120
  
 config: ""
 

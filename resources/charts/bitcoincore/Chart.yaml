@@ -5,10 +5,13 @@ description: A Helm chart for Bitcoin Core
 dependencies:
   - name: lnd
     version: 0.1.0
-    condition: ln.lnd
+    condition: lnd.enabled
   - name: cln
     version: 0.1.0
-    condition: ln.cln
+    condition: cln.enabled
+  - name: eclair
+    version: 0.1.0
+    condition: eclair.enabled
 
 # A chart can be either an 'application' or a 'library' chart.
 #

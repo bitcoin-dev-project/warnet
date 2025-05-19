@@ -2,7 +2,9 @@ import base64
 import http.client
 import json
 import logging
+import re
 import ssl
+import urllib.parse
 from abc import ABC, abstractmethod
 from time import sleep
 
@@ -389,7 +391,7 @@ class ECLAIR(LNNode):
     def post(self, uri, data=None):
         if not data:
             data = {}
-        body = json.dumps(data)
+        body = urllib.parse.urlencode(data)
         post_header = self.headers
         post_header["Content-Length"] = str(len(body))
         post_header["Content-Type"] = "application/x-www-form-urlencoded"
@@ -423,7 +425,7 @@ class ECLAIR(LNNode):
                     return None
                 sleep(1)
 
-    def newaddress(self, max_tries=20):
+    def newaddress(self, max_tries=10):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
@@ -436,48 +438,39 @@ class ECLAIR(LNNode):
 
     def uri(self):
         res = json.loads(self.post("/getinfo"))
-        if len(res["publicAddresses"]) < 1:
-            return None
-        return f"{res['nodeId']}@{res['publicAddresses'][0]}"
+        return f"{res['nodeId']}@{res['alias']}:9735"
 
     def walletbalance(self, max_tries=2) -> int:
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/listfunds")
+            response = self.post("/globalbalance")
             if not response:
                 sleep(2)
                 continue
             res = json.loads(response)
-            return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
+            return int(res["total"] * 100000000) #FIXME: what is the correct unit here?
         return 0
 
     def channelbalance(self, max_tries=2) -> int:
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/listfunds")
+            response = self.post("/usablebalances")
             if not response:
                 sleep(2)
                 continue
             res = json.loads(response)
-            return int(sum(o["our_amount_msat"] for o in res["channels"]) / 1000)
+            return int(sum(o["canSend"] + o["canReceive"] for o in res))
         return 0
 
     def connect(self, target_uri, max_tries=5) -> dict:
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/connect", {"id": target_uri})
-            if response:
-                res = json.loads(response)
-                if "id" in res:
-                    return {}
-                elif "code" in res and res["code"] == 402:
-                    self.log.warning(f"failed connect 402: {response}, wait and retry...")
-                    sleep(5)
-                else:
-                    return res
+            response = self.post("/connect", {"uri": target_uri})
+            if "connected" in response:
+                return {}
             else:
                 self.log.debug(f"connect response: {response}, wait and retry...")
                 sleep(2)
@@ -485,19 +478,22 @@ class ECLAIR(LNNode):
 
     def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5) -> dict:
         data = {
-            "amount": capacity,
-            "push_msat": push_amt,
-            "id": pk,
-            "feerate": fee_rate,
-        }
+            "fundingSatoshis": capacity,
+            "pushMsat": push_amt,
+            "nodeId": pk,
+            "fundingFeeBudgetSatoshis": fee_rate,
+        } #FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/fundchannel", data)
+            response = self.post("/open", data)
+            print("channel open", response)
             if response:
-                res = json.loads(response)
-                if "txid" in res:
-                    return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
+                if "created channel" in response:
+                    # created channel e872f515dc5d8a3d61ccbd2127f33141eaa115807271dcc5c5c727f3eca914d3 with fundingTxId=bc2b8db55b9588d3a18bd06bd0e284f63ee8cc149c63138d51ac8ef81a72fc6f and fees=720 sat
+                    channel_id = re.search(r'channel ([0-9a-f]+)', response).group(1)
+                    funding_tx_id = re.search(r'fundingTxId=([0-9a-f]+)', response).group(1)
+                    return {"txid": funding_tx_id, "outpoint": f"{funding_tx_id}:N/A", "channel": channel_id}
                 else:
                     self.log.warning(f"unable to open channel: {res}, wait and retry...")
                     sleep(1)
@@ -509,7 +505,7 @@ class ECLAIR(LNNode):
     def createinvoice(self, sats, label, description="new invoice") -> str:
         response = self.post(
             "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
-        )
+        ) # https://acinq.github.io/eclair/#createinvoice
         if response:
             res = json.loads(response)
             return res["bolt11"]
@@ -517,6 +513,7 @@ class ECLAIR(LNNode):
 
     def payinvoice(self, payment_request) -> str:
         response = self.post("/v1/pay", {"bolt11": payment_request})
+        # https://acinq.github.io/eclair/#payinvoice
         if response:
             res = json.loads(response)
             if "code" in res:
@@ -529,7 +526,7 @@ class ECLAIR(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/listchannels")
+            response = self.post("/channels") # https://acinq.github.io/eclair/#channels-2
             if response:
                 res = json.loads(response)
                 if "channels" in res:

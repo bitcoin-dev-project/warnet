@@ -16,6 +16,7 @@ metadata:
     kubectl.kubernetes.io/default-container: "eclair"
 spec:
   {{- with .Values.imagePullSecrets }}
+  restartPolicy: "{{ .Values.restartPolicy }}"
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -32,11 +33,12 @@ spec:
         - "-c"
       args:
         - >
-          /app/eclair-node/bin/eclair-node.sh -v &
-          while [ -f /root/.eclair/eclair.log ]; do
-            tail /root/.eclair/eclair.log
+          /app/eclair-node/bin/eclair-node.sh -d -v &
+          while [ ! -f /root/.eclair/eclair.log ]; do
+            echo "Waiting for log file"
             sleep 2
-          done
+          done &&
+          tail -f /root/.eclair/eclair.log
       ports:
         - name: server
           containerPort: {{ .Values.ServerPort }}
