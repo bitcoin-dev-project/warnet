@@ -15,6 +15,8 @@ from .constants import (
     DEFAULTS_FILE,
     DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
+    FORK_OBSERVER_RPC_PASSWORD,
+    FORK_OBSERVER_RPC_USER,
     HELM_COMMAND,
     INGRESS_HELM_COMMANDS,
     LOGGING_CRD_COMMANDS,
@@ -29,8 +31,6 @@ from .constants import (
     AnnexMember,
     HookValue,
     WarnetContent,
-    FORK_OBSERVER_RPC_USER,
-    FORK_OBSERVER_RPC_PASSWORD,
 )
 from .control import _logs, _run
 from .k8s import (
