@@ -4,21 +4,20 @@ import random
 import sys
 from pathlib import Path
 
+import click
+import inquirer
+import yaml
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
-import click
-import inquirer
-import yaml
-
 from resources.scenarios.ln_framework.ln import Policy
 
 from .constants import (
-    DEFAULT_TAG,
-    SUPPORTED_TAGS,
-    FORK_OBSERVER_RPCAUTH,
     DEFAULT_IMAGE_REPO,
+    DEFAULT_TAG,
+    FORK_OBSERVER_RPCAUTH,
+    SUPPORTED_TAGS,
 )
 
 
@@ -49,7 +48,7 @@ def custom_graph(
     index = 0
 
     for entry in tanks:
-        for i in range(int(entry["count"])):
+        for _ in range(int(entry["count"])):
             if ":" in entry["version"] and "/" in entry["version"]:
                 repo, tag = entry["version"].split(":")
                 image = {"repository": repo, "tag": tag}
@@ -98,11 +97,10 @@ def custom_graph(
             "repository": DEFAULT_IMAGE_REPO,
             "pullPolicy": "IfNotPresent",
         },
-        "defaultConfig":
-            f"rpcauth={FORK_OBSERVER_RPCAUTH}\n" +
-            "rpcwhitelist=forkobserver:getchaintips,getblockheader,getblockhash,getblock,getnetworkinfo\n" +
-            "rpcwhitelistdefault=0\n" +
-            "debug=rpc\n"
+        "defaultConfig": f"rpcauth={FORK_OBSERVER_RPCAUTH}\n"
+        + "rpcwhitelist=forkobserver:getchaintips,getblockheader,getblockhash,getblock,getnetworkinfo\n"
+        + "rpcwhitelistdefault=0\n"
+        + "debug=rpc\n",
     }
 
     # Configure logging
@@ -118,12 +116,15 @@ def custom_graph(
 
 
 def inquirer_create_network(project_path: Path):
-    network_name_prompt = inquirer.prompt([
-        inquirer.Text(
-            "network_name",
-            message=click.style("Enter your network name", fg="blue", bold=True),
-            validate=lambda _, x: len(x) > 0,
-        )])
+    network_name_prompt = inquirer.prompt(
+        [
+            inquirer.Text(
+                "network_name",
+                message=click.style("Enter your network name", fg="blue", bold=True),
+                validate=lambda _, x: len(x) > 0,
+            )
+        ]
+    )
     if not network_name_prompt:
         click.secho("Setup cancelled by user.", fg="yellow")
         return False
@@ -140,12 +141,16 @@ def inquirer_create_network(project_path: Path):
 
         Console().print(table)
 
-        add_more_prompt = inquirer.prompt([
-            inquirer.List(
-                "add_more",
-                message=click.style(f"How many nodes to add? (0 = done)", fg="blue", bold=True),
-                choices=["0", "4", "8", "12", "20", "50", "other"],
-                default="12")])
+        add_more_prompt = inquirer.prompt(
+            [
+                inquirer.List(
+                    "add_more",
+                    message=click.style("How many nodes to add? (0 = done)", fg="blue", bold=True),
+                    choices=["0", "4", "8", "12", "20", "50", "other"],
+                    default="12",
+                )
+            ]
+        )
         if not add_more_prompt:
             click.secho("Setup cancelled by user.", fg="yellow")
             return False
@@ -153,11 +158,15 @@ def inquirer_create_network(project_path: Path):
             break
 
         if add_more_prompt["add_more"] == "other":
-            how_many_prompt = inquirer.prompt([
-                inquirer.Text(
-                    "how_many",
-                    message=click.style("Enter the number of nodes", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) > 0)])
+            how_many_prompt = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "how_many",
+                        message=click.style("Enter the number of nodes", fg="blue", bold=True),
+                        validate=lambda _, x: int(x) > 0,
+                    )
+                ]
+            )
             if not how_many_prompt:
                 click.secho("Setup cancelled by user.", fg="yellow")
                 return False
@@ -165,44 +174,61 @@ def inquirer_create_network(project_path: Path):
         else:
             how_many = add_more_prompt["add_more"]
 
-        tank_details_prompt = inquirer.prompt([
-            inquirer.List(
-                "version",
-                message=click.style("Which version would you like to add to network?", fg="blue", bold=True),
-                choices=["other"] + SUPPORTED_TAGS,
-                default=DEFAULT_TAG,
+        tank_details_prompt = inquirer.prompt(
+            [
+                inquirer.List(
+                    "version",
+                    message=click.style(
+                        "Which version would you like to add to network?", fg="blue", bold=True
+                    ),
+                    choices=["other"] + SUPPORTED_TAGS,
+                    default=DEFAULT_TAG,
                 ),
-            inquirer.List(
-                "connections",
-                message=click.style(
-                    "How many connections would you like each of these nodes to have?",
-                    fg="blue",
-                    bold=True,
+                inquirer.List(
+                    "connections",
+                    message=click.style(
+                        "How many connections would you like each of these nodes to have?",
+                        fg="blue",
+                        bold=True,
+                    ),
+                    choices=["0", "1", "2", "8", "12", "other"],
+                    default="8",
                 ),
-                choices=["0", "1", "2", "8", "12", "other"],
-                default="8",
-            )])
+            ]
+        )
         if not tank_details_prompt:
             click.secho("Setup cancelled by user.", fg="yellow")
             return False
             break
         if tank_details_prompt["version"] == "other":
-            custom_version_prompt = inquirer.prompt([
-                inquirer.Text(
-                    "version",
-                    message=click.style("Provide dockerhub repository/image:tag", fg="blue", bold=True),
-                    validate=lambda _, x: "/" in x and ":" in x)])
+            custom_version_prompt = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "version",
+                        message=click.style(
+                            "Provide dockerhub repository/image:tag", fg="blue", bold=True
+                        ),
+                        validate=lambda _, x: "/" in x and ":" in x,
+                    )
+                ]
+            )
             if not custom_version_prompt:
                 click.secho("Setup cancelled by user.", fg="yellow")
                 return False
             tank_details_prompt["version"] = custom_version_prompt["version"]
 
         if tank_details_prompt["connections"] == "other":
-            how_many_conn_prompt = inquirer.prompt([
-                inquirer.Text(
-                    "how_many_conn",
-                    message=click.style("Enter the number of connections", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) > 0)])
+            how_many_conn_prompt = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "how_many_conn",
+                        message=click.style(
+                            "Enter the number of connections", fg="blue", bold=True
+                        ),
+                        validate=lambda _, x: int(x) > 0,
+                    )
+                ]
+            )
             if not how_many_conn_prompt:
                 click.secho("Setup cancelled by user.", fg="yellow")
                 return False
@@ -210,11 +236,13 @@ def inquirer_create_network(project_path: Path):
         else:
             how_many_conn = tank_details_prompt["connections"]
 
-        tanks.append({
-            "version": tank_details_prompt["version"],
-            "count": how_many,
-            "connections": how_many_conn
-        })
+        tanks.append(
+            {
+                "version": tank_details_prompt["version"],
+                "count": how_many,
+                "connections": how_many_conn,
+            }
+        )
 
     fork_observer = click.prompt(
         click.style(
