@@ -5,7 +5,6 @@ from functools import partial
 from pathlib import Path
 from typing import Optional
 
-import pexpect
 from test_base import TestBase
 
 from warnet.k8s import download, wait_for_pod
@@ -24,19 +23,11 @@ class PluginTest(TestBase):
     def run_test(self):
         try:
             os.chdir(self.tmpdir)
-            self.init_directory()
             self.deploy_with_plugin()
             self.copy_results()
             self.assert_hello_plugin()
         finally:
             self.cleanup()
-
-    def init_directory(self):
-        self.log.info("Initializing SimLN plugin...")
-        self.sut = pexpect.spawn("warnet init")
-        self.sut.expect("network", timeout=10)
-        self.sut.sendline("n")
-        self.sut.close()
 
     def deploy_with_plugin(self):
         self.log.info("Deploy the ln network with a SimLN plugin")
