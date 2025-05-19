@@ -12,11 +12,11 @@ from warnet.k8s import download, wait_for_pod
 from warnet.process import run_command
 
 
-class SimLNTest(TestBase):
+class PluginTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = (
-            Path(os.path.dirname(__file__)).parent / "resources" / "networks" / "hello"
+            Path(os.path.dirname(__file__)) / "data" / "network_with_plugins"
         )
         self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
         self.simln_exec = "plugins/simln/plugin.py"
@@ -107,5 +107,5 @@ class SimLNTest(TestBase):
 
 
 if __name__ == "__main__":
-    test = SimLNTest()
+    test = PluginTest()
     test.run_test()
