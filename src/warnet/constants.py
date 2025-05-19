@@ -72,7 +72,6 @@ FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
 CADDY_CHART = str(files("resources.charts").joinpath("caddy"))
 CADDY_INGRESS_NAME = "caddy-ingress"
 
-DEFAULT_NETWORK = Path("6_node_bitcoin")
 DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
 
 # Kubeconfig related stuffs
