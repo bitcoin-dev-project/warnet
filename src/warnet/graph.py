@@ -2,7 +2,6 @@ import json
 import os
 import random
 import sys
-from importlib.resources import files
 from pathlib import Path
 
 import click
@@ -11,7 +10,12 @@ import yaml
 
 from resources.scenarios.ln_framework.ln import Policy
 
-from .constants import DEFAULT_TAG, SUPPORTED_TAGS
+from .constants import (
+    DEFAULT_TAG,
+    SUPPORTED_TAGS,
+    FORK_OBSERVER_RPCAUTH,
+    DEFAULT_IMAGE_REPO,
+)
 
 
 @click.group(name="graph", hidden=True)
@@ -41,7 +45,7 @@ def custom_graph(
     connections = set()
 
     for i in range(num_nodes):
-        node = {"name": f"tank-{i:04d}", "addnode": [], "image": {"tag": version}}
+        node = {"name": f"tank-{i:04d}", "addnode": []}
 
         # Add round-robin connection
         next_node = (i + 1) % num_nodes
@@ -77,11 +81,19 @@ def custom_graph(
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
     # Generate node-defaults.yaml
-    default_yaml_path = (
-        files("resources.networks").joinpath("fork_observer").joinpath("node-defaults.yaml")
-    )
-    with open(str(default_yaml_path)) as f:
-        defaults_yaml_content = yaml.safe_load(f)
+    defaults_yaml_content = {
+        "chain": "regtest",
+        "image": {
+            "repository": DEFAULT_IMAGE_REPO,
+            "pullPolicy": "IfNotPresent",
+            "tag": version
+        },
+        "defaultConfig":
+            f"rpcauth={FORK_OBSERVER_RPCAUTH}\n" +
+            "rpcwhitelist=forkobserver:getchaintips,getblockheader,getblockhash,getblock,getnetworkinfo\n" +
+            "rpcwhitelistdefault=0\n" +
+            "debug=rpc\n"
+    }
 
     # Configure logging
     defaults_yaml_content["collectLogs"] = logging

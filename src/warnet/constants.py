@@ -48,6 +48,13 @@ class AnnexMember(Enum):
 
 PLUGIN_ANNEX = "annex"
 
+DEFAULT_IMAGE_REPO="bitcoindevproject/bitcoin"
+
+# Bitcoin Core config
+FORK_OBSERVER_RPCAUTH="forkobserver:1418183465eecbd407010cf60811c6a0$d4e5f0647a63429c218da1302d7f19fe627302aeb0a71a74de55346a25d8057c"
+# Fork Observer config
+FORK_OBSERVER_RPC_USER="forkobserver"
+FORK_OBSERVER_RPC_PASSWORD="tabconf2024"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
