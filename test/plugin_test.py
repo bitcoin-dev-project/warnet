@@ -18,7 +18,7 @@ class PluginTest(TestBase):
             Path(os.path.dirname(__file__)) / "data" / "network_with_plugins"
         )
         self.plugins_dir = Path(os.path.dirname(__file__)).parent / "resources" / "plugins"
-        self.simln_exec = "plugins/simln/plugin.py"
+        self.simln_exec = self.plugins_dir / "simln" / "plugin.py"
 
     def run_test(self):
         try:
