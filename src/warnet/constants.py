@@ -142,7 +142,7 @@ LOGGING_HELM_COMMANDS = [
     "helm repo update",
     f"helm upgrade --install --namespace warnet-logging --create-namespace --values {MANIFESTS_DIR}/loki_values.yaml loki grafana/loki --version 5.47.2",
     "helm upgrade --install --namespace warnet-logging promtail grafana/promtail --create-namespace",
-    "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --create-namespace --set grafana.enabled=false",
+    "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --create-namespace --set grafana.enabled=false --set prometheus.prometheusSpec.maximumStartupDurationSeconds=300",
     f"helm upgrade --install grafana-dashboards {CHARTS_DIR}/grafana-dashboards --namespace warnet-logging --create-namespace",
     f"helm upgrade --install --namespace warnet-logging --create-namespace loki-grafana grafana/grafana --values {MANIFESTS_DIR}/grafana_values.yaml",
 ]
@@ -151,7 +151,7 @@ LOGGING_HELM_COMMANDS = [
 INGRESS_HELM_COMMANDS = [
     "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx",
     "helm repo update",
-    f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace",
+    f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace --set controller.progressDeadlineSeconds=600",
 ]
 
 # Helm binary
