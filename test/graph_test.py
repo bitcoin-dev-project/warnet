@@ -52,7 +52,6 @@ class GraphTest(TestBase):
             self.sut.expect("many", timeout=30)
             # Up arrow three times: [12] -> 8 -> 4 -> 0 (done)
             self.sut.sendline("\x1b[A" * 3)
-            self.sut.sendline("\r")
             self.sut.expect("enable fork-observer", timeout=30)
             self.sut.sendline("")
             self.sut.expect("seconds", timeout=30)
