@@ -388,7 +388,6 @@ def create_warnet_project(directory: Path, check_empty: bool = False):
         copy_network_defaults(directory)
         copy_scenario_defaults(directory)
         copy_plugins_defaults(directory)
-        click.echo(f"Copied network example files to {directory}/networks")
         click.echo(f"Created warnet project structure in {directory}")
     except Exception as e:
         click.secho(f"Error creating project: {e}", fg="red")
@@ -413,30 +412,9 @@ def new_internal(directory: Path, from_init=False):
     project_path = Path(os.path.expanduser(directory))
     create_warnet_project(project_path)
 
-    proj_answers = inquirer.prompt(
-        [
-            inquirer.Confirm(
-                "custom_network",
-                message=click.style(
-                    "Do you want to create a custom network?", fg="blue", bold=True
-                ),
-                default=True,
-            ),
-        ]
-    )
     custom_network_path = ""
-    if proj_answers is None:
-        click.secho("Setup cancelled by user.", fg="yellow")
-        return False
-    if proj_answers["custom_network"]:
-        click.secho("\nGenerating custom network...", fg="yellow", bold=True)
-        custom_network_path = inquirer_create_network(directory)
-    else:
-        click.echo(
-            f"No custom network specified, see example network files in {project_path}/networks/"
-        )
-        click.echo("Deploy any of these networks by running:")
-        click.echo(f"  warnet deploy {project_path}/networks/<example-network-name>")
+    click.secho("\nGenerating custom network...", fg="yellow", bold=True)
+    custom_network_path = inquirer_create_network(directory)
 
     if custom_network_path:
         click.echo(

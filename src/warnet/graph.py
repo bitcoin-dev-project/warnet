@@ -2,16 +2,23 @@ import json
 import os
 import random
 import sys
-from importlib.resources import files
 from pathlib import Path
 
 import click
 import inquirer
 import yaml
+from rich import print
+from rich.console import Console
+from rich.table import Table
 
 from resources.scenarios.ln_framework.ln import Policy
 
-from .constants import DEFAULT_TAG, SUPPORTED_TAGS
+from .constants import (
+    DEFAULT_IMAGE_REPO,
+    DEFAULT_TAG,
+    FORK_OBSERVER_RPCAUTH,
+    SUPPORTED_TAGS,
+)
 
 
 @click.group(name="graph", hidden=True)
@@ -20,9 +27,7 @@ def graph():
 
 
 def custom_graph(
-    num_nodes: int,
-    num_connections: int,
-    version: str,
+    tanks: list,
     datadir: Path,
     fork_observer: bool,
     fork_obs_query_interval: int,
@@ -39,30 +44,39 @@ def custom_graph(
     # Generate network.yaml
     nodes = []
     connections = set()
+    total_count = sum(int(entry["count"]) for entry in tanks)
+    index = 0
 
-    for i in range(num_nodes):
-        node = {"name": f"tank-{i:04d}", "addnode": [], "image": {"tag": version}}
+    for entry in tanks:
+        for _ in range(int(entry["count"])):
+            if ":" in entry["version"] and "/" in entry["version"]:
+                repo, tag = entry["version"].split(":")
+                image = {"repository": repo, "tag": tag}
+            else:
+                image = {"tag": entry["version"]}
+            node = {"name": f"tank-{index:04d}", "addnode": [], "image": image}
 
-        # Add round-robin connection
-        next_node = (i + 1) % num_nodes
-        node["addnode"].append(f"tank-{next_node:04d}")
-        connections.add((i, next_node))
+            # Add round-robin connection
+            next_node = (index + 1) % total_count
+            node["addnode"].append(f"tank-{next_node:04d}")
+            connections.add((index, next_node))
 
-        # Add random connections
-        available_nodes = list(range(num_nodes))
-        available_nodes.remove(i)
-        if next_node in available_nodes:
-            available_nodes.remove(next_node)
+            # Add random connections
+            available_nodes = list(range(total_count))
+            available_nodes.remove(index)
+            if next_node in available_nodes:
+                available_nodes.remove(next_node)
 
-        for _ in range(min(num_connections - 1, len(available_nodes))):
-            random_node = random.choice(available_nodes)
-            # Avoid circular loops of A -> B -> A
-            if (random_node, i) not in connections:
-                node["addnode"].append(f"tank-{random_node:04d}")
-                connections.add((i, random_node))
-                available_nodes.remove(random_node)
+            for _ in range(min(int(entry["connections"]) - 1, len(available_nodes))):
+                random_node = random.choice(available_nodes)
+                # Avoid circular loops of A -> B -> A
+                if (random_node, index) not in connections:
+                    node["addnode"].append(f"tank-{random_node:04d}")
+                    connections.add((index, random_node))
+                    available_nodes.remove(random_node)
 
-        nodes.append(node)
+            nodes.append(node)
+            index += 1
 
     network_yaml_data = {"nodes": nodes}
     network_yaml_data["fork_observer"] = {
@@ -77,11 +91,17 @@ def custom_graph(
         yaml.dump(network_yaml_data, f, default_flow_style=False)
 
     # Generate node-defaults.yaml
-    default_yaml_path = (
-        files("resources.networks").joinpath("fork_observer").joinpath("node-defaults.yaml")
-    )
-    with open(str(default_yaml_path)) as f:
-        defaults_yaml_content = yaml.safe_load(f)
+    defaults_yaml_content = {
+        "chain": "regtest",
+        "image": {
+            "repository": DEFAULT_IMAGE_REPO,
+            "pullPolicy": "IfNotPresent",
+        },
+        "defaultConfig": f"rpcauth={FORK_OBSERVER_RPCAUTH}\n"
+        + "rpcwhitelist=forkobserver:getchaintips,getblockheader,getblockhash,getblock,getnetworkinfo\n"
+        + "rpcwhitelistdefault=0\n"
+        + "debug=rpc\n",
+    }
 
     # Configure logging
     defaults_yaml_content["collectLogs"] = logging
@@ -96,73 +116,134 @@ def custom_graph(
 
 
 def inquirer_create_network(project_path: Path):
-    # Custom network configuration
-    questions = [
-        inquirer.Text(
-            "network_name",
-            message=click.style("Enter your network name", fg="blue", bold=True),
-            validate=lambda _, x: len(x) > 0,
-        ),
-        inquirer.List(
-            "nodes",
-            message=click.style("How many nodes would you like?", fg="blue", bold=True),
-            choices=["8", "12", "20", "50", "other"],
-            default="12",
-        ),
-        inquirer.List(
-            "connections",
-            message=click.style(
-                "How many connections would you like each node to have?",
-                fg="blue",
-                bold=True,
-            ),
-            choices=["0", "1", "2", "8", "12", "other"],
-            default="8",
-        ),
-        inquirer.List(
-            "version",
-            message=click.style(
-                "Which version would you like nodes to run by default?", fg="blue", bold=True
-            ),
-            choices=SUPPORTED_TAGS,
-            default=DEFAULT_TAG,
-        ),
-    ]
-
-    net_answers = inquirer.prompt(questions)
-    if net_answers is None:
+    network_name_prompt = inquirer.prompt(
+        [
+            inquirer.Text(
+                "network_name",
+                message=click.style("Enter your network name", fg="blue", bold=True),
+                validate=lambda _, x: len(x) > 0,
+            )
+        ]
+    )
+    if not network_name_prompt:
         click.secho("Setup cancelled by user.", fg="yellow")
         return False
 
-    if net_answers["nodes"] == "other":
-        custom_nodes = inquirer.prompt(
-            [
-                inquirer.Text(
-                    "nodes",
-                    message=click.style("Enter the number of nodes", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) > 0,
-                )
-            ]
-        )
-        if custom_nodes is None:
-            click.secho("Setup cancelled by user.", fg="yellow")
-            return False
-        net_answers["nodes"] = custom_nodes["nodes"]
+    tanks = []
+    while True:
+        table = Table(title="Current Network Population", show_header=True, header_style="magenta")
+        table.add_column("Version", style="cyan")
+        table.add_column("Count", style="green")
+        table.add_column("Connections", style="green")
 
-    if net_answers["connections"] == "other":
-        custom_connections = inquirer.prompt(
+        for entry in tanks:
+            table.add_row(entry["version"], entry["count"], entry["connections"])
+
+        Console().print(table)
+
+        add_more_prompt = inquirer.prompt(
             [
-                inquirer.Text(
-                    "connections",
-                    message=click.style("Enter the number of connections", fg="blue", bold=True),
-                    validate=lambda _, x: int(x) >= 0,
+                inquirer.List(
+                    "add_more",
+                    message=click.style("How many nodes to add? (0 = done)", fg="blue", bold=True),
+                    choices=["0", "4", "8", "12", "20", "50", "other"],
+                    default="12",
                 )
             ]
         )
-        if custom_connections is None:
+        if not add_more_prompt:
             click.secho("Setup cancelled by user.", fg="yellow")
             return False
-        net_answers["connections"] = custom_connections["connections"]
+        if add_more_prompt["add_more"].startswith("0"):
+            break
+
+        if add_more_prompt["add_more"] == "other":
+            how_many_prompt = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "how_many",
+                        message=click.style("Enter the number of nodes", fg="blue", bold=True),
+                        validate=lambda _, x: int(x) > 0,
+                    )
+                ]
+            )
+            if not how_many_prompt:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            how_many = how_many_prompt["how_many"]
+        else:
+            how_many = add_more_prompt["add_more"]
+
+        tank_details_prompt = inquirer.prompt(
+            [
+                inquirer.List(
+                    "version",
+                    message=click.style(
+                        "Which version would you like to add to network?", fg="blue", bold=True
+                    ),
+                    choices=["other"] + SUPPORTED_TAGS,
+                    default=DEFAULT_TAG,
+                ),
+                inquirer.List(
+                    "connections",
+                    message=click.style(
+                        "How many connections would you like each of these nodes to have?",
+                        fg="blue",
+                        bold=True,
+                    ),
+                    choices=["0", "1", "2", "8", "12", "other"],
+                    default="8",
+                ),
+            ]
+        )
+        if not tank_details_prompt:
+            click.secho("Setup cancelled by user.", fg="yellow")
+            return False
+            break
+        if tank_details_prompt["version"] == "other":
+            custom_version_prompt = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "version",
+                        message=click.style(
+                            "Provide dockerhub repository/image:tag", fg="blue", bold=True
+                        ),
+                        validate=lambda _, x: "/" in x and ":" in x,
+                    )
+                ]
+            )
+            if not custom_version_prompt:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            tank_details_prompt["version"] = custom_version_prompt["version"]
+
+        if tank_details_prompt["connections"] == "other":
+            how_many_conn_prompt = inquirer.prompt(
+                [
+                    inquirer.Text(
+                        "how_many_conn",
+                        message=click.style(
+                            "Enter the number of connections", fg="blue", bold=True
+                        ),
+                        validate=lambda _, x: int(x) > 0,
+                    )
+                ]
+            )
+            if not how_many_conn_prompt:
+                click.secho("Setup cancelled by user.", fg="yellow")
+                return False
+            how_many_conn = how_many_conn_prompt["how_many_conn"]
+        else:
+            how_many_conn = tank_details_prompt["connections"]
+
+        tanks.append(
+            {
+                "version": tank_details_prompt["version"],
+                "count": how_many,
+                "connections": how_many_conn,
+            }
+        )
+
     fork_observer = click.prompt(
         click.style(
             "\nWould you like to enable fork-observer on the network?", fg="blue", bold=True
@@ -190,12 +271,10 @@ def inquirer_create_network(project_path: Path):
         default=False,
     )
     caddy = fork_observer | logging
-    custom_network_path = project_path / "networks" / net_answers["network_name"]
+    custom_network_path = project_path / "networks" / network_name_prompt["network_name"]
     click.secho("\nGenerating custom network...", fg="yellow", bold=True)
     custom_graph(
-        int(net_answers["nodes"]),
-        int(net_answers["connections"]),
-        net_answers["version"],
+        tanks,
         custom_network_path,
         fork_observer,
         fork_observer_query_interval,

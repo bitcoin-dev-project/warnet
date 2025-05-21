@@ -15,6 +15,8 @@ from .constants import (
     DEFAULTS_FILE,
     DEFAULTS_NAMESPACE_FILE,
     FORK_OBSERVER_CHART,
+    FORK_OBSERVER_RPC_PASSWORD,
+    FORK_OBSERVER_RPC_USER,
     HELM_COMMAND,
     INGRESS_HELM_COMMANDS,
     LOGGING_CRD_COMMANDS,
@@ -331,8 +333,8 @@ name = "{node_name}"
 description = "{node_name}.{default_namespace}.svc:{int(p2pport)}"
 rpc_host = "{node_name}.{default_namespace}.svc"
 rpc_port = {int(rpcport)}
-rpc_user = "forkobserver"
-rpc_password = "tabconf2024"
+rpc_user = "{FORK_OBSERVER_RPC_USER}"
+rpc_password = "{FORK_OBSERVER_RPC_PASSWORD}"
 """
 
         override_string += node_config
