@@ -6,7 +6,7 @@ from pathlib import Path
 # Constants used throughout the project
 # Storing as constants for now but we might want a more sophisticated config management
 # at some point.
-SUPPORTED_TAGS = ["27.0", "26.0", "25.1", "24.2", "23.2", "22.2"]
+SUPPORTED_TAGS = ["29.0", "28.1", "27.0", "26.0", "25.1", "24.2", "23.2", "22.2"]
 DEFAULT_TAG = SUPPORTED_TAGS[0]
 WEIGHTED_TAGS = [
     tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
@@ -48,6 +48,13 @@ class AnnexMember(Enum):
 
 PLUGIN_ANNEX = "annex"
 
+DEFAULT_IMAGE_REPO = "bitcoindevproject/bitcoin"
+
+# Bitcoin Core config
+FORK_OBSERVER_RPCAUTH = "forkobserver:1418183465eecbd407010cf60811c6a0$d4e5f0647a63429c218da1302d7f19fe627302aeb0a71a74de55346a25d8057c"
+# Fork Observer config
+FORK_OBSERVER_RPC_USER = "forkobserver"
+FORK_OBSERVER_RPC_PASSWORD = "tabconf2024"
 
 # Directories and files for non-python assets, e.g., helm charts, example scenarios, default configs
 SRC_DIR = files("warnet")
@@ -72,7 +79,6 @@ FORK_OBSERVER_CHART = str(files("resources.charts").joinpath("fork-observer"))
 CADDY_CHART = str(files("resources.charts").joinpath("caddy"))
 CADDY_INGRESS_NAME = "caddy-ingress"
 
-DEFAULT_NETWORK = Path("6_node_bitcoin")
 DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
 
 # Kubeconfig related stuffs
@@ -136,7 +142,7 @@ LOGGING_HELM_COMMANDS = [
     "helm repo update",
     f"helm upgrade --install --namespace warnet-logging --create-namespace --values {MANIFESTS_DIR}/loki_values.yaml loki grafana/loki --version 5.47.2",
     "helm upgrade --install --namespace warnet-logging promtail grafana/promtail --create-namespace",
-    "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --create-namespace --set grafana.enabled=false",
+    "helm upgrade --install --namespace warnet-logging prometheus prometheus-community/kube-prometheus-stack --namespace warnet-logging --create-namespace --set grafana.enabled=false --set prometheus.prometheusSpec.maximumStartupDurationSeconds=300",
     f"helm upgrade --install grafana-dashboards {CHARTS_DIR}/grafana-dashboards --namespace warnet-logging --create-namespace",
     f"helm upgrade --install --namespace warnet-logging --create-namespace loki-grafana grafana/grafana --values {MANIFESTS_DIR}/grafana_values.yaml",
 ]
@@ -145,7 +151,7 @@ LOGGING_HELM_COMMANDS = [
 INGRESS_HELM_COMMANDS = [
     "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx",
     "helm repo update",
-    f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace",
+    f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace --set controller.progressDeadlineSeconds=600",
 ]
 
 # Helm binary

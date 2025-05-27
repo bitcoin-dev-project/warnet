@@ -2,9 +2,12 @@
 
 import json
 import os
+import sys
 
 import pexpect
 from test_base import TestBase
+
+from warnet.process import stream_command
 
 NETWORKS_DIR = "networks"
 
@@ -36,15 +39,19 @@ class GraphTest(TestBase):
     def directory_exists(self):
         try:
             self.log.info("testing warnet create, dir does exist")
-            self.sut = pexpect.spawn("warnet create")
+            self.sut = pexpect.spawn("warnet create", encoding="utf-8")
+            self.sut.logfile = sys.stdout
             self.sut.expect("name", timeout=30)
             self.sut.sendline("ANewNetwork")
             self.sut.expect("many", timeout=30)
             self.sut.sendline("")
-            self.sut.expect("connections", timeout=30)
-            self.sut.sendline("")
             self.sut.expect("version", timeout=30)
             self.sut.sendline("")
+            self.sut.expect("connections", timeout=30)
+            self.sut.sendline("")
+            self.sut.expect("many", timeout=30)
+            # Up arrow three times: [12] -> 8 -> 4 -> 0 (done)
+            self.sut.sendline("\x1b[A" * 3)
             self.sut.expect("enable fork-observer", timeout=30)
             self.sut.sendline("")
             self.sut.expect("seconds", timeout=30)
@@ -65,7 +72,7 @@ class GraphTest(TestBase):
             f.write(s)
 
         self.log.info("deploying new network")
-        self.warnet("deploy networks/ANewNetwork")
+        stream_command("warnet deploy networks/ANewNetwork")
         self.wait_for_all_tanks_status(target="running")
         debugs = json.loads(self.warnet("bitcoin rpc tank-0000 logging"))
         # set in defaultConfig
