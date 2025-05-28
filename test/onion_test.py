@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from test_base import TestBase
+
 from warnet.k8s import pod_log
 
 
@@ -26,10 +27,7 @@ class OnionTest(TestBase):
         self.wait_for_all_tanks_status(target="running")
 
     def check_tor(self):
-        onions = {
-            "tank-0001": None,
-            "tank-0002": None
-        }
+        onions = {"tank-0001": None, "tank-0002": None}
 
         def get_onions():
             peers = ["tank-0001", "tank-0002"]
@@ -41,10 +39,8 @@ class OnionTest(TestBase):
                         if "onion" in addr["address"]:
                             onions[tank] = addr["address"]
                             self.log.info(f" ... got: {addr['address']}")
-            for tank in peers:
-                if not onions[tank]:
-                    return False
-            return True
+            return all(onions[tank] for tank in peers)
+
         self.wait_for_predicate(get_onions)
 
         self.log.info("Adding 1 block")
@@ -67,15 +63,18 @@ class OnionTest(TestBase):
             else:
                 self.log.info("tank-0001 tor log tail:")
                 stream = pod_log(
-                    pod_name="tank-0001", container_name="tor", namespace="default", follow=False, tail_lines=5
+                    pod_name="tank-0001",
+                    container_name="tor",
+                    namespace="default",
+                    follow=False,
+                    tail_lines=5,
                 )
                 for line in stream:
                     msg = line.decode("utf-8").rstrip()
                     msg = msg.split("]")
                     self.log.info(msg[-1])
 
-        self.wait_for_predicate(onion_connect, timeout=20*60)
-
+        self.wait_for_predicate(onion_connect, timeout=20 * 60)
 
 
 if __name__ == "__main__":
