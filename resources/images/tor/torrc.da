@@ -1,0 +1,40 @@
+# Common
+Log info stdout
+DataDirectory /home/debian-tor/.tor
+RunAsDaemon 0
+ControlPort 9051
+ORPort 9001 IPv4Only
+DataDirectoryGroupReadable 1
+
+ExitPolicy accept *:*
+TestingTorNetwork 1
+ClientUseIPv6 0
+ClientUseIPv4 1
+
+# Relay
+AssumeReachable 1
+
+# Directory Authority
+DirPort 9030 IPv4Only
+AuthoritativeDirectory 1
+V3AuthoritativeDirectory 1
+PathsNeededToBuildCircuits 0.25
+TestingDirAuthVoteExit *
+TestingDirAuthVoteHSDir *
+V3AuthNIntervalsValid 2
+ContactInfo winston_churchill@warnet.dev
+
+# Reduce resource usage
+MaxMemInQueues 200 Mbytes
+BridgeRecordUsageByCountry 0
+DirReqStatistics 0
+ExtraInfoStatistics 0
+HiddenServiceStatistics 0
+OverloadStatistics 0
+PaddingStatistics 0
+ConstrainedSockets 1
+ConstrainedSockSize 8192 Bytes
+
+# `Address <w.x.y.z>` will be added by tor-entrypoint.
+# `DirAuthority v3ident=... <a.b.c.d>` will be added by tor-entrypoint.
+
