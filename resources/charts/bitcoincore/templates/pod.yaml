@@ -98,6 +98,9 @@ spec:
           value: {{ .Values.metrics }}
         {{- end }}
     {{- end}}
+    {{- with .Values.extraContainers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   volumes:
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}
