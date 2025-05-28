@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "torda.fullname" . }}
+  labels:
+    {{- include "torda.labels" . | nindent 4 }}
+    app: {{ include "torda.fullname" . }}
+spec:
+  containers:
+    - name: {{ .Values.name }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      ports:
+        - name: toror
+          containerPort: 9001
+          protocol: TCP
+        - name: torda
+          containerPort: 9030
+          protocol: TCP
