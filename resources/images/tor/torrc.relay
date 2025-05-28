@@ -1,0 +1,36 @@
+# Common
+Log info stdout
+DataDirectory /home/debian-tor/.tor
+RunAsDaemon 0
+DataDirectoryGroupReadable 1
+
+# Bitcoin
+SocksPort 9050
+ControlPort 9051
+
+# Relay
+ORPort 9001 IPv4Only
+ExitPolicy accept *:*
+TestingTorNetwork 1
+ClientUseIPv6 0
+ClientUseIPv4 1
+AssumeReachable 1
+PathsNeededToBuildCircuits 0.25
+TestingDirAuthVoteExit *
+TestingDirAuthVoteHSDir *
+V3AuthNIntervalsValid 2
+
+# Reduce resource usage
+MaxMemInQueues 64 Mbytes
+BridgeRecordUsageByCountry 0
+DirReqStatistics 0
+ExtraInfoStatistics 0
+HiddenServiceStatistics 0
+OverloadStatistics 0
+PaddingStatistics 0
+ConstrainedSockets 1
+ConstrainedSockSize 8192 Bytes
+
+# `Address <w.x.y.z>` will be added by tor-entrypoint.
+# `DirAuthority v3ident=... <a.b.c.d>` will be added by tor-entrypoint.
+
