@@ -1,0 +1,22 @@
+chain: regtest
+image:
+  repository: bitcoindevproject/bitcoin
+  pullPolicy: IfNotPresent
+defaultConfig: |
+  debug=net
+  debug=tor
+  proxy=127.0.0.1:9050
+  listen=1
+  onlynet=onion
+  torcontrol=127.0.0.1:9051
+
+collectLogs: false
+metricsExport: false
+
+extraContainers:
+  - name: tor
+    image: bitcoindevproject/tor-relay:latest
+    ports:
+      - name: toror
+        containerPort: 9001
+        protocol: TCP
