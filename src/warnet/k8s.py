@@ -347,7 +347,7 @@ def get_ingress_ip_or_host():
         return None
 
 
-def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str] = None):
+def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str] = None, tail_lines=None):
     namespace = get_default_namespace_or(namespace)
     sclient = get_static_client()
 
@@ -358,6 +358,7 @@ def pod_log(pod_name, container_name=None, follow=False, namespace: Optional[str
             container=container_name,
             follow=follow,
             _preload_content=False,
+            tail_lines=tail_lines
         )
     except ApiException as e:
         raise Exception(json.loads(e.body.decode("utf-8"))["message"]) from None
