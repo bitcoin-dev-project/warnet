@@ -1,0 +1,23 @@
+caddy:
+  enabled: false
+fork_observer:
+  configQueryInterval: 20
+  enabled: false
+nodes:
+- image:
+    tag: '29.0'
+  name: tank-0000
+- image:
+    tag: '29.0'
+  name: tank-0001
+- image:
+    tag: '29.0'
+  name: tank-0002
+- image:
+    tag: '29.0'
+  name: tank-0003
+
+plugins:
+  preDeploy:
+    tor:
+      entrypoint: "../../../resources/plugins/tor"
