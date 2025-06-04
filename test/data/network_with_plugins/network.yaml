@@ -32,6 +32,9 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
+      circuitbreaker:
+        enabled: true  # This enables circuitbreaker for this node
+        httpPort: 9235 # Can override defaults per-node
 
   - name: tank-0004
     addnode:
@@ -85,3 +88,4 @@ plugins:  # Each plugin section has a number of hooks available (preDeploy, post
       entrypoint: "../plugins/hello"
       helloTo: "postNetwork!"
       podName: "hello-post-network"
+      
