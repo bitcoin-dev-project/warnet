@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "torda.fullname" . }}
+  labels:
+    app: {{ include "torda.fullname" . }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: toror
+    - port: 9030
+      targetPort: 9030
+      protocol: TCP
+      name: torda
+  selector:
+    {{- include "torda.selectorLabels" . | nindent 4 }}
+

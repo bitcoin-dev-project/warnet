@@ -32,6 +32,9 @@ nodes:
           target: tank-0004-ln
           capacity: 100000
           push_amt: 50000
+      circuitbreaker:
+        enabled: true  # This enables circuitbreaker for this node
+        httpPort: 9235 # Can override defaults per-node
 
   - name: tank-0004
     addnode:
@@ -56,32 +59,33 @@ nodes:
 plugins:  # Each plugin section has a number of hooks available (preDeploy, postDeploy, etc)
   preDeploy:  # For example, the preDeploy hook means it's plugin will run before all other deploy code
     hello:
-      entrypoint: "../../plugins/hello"  # This entrypoint path is relative to the network.yaml file
+      entrypoint: "../plugins/hello"  # This entrypoint path is relative to the network.yaml file
       podName: "hello-pre-deploy"
       helloTo: "preDeploy!"
   postDeploy:
     hello:
-      entrypoint: "../../plugins/hello"
+      entrypoint: "../plugins/hello"
       podName: "hello-post-deploy"
       helloTo: "postDeploy!"
     simln:  # You can have multiple plugins per hook
-      entrypoint: "../../plugins/simln"
+      entrypoint: "../../../resources/plugins/simln"
       activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
   preNode:  # preNode plugins run before each node is deployed
     hello:
-      entrypoint: "../../plugins/hello"
+      entrypoint: "../plugins/hello"
       helloTo: "preNode!"
   postNode:
     hello:
-      entrypoint: "../../plugins/hello"
+      entrypoint: "../plugins/hello"
       helloTo: "postNode!"
   preNetwork:
     hello:
-      entrypoint: "../../plugins/hello"
+      entrypoint: "../plugins/hello"
       helloTo: "preNetwork!"
       podName: "hello-pre-network"
   postNetwork:
     hello:
-      entrypoint: "../../plugins/hello"
+      entrypoint: "../plugins/hello"
       helloTo: "postNetwork!"
       podName: "hello-post-network"
+      

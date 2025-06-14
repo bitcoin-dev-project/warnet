@@ -1,0 +1,5 @@
+name: "torda"
+image:
+  repository: "bitcoindevproject/tor-da"
+  tag: "latest"
+  pullPolicy: IfNotPresent

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: torda
+description: A Helm chart to deploy a Tor Directory Authority
+version: 0.1.0
+appVersion: "0.1.0"

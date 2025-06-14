@@ -7,7 +7,7 @@ image:
   repository: lightninglabs/lnd
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v0.18.3-beta"
+  tag: "v0.19.0-beta"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -132,3 +132,8 @@ config: ""
 defaultConfig: ""
 
 channels: []
+
+circuitbreaker:
+  enabled: false  # Default to disabled
+  image: carlakirkcohen/circuitbreaker:attackathon-test
+  httpPort: 9235
