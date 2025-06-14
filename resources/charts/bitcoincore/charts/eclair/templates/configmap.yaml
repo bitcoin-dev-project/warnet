@@ -12,6 +12,7 @@ data:
     eclair.chain = {{ .Values.global.chain }}
     eclair.bitcoind.host = {{ include "bitcoincore.fullname" . }}
     eclair.bitcoind.rpcport = {{ index .Values.global .Values.global.chain "RPCPort" }}
+    eclair.bitcoind.rpcuser = user
     eclair.bitcoind.rpcpassword = {{ .Values.global.rpcpassword }}
     eclair.node-alias = {{ include "eclair.fullname" . }}
     eclair.bitcoind.zmqblock = "tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQBlockPort }}"

@@ -345,7 +345,7 @@ class CLN(LNNode):
                         channel["capacity"] = channel["amount_msat"] // 1000
                     return {"edges": sorted_channels}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
@@ -449,7 +449,7 @@ class ECLAIR(LNNode):
                 sleep(2)
                 continue
             res = json.loads(response)
-            return int(res["total"] * 100000000) #FIXME: what is the correct unit here?
+            return int(res["total"] * 100000000) # convert to sats
         return 0
 
     def channelbalance(self, max_tries=2) -> int:
@@ -476,12 +476,15 @@ class ECLAIR(LNNode):
                 sleep(2)
         return None
 
-    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
+        import math
+        fee_rate_factor = math.ceil(fee_rate/170) #FIXME: reduce fee rate by factor to get close to original value
         data = {
             "fundingSatoshis": capacity,
             "pushMsat": push_amt,
             "nodeId": pk,
-            "fundingFeeBudgetSatoshis": fee_rate,
+            "fundingFeerateSatByte": fee_rate_factor,
+            "fundingFeeBudgetSatoshis": 6000
         } #FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
         attempt = 0
         while attempt < max_tries:
@@ -495,11 +498,11 @@ class ECLAIR(LNNode):
                     funding_tx_id = re.search(r'fundingTxId=([0-9a-f]+)', response).group(1)
                     return {"txid": funding_tx_id, "outpoint": f"{funding_tx_id}:N/A", "channel": channel_id}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    self.log.warning(f"unable to open channel: {response}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
-                sleep(2)
+                sleep(5)
         return None
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
@@ -522,25 +525,18 @@ class ECLAIR(LNNode):
                 return res["payment_hash"]
         return None
 
-    def graph(self, max_tries=2) -> dict:
+    def graph(self, max_tries=5) -> dict:
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/channels") # https://acinq.github.io/eclair/#channels-2
+            response = self.post("/allupdates") # https://acinq.github.io/eclair/#allupdates
             if response:
                 res = json.loads(response)
-                if "channels" in res:
-                    # Map to desired output
-                    filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
-                    # Sort by short_channel_id - block -> index -> output
-                    sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
-                    # Add capacity by dividing amount_msat by 1000
-                    for channel in sorted_channels:
-                        channel["capacity"] = channel["amount_msat"] // 1000
-                    return {"edges": sorted_channels}
+                if len(res) > 0:
+                    return {"edges": res}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
-                    sleep(1)
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
+                    sleep(10)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
                 sleep(2)
@@ -549,6 +545,10 @@ class ECLAIR(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
         self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
         return None
+
+# node = ECLAIR("localhost", "localhost")
+# print(node.newaddress())
+# print(node.uri())
 
 class LND(LNNode):
     def __init__(self, pod_name, ip_address):
@@ -581,7 +581,7 @@ class LND(LNNode):
                 self.reset_connection()
                 attempt += 1
                 if attempt > 5:
-                    self.log.error(f"Error LND POST, Abort: {e}")
+                    self.log.error(f"Error LND GET, Abort: {e}")
                     return None
                 sleep(1)
 
@@ -618,13 +618,16 @@ class LND(LNNode):
                 if attempt > 5:
                     self.log.error(f"Error LND POST, Abort: {e}")
                     return None
-                sleep(1)
+                sleep(5)
 
-    def newaddress(self, max_tries=10):
+    def newaddress(self, max_tries=5):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
             response = self.get("/v1/newaddress")
+            if not response:
+                sleep(5)
+                continue
             res = json.loads(response)
             if "address" in res:
                 return True, res["address"]
@@ -632,7 +635,7 @@ class LND(LNNode):
                 self.log.warning(
                     f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
                 )
-            sleep(1)
+            sleep(5)
         return False, ""
 
     def walletbalance(self) -> int:
