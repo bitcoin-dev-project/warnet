@@ -476,12 +476,12 @@ class ECLAIR(LNNode):
                 sleep(2)
         return None
 
-    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
         data = {
             "fundingSatoshis": capacity,
             "pushMsat": push_amt,
             "nodeId": pk,
-            "fundingFeeBudgetSatoshis": fee_rate,
+            "fundingFeeBudgetSatoshis": fee_rate
         } #FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
         attempt = 0
         while attempt < max_tries:
@@ -495,11 +495,11 @@ class ECLAIR(LNNode):
                     funding_tx_id = re.search(r'fundingTxId=([0-9a-f]+)', response).group(1)
                     return {"txid": funding_tx_id, "outpoint": f"{funding_tx_id}:N/A", "channel": channel_id}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    self.log.warning(f"unable to open channel: {response}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
-                sleep(2)
+                sleep(5)
         return None
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
@@ -550,6 +550,10 @@ class ECLAIR(LNNode):
         self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
         return None
 
+# node = ECLAIR("localhost", "localhost")
+# print(node.newaddress())
+# print(node.uri())
+
 class LND(LNNode):
     def __init__(self, pod_name, ip_address):
         super().__init__(pod_name, ip_address)
@@ -581,7 +585,7 @@ class LND(LNNode):
                 self.reset_connection()
                 attempt += 1
                 if attempt > 5:
-                    self.log.error(f"Error LND POST, Abort: {e}")
+                    self.log.error(f"Error LND GET, Abort: {e}")
                     return None
                 sleep(1)
 
@@ -618,13 +622,16 @@ class LND(LNNode):
                 if attempt > 5:
                     self.log.error(f"Error LND POST, Abort: {e}")
                     return None
-                sleep(1)
+                sleep(5)
 
-    def newaddress(self, max_tries=10):
+    def newaddress(self, max_tries=5):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
             response = self.get("/v1/newaddress")
+            if not response:
+                sleep(5)
+                continue
             res = json.loads(response)
             if "address" in res:
                 return True, res["address"]
@@ -632,7 +639,7 @@ class LND(LNNode):
                 self.log.warning(
                     f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
                 )
-            sleep(1)
+            sleep(5)
         return False, ""
 
     def walletbalance(self) -> int:

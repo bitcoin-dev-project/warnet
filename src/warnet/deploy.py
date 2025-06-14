@@ -378,7 +378,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     default_file_path = directory / DEFAULTS_FILE
     with default_file_path.open() as f:
         default_file = yaml.safe_load(f)
-    if any(default_file.get("ln", {}).get(key, False) for key in supported_ln_projects):
+    if any(default_file.get(key, {}).get("enabled", False) for key in supported_ln_projects):
         needs_ln_init = True
 
     processes = []

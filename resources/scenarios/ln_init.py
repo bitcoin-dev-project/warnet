@@ -28,6 +28,12 @@ class LNInit(Commander):
         self.log.info("Setting up miner...")
         miner = self.ensure_miner(self.nodes[0])
         miner_addr = miner.getnewaddress()
+        # create wallet for any eclair node
+        for node in self.nodes[1:]:
+            for ln in self.lns.values():
+                if node.tank in ln.name and ln.impl == "eclair":
+                    self.log.info(f"creating wallet for {node.tank}")
+                    node.createwallet("eclair", descriptors=True)
 
         def gen(n):
             return self.generatetoaddress(self.nodes[0], n, miner_addr, sync_fun=self.no_op)

@@ -54,17 +54,14 @@ spec:
         {{- toYaml .Values.resources | nindent 12 }}
       volumeMounts:
         {{- with .Values.volumeMounts }}
-            {{- toYaml . | nindent 12 }}
+          {{- toYaml . | nindent 8 }}
         {{- end }}
-        - mountPath: /root/.eclair/eclair.conf
-          name: config
-          subPath: eclair.conf
     {{- with .Values.extraContainers }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 6 }}
     {{- end }}
   volumes:
     {{- with .Values.volumes }}
-      {{- toYaml . | nindent 8 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
     - configMap:
         name: {{ include "eclair.fullname" . }}

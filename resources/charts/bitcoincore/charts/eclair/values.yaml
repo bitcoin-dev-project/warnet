@@ -75,10 +75,17 @@ readinessProbe:
       - "eclair-cli -p 21satoshi getinfo 2>/dev/null | grep -q 'id' || exit 1"
 
 # Additional volumes on the output Deployment definition.
-volumes: []
+volumes:
+  - name: temp-storage
+    emptyDir: {}
 
 # Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
+volumeMounts:
+  - mountPath: /root/.eclair/eclair.conf
+    name: config
+    subPath: eclair.conf
+  - mountPath: /root/.eclair
+    name: temp-storage
 
 nodeSelector: {}
 
