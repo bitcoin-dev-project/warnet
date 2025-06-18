@@ -9,7 +9,7 @@ collectLogs: false
 metricsExport: false
 
 #LN configs
-lnd: 
+lnd:
   enabled: true
   defaultConfig: |
     color=#000000

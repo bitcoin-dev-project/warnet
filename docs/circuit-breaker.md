@@ -50,25 +50,25 @@ nodes:
   - name: tank-0000
     addnode:
       - tank-0001
-    lnd: 
+    lnd:
       enabled: true
 
   - name: tank-0001
     addnode:
       - tank-0002
-    lnd: 
+    lnd:
       enabled: true
 
   - name: tank-0002
     addnode:
       - tank-0000
-    lnd: 
+    lnd:
       enabled: true
 
   - name: tank-0003
     addnode:
       - tank-0000
-    lnd: 
+    lnd:
       enabled: true
       config: |
         bitcoin.timelockdelta=33
@@ -86,7 +86,7 @@ nodes:
   - name: tank-0004
     addnode:
       - tank-0000
-    lnd: 
+    lnd:
       enabled: true
       channels:
         - id:
@@ -99,7 +99,7 @@ nodes:
   - name: tank-0005
     addnode:
       - tank-0000
-    lnd: 
+    lnd:
       enabled: true
 ```
 
