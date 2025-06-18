@@ -506,23 +506,20 @@ class ECLAIR(LNNode):
         return None
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
+        b64_desc = base64.b64encode(description.encode("utf-8"))
         response = self.post(
-            "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
+            "/createinvoice", {"amountMsat": sats * 1000, "description": label, "description": b64_desc}
         ) # https://acinq.github.io/eclair/#createinvoice
         if response:
             res = json.loads(response)
-            return res["bolt11"]
+            return res
         return None
 
     def payinvoice(self, payment_request) -> str:
-        response = self.post("/v1/pay", {"bolt11": payment_request})
+        response = self.post("/payinvoice", {"invoice": payment_request})
         # https://acinq.github.io/eclair/#payinvoice
         if response:
-            res = json.loads(response)
-            if "code" in res:
-                return res["message"]
-            else:
-                return res["payment_hash"]
+            return response
         return None
 
     def graph(self, max_tries=5) -> dict:
@@ -545,10 +542,6 @@ class ECLAIR(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
         self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
         return None
-
-# node = ECLAIR("localhost", "localhost")
-# print(node.newaddress())
-# print(node.uri())
 
 class LND(LNNode):
     def __init__(self, pod_name, ip_address):
