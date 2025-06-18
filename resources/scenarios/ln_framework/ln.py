@@ -345,7 +345,7 @@ class CLN(LNNode):
                         channel["capacity"] = channel["amount_msat"] // 1000
                     return {"edges": sorted_channels}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
@@ -477,11 +477,14 @@ class ECLAIR(LNNode):
         return None
 
     def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
+        import math
+        fee_rate_factor = math.ceil(fee_rate/166) #FIXME: reduce fee rate by factor to get close to original value
         data = {
             "fundingSatoshis": capacity,
             "pushMsat": push_amt,
             "nodeId": pk,
-            "fundingFeeBudgetSatoshis": fee_rate
+            "fundingFeerateSatByte": fee_rate_factor,
+            "fundingFeeBudgetSatoshis": 6000
         } #FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
         attempt = 0
         while attempt < max_tries:
@@ -522,25 +525,18 @@ class ECLAIR(LNNode):
                 return res["payment_hash"]
         return None
 
-    def graph(self, max_tries=2) -> dict:
+    def graph(self, max_tries=5) -> dict:
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/channels") # https://acinq.github.io/eclair/#channels-2
+            response = self.post("/allupdates") # https://acinq.github.io/eclair/#allupdates
             if response:
                 res = json.loads(response)
-                if "channels" in res:
-                    # Map to desired output
-                    filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
-                    # Sort by short_channel_id - block -> index -> output
-                    sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
-                    # Add capacity by dividing amount_msat by 1000
-                    for channel in sorted_channels:
-                        channel["capacity"] = channel["amount_msat"] // 1000
-                    return {"edges": sorted_channels}
+                if len(res) > 0:
+                    return {"edges": res}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
-                    sleep(1)
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
+                    sleep(10)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
                 sleep(2)

@@ -367,6 +367,9 @@ class LNInit(Commander):
                         f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
                     )
                 for i, actual_ch in enumerate(actual):
+                    if ln.impl == "eclair":
+                        self.log.debug("eclair nodes do not support network capacity checks")
+                        continue
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.

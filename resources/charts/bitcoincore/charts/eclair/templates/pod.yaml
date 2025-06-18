@@ -33,7 +33,7 @@ spec:
         - "-c"
       args:
         - >
-          /app/eclair-node/bin/eclair-node.sh -d -v &
+          /app/eclair-node/bin/eclair-node.sh -v &
           while [ ! -f /root/.eclair/eclair.log ]; do
             echo "Waiting for log file"
             sleep 2
@@ -47,9 +47,11 @@ spec:
           containerPort: {{ .Values.RestPort }}
           protocol: TCP
       livenessProbe:
-        {{- toYaml .Values.livenessProbe | nindent 12 }}
+        {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
-        {{- toYaml .Values.readinessProbe | nindent 12 }}
+        {{- toYaml .Values.readinessProbe | nindent 8 }}
+      startupProbe:
+        {{- toYaml .Values.startupProbe | nindent 8 }}
       resources:
         {{- toYaml .Values.resources | nindent 12 }}
       volumeMounts:

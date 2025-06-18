@@ -6,9 +6,9 @@ namespace: warnet
 restartPolicy: Never
 
 image:
-  repository: acinq/eclair
+  repository: bitdonkey/eclair
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "0.11.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -55,24 +55,26 @@ resources: {}
 livenessProbe:
   exec:
     command:
-      - "/bin/sh"
-      - "-c"
-      - "eclair-cli -p 21satoshi getinfo 2>/dev/null 2>&1"
+      - eclair-cli 
+      - -p 
+      - 21satoshi 
+      - getinfo
   failureThreshold: 3
   initialDelaySeconds: 5
   periodSeconds: 5
   successThreshold: 1
   timeoutSeconds: 1
 readinessProbe:
-  failureThreshold: 1
+  failureThreshold: 3
   periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 5
+  timeoutSeconds: 10
   exec:
     command:
-      - "/bin/sh"
-      - "-c"
-      - "eclair-cli -p 21satoshi getinfo 2>/dev/null | grep -q 'id' || exit 1"
+      - eclair-cli 
+      - -p 
+      - 21satoshi 
+      - getinfo
 
 # Additional volumes on the output Deployment definition.
 volumes:
@@ -99,7 +101,8 @@ baseConfig: |
   eclair.api.binding-ip = 0.0.0.0
   eclair.api.password = 21satoshi
   eclair.api.port = 8080
-  eclair.bitcoind.rpcuser = user
+  eclair.features.keysend = optional
+  eclair.bitcoind.startup-locked-utxos-behavior = "unlock"
  
 config: ""
 
