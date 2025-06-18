@@ -35,27 +35,26 @@ nodes:
   - name: tank-0000
     addnode:
       - tank-0001
-    ln:
-      lnd: true
+    lnd: 
+      enabled: true
 
   - name: tank-0001
     addnode:
       - tank-0002
-    ln:
-      lnd: true
+    lnd: 
+      enabled: true
 
   - name: tank-0002
     addnode:
       - tank-0000
-    ln:
-      lnd: true
+    lnd: 
+      enabled: true
 
   - name: tank-0003
     addnode:
       - tank-0000
-    ln:
-      lnd: true
-    lnd:
+    lnd: 
+      enabled: true
       config: |
         bitcoin.timelockdelta=33
       channels:
@@ -69,9 +68,8 @@ nodes:
   - name: tank-0004
     addnode:
       - tank-0000
-    ln:
-      lnd: true
-    lnd:
+    lnd: 
+      enabled: true
       channels:
         - id:
             block: 300
@@ -83,8 +81,8 @@ nodes:
   - name: tank-0005
     addnode:
       - tank-0000
-    ln:
-      lnd: true
+    lnd: 
+      enabled: true
 
 plugins:  # Each plugin section has a number of hooks available (preDeploy, postDeploy, etc)
   preDeploy:  # For example, the preDeploy hook means it's plugin will run before all other deploy code 

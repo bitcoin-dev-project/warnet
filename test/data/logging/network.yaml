@@ -11,9 +11,8 @@ nodes:
   - name: tank-0002
     addnode:
       - tank-0000
-    ln:
-      lnd: true
-    lnd:
+    lnd: 
+      enabled: true
       metricsExport: true
       prometheusMetricsPort: 9332
       extraContainers:
