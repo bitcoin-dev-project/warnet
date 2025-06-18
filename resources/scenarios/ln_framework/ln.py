@@ -449,7 +449,7 @@ class ECLAIR(LNNode):
                 sleep(2)
                 continue
             res = json.loads(response)
-            return int(res["total"] * 100000000) #FIXME: what is the correct unit here?
+            return int(res["total"] * 100000000) # convert to sats
         return 0
 
     def channelbalance(self, max_tries=2) -> int:
@@ -478,7 +478,7 @@ class ECLAIR(LNNode):
 
     def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
         import math
-        fee_rate_factor = math.ceil(fee_rate/166) #FIXME: reduce fee rate by factor to get close to original value
+        fee_rate_factor = math.ceil(fee_rate/170) #FIXME: reduce fee rate by factor to get close to original value
         data = {
             "fundingSatoshis": capacity,
             "pushMsat": push_amt,
