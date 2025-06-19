@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "eclair.fullname" . }}
+  labels:
+    {{- include "eclair.labels" . | nindent 4 }}
+    {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+    app: {{ include "eclair.fullname" . }}
+    {{- if .Values.collectLogs }}
+    collect_logs: "true"
+    {{- end }}
+    chain: {{ .Values.global.chain }}
+  annotations:
+    kubectl.kubernetes.io/default-container: "eclair"
+spec:
+  {{- with .Values.imagePullSecrets }}
+  restartPolicy: "{{ .Values.restartPolicy }}"
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: {{ .Chart.Name }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 12 }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          /app/eclair-node/bin/eclair-node.sh -v &
+          while [ ! -f /root/.eclair/eclair.log ]; do
+            echo "Waiting for log file"
+            sleep 2
+          done &&
+          tail -f /root/.eclair/eclair.log
+      ports:
+        - name: server
+          containerPort: {{ .Values.ServerPort }}
+          protocol: TCP
+        - name: rest
+          containerPort: {{ .Values.RestPort }}
+          protocol: TCP
+      livenessProbe:
+        {{- toYaml .Values.livenessProbe | nindent 8 }}
+      readinessProbe:
+        {{- toYaml .Values.readinessProbe | nindent 8 }}
+      startupProbe:
+        {{- toYaml .Values.startupProbe | nindent 8 }}
+      resources:
+        {{- toYaml .Values.resources | nindent 12 }}
+      volumeMounts:
+        {{- with .Values.volumeMounts }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+    {{- with .Values.extraContainers }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  volumes:
+    {{- with .Values.volumes }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    - configMap:
+        name: {{ include "eclair.fullname" . }}
+      name: config
+  {{- with .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
+  {{- with .Values.affinity }}
+  affinity:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
+  {{- with .Values.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}

@@ -2,7 +2,9 @@ import base64
 import http.client
 import json
 import logging
+import re
 import ssl
+import urllib.parse
 from abc import ABC, abstractmethod
 from time import sleep
 
@@ -343,7 +345,7 @@ class CLN(LNNode):
                         channel["capacity"] = channel["amount_msat"] // 1000
                     return {"edges": sorted_channels}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
@@ -354,6 +356,192 @@ class CLN(LNNode):
         self.log.warning("Channel Policy Updates not supported by CLN yet!")
         return None
 
+class ECLAIR(LNNode):
+    def __init__(self, pod_name, ip_address):
+        super().__init__(pod_name, ip_address)
+        self.conn = None
+        self.headers = {"Authorization": "Basic OjIxc2F0b3NoaQ=="}
+        self.impl = "eclair"
+        self.reset_connection()
+
+    def reset_connection(self):
+        self.conn = http.client.HTTPConnection(
+            host=self.name, port=8080, timeout=5
+        )
+
+    def get(self, uri):
+        attempt = 0
+        while True:
+            try:
+                self.log.warning(f"headers: {self.headers}")
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers=self.headers,
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error ECLAIR GET, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def post(self, uri, data=None):
+        if not data:
+            data = {}
+        body = urllib.parse.urlencode(data)
+        post_header = self.headers
+        post_header["Content-Length"] = str(len(body))
+        post_header["Content-Type"] = "application/x-www-form-urlencoded"
+        attempt = 0
+        while True:
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers=post_header,
+                )
+                # Stream output, otherwise we get a timeout error
+                res = self.conn.getresponse()
+                stream = ""
+                while True:
+                    try:
+                        data = res.read(1)
+                        if len(data) == 0:
+                            break
+                        else:
+                            stream += data.decode("utf8")
+                    except Exception:
+                        break
+                return stream
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error ECLAIR POST, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def newaddress(self, max_tries=10):
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/getnewaddress")
+            if not response:
+                sleep(5)
+                continue
+            return True, response.strip("\"")
+        return False, ""
+
+    def uri(self):
+        res = json.loads(self.post("/getinfo"))
+        return f"{res['nodeId']}@{res['alias']}:9735"
+
+    def walletbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/globalbalance")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(res["total"] * 100000000) # convert to sats
+        return 0
+
+    def channelbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/usablebalances")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(sum(o["canSend"] + o["canReceive"] for o in res))
+        return 0
+
+    def connect(self, target_uri, max_tries=5) -> dict:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/connect", {"uri": target_uri})
+            if "connected" in response:
+                return {}
+            else:
+                self.log.debug(f"connect response: {response}, wait and retry...")
+                sleep(2)
+        return None
+
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
+        import math
+        fee_rate_factor = math.ceil(fee_rate/170) #FIXME: reduce fee rate by factor to get close to original value
+        data = {
+            "fundingSatoshis": capacity,
+            "pushMsat": push_amt,
+            "nodeId": pk,
+            "fundingFeerateSatByte": fee_rate_factor,
+            "fundingFeeBudgetSatoshis": fee_rate
+        } #FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/open", data)
+            print("channel open", response)
+            if response:
+                if "created channel" in response:
+                    # created channel e872f515dc5d8a3d61ccbd2127f33141eaa115807271dcc5c5c727f3eca914d3 with fundingTxId=bc2b8db55b9588d3a18bd06bd0e284f63ee8cc149c63138d51ac8ef81a72fc6f and fees=720 sat
+                    channel_id = re.search(r'channel ([0-9a-f]+)', response).group(1)
+                    funding_tx_id = re.search(r'fundingTxId=([0-9a-f]+)', response).group(1)
+                    return {"txid": funding_tx_id, "outpoint": f"{funding_tx_id}:N/A", "channel": channel_id}
+                else:
+                    self.log.warning(f"unable to open channel: {response}, wait and retry...")
+                    sleep(1)
+            else:
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(5)
+        return None
+
+    def createinvoice(self, sats, label, description="new invoice") -> str:
+        b64_desc = base64.b64encode(description.encode("utf-8"))
+        response = self.post(
+            "/createinvoice", {"amountMsat": sats * 1000, "description": label, "description": b64_desc}
+        ) # https://acinq.github.io/eclair/#createinvoice
+        if response:
+            res = json.loads(response)
+            return res
+        return None
+
+    def payinvoice(self, payment_request) -> str:
+        response = self.post("/payinvoice", {"invoice": payment_request})
+        # https://acinq.github.io/eclair/#payinvoice
+        if response:
+            return response
+        return None
+
+    def graph(self, max_tries=5) -> dict:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/allupdates") # https://acinq.github.io/eclair/#allupdates
+            if response:
+                res = json.loads(response)
+                if len(res) > 0:
+                    return {"edges": res}
+                else:
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
+                    sleep(10)
+            else:
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(2)
+        return None
+
+    def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
+        self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
+        return None
 
 class LND(LNNode):
     def __init__(self, pod_name, ip_address):
@@ -386,7 +574,7 @@ class LND(LNNode):
                 self.reset_connection()
                 attempt += 1
                 if attempt > 5:
-                    self.log.error(f"Error LND POST, Abort: {e}")
+                    self.log.error(f"Error LND GET, Abort: {e}")
                     return None
                 sleep(1)
 
@@ -423,13 +611,16 @@ class LND(LNNode):
                 if attempt > 5:
                     self.log.error(f"Error LND POST, Abort: {e}")
                     return None
-                sleep(1)
+                sleep(5)
 
-    def newaddress(self, max_tries=10):
+    def newaddress(self, max_tries=5):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
             response = self.get("/v1/newaddress")
+            if not response:
+                sleep(5)
+                continue
             res = json.loads(response)
             if "address" in res:
                 return True, res["address"]
@@ -437,7 +628,7 @@ class LND(LNNode):
                 self.log.warning(
                     f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
                 )
-            sleep(1)
+            sleep(5)
         return False, ""
 
     def walletbalance(self) -> int:
