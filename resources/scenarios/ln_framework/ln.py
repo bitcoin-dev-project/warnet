@@ -356,6 +356,7 @@ class CLN(LNNode):
         self.log.warning("Channel Policy Updates not supported by CLN yet!")
         return None
 
+
 class ECLAIR(LNNode):
     def __init__(self, pod_name, ip_address):
         super().__init__(pod_name, ip_address)
@@ -365,9 +366,7 @@ class ECLAIR(LNNode):
         self.reset_connection()
 
     def reset_connection(self):
-        self.conn = http.client.HTTPConnection(
-            host=self.name, port=8080, timeout=5
-        )
+        self.conn = http.client.HTTPConnection(host=self.name, port=8080, timeout=5)
 
     def get(self, uri):
         attempt = 0
@@ -433,7 +432,7 @@ class ECLAIR(LNNode):
             if not response:
                 sleep(5)
                 continue
-            return True, response.strip("\"")
+            return True, response.strip('"')
         return False, ""
 
     def uri(self):
@@ -449,7 +448,7 @@ class ECLAIR(LNNode):
                 sleep(2)
                 continue
             res = json.loads(response)
-            return int(res["total"] * 100000000) # convert to sats
+            return int(res["total"] * 100000000)  # convert to sats
         return 0
 
     def channelbalance(self, max_tries=2) -> int:
@@ -478,14 +477,17 @@ class ECLAIR(LNNode):
 
     def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
         import math
-        fee_rate_factor = math.ceil(fee_rate/170) #FIXME: reduce fee rate by factor to get close to original value
+
+        fee_rate_factor = math.ceil(
+            fee_rate / 170
+        )  # FIXME: reduce fee rate by factor to get close to original value
         data = {
             "fundingSatoshis": capacity,
             "pushMsat": push_amt,
             "nodeId": pk,
             "fundingFeerateSatByte": fee_rate_factor,
-            "fundingFeeBudgetSatoshis": fee_rate
-        } #FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
+            "fundingFeeBudgetSatoshis": fee_rate,
+        }  # FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
         attempt = 0
         while attempt < max_tries:
             attempt += 1
@@ -494,9 +496,13 @@ class ECLAIR(LNNode):
             if response:
                 if "created channel" in response:
                     # created channel e872f515dc5d8a3d61ccbd2127f33141eaa115807271dcc5c5c727f3eca914d3 with fundingTxId=bc2b8db55b9588d3a18bd06bd0e284f63ee8cc149c63138d51ac8ef81a72fc6f and fees=720 sat
-                    channel_id = re.search(r'channel ([0-9a-f]+)', response).group(1)
-                    funding_tx_id = re.search(r'fundingTxId=([0-9a-f]+)', response).group(1)
-                    return {"txid": funding_tx_id, "outpoint": f"{funding_tx_id}:N/A", "channel": channel_id}
+                    channel_id = re.search(r"channel ([0-9a-f]+)", response).group(1)
+                    funding_tx_id = re.search(r"fundingTxId=([0-9a-f]+)", response).group(1)
+                    return {
+                        "txid": funding_tx_id,
+                        "outpoint": f"{funding_tx_id}:N/A",
+                        "channel": channel_id,
+                    }
                 else:
                     self.log.warning(f"unable to open channel: {response}, wait and retry...")
                     sleep(1)
@@ -508,8 +514,9 @@ class ECLAIR(LNNode):
     def createinvoice(self, sats, label, description="new invoice") -> str:
         b64_desc = base64.b64encode(description.encode("utf-8"))
         response = self.post(
-            "/createinvoice", {"amountMsat": sats * 1000, "description": label, "description": b64_desc}
-        ) # https://acinq.github.io/eclair/#createinvoice
+            "/createinvoice",
+            {"amountMsat": sats * 1000, "description": label, "descriptionHash": b64_desc},
+        )  # https://acinq.github.io/eclair/#createinvoice
         if response:
             res = json.loads(response)
             return res
@@ -526,7 +533,7 @@ class ECLAIR(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/allupdates") # https://acinq.github.io/eclair/#allupdates
+            response = self.post("/allupdates")  # https://acinq.github.io/eclair/#allupdates
             if response:
                 res = json.loads(response)
                 if len(res) > 0:
@@ -542,6 +549,7 @@ class ECLAIR(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
         self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
         return None
+
 
 class LND(LNNode):
     def __init__(self, pod_name, ip_address):
