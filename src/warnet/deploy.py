@@ -366,11 +366,10 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         network_file = yaml.safe_load(f)
 
     needs_ln_init = False
-    supported_ln_projects = ["lnd", "cln"]
+    supported_ln_projects = ["lnd", "cln", "eclair"]
     for node in network_file["nodes"]:
-        ln_config = node.get("ln", {})
         for key in supported_ln_projects:
-            if ln_config.get(key, False) and key in node and "channels" in node[key]:
+            if key in node and node[key].get("enabled", False):
                 needs_ln_init = True
                 break
         if needs_ln_init:
@@ -379,7 +378,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
     default_file_path = directory / DEFAULTS_FILE
     with default_file_path.open() as f:
         default_file = yaml.safe_load(f)
-    if any(default_file.get("ln", {}).get(key, False) for key in supported_ln_projects):
+    if any(default_file.get(key, {}).get("enabled", False) for key in supported_ln_projects):
         needs_ln_init = True
 
     processes = []

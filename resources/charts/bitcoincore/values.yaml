@@ -123,6 +123,7 @@ baseConfig: |
   capturemessages=1
   fallbackfee=0.00001000
   listen=1
+  txindex=1
   rpcuser=user
   # rpcpassword MUST be set as a chart value
   rpcallowip=0.0.0.0/0
@@ -140,6 +141,10 @@ loadSnapshot:
   enabled: false
   url: ""
 
-ln:
-  lnd: false
-  cln: false
+cln:
+  enabled: false
+eclair:
+  enabled: false
+lnd:
+  enabled: false
+
