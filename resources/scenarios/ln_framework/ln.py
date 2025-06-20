@@ -476,17 +476,13 @@ class ECLAIR(LNNode):
         return None
 
     def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
-        import math
-
-        fee_rate_factor = math.ceil(
-            fee_rate / 170
-        )  # FIXME: reduce fee rate by factor to get close to original value
+        NON_GROUPED_UTXO_BYTE_SIZE = 165
         data = {
             "fundingSatoshis": capacity,
             "pushMsat": push_amt,
             "nodeId": pk,
-            "fundingFeerateSatByte": fee_rate_factor,
-            "fundingFeeBudgetSatoshis": fee_rate,
+            "fundingFeerateSatByte": fee_rate,
+            "fundingFeeBudgetSatoshis": fee_rate * NON_GROUPED_UTXO_BYTE_SIZE,
         }  # FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
         attempt = 0
         while attempt < max_tries:
@@ -537,7 +533,8 @@ class ECLAIR(LNNode):
             if response:
                 res = json.loads(response)
                 if len(res) > 0:
-                    return {"edges": res}
+                    filtered_channels = [ch for ch in res if ch["channelFlags"]["isNode1"]]
+                    return {"edges": filtered_channels}
                 else:
                     self.log.warning(f"unable to list channels: {res}, wait and retry...")
                     sleep(10)
