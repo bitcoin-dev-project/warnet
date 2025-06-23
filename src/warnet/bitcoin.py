@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sys
@@ -25,7 +26,7 @@ def bitcoin():
 @click.argument("method", type=str)
 @click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
 @click.option("--namespace", default=None, show_default=True)
-def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
+def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
@@ -37,12 +38,49 @@ def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
     print(result)
 
 
-def _rpc(tank: str, method: str, params: str, namespace: Optional[str] = None):
+def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = None):
     # bitcoin-cli should be able to read bitcoin.conf inside the container
     # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace_or(namespace)
-    if params:
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
+
+    # Reconstruct JSON parameters that may have been split by shell parsing
+    # This fixes issues where JSON arrays like ["network"] get split into separate arguments
+    reconstructed_params = _reconstruct_json_params(params)
+
+    if reconstructed_params:
+        # Process each parameter to handle different data types correctly for bitcoin-cli
+        processed_params = []
+        for param in reconstructed_params:
+            # Handle boolean and primitive values that should not be quoted
+            if param.lower() in ["true", "false", "null"]:
+                processed_params.append(param.lower())
+            elif param.isdigit() or (param.startswith("-") and param[1:].isdigit()):
+                # Numeric values (integers, negative numbers)
+                processed_params.append(param)
+            else:
+                try:
+                    # Try to parse as JSON to handle complex data structures
+                    parsed_json = json.loads(param)
+                    if isinstance(parsed_json, list):
+                        # If it's a list, extract the elements and add them individually
+                        # This ensures bitcoin-cli receives each list element as a separate argument
+                        for element in parsed_json:
+                            if isinstance(element, str):
+                                processed_params.append(f'"{element}"')
+                            else:
+                                processed_params.append(str(element))
+                    elif isinstance(parsed_json, dict):
+                        # If it's a dict, pass it as a single JSON argument
+                        # bitcoin-cli expects objects to be passed as JSON strings
+                        processed_params.append(param)
+                    else:
+                        # If it's a primitive value (number, boolean), pass it as-is
+                        processed_params.append(str(parsed_json))
+                except json.JSONDecodeError:
+                    # Not valid JSON, pass as-is (treat as plain string)
+                    processed_params.append(param)
+
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, processed_params))}"
     else:
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
     return run_command(cmd)
@@ -346,3 +384,96 @@ def to_jsonable(obj: str):
         return obj.hex()
     else:
         return obj
+
+
+def _reconstruct_json_params(params: list[str]) -> list[str]:
+    """
+    Reconstruct JSON parameters that may have been split by shell parsing.
+
+    This function detects when parameters look like they should be JSON and
+    reconstructs them properly. For example:
+    - ['[network]'] -> ['["network"]']
+    - ['[network,', 'message_type]'] -> ['["network", "message_type"]']
+    - ['[{"key":', '"value"}]'] -> ['[{"key": "value"}]']
+
+    This fixes the issue described in GitHub issue #714 where shell parsing
+    breaks JSON parameters into separate arguments.
+    """
+    if not params:
+        return params
+
+    reconstructed = []
+    i = 0
+
+    while i < len(params):
+        param = params[i]
+
+        # Check if this looks like the start of a JSON array or object
+        # that was split across multiple arguments by shell parsing
+        if (param.startswith("[") and not param.endswith("]")) or (
+            param.startswith("{") and not param.endswith("}")
+        ):
+            # This is the start of a JSON structure, collect all parts
+            json_parts = [param]
+            i += 1
+
+            # Collect all parts until we find the closing bracket/brace
+            while i < len(params):
+                next_param = params[i]
+                json_parts.append(next_param)
+
+                if (param.startswith("[") and next_param.endswith("]")) or (
+                    param.startswith("{") and next_param.endswith("}")
+                ):
+                    break
+                i += 1
+
+            # Reconstruct the JSON string by joining all parts
+            json_str = " ".join(json_parts)
+
+            # Validate that it's valid JSON before adding
+            try:
+                json.loads(json_str)
+                reconstructed.append(json_str)
+            except json.JSONDecodeError:
+                # If it's not valid JSON, add parts as separate parameters
+                # This preserves the original behavior for non-JSON arguments
+                reconstructed.extend(json_parts)
+
+        elif param.startswith("[") and param.endswith("]"):
+            # Single parameter that looks like JSON array
+            # Check if it's missing quotes around string elements
+            if "[" in param and "]" in param and '"' not in param:
+                # This looks like [value] without quotes, try to add them
+                inner_content = param[1:-1]  # Remove brackets
+                if "," in inner_content:
+                    # Multiple values: [val1, val2] -> ["val1", "val2"]
+                    values = [v.strip() for v in inner_content.split(",")]
+                    quoted_values = [f'"{v}"' for v in values]
+                    reconstructed_param = f"[{', '.join(quoted_values)}]"
+                else:
+                    # Single value: [value] -> ["value"]
+                    reconstructed_param = f'["{inner_content.strip()}"]'
+
+                # Validate the reconstructed JSON
+                try:
+                    json.loads(reconstructed_param)
+                    reconstructed.append(reconstructed_param)
+                except json.JSONDecodeError:
+                    # If reconstruction fails, keep original parameter
+                    reconstructed.append(param)
+            else:
+                # Already has quotes or is not a string array
+                try:
+                    json.loads(param)
+                    reconstructed.append(param)
+                except json.JSONDecodeError:
+                    reconstructed.append(param)
+
+        else:
+            # Regular parameter, add as-is
+            reconstructed.append(param)
+
+        i += 1
+
+    return reconstructed
