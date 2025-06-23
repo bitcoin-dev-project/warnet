@@ -91,24 +91,23 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     """Called by entrypoint"""
     hook_value = warnet_content[WarnetContent.HOOK_VALUE.value]
 
-    match hook_value:
-        case (
-            HookValue.PRE_NETWORK
-            | HookValue.POST_NETWORK
-            | HookValue.PRE_DEPLOY
-            | HookValue.POST_DEPLOY
-        ):
-            data = get_data(plugin_content)
-            if data:
-                _launch_pod(ctx, install_name=hook_value.value.lower() + "-hello", **data)
-            else:
-                _launch_pod(ctx, install_name=hook_value.value.lower() + "-hello")
-        case HookValue.PRE_NODE:
-            name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-pre-hello-pod"
-            _launch_pod(ctx, install_name=hook_value.value.lower() + "-" + name, podName=name)
-        case HookValue.POST_NODE:
-            name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-post-hello-pod"
-            _launch_pod(ctx, install_name=hook_value.value.lower() + "-" + name, podName=name)
+    if hook_value in (
+        HookValue.PRE_NETWORK,
+        HookValue.POST_NETWORK,
+        HookValue.PRE_DEPLOY,
+        HookValue.POST_DEPLOY,
+    ):
+        data = get_data(plugin_content)
+        if data:
+            _launch_pod(ctx, install_name=hook_value.value.lower() + "-hello", **data)
+        else:
+            _launch_pod(ctx, install_name=hook_value.value.lower() + "-hello")
+    elif hook_value == HookValue.PRE_NODE:
+        name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-pre-hello-pod"
+        _launch_pod(ctx, install_name=hook_value.value.lower() + "-" + name, podName=name)
+    elif hook_value == HookValue.POST_NODE:
+        name = warnet_content[PLUGIN_ANNEX][AnnexMember.NODE_NAME.value] + "-post-hello-pod"
+        _launch_pod(ctx, install_name=hook_value.value.lower() + "-" + name, podName=name)
 
 
 def get_data(plugin_content: dict) -> Optional[dict]:
