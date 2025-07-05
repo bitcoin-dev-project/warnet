@@ -333,7 +333,7 @@ def _import_network(graph_file_path, output_path):
         tank = f"tank-{index:04d}"
         pk_to_tank[node["pub_key"]] = tank
         tank_to_pk[tank] = node["pub_key"]
-        tanks[tank] = {"name": tank, "ln": {"lnd": True}, "lnd": {"channels": []}}
+        tanks[tank] = {"name": tank, "lnd": {"enabled": True, "channels": []}}
         index += 1
     print(f"Imported {index} nodes")
 

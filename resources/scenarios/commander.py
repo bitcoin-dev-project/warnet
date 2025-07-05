@@ -13,7 +13,7 @@ import threading
 from time import sleep
 
 from kubernetes import client, config
-from ln_framework.ln import CLN, LND, LNNode
+from ln_framework.ln import CLN, ECLAIR, LND, LNNode
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.p2p import NetworkThread
 from test_framework.test_framework import (
@@ -73,6 +73,8 @@ for pod in pods.items:
         lnnode = LND(pod.metadata.name, pod.status.pod_ip)
         if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
             lnnode = CLN(pod.metadata.name, pod.status.pod_ip)
+        elif "eclair" in pod.metadata.labels["app.kubernetes.io/name"]:
+            lnnode = ECLAIR(pod.metadata.name, pod.status.pod_ip)
         WARNET["lightning"].append(lnnode)
 
 for cm in cmaps.items:
