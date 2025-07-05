@@ -483,7 +483,7 @@ class ECLAIR(LNNode):
             "nodeId": pk,
             "fundingFeerateSatByte": fee_rate,
             "fundingFeeBudgetSatoshis": fee_rate * NON_GROUPED_UTXO_BYTE_SIZE,
-        }  # FIXME: https://acinq.github.io/eclair/#open-2 what parameters should be sent?
+        }  # https://acinq.github.io/eclair/#open-2
         attempt = 0
         while attempt < max_tries:
             attempt += 1
