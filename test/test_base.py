@@ -68,8 +68,7 @@ class TestBase:
     def warnet(self, cmd):
         self.log.debug(f"Executing warnet command: {cmd}")
         command = ["warnet"] + cmd.split()
-        capture_output = "--debug" not in cmd
-        proc = run(command, capture_output=capture_output)
+        proc = run(command, capture_output=True)
         if proc.stderr:
             raise Exception(proc.stderr.decode().strip())
         return proc.stdout.decode().strip() if proc.stdout else ""
