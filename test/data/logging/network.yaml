@@ -12,7 +12,13 @@ nodes:
     addnode:
       - tank-0000
     lnd:
-      enabled: true
+      channels:
+        - id:
+            block: 300
+            index: 1
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
       metricsExport: true
       prometheusMetricsPort: 9332
       extraContainers:

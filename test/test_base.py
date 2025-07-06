@@ -68,10 +68,11 @@ class TestBase:
     def warnet(self, cmd):
         self.log.debug(f"Executing warnet command: {cmd}")
         command = ["warnet"] + cmd.split()
-        proc = run(command, capture_output=True)
+        capture_output = "--debug" not in cmd
+        proc = run(command, capture_output=capture_output)
         if proc.stderr:
             raise Exception(proc.stderr.decode().strip())
-        return proc.stdout.decode().strip()
+        return proc.stdout.decode().strip() if proc.stdout else ""
 
     def output_reader(self, pipe, func):
         while not self.stop_threads.is_set():
