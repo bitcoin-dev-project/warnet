@@ -24,7 +24,7 @@ def bitcoin():
 @bitcoin.command(context_settings={"ignore_unknown_options": True})
 @click.argument("tank", type=str)
 @click.argument("method", type=str)
-@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
+@click.argument("params", type=click.UNPROCESSED, nargs=-1)  # get raw unprocessed arguments
 @click.option("--namespace", default=None, show_default=True)
 def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
     """
@@ -39,12 +39,28 @@ def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
 
 
 def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = None):
+    # bitcoin-cli should be able to read bitcoin.conf inside the container
+    # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace_or(namespace)
 
     if params:
-        # Shell-escape each param to preserve quotes and special characters
-        bitcoin_cli_args = " ".join(shlex.quote(p) for p in params)
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {bitcoin_cli_args}"
+        # Check if this looks like a JSON argument (starts with [ or {)
+        param_str = " ".join(params)
+        if param_str.strip().startswith("[") or param_str.strip().startswith("{"):
+            # For JSON arguments, ensure it's passed as a single argument
+            # Remove any extra quotes that might have been added by the shell
+            param_str = param_str.strip()
+            if (
+                param_str.startswith("'")
+                and param_str.endswith("'")
+                or param_str.startswith('"')
+                and param_str.endswith('"')
+            ):
+                param_str = param_str[1:-1]
+            cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {shlex.quote(param_str)}"
+        else:
+            # For non-JSON arguments, use simple space joining
+            cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {param_str}"
     else:
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
 
