@@ -1,6 +1,6 @@
-import json
 import os
 import re
+import shlex
 import sys
 from datetime import datetime
 from io import BytesIO
@@ -39,54 +39,15 @@ def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
 
 
 def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = None):
-    # bitcoin-cli should be able to read bitcoin.conf inside the container
-    # so no extra args like port, chain, username or password are needed
     namespace = get_default_namespace_or(namespace)
 
     if params:
-        # Process parameters to ensure proper shell escaping
-        processed_params = []
-        for param in params:
-            # If the parameter looks like JSON (starts with [ or {), fix malformed patterns
-            if param.startswith("[") or param.startswith("{"):
-                # Fix common malformed JSON patterns
-                if '\\"' in param:
-                    # Convert [\"value\"] to ["value"]
-                    param = param.replace('\\"', '"')
-
-                # Try to parse as JSON to determine how to handle it
-                try:
-                    parsed_json = json.loads(param)
-                    if isinstance(parsed_json, list):
-                        # For JSON arrays, extract elements for methods that expect individual parameters
-                        # (like getblock, gettransaction, etc.)
-                        # But keep as JSON for methods that expect JSON arrays (like logging)
-                        if method in ["logging", "importdescriptors", "importmulti"]:
-                            # These methods expect JSON arrays as-is
-                            processed_params.append(f"'{param}'")
-                        else:
-                            # For single-parameter methods, only extract the first element
-                            # For multi-parameter methods, extract all elements
-                            if method in ["getblockhash", "getblock", "gettransaction"]:
-                                # These methods expect a single parameter, so only take the first element
-                                if parsed_json:
-                                    processed_params.append(str(parsed_json[0]))
-                            else:
-                                # Extract all array elements for other methods
-                                for element in parsed_json:
-                                    processed_params.append(str(element))
-                    else:
-                        # For JSON objects, pass as-is
-                        processed_params.append(f"'{param}'")
-                except json.JSONDecodeError:
-                    # If it's not valid JSON, pass as-is
-                    processed_params.append(param)
-            else:
-                processed_params.append(param)
-
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(processed_params)}"
+        # Shell-escape each param to preserve quotes and special characters
+        bitcoin_cli_args = " ".join(shlex.quote(p) for p in params)
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {bitcoin_cli_args}"
     else:
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
+
     return run_command(cmd)
 
 
