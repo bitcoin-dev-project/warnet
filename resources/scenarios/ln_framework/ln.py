@@ -539,12 +539,12 @@ class ECLAIR(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/usablebalances")
+            response = self.post("/channelbalances")
             if not response:
                 sleep(2)
                 continue
             res = json.loads(response)
-            return int(sum(o["canSend"] + o["canReceive"] for o in res))
+            return int(sum(o["canSend"] for o in res) / 1000)
         return 0
 
     def connect(self, target_uri, max_tries=5) -> dict:
