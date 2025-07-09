@@ -60,10 +60,10 @@ livenessProbe:
       - 21satoshi 
       - getinfo
   failureThreshold: 3
-  initialDelaySeconds: 5
+  initialDelaySeconds: 10
   periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 1
+  timeoutSeconds: 5
 readinessProbe:
   failureThreshold: 3
   periodSeconds: 5

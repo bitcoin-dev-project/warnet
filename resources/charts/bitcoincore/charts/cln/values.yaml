@@ -57,10 +57,10 @@ livenessProbe:
       - "-c"
       - "lightning-cli getinfo >/dev/null 2>&1"
   failureThreshold: 3
-  initialDelaySeconds: 5
+  initialDelaySeconds: 10
   periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 1
+  timeoutSeconds: 5
 readinessProbe:
   failureThreshold: 10
   periodSeconds: 30
@@ -71,6 +71,20 @@ readinessProbe:
       - "/bin/sh"
       - "-c"
       - "lightning-cli getinfo 2>/dev/null | grep -q 'id' || exit 1"
+startupProbe:
+  failureThreshold: 10
+  periodSeconds: 30
+  successThreshold: 1
+  timeoutSeconds: 60
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while [ ! -s /working/rune.json ]; do
+          lightning-cli createrune > /working/rune.json 2>/dev/null
+          sleep 2
+        done
 
 # Additional volumes on the output Deployment definition.
 volumes:

@@ -41,12 +41,7 @@ spec:
         - /bin/sh
         - -c
         - |
-          lightningd --conf=/root/.lightning/config &
-          sleep 1
-          lightning-cli createrune > /working/rune.json
-          echo "Here is the rune file contents"
-          cat /working/rune.json
-          wait
+          lightningd --conf=/root/.lightning/config
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
