@@ -1,0 +1,15 @@
+image:
+  repository: bitcoindevproject/bitcoin
+  pullPolicy: IfNotPresent
+  tag: "29.0"
+
+lnd:
+  defaultConfig: |
+    color=#000000
+  config: |
+    bitcoin.timelockdelta=33
+    minchansize=200
+
+cln:
+  defaultConfig: |
+    rgb=ff3155

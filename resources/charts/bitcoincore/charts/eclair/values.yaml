@@ -102,7 +102,6 @@ baseConfig: |
   eclair.api.password = 21satoshi
   eclair.api.port = 8080
   eclair.features.keysend = optional
-  eclair.bitcoind.startup-locked-utxos-behavior = "unlock"
 
 config: ""
 

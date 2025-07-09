@@ -56,7 +56,6 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-
 {{/*
 Add network section heading in bitcoin.conf
 Always add for custom semver, check version for valid semver
@@ -66,5 +65,16 @@ Always add for custom semver, check version for valid semver
 {{- $newer := semverCompare ">=0.17.0" .Values.image.tag -}}
 {{- if or $newer $custom -}}
 [{{ .Values.global.chain }}]
+{{- end -}}
+{{- end -}}
+
+{{/*
+eclair requires zmqpubhashblock https://github.com/ACINQ/eclair/blob/master/README.md#installation
+*/}}
+{{- define "bitcoincore.set_zmqblocktype" -}}
+{{- if .Values.eclair.enabled -}}
+zmqpubhashblock
+{{- else }}
+zmqpubrawblock
 {{- end -}}
 {{- end -}}
