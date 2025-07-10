@@ -599,7 +599,7 @@ class ECLAIR(LNNode):
                     }
                 else:
                     self.log.warning(f"unable to open channel: {response}, wait and retry...")
-                    sleep(1)
+                    sleep(5)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
                 sleep(5)
