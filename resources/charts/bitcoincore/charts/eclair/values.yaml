@@ -6,9 +6,9 @@ namespace: warnet
 restartPolicy: Never
 
 image:
-  repository: bitdonkey/eclair
+  repository: polarlightning/eclair
   pullPolicy: IfNotPresent
-  tag: "0.11.0"
+  tag: "0.12.0"
 
 imagePullSecrets: []
 nameOverride: ""
