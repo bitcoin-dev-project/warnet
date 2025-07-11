@@ -1,0 +1,61 @@
+nodes:
+  - name: tank-0001
+    addnode:
+      - tank-0003
+    eclair:
+      enabled: true
+      channels:
+        - id:
+            block: 300
+            index: 1
+          target: tank-0003-ln
+          capacity: 50001
+          push_amt: 25003
+  - name: tank-0002
+    addnode:
+      - tank-0001
+    cln:
+      enabled: true
+      channels:
+        - id:
+            block: 301
+            index: 1
+          target: tank-0004-ln
+          capacity: 50002
+          push_amt: 25001
+  - name: tank-0003
+    addnode:
+      - tank-0004
+    lnd:
+      enabled: true
+      channels:
+        - id:
+            block: 302
+            index: 3
+          target: tank-0002-ln
+          capacity: 200003
+          push_amt: 100004
+  - name: tank-0004
+    addnode:
+      - tank-0003
+    lnd:
+      enabled: true
+      channels:
+        - id:
+            block: 302
+            index: 2
+          target: tank-0001-ln
+          capacity: 150004
+          push_amt: 25005
+  - name: tank-0005
+    addnode:
+      - tank-0003
+    lnd:
+      enabled: true
+      channels:
+        - id:
+            block: 302
+            index: 1
+          target: tank-0004-ln
+          capacity: 100005
+          push_amt: 51002

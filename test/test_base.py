@@ -71,7 +71,7 @@ class TestBase:
         proc = run(command, capture_output=True)
         if proc.stderr:
             raise Exception(proc.stderr.decode().strip())
-        return proc.stdout.decode().strip()
+        return proc.stdout.decode().strip() if proc.stdout else ""
 
     def output_reader(self, pipe, func):
         while not self.stop_threads.is_set():

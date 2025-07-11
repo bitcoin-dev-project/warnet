@@ -1,21 +1,22 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ include "cln.fullname" . }}
+  name: {{ include "eclair.fullname" . }}
   labels:
-    {{- include "cln.labels" . | nindent 4 }}
+    {{- include "eclair.labels" . | nindent 4 }}
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
-    app: {{ include "cln.fullname" . }}
+    app: {{ include "eclair.fullname" . }}
     {{- if .Values.collectLogs }}
     collect_logs: "true"
     {{- end }}
     chain: {{ .Values.global.chain }}
   annotations:
-    kubectl.kubernetes.io/default-container: "cln"
+    kubectl.kubernetes.io/default-container: "eclair"
 spec:
   {{- with .Values.imagePullSecrets }}
+  restartPolicy: "{{ .Values.restartPolicy }}"
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -24,24 +25,27 @@ spec:
   containers:
     - name: {{ .Chart.Name }}
       securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
+        {{- toYaml .Values.securityContext | nindent 12 }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - "sh"
+        - "-c"
+      args:
+        - >
+          /app/eclair-node/bin/eclair-node.sh -v &
+          while [ ! -f /root/.eclair/eclair.log ]; do
+            echo "Waiting for log file"
+            sleep 2
+          done &&
+          tail -f /root/.eclair/eclair.log
       ports:
-        - name: p2p
-          containerPort: {{ .Values.P2PPort }}
-          protocol: TCP
-        - name: rpc
-          containerPort: {{ .Values.RPCPort }}
+        - name: server
+          containerPort: {{ .Values.ServerPort }}
           protocol: TCP
         - name: rest
           containerPort: {{ .Values.RestPort }}
           protocol: TCP
-      command:
-        - /bin/sh
-        - -c
-        - |
-          lightningd --conf=/root/.lightning/config
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
@@ -49,47 +53,30 @@ spec:
       startupProbe:
         {{- toYaml .Values.startupProbe | nindent 8 }}
       resources:
-        {{- toYaml .Values.resources | nindent 8 }}
+        {{- toYaml .Values.resources | nindent 12 }}
       volumeMounts:
         {{- with .Values.volumeMounts }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
-        - mountPath: /root/.lightning/config
-          name: config
-          subPath: config
     {{- with .Values.extraContainers }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 6 }}
     {{- end }}
-    - name: http-server
-      image: busybox
-      command: ["/bin/sh", "-c"]
-      args:
-        - |
-          echo "Starting HTTP server..."
-          busybox httpd -f -p 8080 -h /working
-      ports:
-        - containerPort: 8080
-          name: http
-      volumeMounts:
-        {{- with .Values.volumeMounts }}
-          {{- toYaml . | nindent 8 }}
-        {{- end }}
   volumes:
     {{- with .Values.volumes }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
     - configMap:
-        name: {{ include "cln.fullname" . }}
+        name: {{ include "eclair.fullname" . }}
       name: config
   {{- with .Values.nodeSelector }}
   nodeSelector:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 8 }}
   {{- end }}
   {{- with .Values.affinity }}
   affinity:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 8 }}
   {{- end }}
   {{- with .Values.tolerations }}
   tolerations:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 8 }}
   {{- end }}

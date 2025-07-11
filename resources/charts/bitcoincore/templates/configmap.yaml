@@ -12,7 +12,7 @@ data:
     {{- .Values.baseConfig | nindent 4 }}
     rpcport={{ index .Values.global .Values.global.chain "RPCPort" }}
     rpcpassword={{ .Values.global.rpcpassword }}
-    zmqpubrawblock=tcp://0.0.0.0:{{ .Values.global.ZMQBlockPort }}
+    {{- include "bitcoincore.set_zmqblocktype" . | nindent 4 }}=tcp://0.0.0.0:{{ .Values.global.ZMQBlockPort }}
     zmqpubrawtx=tcp://0.0.0.0:{{ .Values.global.ZMQTxPort }}
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
