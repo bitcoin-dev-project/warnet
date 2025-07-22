@@ -36,6 +36,7 @@ jobs:
     strategy:
       matrix:
         test:
+          - bitcoin_rpc_args_test.py
           - conf_test.py
           - dag_connection_test.py
           - graph_test.py
