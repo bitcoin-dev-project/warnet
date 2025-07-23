@@ -34,7 +34,7 @@ class SignetTest(TestBase):
     def check_signet_miner(self):
         self.warnet("bitcoin rpc miner createwallet miner")
         self.warnet(
-            f"bitcoin rpc miner importdescriptors '{json.dumps(self.signer_data['descriptors'])}'"
+            f"bitcoin rpc miner importdescriptors {json.dumps(self.signer_data['descriptors'])}"
         )
         self.warnet(
             f"run resources/scenarios/signet_miner.py --tank=0 generate --max-blocks=8 --min-nbits --address={self.signer_data['address']['address']}"

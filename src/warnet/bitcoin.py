@@ -1,5 +1,7 @@
+import json
 import os
 import re
+import shlex
 import sys
 from datetime import datetime
 from io import BytesIO
@@ -23,9 +25,9 @@ def bitcoin():
 @bitcoin.command(context_settings={"ignore_unknown_options": True})
 @click.argument("tank", type=str)
 @click.argument("method", type=str)
-@click.argument("params", type=str, nargs=-1)  # this will capture all remaining arguments
+@click.argument("params", type=click.UNPROCESSED, nargs=-1)  # get raw unprocessed arguments
 @click.option("--namespace", default=None, show_default=True)
-def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
+def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
     """
     Call bitcoin-cli <method> [params] on <tank pod name>
     """
@@ -37,14 +39,37 @@ def rpc(tank: str, method: str, params: str, namespace: Optional[str]):
     print(result)
 
 
-def _rpc(tank: str, method: str, params: str, namespace: Optional[str] = None):
-    # bitcoin-cli should be able to read bitcoin.conf inside the container
-    # so no extra args like port, chain, username or password are needed
+def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = None):
     namespace = get_default_namespace_or(namespace)
+
     if params:
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {' '.join(map(str, params))}"
+        # First, try to join all parameters into a single string.
+        full_param_str = " ".join(params)
+
+        try:
+            # Heuristic: if the string looks like a JSON object/array, try to parse it.
+            # This handles the `signet_test` case where one large JSON argument was split
+            # by the shell into multiple params.
+            if full_param_str.strip().startswith(("[", "{")):
+                json.loads(full_param_str)
+                # SUCCESS: The params form a single, valid JSON object.
+                # Quote the entire reconstructed string as one argument.
+                param_str = shlex.quote(full_param_str)
+            else:
+                # It's not a JSON object, so it must be multiple distinct arguments.
+                # Raise an error to fall through to the individual quoting logic.
+                raise ValueError
+        except (json.JSONDecodeError, ValueError):
+            # FAILURE: The params are not one single JSON object.
+            # This handles the `rpc_test` case with mixed arguments.
+            # Quote each parameter individually to preserve them as separate arguments.
+            param_str = " ".join(shlex.quote(p) for p in params)
+
+        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {param_str}"
     else:
+        # Handle commands with no parameters
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
+
     return run_command(cmd)
 
 
