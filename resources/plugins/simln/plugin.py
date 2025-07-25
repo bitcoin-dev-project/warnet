@@ -42,6 +42,7 @@ log.addHandler(console_handler)
 
 class PluginContent(Enum):
     ACTIVITY = "activity"
+    CAPACITY_MULTIPLIER = "capacity_multiplier"
 
 
 @click.group()
@@ -86,7 +87,16 @@ def _entrypoint(ctx, plugin_content: dict, warnet_content: dict):
     if activity:
         activity = json.loads(activity)
         print(activity)
-    _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG))
+
+    capacity_multiplier = plugin_content.get(PluginContent.CAPACITY_MULTIPLIER.value)
+    if capacity_multiplier:
+        try:
+            capacity_multiplier = float(capacity_multiplier)
+        except (ValueError, TypeError):
+            log.warning(f"Invalid capacity_multiplier value: {capacity_multiplier}, ignoring")
+            capacity_multiplier = None
+
+    _launch_activity(activity, ctx.obj.get(PLUGIN_DIR_TAG), capacity_multiplier)
 
 
 @simln.command()
@@ -123,8 +133,9 @@ def get_example_activity():
 
 @simln.command()
 @click.argument(PluginContent.ACTIVITY.value, type=str)
+@click.option("--capacity-multiplier", type=float, help="Capacity multiplier for random activity")
 @click.pass_context
-def launch_activity(ctx, activity: str):
+def launch_activity(ctx, activity: str, capacity_multiplier: Optional[float]):
     """Deploys a SimLN Activity which is a JSON list of objects"""
     try:
         parsed_activity = json.loads(activity)
@@ -132,15 +143,20 @@ def launch_activity(ctx, activity: str):
         log.error("Invalid JSON input for activity.")
         raise click.BadArgumentUsage("Activity must be a valid JSON string.") from None
     plugin_dir = ctx.obj.get(PLUGIN_DIR_TAG)
-    print(_launch_activity(parsed_activity, plugin_dir))
+    print(_launch_activity(parsed_activity, plugin_dir, capacity_multiplier))
 
 
-def _launch_activity(activity: Optional[list[dict]], plugin_dir: str) -> str:
+def _launch_activity(
+    activity: Optional[list[dict]], plugin_dir: str, capacity_multiplier: Optional[float] = None
+) -> str:
     """Launch a SimLN chart which optionally includes the `activity`"""
     timestamp = int(time.time())
     name = f"simln-{timestamp}"
 
+    # Build helm command with capacity multiplier if provided
     command = f"helm upgrade --install {timestamp} {plugin_dir}/charts/simln"
+    if capacity_multiplier is not None:
+        command += f" --set capacityMultiplier={capacity_multiplier}"
 
     run_command(command)
     activity_json = _generate_activity_json(activity)
@@ -156,6 +172,17 @@ def _launch_activity(activity: Optional[list[dict]], plugin_dir: str) -> str:
         namespace=get_default_namespace(),
         quiet=True,
     ):
+        # Execute sim-cli with capacity multiplier if provided
+        if capacity_multiplier is not None:
+            # Wait for the main container to be ready
+            time.sleep(5)  # Give the container time to start
+            # Execute the command with capacity multiplier
+            _sh(
+                name,
+                "sh",
+                ("-c", f"cd /working && sim-cli --capacity-multiplier {capacity_multiplier}"),
+            )
+
         return name
     else:
         raise PluginError(f"Could not write sim.json to the init container: {name}")

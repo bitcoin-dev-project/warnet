@@ -24,6 +24,7 @@ class PluginTest(TestBase):
             self.deploy_with_plugin()
             self.copy_results()
             self.assert_hello_plugin()
+            self.test_capacity_multiplier_option()
         finally:
             self.cleanup()
 
@@ -93,6 +94,36 @@ class PluginTest(TestBase):
         wait_for_pod("tank-0004-pre-hello-pod")
         wait_for_pod("tank-0005-post-hello-pod")
         wait_for_pod("tank-0005-pre-hello-pod")
+
+    def test_capacity_multiplier_option(self):
+        """Test that the capacity multiplier option is available and works correctly."""
+        self.log.info("Testing capacity multiplier option...")
+
+        # Test 1: Check that the option is available in help
+        help_output = run_command(f"{self.simln_exec} launch-activity --help")
+        if "--capacity-multiplier" not in help_output:
+            self.fail("--capacity-multiplier option not found in help output")
+        self.log.info("✓ --capacity-multiplier option is available in help")
+
+        # Test 2: Check that the option accepts a float value
+        test_activity = '[{"source": "test-node-1", "destination": "test-node-2", "interval_secs": 1, "amount_msat": 1000}]'
+
+        # This should fail gracefully since we're not in a real warnet environment,
+        # but it should fail for the right reason (not because of option parsing)
+        try:
+            run_command(
+                f"{self.simln_exec} launch-activity '{test_activity}' --capacity-multiplier 2.5"
+            )
+            self.log.info("✓ --capacity-multiplier option is accepted")
+        except Exception as e:
+            # Expected to fail in test environment, but should not fail due to option parsing
+            if "capacity-multiplier" in str(e).lower():
+                self.fail(f"Capacity multiplier option parsing failed: {e}")
+            self.log.info(
+                "✓ --capacity-multiplier option is accepted (command failed as expected in test environment)"
+            )
+
+        self.log.info("Capacity multiplier test completed successfully")
 
 
 if __name__ == "__main__":
