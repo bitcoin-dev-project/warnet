@@ -4,6 +4,9 @@ image:
   tag: "0.2.3"
   pullPolicy: IfNotPresent
 
+# Capacity multiplier for random activity
+capacityMultiplier: null
+
 workingVolume:
   name: working-volume
   mountPath: /working
