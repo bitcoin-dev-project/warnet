@@ -42,12 +42,18 @@ class LNInit(Commander):
         ln_addrs = []
 
         def get_ln_addr(self, ln):
-            success, address = ln.newaddress()
-            if success:
-                ln_addrs.append(address)
-                self.log.info(f"Got wallet address {address} from {ln.name}")
-            else:
-                self.log.info(f"Couldn't get wallet address from {ln.name}")
+            address = None
+            while True:
+                success, address = ln.newaddress()
+                if success:
+                    ln_addrs.append(address)
+                    self.log.info(f"Got wallet address {address} from {ln.name}")
+                    break
+                else:
+                    self.log.info(
+                        f"Couldn't get wallet address from {ln.name}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
 
         addr_threads = [
             threading.Thread(target=get_ln_addr, args=(self, ln)) for ln in self.lns.values()
