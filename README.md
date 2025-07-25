@@ -33,7 +33,7 @@ Monitor and analyze the emergent behaviors of Bitcoin networks.
 
 ```sh
 python3 -m venv .venv
-source ./venv/bin/activate
+source .venv/bin/activate
 ```
 
 ### 2. Install Warnet
