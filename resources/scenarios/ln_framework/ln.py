@@ -245,7 +245,7 @@ class CLN(LNNode):
                     return None
                 sleep(1)
 
-    def createrune(self, max_tries=2):
+    def createrune(self, max_tries=10):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
@@ -649,7 +649,7 @@ class ECLAIR(LNNode):
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
                 sleep(2)
-        return None
+        return {"edges": []}
 
     def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
         self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")

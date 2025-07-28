@@ -280,6 +280,11 @@ class LNInit(Commander):
         def ln_all_chs(self, ln):
             expected = len(self.channels)
             actual = 0
+            if ln.impl == "eclair" and all(
+                ch["source"] != ln.name and ch["target"] != ln.name for ch in self.channels
+            ):
+                self.log.debug(f"eclair node {ln.name} will list channels if not connected")
+                return
             while actual != expected:
                 actual = len(ln.graph()["edges"])
                 sleep(5)
@@ -362,10 +367,12 @@ class LNInit(Commander):
                     assert len(expected) == len(actual), (
                         f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
                     )
+                if ln.impl == "eclair" and all(
+                    ch["source"] != ln.name and ch["target"] != ln.name for ch in self.channels
+                ):
+                    self.log.debug(f"eclair node {ln.name} does support network capacity checks")
+                    return
                 for i, actual_ch in enumerate(actual):
-                    if ln.impl == "eclair":
-                        self.log.debug("eclair nodes do not support network capacity checks")
-                        continue
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
