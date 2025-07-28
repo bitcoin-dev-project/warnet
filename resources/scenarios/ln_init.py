@@ -28,6 +28,12 @@ class LNInit(Commander):
         self.log.info("Setting up miner...")
         miner = self.ensure_miner(self.nodes[0])
         miner_addr = miner.getnewaddress()
+        # create wallet for any eclair node
+        for node in self.nodes[1:]:
+            for ln in self.lns.values():
+                if node.tank in ln.name and ln.impl == "eclair":
+                    self.log.info(f"creating wallet for {node.tank}")
+                    node.createwallet("eclair", descriptors=True)
 
         def gen(n):
             return self.generatetoaddress(self.nodes[0], n, miner_addr, sync_fun=self.no_op)
@@ -279,13 +285,14 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            attempts = 0
             actual = 0
+            if ln.impl == "eclair" and all(
+                ch["source"] != ln.name and ch["target"] != ln.name for ch in self.channels
+            ):
+                self.log.debug(f"eclair node {ln.name} will list channels if not connected")
+                return
             while actual != expected:
                 actual = len(ln.graph()["edges"])
-                if attempts > 10:
-                    break
-                attempts += 1
                 sleep(5)
             if actual == expected:
                 self.log.info(f"LN {ln.name} has graph with all {expected} channels")
@@ -366,6 +373,11 @@ class LNInit(Commander):
                     assert len(expected) == len(actual), (
                         f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
                     )
+                if ln.impl == "eclair" and all(
+                    ch["source"] != ln.name and ch["target"] != ln.name for ch in self.channels
+                ):
+                    self.log.debug(f"eclair node {ln.name} does support network capacity checks")
+                    return
                 for i, actual_ch in enumerate(actual):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]

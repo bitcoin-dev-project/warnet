@@ -1,8 +1,12 @@
 import base64
+import hashlib
 import http.client
 import json
 import logging
+import re
 import ssl
+import subprocess
+import urllib.parse
 from abc import ABC, abstractmethod
 from time import sleep
 
@@ -80,7 +84,7 @@ class Policy:
 
 class LNNode(ABC):
     @abstractmethod
-    def __init__(self, pod_name, ip_address):
+    def __init__(self, pod_name, ip_address=None, use_rpc=False):
         self.name = pod_name
         self.ip_address = ip_address
         self.log = logging.getLogger(pod_name)
@@ -89,6 +93,7 @@ class LNNode(ABC):
         handler.setFormatter(formatter)
         self.log.addHandler(handler)
         self.log.setLevel(logging.INFO)
+        self.use_rpc = use_rpc
 
     @staticmethod
     def hex_to_b64(hex):
@@ -101,12 +106,42 @@ class LNNode(ABC):
         else:
             return base64.b64decode(b64).hex()
 
+    def rpc_call(self, command: str, data: list[str] = None) -> str:
+        """Call warnet ln rpc via tank-name command and return stdout as string"""
+        try:
+            command_list = ["warnet", "ln", "rpc", self.name, command]
+            if data:
+                command_list.extend(data)
+            self.log.debug(f"rpc command: {command_list}")
+            result = subprocess.run(
+                command_list,
+                capture_output=True,
+                check=True,
+                text=True,
+            )
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            # Only log and return the actual error output
+            self.log.error(e.stderr.strip())
+            return None
+        except Exception as e:
+            self.log.error(f"RPC call failed: {e}")
+            return None
+
     @abstractmethod
     def newaddress(self, max_tries=10) -> tuple[bool, str]:
         pass
 
     @abstractmethod
+    def nodeid(self) -> str:
+        pass
+
+    @abstractmethod
     def uri(self) -> str:
+        pass
+
+    @abstractmethod
+    def channelbalance(self) -> int:
         pass
 
     @abstractmethod
@@ -122,6 +157,14 @@ class LNNode(ABC):
         pass
 
     @abstractmethod
+    def createinvoice(self, sats, label, description) -> str:
+        pass
+
+    @abstractmethod
+    def payinvoice(self, payment_request) -> str:
+        pass
+
+    @abstractmethod
     def graph(self) -> dict:
         pass
 
@@ -131,8 +174,8 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name, ip_address):
-        super().__init__(pod_name, ip_address)
+    def __init__(self, pod_name, ip_address=None, use_rpc=False):
+        super().__init__(pod_name, ip_address, use_rpc=use_rpc)
         self.conn = None
         self.headers = {}
         self.impl = "cln"
@@ -202,7 +245,7 @@ class CLN(LNNode):
                     return None
                 sleep(1)
 
-    def createrune(self, max_tries=2):
+    def createrune(self, max_tries=10):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
@@ -217,11 +260,12 @@ class CLN(LNNode):
         raise Exception(f"Unable to fetch rune from {self.name}")
 
     def newaddress(self, max_tries=2):
-        self.createrune()
+        if not self.use_rpc:
+            self.createrune()
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/newaddr")
+            response = self.rpc_call("newaddr") if self.use_rpc else self.post("/v1/newaddr")
             if not response:
                 sleep(2)
                 continue
@@ -235,8 +279,18 @@ class CLN(LNNode):
             sleep(2)
         return False, ""
 
+    def nodeid(self):
+        if self.use_rpc:
+            res = json.loads(self.rpc_call("getinfo"))
+        else:
+            res = json.loads(self.post("/v1/getinfo"))
+        return res["id"]
+
     def uri(self):
-        res = json.loads(self.post("/v1/getinfo"))
+        if self.use_rpc:
+            res = json.loads(self.rpc_call("getinfo"))
+        else:
+            res = json.loads(self.post("/v1/getinfo"))
         if len(res["address"]) < 1:
             return None
         return f"{res['id']}@{res['address'][0]['address']}:{res['address'][0]['port']}"
@@ -245,7 +299,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/listfunds")
+            response = self.rpc_call("listfunds") if self.use_rpc else self.post("/v1/listfunds")
             if not response:
                 sleep(2)
                 continue
@@ -257,7 +311,7 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/listfunds")
+            response = self.rpc_call("listfunds") if self.use_rpc else self.post("/v1/listfunds")
             if not response:
                 sleep(2)
                 continue
@@ -269,7 +323,10 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/connect", {"id": target_uri})
+            if self.use_rpc:
+                response = self.rpc_call("connect", [target_uri])
+            else:
+                response = self.post("/v1/connect", {"id": target_uri})
             if response:
                 res = json.loads(response)
                 if "id" in res:
@@ -294,7 +351,10 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/fundchannel", data)
+            if self.use_rpc:
+                response = self.rpc_call("fundchannel", [pk, str(capacity)])
+            else:
+                response = self.post("/v1/fundchannel", data)
             if response:
                 res = json.loads(response)
                 if "txid" in res:
@@ -307,17 +367,23 @@ class CLN(LNNode):
                 sleep(2)
         return None
 
-    def createinvoice(self, sats, label, description="new invoice") -> str:
-        response = self.post(
-            "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
-        )
+    def createinvoice(self, sats, label, description="new_invoice") -> str:
+        if self.use_rpc:
+            response = self.rpc_call("invoice", [str(sats * 1000), label, description])
+        else:
+            response = self.post(
+                "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
+            )
         if response:
             res = json.loads(response)
             return res["bolt11"]
         return None
 
     def payinvoice(self, payment_request) -> str:
-        response = self.post("/v1/pay", {"bolt11": payment_request})
+        if self.use_rpc:
+            response = self.rpc_call("pay", [payment_request])
+        else:
+            response = self.post("/v1/pay", {"bolt11": payment_request})
         if response:
             res = json.loads(response)
             if "code" in res:
@@ -330,7 +396,10 @@ class CLN(LNNode):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post("/v1/listchannels")
+            if self.use_rpc:
+                response = self.rpc_call("listchannels")
+            else:
+                response = self.post("/v1/listchannels")
             if response:
                 res = json.loads(response)
                 if "channels" in res:
@@ -343,7 +412,7 @@ class CLN(LNNode):
                         channel["capacity"] = channel["amount_msat"] // 1000
                     return {"edges": sorted_channels}
                 else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
                     sleep(1)
             else:
                 self.log.debug(f"channel response: {response}, wait and retry...")
@@ -355,9 +424,241 @@ class CLN(LNNode):
         return None
 
 
+class ECLAIR(LNNode):
+    def __init__(self, pod_name, ip_address=None, use_rpc=False):
+        super().__init__(pod_name, ip_address, use_rpc=use_rpc)
+        self.conn = None
+        self.headers = {"Authorization": "Basic OjIxc2F0b3NoaQ=="}
+        self.impl = "eclair"
+        self.reset_connection()
+
+    def reset_connection(self):
+        self.conn = http.client.HTTPConnection(host=self.name, port=8080, timeout=5)
+
+    def get(self, uri: str):
+        if self.use_rpc:
+            cmd = uri.replace("/", "")
+            return self.rpc_call(cmd)
+        attempt = 0
+        while True:
+            try:
+                self.log.warning(f"headers: {self.headers}")
+                self.conn.request(
+                    method="GET",
+                    url=uri,
+                    headers=self.headers,
+                )
+                return self.conn.getresponse().read().decode("utf8")
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error ECLAIR GET, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def post(self, uri: str, data=None):
+        if self.use_rpc:
+            cmd = uri.replace("/", "")
+            return self.rpc_call(cmd, data)
+        if not data:
+            data = {}
+        body = urllib.parse.urlencode(data)
+        post_header = self.headers
+        post_header["Content-Length"] = str(len(body))
+        post_header["Content-Type"] = "application/x-www-form-urlencoded"
+        attempt = 0
+        while True:
+            try:
+                self.conn.request(
+                    method="POST",
+                    url=uri,
+                    body=body,
+                    headers=post_header,
+                )
+                # Stream output, otherwise we get a timeout error
+                res = self.conn.getresponse()
+                stream = ""
+                while True:
+                    try:
+                        data = res.read(1)
+                        if len(data) == 0:
+                            break
+                        else:
+                            stream += data.decode("utf8")
+                    except Exception:
+                        break
+                return stream
+            except Exception as e:
+                self.reset_connection()
+                attempt += 1
+                if attempt > 5:
+                    self.log.error(f"Error ECLAIR POST, Abort: {e}")
+                    return None
+                sleep(1)
+
+    def newaddress(self, max_tries=10):
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/getnewaddress")
+            if not response:
+                sleep(5)
+                continue
+            return True, response.strip('"')
+        return False, ""
+
+    def nodeid(self):
+        if self.use_rpc:
+            res = json.loads(self.rpc_call("getinfo"))
+        else:
+            res = json.loads(self.post("/v1/getinfo"))
+        return res["nodeId"]
+
+    def uri(self):
+        response = self.post("/getinfo")
+        if response:
+            res = json.loads(response)
+            if "nodeId" in res:
+                return f"{res['nodeId']}@{res['alias']}:9735"
+        return None
+
+    def walletbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/globalbalance")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(res["total"] * 100000000)  # convert to sats
+        return 0
+
+    def channelbalance(self, max_tries=2) -> int:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = self.post("/channelbalances")
+            if not response:
+                sleep(2)
+                continue
+            res = json.loads(response)
+            return int(sum(o["canSend"] for o in res) / 1000)
+        return 0
+
+    def connect(self, target_uri, max_tries=5) -> dict:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            if self.use_rpc:
+                response = self.rpc_call("connect", [f"--nodeId={target_uri}"])
+            else:
+                response = self.post("/connect", {"uri": target_uri})
+            if response and "connected" in response:
+                return {}
+            else:
+                self.log.debug(f"connect response: {response}, wait and retry...")
+                sleep(2)
+        return None
+
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=10) -> dict:
+        NON_GROUPED_UTXO_BYTE_SIZE = 165
+        data = {
+            "fundingSatoshis": capacity,
+            "pushMsat": push_amt,
+            "nodeId": pk,
+            "fundingFeerateSatByte": fee_rate,
+            "fundingFeeBudgetSatoshis": fee_rate * NON_GROUPED_UTXO_BYTE_SIZE,
+        }  # https://acinq.github.io/eclair/#open-2
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            if self.use_rpc:
+                response = self.rpc_call(
+                    "open",
+                    [
+                        f"--nodeId={pk}",
+                        f"--fundingSatoshis={capacity}",
+                        f"--pushMsat={push_amt}",
+                        f"--fundingFeerateSatByte={fee_rate}",
+                        f"--fundingFeeBudgetSatoshis={fee_rate * NON_GROUPED_UTXO_BYTE_SIZE}",
+                    ],
+                )
+            else:
+                response = self.post("/open", data)
+            if response:
+                if "created channel" in response:
+                    # created channel e872f515dc5d8a3d61ccbd2127f33141eaa115807271dcc5c5c727f3eca914d3 with fundingTxId=bc2b8db55b9588d3a18bd06bd0e284f63ee8cc149c63138d51ac8ef81a72fc6f and fees=720 sat
+                    channel_id = re.search(r"channel ([0-9a-f]+)", response).group(1)
+                    funding_tx_id = re.search(r"fundingTxId=([0-9a-f]+)", response).group(1)
+                    return {
+                        "txid": funding_tx_id,
+                        "outpoint": f"{funding_tx_id}:N/A",
+                        "channel": channel_id,
+                    }
+                else:
+                    self.log.warning(f"unable to open channel: {response}, wait and retry...")
+                    sleep(5)
+            else:
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(5)
+        return None
+
+    def createinvoice(self, sats, label, description="new invoice") -> str:
+        if self.use_rpc:
+            response = self.rpc_call(
+                "createinvoice", [f"--amountMsat={sats * 1000}", f'--description="{label}"']
+            )
+        else:
+            b64_desc = base64.b64encode(description.encode("utf-8"))
+            response = self.post(
+                "/createinvoice",
+                {"amountMsat": sats * 1000, "description": label, "descriptionHash": b64_desc},
+            )  # https://acinq.github.io/eclair/#createinvoice
+        if response:
+            res = json.loads(response)
+            return res["serialized"]
+        return None
+
+    def payinvoice(self, payment_request) -> str:
+        if self.use_rpc:
+            response = self.rpc_call("payinvoice", [f"--invoice={payment_request}"])
+        else:
+            response = self.post("/payinvoice", {"invoice": payment_request})
+        # https://acinq.github.io/eclair/#payinvoice
+        if response:
+            return response
+        return None
+
+    def graph(self, max_tries=5) -> dict:
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            response = (
+                self.rpc_call("allupdates") if self.use_rpc else self.post("/allupdates")
+            )  # https://acinq.github.io/eclair/#allupdates
+            if response:
+                res = json.loads(response)
+                if len(res) > 0:
+                    filtered_channels = [ch for ch in res if ch["channelFlags"]["isNode1"]]
+                    return {"edges": filtered_channels}
+                else:
+                    self.log.warning(f"unable to list channels: {res}, wait and retry...")
+                    sleep(10)
+            else:
+                self.log.debug(f"channel response: {response}, wait and retry...")
+                sleep(2)
+        return {"edges": []}
+
+    def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
+        self.log.warning("Channel Policy Updates not supported by ECLAIR yet!")
+        return None
+
+
 class LND(LNNode):
-    def __init__(self, pod_name, ip_address):
-        super().__init__(pod_name, ip_address)
+    def __init__(self, pod_name, ip_address=None, use_rpc=False):
+        super().__init__(pod_name, ip_address, use_rpc=use_rpc)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
@@ -372,7 +673,10 @@ class LND(LNNode):
             host=self.name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
 
-    def get(self, uri):
+    def get(self, uri: str):
+        if self.use_rpc:
+            cmd = uri.replace("/v1/", "")
+            return self.rpc_call(cmd)
         attempt = 0
         while True:
             try:
@@ -386,7 +690,7 @@ class LND(LNNode):
                 self.reset_connection()
                 attempt += 1
                 if attempt > 5:
-                    self.log.error(f"Error LND POST, Abort: {e}")
+                    self.log.error(f"Error LND GET, Abort: {e}")
                     return None
                 sleep(1)
 
@@ -423,13 +727,19 @@ class LND(LNNode):
                 if attempt > 5:
                     self.log.error(f"Error LND POST, Abort: {e}")
                     return None
-                sleep(1)
+                sleep(5)
 
-    def newaddress(self, max_tries=10):
+    def newaddress(self, max_tries=5):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.get("/v1/newaddress")
+            if self.use_rpc:
+                response = self.rpc_call("newaddress", ["p2wkh"])
+            else:
+                response = self.get("/v1/newaddress")
+            if not response:
+                sleep(5)
+                continue
             res = json.loads(response)
             if "address" in res:
                 return True, res["address"]
@@ -437,16 +747,27 @@ class LND(LNNode):
                 self.log.warning(
                     f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
                 )
-            sleep(1)
+            sleep(5)
         return False, ""
 
     def walletbalance(self) -> int:
-        res = self.get("/v1/balance/blockchain")
-        return int(json.loads(res)["confirmed_balance"])
+        res = self.rpc_call("walletbalance") if self.use_rpc else self.get("/v1/balance/blockchain")
+        if res:
+            return int(json.loads(res)["confirmed_balance"])
+        else:
+            return 0
 
     def channelbalance(self) -> int:
-        res = self.get("/v1/balance/channels")
-        return int(json.loads(res)["balance"])
+        res = self.rpc_call("channelbalance") if self.use_rpc else self.get("/v1/balance/channels")
+        if res:
+            return int(json.loads(res)["balance"])
+        else:
+            return 0
+
+    def nodeid(self):
+        res = self.get("/v1/getinfo")
+        info = json.loads(res)
+        return info["identity_pubkey"]
 
     def uri(self):
         res = self.get("/v1/getinfo")
@@ -457,36 +778,59 @@ class LND(LNNode):
 
     def connect(self, target_uri):
         pk, host = target_uri.split("@")
-        res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
-        return json.loads(res)
+        if self.use_rpc:
+            res = self.rpc_call("connect", [target_uri])
+        else:
+            res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
+        if res:
+            return json.loads(res)
+        else:
+            return res
 
-    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=2):
-        b64_pk = self.hex_to_b64(pk)
+    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5):
         attempt = 0
         while attempt < max_tries:
             attempt += 1
-            response = self.post(
-                "/v1/channels/stream",
-                data={
-                    "local_funding_amount": capacity,
-                    "push_sat": push_amt,
-                    "node_pubkey": b64_pk,
-                    "sat_per_vbyte": fee_rate,
-                },
-            )
-            try:
-                res = json.loads(response)
-                if "result" in res:
-                    res["txid"] = self.b64_to_hex(
-                        res["result"]["chan_pending"]["txid"], reverse=True
-                    )
-                    res["outpoint"] = (
-                        f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
-                    )
-                    return res
-                self.log.warning(f"Open LND channel error: {res}")
-            except Exception as e:
-                self.log.error(f"Error opening LND channel: {e}")
+            if self.use_rpc:
+                response = self.rpc_call(
+                    "openchannel",
+                    [
+                        "--node_key",
+                        pk,
+                        "--local_amt",
+                        capacity,
+                        "--push_amt",
+                        push_amt,
+                        "--sat_per_vbyte",
+                        fee_rate,
+                    ],
+                )
+                if response:
+                    res = json.loads(response)
+                    return {"txid": res["funding_txid"]}
+            else:
+                response = self.post(
+                    "/v1/channels/stream",
+                    data={
+                        "local_funding_amount": capacity,
+                        "push_sat": push_amt,
+                        "node_pubkey": self.hex_to_b64(pk),
+                        "sat_per_vbyte": fee_rate,
+                    },
+                )
+                try:
+                    res = json.loads(response)
+                    if "result" in res:
+                        res["txid"] = self.b64_to_hex(
+                            res["result"]["chan_pending"]["txid"], reverse=True
+                        )
+                        res["outpoint"] = (
+                            f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
+                        )
+                        return res
+                    self.log.warning(f"Open LND channel error: {res}")
+                except Exception as e:
+                    self.log.error(f"Error opening LND channel: {e}")
             sleep(2)
         return None
 
@@ -503,27 +847,44 @@ class LND(LNNode):
         return json.loads(res)
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
-        b64_desc = base64.b64encode(description.encode("utf-8"))
-        response = self.post(
-            "/v1/invoices", data={"value": sats, "memo": label, "description_hash": b64_desc}
-        )
+        if self.use_rpc:
+            response = self.rpc_call(
+                "addinvoice",
+                [
+                    "--amt",
+                    str(sats),
+                    "--memo",
+                    label,
+                    "--description_hash",
+                    hashlib.sha256(description.encode("utf-8")).digest().hex(),
+                ],
+            )
+        else:
+            b64_desc = base64.b64encode(description.encode("utf-8"))
+            response = self.post(
+                "/v1/invoices", data={"value": sats, "memo": label, "description_hash": b64_desc}
+            )
         if response:
             res = json.loads(response)
             return res["payment_request"]
         return None
 
     def payinvoice(self, payment_request) -> str:
-        response = self.post(
-            "/v1/channels/transaction-stream", data={"payment_request": payment_request}
-        )
-        if response:
-            res = json.loads(response)
-            if "payment_error" in res:
-                return res["payment_error"]
-            else:
-                return res["payment_hash"]
+        if self.use_rpc:
+            response = self.rpc_call("payinvoice", ["-f", payment_request])
+            return response
+        else:
+            response = self.post(
+                "/v1/channels/transaction-stream", data={"payment_request": payment_request}
+            )
+            if response:
+                res = json.loads(response)
+                if "payment_error" in res:
+                    return res["payment_error"]
+                else:
+                    return res["payment_hash"]
         return None
 
     def graph(self):
-        res = self.get("/v1/graph")
+        res = self.get("describegraph") if self.use_rpc else self.get("/v1/graph")
         return json.loads(res)

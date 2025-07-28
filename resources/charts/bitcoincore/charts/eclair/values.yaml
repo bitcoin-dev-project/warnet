@@ -1,18 +1,20 @@
-# Default values for cln.
+# Default values for eclair.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 namespace: warnet
 
-image:
-  repository: elementsproject/lightningd
-  pullPolicy: IfNotPresent
-  tag: "v25.02"
+restartPolicy: Never
 
+image:
+  repository: polarlightning/eclair
+  pullPolicy: IfNotPresent
+  tag: "0.12.0"
+
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-podAnnotations: {}
-podLabels:
+podLabels: 
   app: "warnet"
   mission: "lightning"
 
@@ -23,9 +25,8 @@ securityContext: {}
 service:
   type: ClusterIP
 
-P2PPort: 9735
-RPCPort: 9736
-RestPort: 3010
+ServerPort: 9735
+RestPort: 8080
 
 ingress:
   enabled: false
@@ -50,51 +51,42 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
-  exec:
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "lightning-cli getinfo >/dev/null 2>&1"
+  tcpSocket:
+    port: 8080
   failureThreshold: 3
   initialDelaySeconds: 10
   periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 5
+  timeoutSeconds: 10
 readinessProbe:
-  failureThreshold: 10
-  periodSeconds: 30
+  failureThreshold: 3
+  periodSeconds: 5
   successThreshold: 1
-  timeoutSeconds: 60
-  exec:
-    command:
-      - "/bin/sh"
-      - "-c"
-      - "lightning-cli getinfo 2>/dev/null | grep -q 'id' || exit 1"
+  timeoutSeconds: 10
+  tcpSocket:
+    port: 8080
 startupProbe:
-  failureThreshold: 10
-  periodSeconds: 30
+  failureThreshold: 3
+  periodSeconds: 15
   successThreshold: 1
-  timeoutSeconds: 60
-  exec:
-    command:
-      - /bin/sh
-      - -c
-      - |
-        while [ ! -s /working/rune.json ]; do
-          lightning-cli createrune > /working/rune.json 2>/dev/null
-          sleep 2
-        done
+  timeoutSeconds: 15
+  tcpSocket:
+    port: 8080
 
 # Additional volumes on the output Deployment definition.
 volumes:
-  - name: working
+  - name: temp-storage
     emptyDir: {}
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts:
-  - name: working
-    mountPath: "/working"
+  - mountPath: /root/.eclair/eclair.conf
+    name: config
+    subPath: eclair.conf
+  - mountPath: /root/.eclair
+    name: temp-storage
 
 nodeSelector: {}
 
@@ -103,11 +95,12 @@ tolerations: []
 affinity: {}
 
 baseConfig: |
-  log-level=info
-  developer
-  dev-fast-gossip
-  bitcoin-rpcuser=user
-  # bitcoind.rpcpass are set in configmap.yaml
+  eclair.server.port = 9735
+  eclair.api.enabled = true
+  eclair.api.binding-ip = 0.0.0.0
+  eclair.api.password = 21satoshi
+  eclair.api.port = 8080
+  eclair.features.keysend = optional
 
 config: ""
 
