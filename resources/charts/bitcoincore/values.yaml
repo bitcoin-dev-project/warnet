@@ -129,7 +129,6 @@ baseConfig: |
   rpcallowip=0.0.0.0/0
   rpcbind=0.0.0.0
   rest=1
-  dnsseed=0 # needed for eclair stability
   # rpcport and zmq endpoints are configured by chain in configmap.yaml
 
 config: ""

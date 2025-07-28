@@ -279,13 +279,9 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            attempts = 0
             actual = 0
             while actual != expected:
                 actual = len(ln.graph()["edges"])
-                if attempts > 10:
-                    break
-                attempts += 1
                 sleep(5)
             if actual == expected:
                 self.log.info(f"LN {ln.name} has graph with all {expected} channels")
