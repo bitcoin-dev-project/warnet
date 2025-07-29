@@ -102,14 +102,14 @@ nodes:
 plugins:
   postDeploy:
     simln:
-      entrypoint: "../../plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
+      entrypoint: "/path/to/plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
       activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
 ````
 
 </details>
 
 
-## Generating your own SimLn image
+## Generating your own SimLN image
 The SimLN plugin fetches a SimLN docker image from dockerhub. You can generate your own docker image if you choose:
 
 1. Clone SimLN: `git clone git@github.com:bitcoin-dev-project/sim-ln.git`
