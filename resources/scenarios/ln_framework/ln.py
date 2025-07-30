@@ -430,12 +430,17 @@ class LND(LNNode):
         while attempt < max_tries:
             attempt += 1
             response = self.get("/v1/newaddress")
-            res = json.loads(response)
-            if "address" in res:
-                return True, res["address"]
-            else:
+            try:
+                res = json.loads(response)
+                if "address" in res:
+                    return True, res["address"]
+                else:
+                    self.log.warning(
+                        f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
+                    )
+            except Exception:
                 self.log.warning(
-                    f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
+                    f"Couldn't decode newaddress JSON from {self.name}:\n  {response}\n  wait and retry..."
                 )
             sleep(1)
         return False, ""
