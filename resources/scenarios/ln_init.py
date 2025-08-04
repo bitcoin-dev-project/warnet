@@ -311,7 +311,13 @@ class LNInit(Commander):
 
         def update_policy(self, ln, txid_hex, policy, capacity):
             self.log.info(f"Sending update from {ln.name} for channel with outpoint: {txid_hex}:0")
-            res = ln.update(txid_hex, policy, capacity)
+            res = None
+            while res is None:
+                try:
+                    res = ln.update(txid_hex, policy, capacity)
+                    break
+                except Exception:
+                    sleep(1)
             assert len(res["failed_updates"]) == 0, (
                 f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}"
             )
