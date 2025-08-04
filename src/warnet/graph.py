@@ -356,7 +356,7 @@ def _import_network(graph_file_path, output_path):
         }
         tanks[source]["lnd"]["channels"].append(channel)
         index += 1
-        if index > 1000:
+        if index > 250:
             index = 1
             block += 1
         count += 1

@@ -240,11 +240,11 @@ class LNInit(Commander):
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
             index = 0
-            fee_rate = 5006  # s/vB, decreases by 5 per tx for up to 1000 txs per block
+            fee_rate = 5006  # s/vB, decreases by 20 per tx for up to 250 txs per block
             ch_threads = []
             for ch in channels:
                 index += 1  # noqa
-                fee_rate -= 5
+                fee_rate -= 20
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
@@ -311,7 +311,13 @@ class LNInit(Commander):
 
         def update_policy(self, ln, txid_hex, policy, capacity):
             self.log.info(f"Sending update from {ln.name} for channel with outpoint: {txid_hex}:0")
-            res = ln.update(txid_hex, policy, capacity)
+            res = None
+            while res is None:
+                try:
+                    res = ln.update(txid_hex, policy, capacity)
+                    break
+                except Exception:
+                    sleep(1)
             assert len(res["failed_updates"]) == 0, (
                 f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}"
             )
