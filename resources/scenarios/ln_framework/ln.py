@@ -102,7 +102,7 @@ class LNNode(ABC):
             return base64.b64decode(b64).hex()
 
     @abstractmethod
-    def newaddress(self, max_tries=10) -> tuple[bool, str]:
+    def newaddress(self) -> tuple[bool, str]:
         pass
 
     @abstractmethod
@@ -147,23 +147,14 @@ class CLN(LNNode):
         self.headers = {"Rune": rune}
 
     def get(self, uri):
-        attempt = 0
-        while True:
-            try:
-                self.log.warning(f"headers: {self.headers}")
-                self.conn.request(
-                    method="GET",
-                    url=uri,
-                    headers=self.headers,
-                )
-                return self.conn.getresponse().read().decode("utf8")
-            except Exception as e:
-                self.reset_connection()
-                attempt += 1
-                if attempt > 5:
-                    self.log.error(f"Error CLN GET, Abort: {e}")
-                    return None
-                sleep(1)
+        self.reset_connection()
+        self.log.info(f"CLN GET headers: {self.headers}")
+        self.conn.request(
+            method="GET",
+            url=uri,
+            headers=self.headers,
+        )
+        return self.conn.getresponse().read().decode("utf8")
 
     def post(self, uri, data=None):
         if not data:
@@ -172,187 +163,105 @@ class CLN(LNNode):
         post_header = self.headers
         post_header["Content-Length"] = str(len(body))
         post_header["Content-Type"] = "application/json"
-        attempt = 0
+        self.reset_connection()
+        self.log.info(f"CLN POST headers: {post_header}")
+        self.conn.request(
+            method="POST",
+            url=uri,
+            body=body,
+            headers=post_header,
+        )
+        # Stream output, otherwise we get a timeout error
+        res = self.conn.getresponse()
+        stream = ""
         while True:
             try:
-                self.conn.request(
-                    method="POST",
-                    url=uri,
-                    body=body,
-                    headers=post_header,
-                )
-                # Stream output, otherwise we get a timeout error
-                res = self.conn.getresponse()
-                stream = ""
-                while True:
-                    try:
-                        data = res.read(1)
-                        if len(data) == 0:
-                            break
-                        else:
-                            stream += data.decode("utf8")
-                    except Exception:
-                        break
-                return stream
-            except Exception as e:
-                self.reset_connection()
-                attempt += 1
-                if attempt > 5:
-                    self.log.error(f"Error CLN POST, Abort: {e}")
-                    return None
-                sleep(1)
+                data = res.read(1)
+                if len(data) == 0:
+                    break
+                else:
+                    stream += data.decode("utf8")
+            except Exception:
+                break
+        return stream
 
-    def createrune(self, max_tries=2):
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
+    def createrune(self):
+        while True:
             response = requests.get(f"http://{self.ip_address}:8080/rune.json", timeout=5).text
             if not response:
+                self.log.warning(f"Unable to fetch rune from {self.name}, retrying in 2 seconds...")
                 sleep(2)
                 continue
             self.log.debug(response)
             res = json.loads(response)
             self.setRune(res["rune"])
             return
-        raise Exception(f"Unable to fetch rune from {self.name}")
 
-    def newaddress(self, max_tries=2):
+    def newaddress(self):
         self.createrune()
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post("/v1/newaddr")
-            if not response:
-                sleep(2)
-                continue
-            res = json.loads(response)
-            if "bech32" in res:
-                return True, res["bech32"]
-            else:
-                self.log.warning(
-                    f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
-                )
-            sleep(2)
-        return False, ""
+        response = self.post("/v1/newaddr")
+        res = json.loads(response)
+        return res["bech32"]
 
     def uri(self):
         res = json.loads(self.post("/v1/getinfo"))
-        if len(res["address"]) < 1:
-            return None
         return f"{res['id']}@{res['address'][0]['address']}:{res['address'][0]['port']}"
 
-    def walletbalance(self, max_tries=2) -> int:
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post("/v1/listfunds")
-            if not response:
-                sleep(2)
-                continue
-            res = json.loads(response)
-            return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
-        return 0
+    def walletbalance(self) -> int:
+        response = self.post("/v1/listfunds")
+        res = json.loads(response)
+        return int(sum(o["amount_msat"] for o in res["outputs"]) / 1000)
 
-    def channelbalance(self, max_tries=2) -> int:
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post("/v1/listfunds")
-            if not response:
-                sleep(2)
-                continue
-            res = json.loads(response)
-            return int(sum(o["our_amount_msat"] for o in res["channels"]) / 1000)
-        return 0
+    def channelbalance(self) -> int:
+        response = self.post("/v1/listfunds")
+        res = json.loads(response)
+        return int(sum(o["our_amount_msat"] for o in res["channels"]) / 1000)
 
-    def connect(self, target_uri, max_tries=5) -> dict:
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post("/v1/connect", {"id": target_uri})
-            if response:
-                res = json.loads(response)
-                if "id" in res:
-                    return {}
-                elif "code" in res and res["code"] == 402:
-                    self.log.warning(f"failed connect 402: {response}, wait and retry...")
-                    sleep(5)
-                else:
-                    return res
-            else:
-                self.log.debug(f"connect response: {response}, wait and retry...")
-                sleep(2)
-        return None
+    def connect(self, target_uri) -> dict:
+        response = self.post("/v1/connect", {"id": target_uri})
+        res = json.loads(response)
+        if "id" in res:
+            return {}
+        else:
+            return res
 
-    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=5) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
         data = {
             "amount": capacity,
             "push_msat": push_amt,
             "id": pk,
             "feerate": fee_rate,
         }
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post("/v1/fundchannel", data)
-            if response:
-                res = json.loads(response)
-                if "txid" in res:
-                    return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
-                else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
-                    sleep(1)
-            else:
-                self.log.debug(f"channel response: {response}, wait and retry...")
-                sleep(2)
-        return None
+        response = self.post("/v1/fundchannel", data)
+        res = json.loads(response)
+        return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
 
     def createinvoice(self, sats, label, description="new invoice") -> str:
         response = self.post(
             "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
         )
-        if response:
-            res = json.loads(response)
-            return res["bolt11"]
-        return None
+        res = json.loads(response)
+        return res["bolt11"]
 
     def payinvoice(self, payment_request) -> str:
         response = self.post("/v1/pay", {"bolt11": payment_request})
-        if response:
-            res = json.loads(response)
-            if "code" in res:
-                return res["message"]
-            else:
-                return res["payment_hash"]
-        return None
+        res = json.loads(response)
+        return res
 
-    def graph(self, max_tries=2) -> dict:
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post("/v1/listchannels")
-            if response:
-                res = json.loads(response)
-                if "channels" in res:
-                    # Map to desired output
-                    filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
-                    # Sort by short_channel_id - block -> index -> output
-                    sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
-                    # Add capacity by dividing amount_msat by 1000
-                    for channel in sorted_channels:
-                        channel["capacity"] = channel["amount_msat"] // 1000
-                    return {"edges": sorted_channels}
-                else:
-                    self.log.warning(f"unable to open channel: {res}, wait and retry...")
-                    sleep(1)
-            else:
-                self.log.debug(f"channel response: {response}, wait and retry...")
-                sleep(2)
-        return None
+    def graph(self) -> dict:
+        response = self.post("/v1/listchannels")
+        res = json.loads(response)
+        # Map to desired output
+        filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
+        # Sort by short_channel_id - block -> index -> output
+        sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
+        # Add capacity by dividing amount_msat by 1000
+        for channel in sorted_channels:
+            channel["capacity"] = channel["amount_msat"] // 1000
+        return {"edges": sorted_channels}
 
-    def update(self, txid_hex: str, policy: dict, capacity: int, max_tries=2) -> dict:
-        self.log.warning("Channel Policy Updates not supported by CLN yet!")
-        return None
+    def update(self, txid_hex: str, policy: dict, capacity: int) -> dict:
+        raise Exception("Channel Policy Updates not supported by CLN yet!")
 
 
 class LND(LNNode):
@@ -373,77 +282,44 @@ class LND(LNNode):
         )
 
     def get(self, uri):
-        attempt = 0
-        while True:
-            try:
-                self.conn.request(
-                    method="GET",
-                    url=uri,
-                    headers=self.headers,
-                )
-                return self.conn.getresponse().read().decode("utf8")
-            except Exception as e:
-                self.reset_connection()
-                attempt += 1
-                if attempt > 5:
-                    self.log.error(f"Error LND POST, Abort: {e}")
-                    return None
-                sleep(1)
+        self.reset_connection()
+        self.conn.request(
+            method="GET",
+            url=uri,
+            headers=self.headers,
+        )
+        return self.conn.getresponse().read().decode("utf8")
 
     def post(self, uri, data):
         body = json.dumps(data)
         post_header = self.headers
         post_header["Content-Length"] = str(len(body))
         post_header["Content-Type"] = "application/json"
-        attempt = 0
+        self.reset_connection()
+        self.conn.request(
+            method="POST",
+            url=uri,
+            body=body,
+            headers=post_header,
+        )
+        # Stream output, otherwise we get a timeout error
+        res = self.conn.getresponse()
+        stream = ""
         while True:
             try:
-                self.conn.request(
-                    method="POST",
-                    url=uri,
-                    body=body,
-                    headers=post_header,
-                )
-                # Stream output, otherwise we get a timeout error
-                res = self.conn.getresponse()
-                stream = ""
-                while True:
-                    try:
-                        data = res.read(1)
-                        if len(data) == 0:
-                            break
-                        else:
-                            stream += data.decode("utf8")
-                    except Exception:
-                        break
-                return stream
-            except Exception as e:
-                self.reset_connection()
-                attempt += 1
-                if attempt > 5:
-                    self.log.error(f"Error LND POST, Abort: {e}")
-                    return None
-                sleep(1)
-
-    def newaddress(self, max_tries=10):
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.get("/v1/newaddress")
-            try:
-                res = json.loads(response)
-                if "address" in res:
-                    return True, res["address"]
+                data = res.read(1)
+                if len(data) == 0:
+                    break
                 else:
-                    self.log.warning(
-                        f"Couldn't get wallet address from {self.name}:\n  {res}\n  wait and retry..."
-                    )
+                    stream += data.decode("utf8")
             except Exception:
-                self.log.warning(
-                    f"Couldn't decode newaddress JSON from {self.name}:\n  {response}\n  wait and retry..."
-                )
-            sleep(1)
-        return False, ""
+                break
+        return stream
+
+    def newaddress(self):
+        response = self.get("/v1/newaddress")
+        res = json.loads(response)
+        return res["address"]
 
     def walletbalance(self) -> int:
         res = self.get("/v1/balance/blockchain")
@@ -456,8 +332,6 @@ class LND(LNNode):
     def uri(self):
         res = self.get("/v1/getinfo")
         info = json.loads(res)
-        if "uris" not in info or len(info["uris"]) == 0:
-            return None
         return info["uris"][0]
 
     def connect(self, target_uri):
@@ -465,35 +339,25 @@ class LND(LNNode):
         res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
         return json.loads(res)
 
-    def channel(self, pk, capacity, push_amt, fee_rate, max_tries=2):
+    def channel(self, pk, capacity, push_amt, fee_rate):
         b64_pk = self.hex_to_b64(pk)
-        attempt = 0
-        while attempt < max_tries:
-            attempt += 1
-            response = self.post(
-                "/v1/channels/stream",
-                data={
-                    "local_funding_amount": capacity,
-                    "push_sat": push_amt,
-                    "node_pubkey": b64_pk,
-                    "sat_per_vbyte": fee_rate,
-                },
-            )
-            try:
-                res = json.loads(response)
-                if "result" in res:
-                    res["txid"] = self.b64_to_hex(
-                        res["result"]["chan_pending"]["txid"], reverse=True
-                    )
-                    res["outpoint"] = (
-                        f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
-                    )
-                    return res
-                self.log.warning(f"Open LND channel error: {res}")
-            except Exception as e:
-                self.log.error(f"Error opening LND channel: {e}")
-            sleep(2)
-        return None
+        response = self.post(
+            "/v1/channels/stream",
+            data={
+                "local_funding_amount": capacity,
+                "push_sat": push_amt,
+                "node_pubkey": b64_pk,
+                "sat_per_vbyte": fee_rate,
+            },
+        )
+        res = json.loads(response)
+        res["txid"] = self.b64_to_hex(
+            res["result"]["chan_pending"]["txid"], reverse=True
+        )
+        res["outpoint"] = (
+            f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
+        )
+        return res
 
     def update(self, txid_hex: str, policy: dict, capacity: int):
         ln_policy = Policy.from_dict(policy).to_lnd_chanpolicy(capacity)
@@ -512,22 +376,15 @@ class LND(LNNode):
         response = self.post(
             "/v1/invoices", data={"value": sats, "memo": label, "description_hash": b64_desc}
         )
-        if response:
-            res = json.loads(response)
-            return res["payment_request"]
-        return None
+        res = json.loads(response)
+        return res["payment_request"]
 
     def payinvoice(self, payment_request) -> str:
         response = self.post(
             "/v1/channels/transaction-stream", data={"payment_request": payment_request}
         )
-        if response:
-            res = json.loads(response)
-            if "payment_error" in res:
-                return res["payment_error"]
-            else:
-                return res["payment_hash"]
-        return None
+        res = json.loads(response)
+        return res
 
     def graph(self):
         res = self.get("/v1/graph")
