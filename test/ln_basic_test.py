@@ -121,13 +121,6 @@ class LNBasicTest(TestBase):
 
         self.wait_for_predicate(wait_for_success)
 
-    def scenario_open_channels(self):
-        # 2 -> 3
-        # connecting all six ln nodes in the graph
-        scenario_file = self.scen_dir / "test_scenarios" / "ln_init.py"
-        self.log.info(f"Running scenario from: {scenario_file}")
-        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir} --debug")
-
     def test_circuit_breaker_api(self):
         self.log.info("Testing Circuit Breaker API with direct kubectl commands")
 
