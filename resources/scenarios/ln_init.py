@@ -42,16 +42,15 @@ class LNInit(Commander):
         ln_addrs = []
 
         def get_ln_addr(self, ln):
-            address = None
             while True:
-                success, address = ln.newaddress()
-                if success:
+                try:
+                    address = ln.newaddress()
                     ln_addrs.append(address)
                     self.log.info(f"Got wallet address {address} from {ln.name}")
                     break
-                else:
+                except Exception as e:
                     self.log.info(
-                        f"Couldn't get wallet address from {ln.name}, retrying in 5 seconds..."
+                        f"Couldn't get wallet address from {ln.name} because {e}, retrying in 5 seconds..."
                     )
                     sleep(5)
 
@@ -86,13 +85,18 @@ class LNInit(Commander):
         )
 
         def confirm_ln_balance(self, ln):
-            bal = 0
             while True:
-                bal = ln.walletbalance()
-                if bal >= (split * 100000000):
-                    self.log.info(f"LN node {ln.name} confirmed funds")
-                    break
-                sleep(1)
+                try:
+                    bal = ln.walletbalance()
+                    if bal >= (split * 100000000):
+                        self.log.info(f"LN node {ln.name} confirmed funds")
+                        break
+                    else:
+                        self.log.info(f"Got balance from {ln.name} but less than expected, retrying in 5 seconds...")
+                        sleep(5)
+                except Exception as e:
+                    self.log.info(f"Couldn't get balance from {ln.name} because {e}, retrying in 5 seconds...")
+                    sleep(5)
 
         fund_threads = [
             threading.Thread(target=confirm_ln_balance, args=(self, ln)) for ln in self.lns.values()
@@ -110,14 +114,15 @@ class LNInit(Commander):
         ln_uris = {}
 
         def get_ln_uri(self, ln):
-            uri = None
             while True:
-                uri = ln.uri()
-                if uri:
+                try:
+                    uri = ln.uri()
                     ln_uris[ln.name] = uri
                     self.log.info(f"LN node {ln.name} has URI {uri}")
                     break
-                sleep(1)
+                except Exception as e:
+                    self.log.info(f"Couldn't get URI from {ln.name} because {e}, retrying in 5 seconds...")
+                    sleep(5)
 
         uri_threads = [
             threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in self.lns.values()
@@ -150,28 +155,27 @@ class LNInit(Commander):
 
         def connect_ln(self, pair):
             while True:
-                res = pair[0].connect(ln_uris[pair[1].name])
-                if res == {}:
-                    self.log.info(f"Connected LN nodes {pair[0].name} -> {pair[1].name}")
-                    break
-                if "message" in res:
-                    if "already connected" in res["message"]:
-                        self.log.info(
-                            f"Already connected LN nodes {pair[0].name} -> {pair[1].name}"
-                        )
+                try:
+                    res = pair[0].connect(ln_uris[pair[1].name])
+                    if res == {}:
+                        self.log.info(f"Connected LN nodes {pair[0].name} -> {pair[1].name}")
                         break
-                    if "process of starting" in res["message"]:
-                        self.log.info(
-                            f"{pair[0].name} not ready for connections yet, wait and retry..."
-                        )
-                        sleep(1)
-                    else:
-                        self.log.error(
-                            f"Unexpected response attempting to connect {pair[0].name} -> {pair[1].name}:\n  {res}\n  ABORTING"
-                        )
-                        raise Exception(
-                            f"Unable to connect {pair[0].name} -> {pair[1].name}:\n  {res}"
-                        )
+                    if "message" in res:
+                        if "already connected" in res["message"]:
+                            self.log.info(
+                                f"Already connected LN nodes {pair[0].name} -> {pair[1].name}"
+                            )
+                            break
+                        if "process of starting" in res["message"]:
+                            self.log.info(
+                                f"{pair[0].name} not ready for connections yet, wait and retry..."
+                            )
+                            sleep(5)
+                        else:
+                            raise Exception(res)
+                except Exception as e:
+                    self.log.info(f"Couldn't connect {pair[0].name} -> {pair[1].name} because {e}, retrying in 5 seconds...")
+                    sleep(5)
 
         p2p_threads = [
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
@@ -217,26 +221,30 @@ class LNInit(Commander):
                 self.log.info(
                     f"Sending channel open from {ch['source']} -> {ch['target']} with fee_rate={fee_rate}"
                 )
-                res = src.channel(
-                    pk=tgt_pk,
-                    capacity=ch["capacity"],
-                    push_amt=ch["push_amt"],
-                    fee_rate=fee_rate,
-                )
-                if res and "txid" in res:
-                    ch["txid"] = res["txid"]
-                    self.log.info(
-                        f"Channel open {ch['source']} -> {ch['target']}\n  "
-                        + f"outpoint={res['outpoint']}\n  "
-                        + f"expected channel id: {ch['id']}"
-                    )
-                else:
-                    ch["txid"] = "N/A"
-                    self.log.info(
-                        "Unexpected channel open response:\n  "
-                        + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
-                        + f"{res}"
-                    )
+                while True:
+                    try:
+                        res = src.channel(
+                            pk=tgt_pk,
+                            capacity=ch["capacity"],
+                            push_amt=ch["push_amt"],
+                            fee_rate=fee_rate,
+                        )
+                        ch["txid"] = res["txid"]
+                        self.log.info(
+                            f"Channel open {ch['source']} -> {ch['target']}\n  "
+                            + f"outpoint={res['outpoint']}\n  "
+                            + f"expected channel id: {ch['id']}"
+                        )
+                        break
+                    except Exception as e:
+                        ch["txid"] = "N/A"
+                        self.log.info(
+                            "Couldn't open channel:\n  "
+                            + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
+                            + f"{e}\n"
+                            + "Retrying in 5 seconds..."
+                        )
+                        sleep(5)
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
             index = 0
@@ -279,20 +287,21 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            attempts = 0
             actual = 0
             while actual != expected:
-                actual = len(ln.graph()["edges"])
-                if attempts > 10:
-                    break
-                attempts += 1
-                sleep(5)
-            if actual == expected:
-                self.log.info(f"LN {ln.name} has graph with all {expected} channels")
-            else:
-                self.log.error(
-                    f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels"
-                )
+                try:
+                    actual = len(ln.graph()["edges"])
+                    if actual == expected:
+                        self.log.info(f"LN {ln.name} has graph with all {expected} channels")
+                        break
+                    else:
+                        self.log.info(
+                            f"LN {ln.name} graph is incomplete - {actual} of {expected} channels, checking again in 5 seconds..."
+                        )
+                        sleep(5)
+                except Exception as e:
+                    self.log.info(f"Couldn't check graph from {ln.name} because {e}, retrying in 5 seconds...")
+                    sleep(5)
 
         ch_ann_threads = [
             threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
@@ -315,12 +324,15 @@ class LNInit(Commander):
             while res is None:
                 try:
                     res = ln.update(txid_hex, policy, capacity)
+                    if len(res["failed_updates"]) != 0:
+                        self.log.info(
+                            f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}\n retrying in 5 seconds..."
+                        )
+                        sleep(5)
                     break
-                except Exception:
-                    sleep(1)
-            assert len(res["failed_updates"]) == 0, (
-                f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}"
-            )
+                except Exception as e:
+                    self.log.info(f"Couldn't update channel policy for {ln.name} because {e}, retrying in 5 seconds...")
+                    sleep(5)
 
         update_threads = []
         for ch in self.channels:
@@ -365,7 +377,13 @@ class LNInit(Commander):
         def matching_graph(self, expected, ln):
             done = False
             while not done:
-                actual = ln.graph()["edges"]
+                try:
+                    actual = ln.graph()["edges"]
+                except Exception as e:
+                    self.log.info(f"Couldn't get graph from {ln.name} because {e}, retrying in 5 seconds...")
+                    sleep(5)
+                    continue
+
                 self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
                 if len(actual) > 0:
                     done = True
