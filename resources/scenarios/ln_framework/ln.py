@@ -15,6 +15,27 @@ INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 INSECURE_CONTEXT.check_hostname = False
 INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 
+# These values may need to be tweaked depending on the network being deployed.
+# Currently passes all tests and ln_init succeeds on these examples:
+#  test/data/LN_10.json
+#  test/data/LN_50.json
+#  test/data/LN_100.json
+# If any values are changed, you may need to re-build network.yaml with import-network.
+# Issues I encountered while setting on these values:
+# - Too many blocks generated, ln_init takes too long
+# - TX that distributes miner funds to LN wallets exceeds standard weight limit
+# - Too many miner distribution TXs result in too-long-mempool-chain
+# - Not enough UTXO value, forcing LN nodes to combine UTXOs to open large channels
+#   which results in the change output being too big which results in the tx
+#   outputs being ordered unexpectedly (which change at 0 and channel open at 1)
+# - LND actual fee rate ends up way off from the expected value
+# LN networks with more than 100 nodes and 500 channels may also need to tweak ln_init.py
+CHANNEL_OPEN_START_HEIGHT = 500
+CHANNEL_OPENS_PER_BLOCK = 200
+MAX_FEE_RATE = 80006  # s/vB
+FEE_RATE_DECREMENT = 400
+assert MAX_FEE_RATE - (FEE_RATE_DECREMENT * CHANNEL_OPENS_PER_BLOCK) > 1
+
 
 # https://github.com/lightningcn/lightning-rfc/blob/master/07-routing-gossip.md#the-channel_update-message
 # We use the field names as written in the BOLT as our canonical, internal field names.

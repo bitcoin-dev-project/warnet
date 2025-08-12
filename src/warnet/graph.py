@@ -11,7 +11,11 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from resources.scenarios.ln_framework.ln import Policy
+from resources.scenarios.ln_framework.ln import (
+    Policy,
+    CHANNEL_OPEN_START_HEIGHT,
+    CHANNEL_OPENS_PER_BLOCK
+)
 
 from .constants import (
     DEFAULT_IMAGE_REPO,
@@ -339,8 +343,8 @@ def _import_network(graph_file_path, output_path):
 
     sorted_edges = sorted(graph["edges"], key=lambda x: int(x["channel_id"]))
 
-    # By default we start including channel open txs in block 300
-    block = 300
+    # Start including channel open txs at this block height
+    block = CHANNEL_OPEN_START_HEIGHT
     # Coinbase occupies the 0 position!
     index = 1
     count = 0
@@ -356,7 +360,7 @@ def _import_network(graph_file_path, output_path):
         }
         tanks[source]["lnd"]["channels"].append(channel)
         index += 1
-        if index > 250:
+        if index > CHANNEL_OPENS_PER_BLOCK:
             index = 1
             block += 1
         count += 1
