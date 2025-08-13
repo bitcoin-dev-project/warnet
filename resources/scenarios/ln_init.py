@@ -4,7 +4,19 @@ import threading
 from time import sleep
 
 from commander import Commander
-from ln_framework.ln import Policy
+from ln_framework.ln import (
+    CHANNEL_OPEN_START_HEIGHT,
+    CHANNEL_OPENS_PER_BLOCK,
+    FEE_RATE_DECREMENT,
+    MAX_FEE_RATE,
+    Policy,
+)
+from test_framework.address import address_to_scriptpubkey
+from test_framework.messages import (
+    COIN,
+    CTransaction,
+    CTxOut,
+)
 
 
 class LNInit(Commander):
@@ -39,19 +51,18 @@ class LNInit(Commander):
         # WALLET ADDRESSES
         ##
         self.log.info("Getting LN wallet addresses...")
-        ln_addrs = []
+        ln_addrs = {}
 
         def get_ln_addr(self, ln):
-            address = None
             while True:
-                success, address = ln.newaddress()
-                if success:
-                    ln_addrs.append(address)
+                try:
+                    address = ln.newaddress()
+                    ln_addrs[ln.name] = address
                     self.log.info(f"Got wallet address {address} from {ln.name}")
                     break
-                else:
+                except Exception as e:
                     self.log.info(
-                        f"Couldn't get wallet address from {ln.name}, retrying in 5 seconds..."
+                        f"Couldn't get wallet address from {ln.name} because {e}, retrying in 5 seconds..."
                     )
                     sleep(5)
 
@@ -68,40 +79,74 @@ class LNInit(Commander):
         # FUNDS
         ##
         self.log.info("Funding LN wallets...")
-        # 298 block base for miner wallet
-        gen(297)
+        # One past block generated already to lock out IBD
+        # One next block to consolidate the miner's coins
+        # One next block to confirm the distributed coins
+        # Then the channel open TXs go in the expected block height
+        gen(CHANNEL_OPEN_START_HEIGHT - 4)
         # divvy up the goods, except fee.
-        # 10 UTXOs per node means 10 channel opens per node per block
-        split = (miner.getbalance() - 1) // len(ln_addrs) // 10
-        sends = {}
-        for _ in range(10):
-            for addr in ln_addrs:
-                sends[addr] = split
-            miner.sendmany("", sends)
-        # confirm funds in block 299
+        # Multiple UTXOs per LN wallet so multiple channels can be opened per block
+        miner_balance = int(miner.getbalance())
+        # To reduce individual TX weight, consolidate all outputs before distribution
+        miner.sendtoaddress(miner_addr, miner_balance - 1)
+        gen(1)
+        helicopter = CTransaction()
+
+        # Provide the source LN node for each channel with a UTXO just big enough
+        # to open that channel with its capacity plus fee.
+        channel_openers = []
+        for ch in self.channels:
+            if ch["source"] not in channel_openers:
+                channel_openers.append(ch["source"])
+            addr = ln_addrs[ch["source"]]
+            # More than enough to open the channel plus fee and cover LND's "maxFeeRatio"
+            # As long as all channel capacities are < 4 BTC the change output will be
+            # larger and occupy tx output 1, leaving the actual channel open at output 0
+            sat_amt = 10 * COIN
+            helicopter.vout.append(CTxOut(sat_amt, address_to_scriptpubkey(addr)))
+        rawtx = miner.fundrawtransaction(helicopter.serialize().hex())
+        signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
+        txid = miner.sendrawtransaction(signed_tx)
+        # confirm funds in last block before channel opens
         gen(1)
 
+        txstats = miner.gettransaction(txid)
         self.log.info(
-            f"Waiting for funds to be spendable: 10x{split} BTC UTXOs each for {len(ln_addrs)} LN nodes"
+            "Funds distribution from miner:\n  "
+            + f"txid: {txid}\n  "
+            + f"# outputs: {len(txstats['details'])}\n  "
+            + f"total amount: {txstats['amount']}\n  "
+            + f"remaining miner balance: {miner.getbalance()}"
         )
 
-        def confirm_ln_balance(self, ln):
-            bal = 0
+        self.log.info("Waiting for funds to be spendable by channel-openers")
+
+        def confirm_ln_balance(self, ln_name):
+            ln = self.lns[ln_name]
             while True:
-                bal = ln.walletbalance()
-                if bal >= (split * 100000000):
-                    self.log.info(f"LN node {ln.name} confirmed funds")
-                    break
-                sleep(1)
+                try:
+                    bal = ln.walletbalance()
+                    if bal >= 0:
+                        self.log.info(f"LN node {ln_name} confirmed funds")
+                        break
+                    else:
+                        self.log.info(f"Got 0 balance from {ln_name} retrying in 5 seconds...")
+                        sleep(5)
+                except Exception as e:
+                    self.log.info(
+                        f"Couldn't get balance from {ln_name} because {e}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
 
         fund_threads = [
-            threading.Thread(target=confirm_ln_balance, args=(self, ln)) for ln in self.lns.values()
+            threading.Thread(target=confirm_ln_balance, args=(self, ln_name))
+            for ln_name in channel_openers
         ]
         for thread in fund_threads:
             thread.start()
 
         all(thread.join() is None for thread in fund_threads)
-        self.log.info("All LN nodes are funded")
+        self.log.info("All channel-opening LN nodes are funded")
 
         ##
         # URIs
@@ -110,14 +155,17 @@ class LNInit(Commander):
         ln_uris = {}
 
         def get_ln_uri(self, ln):
-            uri = None
             while True:
-                uri = ln.uri()
-                if uri:
+                try:
+                    uri = ln.uri()
                     ln_uris[ln.name] = uri
                     self.log.info(f"LN node {ln.name} has URI {uri}")
                     break
-                sleep(1)
+                except Exception as e:
+                    self.log.info(
+                        f"Couldn't get URI from {ln.name} because {e}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
 
         uri_threads = [
             threading.Thread(target=get_ln_uri, args=(self, ln)) for ln in self.lns.values()
@@ -150,28 +198,29 @@ class LNInit(Commander):
 
         def connect_ln(self, pair):
             while True:
-                res = pair[0].connect(ln_uris[pair[1].name])
-                if res == {}:
-                    self.log.info(f"Connected LN nodes {pair[0].name} -> {pair[1].name}")
-                    break
-                if "message" in res:
-                    if "already connected" in res["message"]:
-                        self.log.info(
-                            f"Already connected LN nodes {pair[0].name} -> {pair[1].name}"
-                        )
+                try:
+                    res = pair[0].connect(ln_uris[pair[1].name])
+                    if res == {}:
+                        self.log.info(f"Connected LN nodes {pair[0].name} -> {pair[1].name}")
                         break
-                    if "process of starting" in res["message"]:
-                        self.log.info(
-                            f"{pair[0].name} not ready for connections yet, wait and retry..."
-                        )
-                        sleep(1)
-                    else:
-                        self.log.error(
-                            f"Unexpected response attempting to connect {pair[0].name} -> {pair[1].name}:\n  {res}\n  ABORTING"
-                        )
-                        raise Exception(
-                            f"Unable to connect {pair[0].name} -> {pair[1].name}:\n  {res}"
-                        )
+                    if "message" in res:
+                        if "already connected" in res["message"]:
+                            self.log.info(
+                                f"Already connected LN nodes {pair[0].name} -> {pair[1].name}"
+                            )
+                            break
+                        if "process of starting" in res["message"]:
+                            self.log.info(
+                                f"{pair[0].name} not ready for connections yet, wait and retry..."
+                            )
+                            sleep(5)
+                        else:
+                            raise Exception(res)
+                except Exception as e:
+                    self.log.info(
+                        f"Couldn't connect {pair[0].name} -> {pair[1].name} because {e}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
 
         p2p_threads = [
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
@@ -214,37 +263,39 @@ class LNInit(Commander):
                 src = self.lns[ch["source"]]
                 tgt_uri = ln_uris[ch["target"]]
                 tgt_pk, _ = tgt_uri.split("@")
-                self.log.info(
-                    f"Sending channel open from {ch['source']} -> {ch['target']} with fee_rate={fee_rate}"
-                )
-                res = src.channel(
-                    pk=tgt_pk,
-                    capacity=ch["capacity"],
-                    push_amt=ch["push_amt"],
-                    fee_rate=fee_rate,
-                )
-                if res and "txid" in res:
-                    ch["txid"] = res["txid"]
-                    self.log.info(
-                        f"Channel open {ch['source']} -> {ch['target']}\n  "
-                        + f"outpoint={res['outpoint']}\n  "
-                        + f"expected channel id: {ch['id']}"
-                    )
-                else:
-                    ch["txid"] = "N/A"
-                    self.log.info(
-                        "Unexpected channel open response:\n  "
-                        + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
-                        + f"{res}"
-                    )
+                log = f"  {ch['source']} -> {ch['target']}\n  {ch['id']} fee: {fee_rate}"
+                while True:
+                    self.log.info(f"Sending channel open:\n{log}")
+                    try:
+                        res = src.channel(
+                            pk=tgt_pk,
+                            capacity=ch["capacity"],
+                            push_amt=ch["push_amt"],
+                            fee_rate=fee_rate,
+                        )
+                        ch["txid"] = res["txid"]
+                        ch["outpoint"] = res["outpoint"]
+                        self.log.info(
+                            f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}"
+                        )
+                        break
+                    except Exception as e:
+                        self.log.info(
+                            f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
+                        )
+                        sleep(5)
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
+            if len(channels) > CHANNEL_OPENS_PER_BLOCK:
+                raise Exception(
+                    f"Too many channels in block {target_block}: {len(channels)} / Maximum: {CHANNEL_OPENS_PER_BLOCK}"
+                )
             index = 0
-            fee_rate = 5006  # s/vB, decreases by 20 per tx for up to 250 txs per block
+            fee_rate = MAX_FEE_RATE
             ch_threads = []
             for ch in channels:
                 index += 1  # noqa
-                fee_rate -= 20
+                fee_rate -= FEE_RATE_DECREMENT
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
                 assert fee_rate >= 1, "Too many TXs in block, out of fee range"
                 t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
@@ -253,6 +304,11 @@ class LNInit(Commander):
                 ch_threads.append(t)
 
             all(thread.join() is None for thread in ch_threads)
+            for ch in channels:
+                if ch["outpoint"][-2:] != ":0":
+                    self.log.error(f"Channel open outpoint not tx output index 0\n  {ch}")
+                    raise Exception("Channel determinism ruined, abort!")
+
             self.log.info(f"Waiting for {len(channels)} channel opens in mempool...")
             self.wait_until(
                 lambda channels=channels: self.nodes[0].getmempoolinfo()["size"] >= len(channels),
@@ -279,20 +335,23 @@ class LNInit(Commander):
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
-            attempts = 0
             actual = 0
             while actual != expected:
-                actual = len(ln.graph()["edges"])
-                if attempts > 10:
-                    break
-                attempts += 1
-                sleep(5)
-            if actual == expected:
-                self.log.info(f"LN {ln.name} has graph with all {expected} channels")
-            else:
-                self.log.error(
-                    f"LN {ln.name} graph is INCOMPLETE - {actual} of {expected} channels"
-                )
+                try:
+                    actual = len(ln.graph()["edges"])
+                    if actual == expected:
+                        self.log.info(f"LN {ln.name} has graph with all {expected} channels")
+                        break
+                    else:
+                        self.log.info(
+                            f"LN {ln.name} graph is incomplete - {actual} of {expected} channels, checking again in 5 seconds..."
+                        )
+                        sleep(5)
+                except Exception as e:
+                    self.log.info(
+                        f"Couldn't check graph from {ln.name} because {e}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
 
         ch_ann_threads = [
             threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
@@ -315,12 +374,18 @@ class LNInit(Commander):
             while res is None:
                 try:
                     res = ln.update(txid_hex, policy, capacity)
+                    if len(res["failed_updates"]) != 0:
+                        self.log.info(
+                            f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}\n retrying in 5 seconds..."
+                        )
+                        sleep(5)
+                        continue
                     break
-                except Exception:
-                    sleep(1)
-            assert len(res["failed_updates"]) == 0, (
-                f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}"
-            )
+                except Exception as e:
+                    self.log.info(
+                        f"Couldn't update channel policy for {ln.name} because {e}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
 
         update_threads = []
         for ch in self.channels:
@@ -365,7 +430,15 @@ class LNInit(Commander):
         def matching_graph(self, expected, ln):
             done = False
             while not done:
-                actual = ln.graph()["edges"]
+                try:
+                    actual = ln.graph()["edges"]
+                except Exception as e:
+                    self.log.info(
+                        f"Couldn't get graph from {ln.name} because {e}, retrying in 5 seconds..."
+                    )
+                    sleep(5)
+                    continue
+
                 self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
                 if len(actual) > 0:
                     done = True

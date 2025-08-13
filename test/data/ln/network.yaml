@@ -16,7 +16,7 @@ nodes:
         bitcoin.timelockdelta=33
       channels:
         - id:
-            block: 300
+            block: 500
             index: 1
           target: tank-0004-ln
           capacity: 100000
@@ -31,7 +31,7 @@ nodes:
     lnd:
       channels:
         - id:
-            block: 300
+            block: 500
             index: 2
           target: tank-0005-ln
           capacity: 50000
