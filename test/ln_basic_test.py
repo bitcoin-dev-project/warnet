@@ -54,22 +54,16 @@ class LNBasicTest(TestBase):
         stream_command(f"warnet deploy {self.network_dir}")
 
     def fund_wallets(self):
-        outputs = ""
         for ln in self.lns:
             addr = json.loads(self.warnet(f"ln rpc {ln} newaddress p2wkh"))["address"]
-            outputs += f',"{addr}":10'
-        # trim first comma
-        outputs = outputs[1:]
-
-        self.warnet("bitcoin rpc tank-0000 sendmany '' '{" + outputs + "}'")
+            self.warnet(f"bitcoin rpc tank-0000 sendtoaddress {addr} 10")
+        self.wait_for_predicate(
+            lambda: json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"] == len(self.lns)
+        )
         self.warnet("bitcoin rpc tank-0000 -generate 1")
 
-    def wait_for_two_txs(self):
-        self.wait_for_predicate(
-            lambda: json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"] == 2
-        )
-
     def manual_open_channels(self):
+        self.fund_wallets()
         # 0 -> 1 -> 2
         pk1 = self.warnet("ln pubkey tank-0001-ln")
         pk2 = self.warnet("ln pubkey tank-0002-ln")
@@ -95,7 +89,9 @@ class LNBasicTest(TestBase):
             )
         )
 
-        self.wait_for_two_txs()
+        self.wait_for_predicate(
+            lambda: json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"] == 2
+        )
 
         self.warnet("bitcoin rpc tank-0000 -generate 10")
 
