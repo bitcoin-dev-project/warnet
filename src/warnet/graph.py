@@ -12,9 +12,9 @@ from rich.console import Console
 from rich.table import Table
 
 from resources.scenarios.ln_framework.ln import (
-    Policy,
     CHANNEL_OPEN_START_HEIGHT,
-    CHANNEL_OPENS_PER_BLOCK
+    CHANNEL_OPENS_PER_BLOCK,
+    Policy,
 )
 
 from .constants import (

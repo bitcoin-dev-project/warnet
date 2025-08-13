@@ -5,18 +5,18 @@ from time import sleep
 
 from commander import Commander
 from ln_framework.ln import (
-    Policy,
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    FEE_RATE_DECREMENT,
     MAX_FEE_RATE,
-    FEE_RATE_DECREMENT
+    Policy,
 )
+from test_framework.address import address_to_scriptpubkey
 from test_framework.messages import (
     COIN,
     CTransaction,
     CTxOut,
 )
-from test_framework.address import address_to_scriptpubkey
 
 
 class LNInit(Commander):
@@ -105,7 +105,7 @@ class LNInit(Commander):
             sat_amt = 10 * COIN
             helicopter.vout.append(CTxOut(sat_amt, address_to_scriptpubkey(addr)))
         rawtx = miner.fundrawtransaction(helicopter.serialize().hex())
-        signed_tx = miner.signrawtransactionwithwallet(rawtx['hex'])['hex']
+        signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
         txid = miner.sendrawtransaction(signed_tx)
         # confirm funds in last block before channel opens
         gen(1)
@@ -133,11 +133,14 @@ class LNInit(Commander):
                         self.log.info(f"Got 0 balance from {ln_name} retrying in 5 seconds...")
                         sleep(5)
                 except Exception as e:
-                    self.log.info(f"Couldn't get balance from {ln_name} because {e}, retrying in 5 seconds...")
+                    self.log.info(
+                        f"Couldn't get balance from {ln_name} because {e}, retrying in 5 seconds..."
+                    )
                     sleep(5)
 
         fund_threads = [
-            threading.Thread(target=confirm_ln_balance, args=(self, ln_name)) for ln_name in channel_openers
+            threading.Thread(target=confirm_ln_balance, args=(self, ln_name))
+            for ln_name in channel_openers
         ]
         for thread in fund_threads:
             thread.start()
@@ -159,7 +162,9 @@ class LNInit(Commander):
                     self.log.info(f"LN node {ln.name} has URI {uri}")
                     break
                 except Exception as e:
-                    self.log.info(f"Couldn't get URI from {ln.name} because {e}, retrying in 5 seconds...")
+                    self.log.info(
+                        f"Couldn't get URI from {ln.name} because {e}, retrying in 5 seconds..."
+                    )
                     sleep(5)
 
         uri_threads = [
@@ -212,7 +217,9 @@ class LNInit(Commander):
                         else:
                             raise Exception(res)
                 except Exception as e:
-                    self.log.info(f"Couldn't connect {pair[0].name} -> {pair[1].name} because {e}, retrying in 5 seconds...")
+                    self.log.info(
+                        f"Couldn't connect {pair[0].name} -> {pair[1].name} because {e}, retrying in 5 seconds..."
+                    )
                     sleep(5)
 
         p2p_threads = [
@@ -268,15 +275,21 @@ class LNInit(Commander):
                         )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]
-                        self.log.info(f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}")
+                        self.log.info(
+                            f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}"
+                        )
                         break
                     except Exception as e:
-                        self.log.info(f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds...")
+                        self.log.info(
+                            f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
+                        )
                         sleep(5)
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
             if len(channels) > CHANNEL_OPENS_PER_BLOCK:
-                raise Exception(f"Too many channels in block {target_block}: {len(channels)} / Maximum: {CHANNEL_OPENS_PER_BLOCK}")
+                raise Exception(
+                    f"Too many channels in block {target_block}: {len(channels)} / Maximum: {CHANNEL_OPENS_PER_BLOCK}"
+                )
             index = 0
             fee_rate = MAX_FEE_RATE
             ch_threads = []
@@ -335,7 +348,9 @@ class LNInit(Commander):
                         )
                         sleep(5)
                 except Exception as e:
-                    self.log.info(f"Couldn't check graph from {ln.name} because {e}, retrying in 5 seconds...")
+                    self.log.info(
+                        f"Couldn't check graph from {ln.name} because {e}, retrying in 5 seconds..."
+                    )
                     sleep(5)
 
         ch_ann_threads = [
@@ -367,7 +382,9 @@ class LNInit(Commander):
                         continue
                     break
                 except Exception as e:
-                    self.log.info(f"Couldn't update channel policy for {ln.name} because {e}, retrying in 5 seconds...")
+                    self.log.info(
+                        f"Couldn't update channel policy for {ln.name} because {e}, retrying in 5 seconds..."
+                    )
                     sleep(5)
 
         update_threads = []
@@ -416,7 +433,9 @@ class LNInit(Commander):
                 try:
                     actual = ln.graph()["edges"]
                 except Exception as e:
-                    self.log.info(f"Couldn't get graph from {ln.name} because {e}, retrying in 5 seconds...")
+                    self.log.info(
+                        f"Couldn't get graph from {ln.name} because {e}, retrying in 5 seconds..."
+                    )
                     sleep(5)
                     continue
 

@@ -380,12 +380,8 @@ class LND(LNNode):
         res = json.loads(response)
         if "result" not in res:
             raise Exception(res)
-        res["txid"] = self.b64_to_hex(
-            res["result"]["chan_pending"]["txid"], reverse=True
-        )
-        res["outpoint"] = (
-            f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
-        )
+        res["txid"] = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
+        res["outpoint"] = f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
         return res
 
     def update(self, txid_hex: str, policy: dict, capacity: int):
