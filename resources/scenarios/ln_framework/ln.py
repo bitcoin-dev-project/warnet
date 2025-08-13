@@ -259,9 +259,9 @@ class CLN(LNNode):
         res = json.loads(response)
         return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
 
-    def createinvoice(self, sats, label, description="new invoice") -> str:
+    def createinvoice(self, sats, label) -> str:
         response = self.post(
-            "invoice", {"amount_msat": sats * 1000, "label": label, "description": description}
+            "invoice", {"amount_msat": sats * 1000, "label": label}
         )
         res = json.loads(response)
         return res["bolt11"]
@@ -396,10 +396,9 @@ class LND(LNNode):
         )
         return json.loads(res)
 
-    def createinvoice(self, sats, label, description="new invoice") -> str:
-        b64_desc = base64.b64encode(description.encode("utf-8"))
+    def createinvoice(self, sats, label) -> str:
         response = self.post(
-            "/v1/invoices", data={"value": sats, "memo": label, "description_hash": b64_desc}
+            "/v1/invoices", data={"value": sats, "memo": label}
         )
         res = json.loads(response)
         return res["payment_request"]
