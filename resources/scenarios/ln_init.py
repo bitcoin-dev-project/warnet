@@ -256,10 +256,9 @@ class LNInit(Commander):
                 src = self.lns[ch["source"]]
                 tgt_uri = ln_uris[ch["target"]]
                 tgt_pk, _ = tgt_uri.split("@")
-                self.log.info(
-                    f"Sending channel open from {ch['source']} -> {ch['target']} with fee_rate={fee_rate}"
-                )
+                log = f"  {ch['source']} -> {ch['target']}\n  {ch['id']} fee: {fee_rate}"
                 while True:
+                    self.log.info(f"Sending channel open:\n{log}")
                     try:
                         res = src.channel(
                             pk=tgt_pk,
@@ -268,20 +267,11 @@ class LNInit(Commander):
                             fee_rate=fee_rate,
                         )
                         ch["txid"] = res["txid"]
-                        self.log.info(
-                            f"Channel open {ch['source']} -> {ch['target']}\n  "
-                            + f"outpoint={res['outpoint']}\n  "
-                            + f"expected channel id: {ch['id']}"
-                        )
+                        ch["outpoint"] = res["outpoint"]
+                        self.log.info(f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}")
                         break
                     except Exception as e:
-                        ch["txid"] = "N/A"
-                        self.log.info(
-                            "Couldn't open channel:\n  "
-                            + f"From {ch['source']} -> {ch['target']} fee_rate={fee_rate}\n  "
-                            + f"{e}\n"
-                            + "Retrying in 5 seconds..."
-                        )
+                        self.log.info(f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds...")
                         sleep(5)
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
@@ -301,6 +291,11 @@ class LNInit(Commander):
                 ch_threads.append(t)
 
             all(thread.join() is None for thread in ch_threads)
+            for ch in channels:
+                if ch["outpoint"][-2:] != ":0":
+                    self.log.error(f"Channel open outpoint not tx output index 0\n  {ch}")
+                    raise Exception("Channel determinism ruined, abort!")
+
             self.log.info(f"Waiting for {len(channels)} channel opens in mempool...")
             self.wait_until(
                 lambda channels=channels: self.nodes[0].getmempoolinfo()["size"] >= len(channels),
@@ -369,6 +364,7 @@ class LNInit(Commander):
                             f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}\n retrying in 5 seconds..."
                         )
                         sleep(5)
+                        continue
                     break
                 except Exception as e:
                     self.log.info(f"Couldn't update channel policy for {ln.name} because {e}, retrying in 5 seconds...")

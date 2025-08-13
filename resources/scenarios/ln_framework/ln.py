@@ -89,9 +89,11 @@ class Policy:
     def to_lnd_chanpolicy(self, capacity):
         # LND requires a 1% reserve
         reserve = ((capacity * 99) // 100) * 1000
+        # "min htlc amount of 0 mSAT is below min htlc parameter of 1 mSAT"
+        min_htlc = 1
         return {
             "time_lock_delta": self.cltv_expiry_delta,
-            "min_htlc_msat": self.htlc_minimum_msat,
+            "min_htlc_msat": max(self.htlc_minimum_msat, min_htlc),
             "base_fee_msat": self.fee_base_msat,
             "fee_rate_ppm": self.fee_proportional_millionths,
             "max_htlc_msat": min(self.htlc_maximum_msat, reserve),
@@ -357,8 +359,12 @@ class LND(LNNode):
 
     def connect(self, target_uri):
         pk, host = target_uri.split("@")
-        res = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
-        return json.loads(res)
+        response = self.post("/v1/peers", data={"addr": {"pubkey": pk, "host": host}})
+        res = json.loads(response)
+        if "status" in res and "initiated" in res["status"]:
+            return {}
+        else:
+            return res
 
     def channel(self, pk, capacity, push_amt, fee_rate):
         b64_pk = self.hex_to_b64(pk)
@@ -372,6 +378,8 @@ class LND(LNNode):
             },
         )
         res = json.loads(response)
+        if "result" not in res:
+            raise Exception(res)
         res["txid"] = self.b64_to_hex(
             res["result"]["chan_pending"]["txid"], reverse=True
         )
