@@ -81,18 +81,6 @@ readinessProbe:
   tcpSocket:
     port: 10009
   timeoutSeconds: 1
-startupProbe:
-  failureThreshold: 10
-  periodSeconds: 30
-  successThreshold: 1
-  timeoutSeconds: 60
-  exec:
-    command:
-      - /bin/sh
-      - -c
-      - |
-        PHRASE=`curl --silent --insecure https://localhost:8080/v1/genseed | grep -o '\[[^]]*\]'`
-        curl --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -112,6 +100,9 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+macaroonRootKey: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+adminMacaroon: 0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6
 
 baseConfig: |
   norest=false
