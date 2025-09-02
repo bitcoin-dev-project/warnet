@@ -204,6 +204,8 @@ def check_logging_required(directory: Path):
         return True
     if default_file.get("metricsExport", False):
         return True
+    if default_file.get("lnd", {}).get("metricsExport"):
+        return True
 
     # check to see if individual nodes have logging enabled
     network_file_path = directory / NETWORK_FILE
@@ -215,6 +217,8 @@ def check_logging_required(directory: Path):
         if node.get("collectLogs", False):
             return True
         if node.get("metricsExport", False):
+            return True
+        if node.get("lnd", {}).get("metricsExport"):
             return True
 
     return False
