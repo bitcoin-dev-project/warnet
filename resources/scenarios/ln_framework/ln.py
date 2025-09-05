@@ -8,8 +8,6 @@ from time import sleep
 
 import requests
 
-# hard-coded deterministic lnd credentials
-ADMIN_MACAROON_HEX = "0201036c6e6402f801030a1062beabbf2a614b112128afa0c0b4fdd61201301a160a0761646472657373120472656164120577726974651a130a04696e666f120472656164120577726974651a170a08696e766f69636573120472656164120577726974651a210a086d616361726f6f6e120867656e6572617465120472656164120577726974651a160a076d657373616765120472656164120577726974651a170a086f6666636861696e120472656164120577726974651a160a076f6e636861696e120472656164120577726974651a140a057065657273120472656164120577726974651a180a067369676e6572120867656e657261746512047265616400000620b17be53e367290871681055d0de15587f6d1cd47d1248fe2662ae27f62cfbdc6"
 # Don't worry about lnd's self-signed certificates
 INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 INSECURE_CONTEXT.check_hostname = False
@@ -286,13 +284,14 @@ class CLN(LNNode):
 
 
 class LND(LNNode):
-    def __init__(self, pod_name, ip_address):
+    def __init__(self, pod_name, ip_address, admin_macaroon_hex):
         super().__init__(pod_name, ip_address)
         self.conn = http.client.HTTPSConnection(
             host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
         )
+        self.admin_macaroon_hex = admin_macaroon_hex
         self.headers = {
-            "Grpc-Metadata-macaroon": ADMIN_MACAROON_HEX,
+            "Grpc-Metadata-macaroon": admin_macaroon_hex,
             "Connection": "close",
         }
         self.impl = "lnd"

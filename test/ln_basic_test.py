@@ -34,6 +34,9 @@ class LNBasicTest(TestBase):
             # Wait for all nodes to wake up. ln_init will start automatically
             self.setup_network()
 
+            # Test manually configured macroons
+            self.test_admin_macaroons()
+
             # Test circuit breaker API
             self.test_circuit_breaker_api()
 
@@ -52,6 +55,42 @@ class LNBasicTest(TestBase):
     def setup_network(self):
         self.log.info("Setting up network")
         stream_command(f"warnet deploy {self.network_dir}")
+
+    def test_admin_macaroons(self):
+        self.log.info("Testing lnd nodes with same macaroon root key can query each other")
+        # These tanks all use the same default macaroon root key, meaning the macaroons
+        # generated at ~/.lnd/.../admin.macaroon in each lnd container are authorized
+        # to make requests to each other.
+        info = json.loads(
+            self.warnet("ln rpc tank-0000-ln --rpcserver=tank-0001-ln.default:10009 getinfo")
+        )
+        info["alias"] = "tank-0001-ln"
+        info = json.loads(
+            self.warnet("ln rpc tank-0001-ln --rpcserver=tank-0002-ln.default:10009 getinfo")
+        )
+        info["alias"] = "tank-0002-ln"
+        info = json.loads(
+            self.warnet("ln rpc tank-0002-ln --rpcserver=tank-0005-ln.default:10009 getinfo")
+        )
+        info["alias"] = "tank-0005-ln"
+
+        self.log.info("Testing lnd nodes with unique macaroon root key can NOT query each other")
+        # These tanks are configured with unique macaroon root keys
+        try:
+            self.warnet("ln rpc tank-0000-ln --rpcserver=tank-0003-ln.default:10009 getinfo")
+            raise AssertionError("That should not have worked!")
+        except Exception as e:
+            assert "verification failed: signature mismatch after caveat verification" in str(e)
+        try:
+            self.warnet("ln rpc tank-0000-ln --rpcserver=tank-0004-ln.default:10009 getinfo")
+            raise AssertionError("That should not have worked!")
+        except Exception as e:
+            assert "verification failed: signature mismatch after caveat verification" in str(e)
+        try:
+            self.warnet("ln rpc tank-0003-ln --rpcserver=tank-0004-ln.default:10009 getinfo")
+            raise AssertionError("That should not have worked!")
+        except Exception as e:
+            assert "verification failed: signature mismatch after caveat verification" in str(e)
 
     def fund_wallets(self):
         for ln in self.lns:
