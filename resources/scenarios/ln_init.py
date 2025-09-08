@@ -26,6 +26,12 @@ class LNInit(Commander):
     def add_options(self, parser):
         parser.description = "Fund LN wallets and open channels"
         parser.usage = "warnet run /path/to/ln_init.py"
+        parser.add_argument(
+            "--miner",
+            dest="miner",
+            type=str,
+            help="Select one tank by name as the blockchain miner",
+        )
 
     def run_test(self):
         ##
@@ -38,7 +44,18 @@ class LNInit(Commander):
         # MINER
         ##
         self.log.info("Setting up miner...")
-        miner = self.ensure_miner(self.nodes[0])
+        if self.options.miner:
+            self.log.info(f"Parsed 'miner' argument: {self.options.miner}")
+            mining_tank = self.tanks[self.options.miner]
+        elif "miner" in self.tanks:
+            # or choose the tank with the right name
+            self.log.info("Found tank named 'miner'")
+            mining_tank = self.tanks["miner"]
+        else:
+            mining_tank = self.nodes[0]
+            self.log.info(f"Using tank {mining_tank.tank} as miner")
+
+        miner = self.ensure_miner(mining_tank)
         miner_addr = miner.getnewaddress()
 
         def gen(n):
