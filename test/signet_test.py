@@ -22,6 +22,7 @@ class SignetTest(TestBase):
             self.setup_network()
             self.check_signet_miner()
             self.check_signet_recon()
+            self.check_signet_scenario_miner()
         finally:
             self.cleanup()
 
@@ -59,6 +60,28 @@ class SignetTest(TestBase):
             return all(scenario["status"] == "succeeded" for scenario in deployed)
 
         self.wait_for_predicate(check_scenario_clean_exit)
+
+    def check_signet_scenario_miner(self):
+        before_count = int(self.warnet("bitcoin rpc tank-1 getblockcount"))
+
+        self.log.info("Generate 1 signet block from a scenario using the bitcoin-util grinder")
+        self.scen_dir = Path(os.path.dirname(__file__)).parent / "resources" / "scenarios"
+        scenario_file = self.scen_dir / "test_scenarios" / "signet_grinder.py"
+        self.log.info(f"Running scenario from: {scenario_file}")
+        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir} --admin")
+        self.wait_for_all_scenarios()
+
+        after_count = int(self.warnet("bitcoin rpc tank-1 getblockcount"))
+        assert after_count - before_count == 1
+
+        deployed = scenarios_deployed()
+        found = False
+        for sc in deployed:
+            if "grinder" in sc["name"]:
+                found = True
+                log = self.warnet(f"logs {sc['name']}")
+                assert "Error grinding" not in log
+        assert found
 
 
 if __name__ == "__main__":

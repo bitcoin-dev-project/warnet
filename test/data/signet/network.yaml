@@ -1,5 +1,7 @@
 nodes:
   - name: miner
+    image:
+      tag: "29.0-util"
   - name: tank-1
     image:
       tag: "0.16.1"
