@@ -23,7 +23,7 @@ def build_image(
     action: str,
 ):
     if not build_args:
-        build_args = '"-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON "'
+        build_args = '"-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_UTIL=ON -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON "'
     else:
         build_args = f'"{build_args}"'
 
