@@ -65,6 +65,8 @@ spec:
         {{- toYaml .Values.readinessProbe | nindent 8 }}
         tcpSocket:
           port: {{ index .Values.global .Values.global.chain "RPCPort" }}
+      startupProbe:
+        {{- toYaml .Values.startupProbe | nindent 8 }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:

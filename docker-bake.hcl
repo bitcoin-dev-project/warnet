@@ -59,7 +59,7 @@ target "cmake-base" {
   inherits = ["maintained-base"]
   dockerfile = "./Dockerfile.dev"
   args = {
-    BUILD_ARGS = "-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON"
+    BUILD_ARGS = "-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_UTIL=ON -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON"
   }
 }
 

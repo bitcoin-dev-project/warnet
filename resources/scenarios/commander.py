@@ -7,15 +7,42 @@ import os
 import pathlib
 import random
 import signal
+import struct
 import sys
 import tempfile
 import threading
 from time import sleep
 
 from kubernetes import client, config
+from kubernetes.stream import stream
 from ln_framework.ln import CLN, LND, LNNode
 from test_framework.authproxy import AuthServiceProxy
+from test_framework.blocktools import get_witness_script, script_BIP34_coinbase_height
+from test_framework.messages import (
+    CBlock,
+    CBlockHeader,
+    COutPoint,
+    CTransaction,
+    CTxIn,
+    CTxInWitness,
+    CTxOut,
+    from_binary,
+    from_hex,
+    ser_string,
+    ser_uint256,
+    tx_from_hex,
+)
 from test_framework.p2p import NetworkThread
+from test_framework.psbt import (
+    PSBT,
+    PSBT_GLOBAL_UNSIGNED_TX,
+    PSBT_IN_FINAL_SCRIPTSIG,
+    PSBT_IN_FINAL_SCRIPTWITNESS,
+    PSBT_IN_NON_WITNESS_UTXO,
+    PSBT_IN_SIGHASH_TYPE,
+    PSBTMap,
+)
+from test_framework.script import CScriptOp
 from test_framework.test_framework import (
     TMPDIR_PREFIX,
     BitcoinTestFramework,
@@ -23,6 +50,11 @@ from test_framework.test_framework import (
 )
 from test_framework.test_node import TestNode
 from test_framework.util import PortSeed, get_rpc_proxy
+
+SIGNET_HEADER = b"\xec\xc7\xda\xa2"
+PSBT_SIGNET_BLOCK = (
+    b"\xfc\x06signetb"  # proprietary PSBT global field holding the block being signed
+)
 
 NAMESPACE = None
 pods = client.V1PodList(items=[])
@@ -502,3 +534,144 @@ class Commander(BitcoinTestFramework):
             )
             == to_num_peers
         )
+
+    def generatetoaddress(self, generator, n, addr, sync_fun=None, **kwargs):
+        if generator.chain == "regtest":
+            blocks = generator.generatetoaddress(n, addr, invalid_call=False, **kwargs)
+            sync_fun() if sync_fun else self.sync_all()
+            return blocks
+        if generator.chain == "signet":
+            mined_blocks = 0
+            block_hashes = []
+
+            def bcli(method, *args, **kwargs):
+                return generator.__getattr__(method)(*args, **kwargs)
+
+            while mined_blocks < n:
+                # gbt
+                tmpl = bcli("getblocktemplate", {"rules": ["signet", "segwit"]})
+                # address for reward
+                reward_spk = bytes.fromhex(bcli("getaddressinfo", addr)["scriptPubKey"])
+                # create coinbase tx
+                cbtx = CTransaction()
+                cbtx.vin = [
+                    CTxIn(
+                        COutPoint(0, 0xFFFFFFFF),
+                        script_BIP34_coinbase_height(tmpl["height"]),
+                        0xFFFFFFFF,
+                    )
+                ]
+                cbtx.vout = [CTxOut(tmpl["coinbasevalue"], reward_spk)]
+                cbtx.vin[0].nSequence = 2**32 - 2
+                cbtx.rehash()
+                # assemble block
+                block = CBlock()
+                block.nVersion = tmpl["version"]
+                block.hashPrevBlock = int(tmpl["previousblockhash"], 16)
+                block.nTime = tmpl["curtime"]
+                if block.nTime < tmpl["mintime"]:
+                    block.nTime = tmpl["mintime"]
+                block.nBits = int(tmpl["bits"], 16)
+                block.nNonce = 0
+                block.vtx = [cbtx] + [tx_from_hex(t["data"]) for t in tmpl["transactions"]]
+                witnonce = 0
+                witroot = block.calc_witness_merkle_root()
+                cbwit = CTxInWitness()
+                cbwit.scriptWitness.stack = [ser_uint256(witnonce)]
+                block.vtx[0].wit.vtxinwit = [cbwit]
+                block.vtx[0].vout.append(CTxOut(0, bytes(get_witness_script(witroot, witnonce))))
+                # create signet txs for signing
+                signet_spk = tmpl["signet_challenge"]
+                signet_spk_bin = bytes.fromhex(signet_spk)
+                txs = block.vtx[:]
+                txs[0] = CTransaction(txs[0])
+                txs[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER)
+                hashes = []
+                for tx in txs:
+                    tx.rehash()
+                    hashes.append(ser_uint256(tx.sha256))
+                mroot = block.get_merkle_root(hashes)
+                sd = b""
+                sd += struct.pack("<i", block.nVersion)
+                sd += ser_uint256(block.hashPrevBlock)
+                sd += ser_uint256(mroot)
+                sd += struct.pack("<I", block.nTime)
+                to_spend = CTransaction()
+                to_spend.nVersion = 0
+                to_spend.nLockTime = 0
+                to_spend.vin = [
+                    CTxIn(COutPoint(0, 0xFFFFFFFF), b"\x00" + CScriptOp.encode_op_pushdata(sd), 0)
+                ]
+                to_spend.vout = [CTxOut(0, signet_spk_bin)]
+                to_spend.rehash()
+                spend = CTransaction()
+                spend.nVersion = 0
+                spend.nLockTime = 0
+                spend.vin = [CTxIn(COutPoint(to_spend.sha256, 0), b"", 0)]
+                spend.vout = [CTxOut(0, b"\x6a")]
+                # create PSBT for miner wallet signing
+                psbt = PSBT()
+                psbt.g = PSBTMap(
+                    {
+                        PSBT_GLOBAL_UNSIGNED_TX: spend.serialize(),
+                        PSBT_SIGNET_BLOCK: block.serialize(),
+                    }
+                )
+                psbt.i = [
+                    PSBTMap(
+                        {
+                            PSBT_IN_NON_WITNESS_UTXO: to_spend.serialize(),
+                            PSBT_IN_SIGHASH_TYPE: bytes([1, 0, 0, 0]),
+                        }
+                    )
+                ]
+                psbt.o = [PSBTMap()]
+                psbt = psbt.to_base64()
+                # sign PSBT
+                psbt_signed = bcli("walletprocesspsbt", psbt=psbt, sign=True, sighashtype="ALL")
+                if not psbt_signed.get("complete", False):
+                    self.log.error("PSBT signing failed, aborting...")
+                    return block_hashes
+                # decode signed PSBT
+                signed_psbt = PSBT.from_base64(psbt_signed["psbt"])
+                scriptSig = signed_psbt.i[0].map.get(PSBT_IN_FINAL_SCRIPTSIG, b"")
+                scriptWitness = signed_psbt.i[0].map.get(PSBT_IN_FINAL_SCRIPTWITNESS, b"\x00")
+                signed_block = from_binary(CBlock, signed_psbt.g.map[PSBT_SIGNET_BLOCK])
+                signet_solution = ser_string(scriptSig) + scriptWitness
+                # finish block
+                signed_block.vtx[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(
+                    SIGNET_HEADER + signet_solution
+                )
+                signed_block.vtx[0].rehash()
+                signed_block.hashMerkleRoot = signed_block.calc_merkle_root()
+                try:
+                    headhex = CBlockHeader.serialize(signed_block).hex()
+                    cmd = ["bitcoin-util", "grind", headhex]
+                    newheadhex = stream(
+                        sclient.connect_get_namespaced_pod_exec,
+                        name=generator.tank,
+                        namespace=NAMESPACE,
+                        command=cmd,
+                        stderr=True,
+                        stdin=False,
+                        stdout=True,
+                        tty=False,
+                    )
+                    if "not found" in newheadhex:
+                        raise Exception(newheadhex)
+                    newhead = from_hex(CBlockHeader(), newheadhex.strip())
+                    signed_block.nNonce = newhead.nNonce
+                    signed_block.rehash()
+                except Exception as e:
+                    self.log.info(
+                        f"Error grinding signet PoW with bitcoin-util in {generator.tank}: {e}".strip()
+                    )
+                    self.log.info("  re-attempting with a single python thread...")
+                    signed_block.solve()
+                # submit block
+                bcli("submitblock", signed_block.serialize().hex())
+                block_hashes.append(signed_block.hash)
+                mined_blocks += 1
+                self.log.info(f"Generated {mined_blocks} signet blocks")
+
+            return block_hashes
