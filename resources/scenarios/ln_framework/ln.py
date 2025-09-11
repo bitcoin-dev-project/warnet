@@ -161,7 +161,7 @@ class CLN(LNNode):
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
-            host=self.name, port=3010, timeout=5, context=INSECURE_CONTEXT
+            host=self.name, port=3010, timeout=60, context=INSECURE_CONTEXT
         )
 
     def setRune(self, rune):
@@ -299,7 +299,7 @@ class LND(LNNode):
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
-            host=self.name, port=8080, timeout=5, context=INSECURE_CONTEXT
+            host=self.name, port=8080, timeout=60, context=INSECURE_CONTEXT
         )
 
     def get(self, uri):
