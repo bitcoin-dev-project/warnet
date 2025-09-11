@@ -185,7 +185,6 @@ class CLN(LNNode):
         post_header["Content-Length"] = str(len(body))
         post_header["Content-Type"] = "application/json"
         self.reset_connection()
-        self.log.info(f"CLN POST headers: {post_header}")
         self.conn.request(
             method="POST",
             url=uri,
