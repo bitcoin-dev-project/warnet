@@ -62,27 +62,23 @@ class LNBasicTest(TestBase):
         # generated at ~/.lnd/.../admin.macaroon in each lnd container are authorized
         # to make requests to each other.
         info = json.loads(
-            self.warnet("ln rpc tank-0000-ln --rpcserver=tank-0001-ln.default:10009 getinfo")
-        )
-        info["alias"] = "tank-0001-ln"
-        info = json.loads(
             self.warnet("ln rpc tank-0001-ln --rpcserver=tank-0002-ln.default:10009 getinfo")
         )
-        info["alias"] = "tank-0002-ln"
+        assert info["alias"] == "tank-0002-ln"
         info = json.loads(
             self.warnet("ln rpc tank-0002-ln --rpcserver=tank-0005-ln.default:10009 getinfo")
         )
-        info["alias"] = "tank-0005-ln"
+        assert info["alias"] == "tank-0005-ln"
 
         self.log.info("Testing lnd nodes with unique macaroon root key can NOT query each other")
         # These tanks are configured with unique macaroon root keys
         try:
-            self.warnet("ln rpc tank-0000-ln --rpcserver=tank-0003-ln.default:10009 getinfo")
+            self.warnet("ln rpc tank-0001-ln --rpcserver=tank-0003-ln.default:10009 getinfo")
             raise AssertionError("That should not have worked!")
         except Exception as e:
             assert "verification failed: signature mismatch after caveat verification" in str(e)
         try:
-            self.warnet("ln rpc tank-0000-ln --rpcserver=tank-0004-ln.default:10009 getinfo")
+            self.warnet("ln rpc tank-0001-ln --rpcserver=tank-0004-ln.default:10009 getinfo")
             raise AssertionError("That should not have worked!")
         except Exception as e:
             assert "verification failed: signature mismatch after caveat verification" in str(e)
@@ -94,13 +90,27 @@ class LNBasicTest(TestBase):
 
     def fund_wallets(self):
         for ln in self.lns:
-            addr = json.loads(self.warnet(f"ln rpc {ln} newaddress p2wkh"))["address"]
+            if ln == "tank-0000-ln":
+                # cln
+                addr = json.loads(self.warnet(f"ln rpc {ln} newaddr p2tr"))["p2tr"]
+            else:
+                # lnd
+                addr = json.loads(self.warnet(f"ln rpc {ln} newaddress p2tr"))["address"]
             self.warnet(f"bitcoin rpc tank-0000 sendtoaddress {addr} 10")
         self.wait_for_predicate(
             lambda: json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"]
             == len(self.lns)
         )
         self.warnet("bitcoin rpc tank-0000 -generate 1")
+        # cln takes a long time to register its own balance?
+        self.wait_for_predicate(
+            lambda: len(
+                json.loads(self.warnet("ln rpc tank-0000-ln bkpr-listbalances"))["accounts"][0][
+                    "balances"
+                ]
+            )
+            > 0
+        )
 
     def manual_open_channels(self):
         self.fund_wallets()
@@ -118,11 +128,9 @@ class LNBasicTest(TestBase):
                 host2 = self.warnet("ln host tank-0002-ln")
             sleep(1)
 
-        print(
-            self.warnet(
-                f"ln rpc tank-0000-ln openchannel --node_key {pk1} --local_amt 100000 --connect {host1}"
-            )
-        )
+        print(self.warnet(f"ln rpc tank-0000-ln connect {pk1} {host1}"))
+        print(self.warnet(f"ln rpc tank-0000-ln fundchannel {pk1} 100000"))
+
         print(
             self.warnet(
                 f"ln rpc tank-0001-ln openchannel --node_key {pk2} --local_amt 100000 --connect {host2}"
@@ -138,7 +146,13 @@ class LNBasicTest(TestBase):
     def wait_for_gossip_sync(self, nodes, expected):
         while len(nodes) > 0:
             for node in nodes:
-                chs = json.loads(self.warnet(f"ln rpc {node} describegraph"))["edges"]
+                if node == "tank-0000-ln":
+                    # cln
+                    chs = json.loads(self.warnet(f"ln rpc {node} listchannels"))["channels"]
+                    chs = [ch for ch in chs if ch["direction"] == 1]
+                else:
+                    # lnd
+                    chs = json.loads(self.warnet(f"ln rpc {node} describegraph"))["edges"]
                 if len(chs) >= expected:
                     nodes.remove(node)
             sleep(1)
@@ -147,7 +161,12 @@ class LNBasicTest(TestBase):
         init_balance = int(json.loads(self.warnet(f"ln rpc {recipient} channelbalance"))["balance"])
         inv = json.loads(self.warnet(f"ln rpc {recipient} addinvoice --amt 1000"))
         print(inv)
-        print(self.warnet(f"ln rpc {sender} payinvoice -f {inv['payment_request']}"))
+        if sender == "tank-0000-ln":
+            # cln
+            print(self.warnet(f"ln rpc {sender} pay {inv['payment_request']}"))
+        else:
+            # lnd
+            print(self.warnet(f"ln rpc {sender} payinvoice -f {inv['payment_request']}"))
 
         def wait_for_success():
             return (

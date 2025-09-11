@@ -2,6 +2,9 @@ nodes:
   - name: tank-0000
     addnode:
       - tank-0001
+    ln:
+      lnd: false
+      cln: true
   - name: tank-0001
     addnode:
       - tank-0002
