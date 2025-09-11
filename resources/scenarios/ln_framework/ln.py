@@ -161,7 +161,7 @@ class CLN(LNNode):
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
-            host=self.name, port=3010, timeout=5, context=INSECURE_CONTEXT
+            host=self.name, port=3010, timeout=60, context=INSECURE_CONTEXT
         )
 
     def setRune(self, rune):
@@ -185,7 +185,6 @@ class CLN(LNNode):
         post_header["Content-Length"] = str(len(body))
         post_header["Content-Type"] = "application/json"
         self.reset_connection()
-        self.log.info(f"CLN POST headers: {post_header}")
         self.conn.request(
             method="POST",
             url=uri,
@@ -220,9 +219,11 @@ class CLN(LNNode):
 
     def newaddress(self):
         self.createrune()
-        response = self.post("/v1/newaddr")
+        response = self.post("/v1/newaddr", data={"addresstype": "p2tr"})
         res = json.loads(response)
-        return res["bech32"]
+        if "p2tr" in res:
+            return res["p2tr"]
+        raise Exception(res)
 
     def uri(self):
         res = json.loads(self.post("/v1/getinfo"))
@@ -298,7 +299,7 @@ class LND(LNNode):
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
-            host=self.name, port=8080, timeout=5, context=INSECURE_CONTEXT
+            host=self.name, port=8080, timeout=60, context=INSECURE_CONTEXT
         )
 
     def get(self, uri):
@@ -337,9 +338,14 @@ class LND(LNNode):
         return stream
 
     def newaddress(self):
-        response = self.get("/v1/newaddress")
+        # Taproot signatures are a fixed length which improves
+        # the accuracy of fee estimation, and therefore our
+        # channel ID determinism.
+        response = self.get("/v1/newaddress?type=TAPROOT_PUBKEY")
         res = json.loads(response)
-        return res["address"]
+        if "address" in res:
+            return res["address"]
+        raise Exception(res)
 
     def walletbalance(self) -> int:
         res = self.get("/v1/balance/blockchain")
