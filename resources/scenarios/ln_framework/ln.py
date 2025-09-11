@@ -219,9 +219,11 @@ class CLN(LNNode):
 
     def newaddress(self):
         self.createrune()
-        response = self.post("/v1/newaddr")
+        response = self.post("/v1/newaddr", data={"addresstype": "p2tr"})
         res = json.loads(response)
-        return res["bech32"]
+        if "p2tr" in res:
+            return res["p2tr"]
+        raise Exception(res)
 
     def uri(self):
         res = json.loads(self.post("/v1/getinfo"))
@@ -336,9 +338,14 @@ class LND(LNNode):
         return stream
 
     def newaddress(self):
-        response = self.get("/v1/newaddress")
+        # Taproot signatures are a fixed length which improves
+        # the accuracy of fee estimation, and therefore our
+        # channel ID determinism.
+        response = self.get("/v1/newaddress?type=TAPROOT_PUBKEY")
         res = json.loads(response)
-        return res["address"]
+        if "address" in res:
+            return res["address"]
+        raise Exception(res)
 
     def walletbalance(self) -> int:
         res = self.get("/v1/balance/blockchain")
