@@ -85,14 +85,3 @@ volumeMounts:
     subPath: index
 
 port: 80
-
-services:
-  - title: Grafana
-    path: /grafana/
-    host: loki-grafana
-    port: 80
-  - title: Fork Observer
-    path: /fork-observer/
-    host: fork-observer
-    port: 2323
-    
