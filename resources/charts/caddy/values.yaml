@@ -86,38 +86,13 @@ volumeMounts:
 
 port: 80
 
-caddyConfig: |
-  :80 {
-    respond /live 200
-    respond /ready 200
-
-    root * /usr/share/caddy
-    file_server
-
-    handle_path /fork-observer/* {
-      reverse_proxy fork-observer:2323
-    }
-
-    handle_path /grafana/* {
-      reverse_proxy loki-grafana:80
-    }
-
-  }
-
-htmlConfig: |
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Welcome</title>
-  </head>
-  <body>
-      <h1>Welcome to the Warnet dashboard</h1>
-      <p>You can access the following services:</p>
-      <ul>
-          <li><a href="/grafana/">Grafana</a></li>
-          <li><a href="/fork-observer/">Fork Observer</a></li>
-      </ul>
-  </body>
-  </html>
+services:
+  - title: Grafana
+    path: /grafana/
+    host: loki-grafana
+    port: 80
+  - title: Fork Observer
+    path: /fork-observer/
+    host: fork-observer
+    port: 2323
+    
