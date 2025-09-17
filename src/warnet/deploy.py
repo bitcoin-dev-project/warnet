@@ -280,6 +280,8 @@ def deploy_caddy(directory: Path, debug: bool):
         services.append(
             {"title": "Fork Observer", "path": "/fork-observer/", "host": "fork-observer", "port": 2323}
         )
+    # add any extra services
+    services += network_file.get("services", {})
 
     click.echo(f"Adding services to dashboard: {json.dumps(services, indent=2)}")
 
