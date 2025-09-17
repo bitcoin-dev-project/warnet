@@ -87,6 +87,7 @@ class ServicesTest(TestBase):
         rest_json = rest_data.json()
         assert rest_json["chain"] == "regtest"
 
+
 if __name__ == "__main__":
     test = ServicesTest()
     test.run_test()

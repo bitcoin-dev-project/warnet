@@ -278,7 +278,12 @@ def deploy_caddy(directory: Path, debug: bool):
         )
     if network_file.get("fork_observer", {}).get("enabled", False):
         services.append(
-            {"title": "Fork Observer", "path": "/fork-observer/", "host": "fork-observer", "port": 2323}
+            {
+                "title": "Fork Observer",
+                "path": "/fork-observer/",
+                "host": "fork-observer",
+                "port": 2323,
+            }
         )
     # add any extra services
     services += network_file.get("services", {})
