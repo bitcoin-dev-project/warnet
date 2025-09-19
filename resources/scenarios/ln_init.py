@@ -59,7 +59,9 @@ class LNInit(Commander):
         miner_addr = miner.getnewaddress()
 
         def gen(n):
-            return self.generatetoaddress(self.nodes[0], n, miner_addr, sync_fun=self.no_op)
+            # Take all the time you need to generate those blocks
+            mining_tank.rpc_timeout = 6000
+            return self.generatetoaddress(mining_tank, n, miner_addr, sync_fun=self.no_op)
 
         self.log.info("Locking out of IBD...")
         gen(1)
