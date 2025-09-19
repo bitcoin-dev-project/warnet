@@ -269,7 +269,32 @@ def deploy_caddy(directory: Path, debug: bool):
     if not network_file.get(name, {}).get("enabled", False):
         return
 
-    cmd = f"{HELM_COMMAND} {name} {CADDY_CHART} --namespace {namespace} --create-namespace"
+    # configure reverse proxy to webservers in the network
+    services = []
+    # built-in services
+    if check_logging_required(directory):
+        services.append(
+            {"title": "Grafana", "path": "/grafana/", "host": "loki-grafana", "port": 80}
+        )
+    if network_file.get("fork_observer", {}).get("enabled", False):
+        services.append(
+            {
+                "title": "Fork Observer",
+                "path": "/fork-observer/",
+                "host": "fork-observer",
+                "port": 2323,
+            }
+        )
+    # add any extra services
+    services += network_file.get("services", {})
+
+    click.echo(f"Adding services to dashboard: {json.dumps(services, indent=2)}")
+
+    cmd = (
+        f"{HELM_COMMAND} {name} {CADDY_CHART} "
+        f"--namespace {namespace} --create-namespace "
+        f"--set-json services='{json.dumps(services)}'"
+    )
     if debug:
         cmd += " --debug"
 

@@ -35,3 +35,8 @@ fork_observer:
   enabled: true
 caddy:
   enabled: true
+services:
+  - title: Ringo REST
+    path: /ringo/
+    host: ringo.default
+    port: 18443

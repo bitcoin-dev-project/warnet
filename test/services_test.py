@@ -15,11 +15,14 @@ class ServicesTest(TestBase):
     def __init__(self):
         super().__init__()
         self.network_dir = Path(os.path.dirname(__file__)) / "data" / "services"
+        self.ingress_ip = None
 
     def run_test(self):
         try:
             self.setup_network()
+            self.get_ingress_ip()
             self.check_fork_observer()
+            self.check_extra_services()
         finally:
             self.cleanup()
 
@@ -29,25 +32,25 @@ class ServicesTest(TestBase):
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
 
+    def get_ingress_ip(self):
+        self.log.info("Waiting for ingress controller")
+        wait_for_ingress_controller()
+        self.log.info("Waiting for ingress host")
+        attempts = 100
+        while not self.ingress_ip:
+            self.ingress_ip = get_ingress_ip_or_host()
+            attempts -= 1
+            if attempts < 0:
+                raise Exception("Never got ingress host")
+            sleep(1)
+
     def check_fork_observer(self):
         self.log.info("Creating chain split")
         self.warnet("bitcoin rpc john createwallet miner")
         self.warnet("bitcoin rpc john -generate 1")
 
-        self.log.info("Waiting for ingress controller")
-        wait_for_ingress_controller()
-
-        self.log.info("Waiting for ingress host")
-        ingress_ip = None
-        attempts = 100
-        while not ingress_ip:
-            ingress_ip = get_ingress_ip_or_host()
-            attempts -= 1
-            if attempts < 0:
-                raise Exception("Never got ingress host")
-            sleep(1)
         # network id is 0xDEADBE in decimal
-        fo_data_uri = f"http://{ingress_ip}/fork-observer/api/14593470/data.json"
+        fo_data_uri = f"http://{self.ingress_ip}/fork-observer/api/14593470/data.json"
 
         def call_fo_api():
             # if on minikube remember to run `minikube tunnel` for this test to run
@@ -76,6 +79,13 @@ class ServicesTest(TestBase):
         self.wait_for_predicate(
             lambda: len(json.loads(self.warnet("bitcoin rpc george getpeerinfo"))) > 1
         )
+
+    def check_extra_services(self):
+        self.log.info("Checking extra web services added to caddy")
+        uri = f"http://{self.ingress_ip}/ringo/rest/chaininfo.json"
+        rest_data = requests.get(uri)
+        rest_json = rest_data.json()
+        assert rest_json["chain"] == "regtest"
 
 
 if __name__ == "__main__":
