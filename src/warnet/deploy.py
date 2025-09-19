@@ -311,9 +311,8 @@ def deploy_ingress(directory: Path, debug: bool):
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
-    fo_enabled = network_file.get("fork_observer", {}).get("enabled", False)
-    logging_enabled = check_logging_required(directory)
-    if not (fo_enabled or logging_enabled):
+    # Only start if caddy is enabled in the network file
+    if not network_file.get("caddy", {}).get("enabled", False):
         return
     click.echo("Deploying ingress controller")
 
