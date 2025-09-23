@@ -14,7 +14,7 @@ data:
     bitcoin-rpcconnect={{ include "bitcoincore.fullname" . }}
     bitcoin-rpcport={{ index .Values.global .Values.global.chain "RPCPort" }}
     bitcoin-rpcpassword={{ .Values.global.rpcpassword }}
-    alias={{ include "cln.fullname" . }}
+    alias={{ include "lnd.fullname" . }}.{{ .Release.Namespace }}
     announce-addr=dns:{{ include "cln.fullname" . }}:{{ .Values.P2PPort }}
     database-upgrade=true
     bitcoin-retry-timeout=600
