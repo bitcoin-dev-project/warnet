@@ -76,3 +76,12 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create a hex-encoded RGB color derived from the namespace
+*/}}
+{{- define "namespace.color" -}}
+{{- $hash := sha256sum .Release.Namespace -}}
+{{- printf "#%s" (substr 0 6 $hash) -}}
+{{- end -}}
+

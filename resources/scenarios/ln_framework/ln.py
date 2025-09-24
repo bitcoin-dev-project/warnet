@@ -101,8 +101,9 @@ class Policy:
 
 class LNNode(ABC):
     @abstractmethod
-    def __init__(self, pod_name, ip_address):
+    def __init__(self, pod_name, pod_namespace, ip_address):
         self.name = pod_name
+        self.namespace = pod_namespace
         self.ip_address = ip_address
         self.log = logging.getLogger(pod_name)
         handler = logging.StreamHandler()
@@ -152,8 +153,8 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name, ip_address):
-        super().__init__(pod_name, ip_address)
+    def __init__(self, pod_name, pod_namespace, ip_address):
+        super().__init__(pod_name, pod_namespace, ip_address)
         self.conn = None
         self.headers = {}
         self.impl = "cln"
@@ -161,7 +162,7 @@ class CLN(LNNode):
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
-            host=self.name, port=3010, timeout=60, context=INSECURE_CONTEXT
+            host=f"{self.name}.{self.namespace}", port=3010, timeout=60, context=INSECURE_CONTEXT
         )
 
     def setRune(self, rune):
@@ -285,11 +286,9 @@ class CLN(LNNode):
 
 
 class LND(LNNode):
-    def __init__(self, pod_name, ip_address, admin_macaroon_hex):
-        super().__init__(pod_name, ip_address)
-        self.conn = http.client.HTTPSConnection(
-            host=pod_name, port=8080, timeout=5, context=INSECURE_CONTEXT
-        )
+    def __init__(self, pod_name, pod_namespace, ip_address, admin_macaroon_hex):
+        super().__init__(pod_name, pod_namespace, ip_address)
+        self.conn = None
         self.admin_macaroon_hex = admin_macaroon_hex
         self.headers = {
             "Grpc-Metadata-macaroon": admin_macaroon_hex,
@@ -299,7 +298,7 @@ class LND(LNNode):
 
     def reset_connection(self):
         self.conn = http.client.HTTPSConnection(
-            host=self.name, port=8080, timeout=60, context=INSECURE_CONTEXT
+            host=f"{self.name}.{self.namespace}", port=8080, timeout=60, context=INSECURE_CONTEXT
         )
 
     def get(self, uri):

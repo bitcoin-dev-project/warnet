@@ -15,7 +15,8 @@ data:
     bitcoind.rpchost={{ include "bitcoincore.fullname" . }}:{{ index .Values.global .Values.global.chain "RPCPort" }}
     bitcoind.zmqpubrawblock=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQBlockPort }}
     bitcoind.zmqpubrawtx=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQTxPort }}
-    alias={{ include "lnd.fullname" . }}
+    alias={{ include "lnd.fullname" . }}.{{ .Release.Namespace }}
+    color={{ include "namespace.color" . }}
     externalhosts={{ include "lnd.fullname" . }}
     tlsextradomain={{ include "lnd.fullname" . }}
   tls.cert: |

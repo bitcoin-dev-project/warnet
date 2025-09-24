@@ -64,11 +64,11 @@ class LNBasicTest(TestBase):
         info = json.loads(
             self.warnet("ln rpc tank-0001-ln --rpcserver=tank-0002-ln.default:10009 getinfo")
         )
-        assert info["alias"] == "tank-0002-ln"
+        assert info["alias"] == "tank-0002-ln.default"
         info = json.loads(
             self.warnet("ln rpc tank-0002-ln --rpcserver=tank-0005-ln.default:10009 getinfo")
         )
-        assert info["alias"] == "tank-0005-ln"
+        assert info["alias"] == "tank-0005-ln.default"
 
         self.log.info("Testing lnd nodes with unique macaroon root key can NOT query each other")
         # These tanks are configured with unique macaroon root keys

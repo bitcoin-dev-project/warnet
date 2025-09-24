@@ -28,8 +28,8 @@ def rpc(pod: str, method: str, params: str, namespace: Optional[str]):
 
 
 def _rpc(pod_name: str, method: str, params: str = "", namespace: Optional[str] = None):
-    pod = get_pod(pod_name)
     namespace = get_default_namespace_or(namespace)
+    pod = get_pod(pod_name, namespace)
     chain = pod.metadata.labels["chain"]
     ln_client = "lncli"
     if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:

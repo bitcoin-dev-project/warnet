@@ -92,6 +92,7 @@ for pod in pods.items:
         WARNET["tanks"].append(
             {
                 "tank": pod.metadata.name,
+                "namespace": pod.metadata.namespace,
                 "chain": pod.metadata.labels["chain"],
                 "rpc_host": pod.status.pod_ip,
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
@@ -104,10 +105,13 @@ for pod in pods.items:
     if pod.metadata.labels["mission"] == "lightning":
         if "lnd" in pod.metadata.labels["app.kubernetes.io/name"]:
             lnnode = LND(
-                pod.metadata.name, pod.status.pod_ip, pod.metadata.annotations["adminMacaroon"]
+                pod.metadata.name,
+                pod.metadata.namespace,
+                pod.status.pod_ip,
+                pod.metadata.annotations["adminMacaroon"],
             )
         if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
-            lnnode = CLN(pod.metadata.name, pod.status.pod_ip)
+            lnnode = CLN(pod.metadata.name, pod.metadata.namespace, pod.status.pod_ip)
         assert lnnode
         WARNET["lightning"].append(lnnode)
 
