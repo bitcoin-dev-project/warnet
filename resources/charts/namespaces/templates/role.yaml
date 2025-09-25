@@ -1,10 +1,9 @@
 {{- range .Values.roles }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: {{ .name }}
-  namespace: {{ $.Values.namespaceName | default $.Release.Name }}
+  name: {{ .name }}-{{ $.Release.Name }}
 rules:
 {{ toYaml .rules | indent 2 }}
 {{- end }}
