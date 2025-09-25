@@ -3,6 +3,8 @@ users:
     roles:
       - pod-viewer
       - pod-manager
+      - ingress-viewer
+      - ingress-controller-viewer
 roles:
   - name: pod-viewer
     rules:
@@ -44,3 +46,15 @@ roles:
       - apiGroups: [""]
         resources: ["events", "pods/status"]
         verbs: ["get"]
+  - name: ingress-viewer
+    namespaceName: ingress
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["list", "get", "watch"]
+  - name: ingress-controller-viewer
+    namespaceName: warnet-logging
+    rules:
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["ingresses"]
+        verbs: ["list", "get", "watch"]
