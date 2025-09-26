@@ -60,9 +60,7 @@ def status():
     for ln in lns:
         table.add_row("Lightning", ln["name"], ln["status"], ln["namespace"])
 
-    # Add a separator if there are both tanks and scenarios
-    if tanks and scenarios:
-        table.add_row("", "", "")
+    table.add_row("", "", "")
 
     # Add scenarios to the table
     active = 0
@@ -72,7 +70,7 @@ def status():
             if scenario["status"] == "running" or scenario["status"] == "pending":
                 active += 1
     else:
-        table.add_row("Scenario", "No active scenarios", "")
+        table.add_row("", "No active scenarios", "", style="red")
 
     # Create a panel to wrap the table
     panel = Panel(
