@@ -78,7 +78,8 @@ def _connected(end="\n"):
                     actual += 1
             expected = int(tank.metadata.annotations["init_peers"])
             print(
-                f"Tank {tank.metadata.name} peers expected: {expected}, actual: {actual}", end=end
+                f"Tank: {tank.metadata.name:<15} peers expected: {expected:<3} actual: {actual:<3}",
+                end=end,
             )
             # Even if more edges are specified, bitcoind only allows
             # 8 manual outbound connections

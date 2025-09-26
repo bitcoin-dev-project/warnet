@@ -8,7 +8,7 @@ from rich.table import Table
 from rich.text import Text
 from urllib3.exceptions import MaxRetryError
 
-from .constants import COMMANDER_MISSION, TANK_MISSION
+from .constants import COMMANDER_MISSION, LIGHTNING_MISSION, TANK_MISSION
 from .k8s import get_mission
 from .network import _connected
 
@@ -20,6 +20,7 @@ def status():
 
     try:
         tanks = _get_tank_status()
+        lns = _get_ln_status()
         scenarios = _get_deployed_scenarios()
     except ConfigException as e:
         print(e)
@@ -51,6 +52,13 @@ def status():
     # Add tanks to the table
     for tank in tanks:
         table.add_row("Tank", tank["name"], tank["status"], tank["namespace"])
+
+    # Add a separator if there are both tanks and scenarios
+    if tanks and lns:
+        table.add_row("", "", "")
+
+    for ln in lns:
+        table.add_row("Lightning", ln["name"], ln["status"], ln["namespace"])
 
     # Add a separator if there are both tanks and scenarios
     if tanks and scenarios:
@@ -88,6 +96,18 @@ def status():
 
 def _get_tank_status():
     tanks = get_mission(TANK_MISSION)
+    return [
+        {
+            "name": tank.metadata.name,
+            "status": tank.status.phase.lower(),
+            "namespace": tank.metadata.namespace,
+        }
+        for tank in tanks
+    ]
+
+
+def _get_ln_status():
+    tanks = get_mission(LIGHTNING_MISSION)
     return [
         {
             "name": tank.metadata.name,
