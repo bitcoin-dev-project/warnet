@@ -310,7 +310,7 @@ class LND(LNNode):
         )
         return self.conn.getresponse().read().decode("utf8")
 
-    def post(self, uri, data):
+    def post(self, uri, data, wait_for_completion=True):
         body = json.dumps(data)
         post_header = self.headers
         post_header["Content-Length"] = str(len(body))
@@ -330,8 +330,9 @@ class LND(LNNode):
                 data = res.read(1)
                 if len(data) == 0:
                     break
-                else:
-                    stream += data.decode("utf8")
+                if not wait_for_completion and data.decode("utf8") == "\n":
+                    break
+                stream += data.decode("utf8")
             except Exception:
                 break
         return stream
@@ -405,7 +406,9 @@ class LND(LNNode):
 
     def payinvoice(self, payment_request) -> str:
         response = self.post(
-            "/v1/channels/transaction-stream", data={"payment_request": payment_request}
+            "/v2/router/send",
+            data={"payment_request": payment_request, "fee_limit_sat": 2100000000},
+            wait_for_completion=False,
         )
         res = json.loads(response)
         return res
