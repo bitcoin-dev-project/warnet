@@ -47,10 +47,10 @@ class LNInit(Commander):
         if self.options.miner:
             self.log.info(f"Parsed 'miner' argument: {self.options.miner}")
             mining_tank = self.tanks[self.options.miner]
-        elif "miner" in self.tanks:
+        elif f"miner.{self.namespace}" in self.tanks:
             # or choose the tank with the right name
             self.log.info("Found tank named 'miner'")
-            mining_tank = self.tanks["miner"]
+            mining_tank = self.tanks[f"miner.{self.namespace}"]
         else:
             mining_tank = self.nodes[0]
             self.log.info(f"Using tank {mining_tank.tank} as miner")
@@ -211,6 +211,10 @@ class LNInit(Commander):
         for ch in self.channels:
             src = self.lns[ch["source"]]
             tgt = self.lns[ch["target"]]
+            if "." not in src:
+                src += f".{self.namespace}"
+            if "." not in tgt:
+                tgt += f".{self.namespace}"
             # Avoid duplicates and reciprocals
             if (src, tgt) not in connections and (tgt, src) not in connections:
                 connections.append((src, tgt))

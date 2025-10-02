@@ -233,6 +233,9 @@ class Commander(BitcoinTestFramework):
         ch.setFormatter(ColorFormatter())
         self.log.addHandler(ch)
 
+        # This is the namespace the scenario was deployed in
+        self.namespace = NAMESPACE
+
         # Keep a separate index of tanks by pod name
         self.tanks: dict[str, TestNode] = {}
         self.lns: dict[str, LNNode] = {}
@@ -265,10 +268,10 @@ class Commander(BitcoinTestFramework):
             node.init_peers = int(tank["init_peers"])
 
             self.nodes.append(node)
-            self.tanks[tank["tank"]] = node
+            self.tanks[tank["tank"] + "." + tank["namespace"]] = node
 
         for ln in WARNET["lightning"]:
-            self.lns[ln.name] = ln
+            self.lns[ln.name + "." + ln.namespace] = ln
 
         self.num_nodes = len(self.nodes)
 

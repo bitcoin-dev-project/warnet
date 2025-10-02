@@ -8,7 +8,9 @@ class SignetGrinder(Commander):
         self.num_nodes = 0
 
     def run_test(self):
-        self.generatetoaddress(self.tanks["miner"], 1, "tb1qjfplwf7a2dpjj04cx96rysqeastvycc0j50cch")
+        self.generatetoaddress(
+            self.tanks[f"miner.{self.namespace}"], 1, "tb1qjfplwf7a2dpjj04cx96rysqeastvycc0j50cch"
+        )
 
 
 def main():
