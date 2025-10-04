@@ -34,6 +34,9 @@ class LNBasicTest(TestBase):
             # Wait for all nodes to wake up. ln_init will start automatically
             self.setup_network()
 
+            # Test pyln-proto package in scenario
+            self.test_pyln_scenario()
+
             # Test manually configured macroons
             self.test_admin_macaroons()
 
@@ -55,6 +58,12 @@ class LNBasicTest(TestBase):
     def setup_network(self):
         self.log.info("Setting up network")
         stream_command(f"warnet deploy {self.network_dir}")
+
+    def test_pyln_scenario(self):
+        self.log.info("Running pyln_connect scenario")
+        scenario_file = self.scen_dir / "test_scenarios" / "pyln_connect.py"
+        self.log.info(f"Running scenario from: {scenario_file}")
+        stream_command(f"warnet run {scenario_file} --source_dir={self.scen_dir} --debug")
 
     def test_admin_macaroons(self):
         self.log.info("Testing lnd nodes with same macaroon root key can query each other")
