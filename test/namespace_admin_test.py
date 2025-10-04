@@ -147,8 +147,7 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         return self.red_namespace in maybe_namespaces
 
     def return_to_initial_context(self):
-        cmd = f"kubectl config use-context {self.initial_context}"
-        self.log.info(run_command(cmd))
+        self.log.info(self.warnet("auth --revert"))
         self.wait_for_predicate(self.this_is_the_current_context(self.initial_context))
 
     def this_is_the_current_context(self, context: str) -> Callable[[], bool]:

@@ -83,6 +83,7 @@ DEFAULT_NAMESPACES = Path("two_namespaces_two_users")
 
 # Kubeconfig related stuffs
 KUBECONFIG = os.environ.get("KUBECONFIG", os.path.expanduser("~/.kube/config"))
+KUBECONFIG_UNDO = KUBECONFIG + "_warnet_undo"
 
 # TODO: all of this logging stuff should be a helm chart
 LOGGING_CONFIG = {
