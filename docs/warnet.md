@@ -19,7 +19,8 @@ Authenticate with a Warnet cluster using a kubernetes config file
 options:
 | name        | type   | required   | default   |
 |-------------|--------|------------|-----------|
-| auth_config | String | yes        |           |
+| revert      | Bool   |            | False     |
+| auth_config | String |            |           |
 
 ### `warnet create`
 Create a new warnet network
