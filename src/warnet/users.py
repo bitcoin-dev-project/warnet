@@ -5,14 +5,20 @@ import sys
 
 import click
 
-from warnet.constants import KUBECONFIG
+from warnet.constants import KUBECONFIG, KUBECONFIG_UNDO
 from warnet.k8s import K8sError, open_kubeconfig, write_kubeconfig
 
 
 @click.command()
-@click.argument("auth_config", type=str)
-def auth(auth_config):
+@click.option("--revert", is_flag=True, default=False, show_default=True)
+@click.argument("auth_config", type=str, required=False)
+def auth(revert, auth_config):
     """Authenticate with a Warnet cluster using a kubernetes config file"""
+    if revert:
+        auth_config = KUBECONFIG_UNDO
+    elif not auth_config:
+        raise click.UsageError("Missing argument: AUTH_CONFIG")
+
     try:
         auth_config = open_kubeconfig(auth_config)
     except K8sError as e:
@@ -37,6 +43,13 @@ def auth(auth_config):
         click.secho(e, fg="yellow")
         click.secho(f"Could not open KUBECONFIG: {KUBECONFIG}", fg="red")
         sys.exit(1)
+
+    try:
+        write_kubeconfig(base_config, KUBECONFIG_UNDO)
+        click.secho(f"Backed up current kubeconfig to: {KUBECONFIG_UNDO}", fg="green")
+    except K8sError as e:
+        click.secho(e, fg="yellow")
+        click.secho(f"Could not backup current kubeconfig to {KUBECONFIG_UNDO}", fg="red")
 
     if not is_first_config:
         for category in ["clusters", "users", "contexts"]:
