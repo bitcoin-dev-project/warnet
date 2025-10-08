@@ -7,6 +7,7 @@ metadata:
     role: macaroon-ref
 data:
   lnd.conf: |
+    color={{ include "namespace.color" . }}
     {{- .Values.baseConfig | nindent 4 }}
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
@@ -16,7 +17,6 @@ data:
     bitcoind.zmqpubrawblock=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQBlockPort }}
     bitcoind.zmqpubrawtx=tcp://{{ include "bitcoincore.fullname" . }}:{{ .Values.global.ZMQTxPort }}
     alias={{ include "lnd.fullname" . }}.{{ .Release.Namespace }}
-    color={{ include "namespace.color" . }}
     externalhosts={{ include "lnd.fullname" . }}
     tlsextradomain={{ include "lnd.fullname" . }}
   tls.cert: |
