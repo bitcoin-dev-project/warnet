@@ -16,6 +16,7 @@ metadata:
     kubectl.kubernetes.io/default-container: "lnd"
     adminMacaroon: {{ .Values.adminMacaroon }}
 spec:
+  restartPolicy: "{{ .Values.restartPolicy }}"
   {{- with .Values.imagePullSecrets }}
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
