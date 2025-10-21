@@ -656,6 +656,7 @@ class Commander(BitcoinTestFramework):
                     newheadhex = stream(
                         sclient.connect_get_namespaced_pod_exec,
                         name=generator.tank,
+                        container="bitcoincore",
                         namespace=NAMESPACE,
                         command=cmd,
                         stderr=True,
