@@ -8,6 +8,7 @@ metadata:
         {{- toYaml . | nindent 4 }}
     {{- end }}
     chain: {{ .Values.global.chain }}
+    P2PPort: "{{ index .Values.global .Values.global.chain "P2PPort" }}"
     RPCPort: "{{ index .Values.global .Values.global.chain "RPCPort" }}"
     ZMQTxPort: "{{ .Values.global.ZMQTxPort }}"
     ZMQBlockPort: "{{ .Values.global.ZMQBlockPort }}"

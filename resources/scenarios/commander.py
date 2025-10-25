@@ -28,11 +28,12 @@ from test_framework.messages import (
     CTxOut,
     from_binary,
     from_hex,
+    hash256,
     ser_string,
     ser_uint256,
     tx_from_hex,
 )
-from test_framework.p2p import NetworkThread
+from test_framework.p2p import MAGIC_BYTES, NetworkThread
 from test_framework.psbt import (
     PSBT,
     PSBT_GLOBAL_UNSIGNED_TX,
@@ -94,6 +95,7 @@ for pod in pods.items:
                 "tank": pod.metadata.name,
                 "namespace": pod.metadata.namespace,
                 "chain": pod.metadata.labels["chain"],
+                "p2pport": int(pod.metadata.labels["P2PPort"]),
                 "rpc_host": pod.status.pod_ip,
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
                 "rpc_user": "user",
@@ -263,6 +265,7 @@ class Commander(BitcoinTestFramework):
             )
             node.rpc_connected = True
             node.init_peers = int(tank["init_peers"])
+            node.p2pport = tank["p2pport"]
 
             self.nodes.append(node)
             self.tanks[tank["tank"]] = node
@@ -294,6 +297,25 @@ class Commander(BitcoinTestFramework):
         self.network_thread.start()
 
         self.success = TestStatus.PASSED
+
+        if len(self.nodes) > 0 and self.nodes[0].chain == "signet":
+            # There's no garuntee that any nodes are responsive
+            # but we only need one to figure out the network magic bytes
+            for node in self.nodes:
+                try:
+                    # Times out after 60 seconds (!)
+                    template = node.getblocktemplate({"rules": ["segwit", "signet"]})
+                    challenge = template["signet_challenge"]
+                    challenge_bytes = bytes.fromhex(challenge)
+                    data = len(challenge_bytes).to_bytes() + challenge_bytes
+                    digest = hash256(data)
+                    MAGIC_BYTES["signet"] = digest[0:4]
+                    self.log.info(
+                        f"Got signet network magic bytes from {node.tank}: {MAGIC_BYTES['signet'].hex()}"
+                    )
+                    break
+                except Exception as e:
+                    self.log.info(f"Failed to get signet network magic bytes from {node.tank}: {e}")
 
     def parse_args(self):
         # Only print "outer" args from parent class when using --help
@@ -482,7 +504,7 @@ class Commander(BitcoinTestFramework):
         to_connection = self.nodes[b]
         from_num_peers = 1 + len(from_connection.getpeerinfo())
         to_num_peers = 1 + len(to_connection.getpeerinfo())
-        ip_port = self.nodes[b].rpchost + ":18444"
+        ip_port = f"{self.nodes[b].rpchost}:{self.nodes[b].p2pport}"
 
         if peer_advertises_v2 is None:
             peer_advertises_v2 = self.options.v2transport
