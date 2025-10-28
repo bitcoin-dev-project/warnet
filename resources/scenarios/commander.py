@@ -11,6 +11,7 @@ import struct
 import sys
 import tempfile
 import threading
+import types
 from time import sleep
 
 from kubernetes import client, config
@@ -240,6 +241,10 @@ class Commander(BitcoinTestFramework):
         self.lns: dict[str, LNNode] = {}
         self.channels = WARNET["channels"]
 
+        self.binary_paths = types.SimpleNamespace()
+        self.binary_paths.bitcoin_cmd = None
+        self.binary_paths.bitcoind = None
+
         for i, tank in enumerate(WARNET["tanks"]):
             self.log.info(
                 f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
@@ -251,13 +256,12 @@ class Commander(BitcoinTestFramework):
                 rpchost=tank["rpc_host"],
                 timewait=60,
                 timeout_factor=self.options.timeout_factor,
-                bitcoind=None,
-                bitcoin_cli=None,
+                binaries=self.get_binaries(),
                 cwd=self.options.tmpdir,
                 coverage_dir=self.options.coveragedir,
             )
             node.tank = tank["tank"]
-            node.rpc = get_rpc_proxy(
+            node._rpc = get_rpc_proxy(
                 f"http://{tank['rpc_user']}:{tank['rpc_password']}@{tank['rpc_host']}:{tank['rpc_port']}",
                 i,
                 timeout=60,
@@ -450,6 +454,12 @@ class Commander(BitcoinTestFramework):
             action="store_true",
             help="use BIP324 v2 connections between all nodes by default",
         )
+        parser.add_argument(
+            "--test_methods",
+            dest="test_methods",
+            nargs="*",
+            help="Run specified test methods sequentially instead of the full test. Use only for methods that do not depend on any context set up in run_test or other methods.",
+        )
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument
@@ -565,7 +575,7 @@ class Commander(BitcoinTestFramework):
 
     def generatetoaddress(self, generator, n, addr, sync_fun=None, **kwargs):
         if generator.chain == "regtest":
-            blocks = generator.generatetoaddress(n, addr, invalid_call=False, **kwargs)
+            blocks = generator.generatetoaddress(n, addr, called_by_framework=True, **kwargs)
             sync_fun() if sync_fun else self.sync_all()
             return blocks
         if generator.chain == "signet":
