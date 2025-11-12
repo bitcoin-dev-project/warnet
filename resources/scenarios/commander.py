@@ -321,7 +321,7 @@ class Commander(BitcoinTestFramework):
                 except Exception as e:
                     self.log.info(f"Failed to get signet network magic bytes from {node.tank}: {e}")
 
-    def parse_args(self):
+    def parse_args(self, _):
         # Only print "outer" args from parent class when using --help
         help_parser = argparse.ArgumentParser(usage="%(prog)s [options]")
         self.add_options(help_parser)
