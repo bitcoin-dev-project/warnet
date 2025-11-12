@@ -21,7 +21,7 @@ class Failure(Commander):
 
 
 def main():
-    Failure().main()
+    Failure("").main()
 
 
 if __name__ == "__main__":

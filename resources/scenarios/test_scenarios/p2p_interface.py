@@ -52,7 +52,7 @@ class GetdataTest(Commander):
 
 
 def main():
-    GetdataTest().main()
+    GetdataTest("").main()
 
 
 if __name__ == "__main__":

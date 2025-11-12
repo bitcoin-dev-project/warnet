@@ -12,7 +12,7 @@ class SignetGrinder(Commander):
 
 
 def main():
-    SignetGrinder().main()
+    SignetGrinder("").main()
 
 
 if __name__ == "__main__":

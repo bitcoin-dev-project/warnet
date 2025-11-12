@@ -26,7 +26,7 @@ class GenOneAllNodes(Commander):
 
 
 def main():
-    GenOneAllNodes().main()
+    GenOneAllNodes("").main()
 
 
 if __name__ == "__main__":

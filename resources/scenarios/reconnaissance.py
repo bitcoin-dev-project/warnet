@@ -81,7 +81,7 @@ class Reconnaissance(Commander):
 
 
 def main():
-    Reconnaissance().main()
+    Reconnaissance("").main()
 
 
 if __name__ == "__main__":
