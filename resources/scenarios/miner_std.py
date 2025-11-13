@@ -75,7 +75,7 @@ class MinerStd(Commander):
 
 
 def main():
-    MinerStd().main()
+    MinerStd("").main()
 
 
 if __name__ == "__main__":

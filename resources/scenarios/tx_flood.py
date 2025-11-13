@@ -68,7 +68,7 @@ class TXFlood(Commander):
 
 
 def main():
-    TXFlood().main()
+    TXFlood("").main()
 
 
 if __name__ == "__main__":

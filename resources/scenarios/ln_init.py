@@ -511,7 +511,7 @@ class LNInit(Commander):
 
 
 def main():
-    LNInit().main()
+    LNInit("").main()
 
 
 if __name__ == "__main__":

@@ -563,7 +563,7 @@ def get_args(parser):
     return args
 
 def main():
-    SignetMinerScenario().main()
+    SignetMinerScenario("").main()
 
 if __name__ == "__main__":
     main()
