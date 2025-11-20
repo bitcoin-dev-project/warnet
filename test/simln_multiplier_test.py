@@ -145,7 +145,6 @@ class SimlnMultiplierTest(TestBase):
                 "✓ Simln container is running, multiplier configuration verified via sim.json"
             )
             return
-
         # Verify that we see payment rate information
         if "payments per month" not in logs and "payments per hour" not in logs:
             self.log.warning("No payment rate information found in simln logs")
@@ -154,7 +153,6 @@ class SimlnMultiplierTest(TestBase):
                 "✓ Simln container is running, multiplier configuration verified via sim.json"
             )
             return
-
         # Check that the multiplier values are reasonable (should be > 0)
         for capacity, multiplier in matches:
             if int(multiplier) <= 0:
@@ -194,7 +192,6 @@ class SimlnMultiplierTest(TestBase):
 
         except json.JSONDecodeError as e:
             self.fail(f"Invalid JSON in sim.json: {e}")
-
         self.log.info("✓ sim.json configuration test completed successfully")
 
 
