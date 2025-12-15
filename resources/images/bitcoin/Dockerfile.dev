@@ -1,5 +1,5 @@
 # Setup deps stage
-FROM alpine AS deps
+FROM alpine:3.20 AS deps
 ARG REPO
 ARG COMMIT_SHA
 ARG BUILD_ARGS
@@ -20,7 +20,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
     libtool \
     linux-headers \
     sqlite-dev \
-    zeromq-dev
+    zeromq-dev \
+    capnproto-dev
 
 COPY isroutable.patch /tmp/
 COPY addrman.patch /tmp/
@@ -51,7 +52,7 @@ RUN set -ex \
     && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.so.0.0.0
 
 # Final clean stage
-FROM alpine
+FROM alpine:3.20
 ARG UID=100
 ARG GID=101
 ENV BITCOIN_DATA=/root/.bitcoin
@@ -68,7 +69,8 @@ RUN --mount=type=cache,target=/var/cache/apk sed -i 's/http\:\/\/dl-cdn.alpineli
     libzmq \
     shadow \
     sqlite-dev \
-    su-exec
+    su-exec \
+    capnproto-dev
 
 COPY --from=build /opt/bitcoin /usr/local
 COPY entrypoint.sh /
