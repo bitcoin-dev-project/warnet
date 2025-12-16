@@ -7,9 +7,9 @@ nodes:
     addnode:
       - tank-0002
     metricsExport: true
-    metrics: txrate=getchaintxstats(10)["txrate"]
+    metrics: txrate=getchaintxstats(10)["txrate"] ipv4peers=COUNT:getpeerinfo(),network,ipv4
   - name: tank-0002
-    addnode:
+    addnode:  
       - tank-0000
     ln:
       lnd: true
