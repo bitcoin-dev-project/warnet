@@ -44,6 +44,12 @@ def make_metric_function(cmd):
     except Exception:
         return None
 
+def make_counting_function(cmd, key, value):
+    try:
+        return lambda: sum(1 for x in eval(f"rpc.{cmd}") if x.get(key) == value)
+    except Exception:
+        return None
+
 
 # Parse RPC queries into metrics
 commands = METRICS.split(" ")
@@ -53,7 +59,12 @@ for labeled_cmd in commands:
     label, cmd = labeled_cmd.strip().split("=")
     # label, description i.e. ("bitcoin_conn_in", "Number of connections in")
     metric = Gauge(label, cmd)
-    metric.set_function(make_metric_function(cmd))
+    if "COUNT:" in cmd:
+        _, args = cmd.split(":")
+        cmd, key, value = args.split(",")
+        metric.set_function(make_counting_function(cmd, key, value))
+    else:
+        metric.set_function(make_metric_function(cmd))
     print(f"Metric created: {labeled_cmd}")
 
 # Start the server
