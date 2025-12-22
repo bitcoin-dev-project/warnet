@@ -55,9 +55,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.2.0
       - name: start minikube
-        uses: medyagh/setup-minikube@latest
+        uses: medyagh/setup-minikube@v0.0.20
         id: minikube
         with:
+          minikube-version: 1.37.0
+          kubernetes-version: v1.34.0
           cpus: max
           memory: 4000m
       - name: Start minikube's loadbalancer tunnel
