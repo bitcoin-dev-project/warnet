@@ -20,7 +20,6 @@ class SignetTest(TestBase):
     def run_test(self):
         try:
             self.setup_network()
-            self.check_signet_miner()
             self.check_signet_recon()
             self.check_signet_scenario_miner()
         finally:
@@ -31,24 +30,6 @@ class SignetTest(TestBase):
         self.log.info(self.warnet(f"deploy {self.network_dir}"))
         self.wait_for_all_tanks_status(target="running")
         self.wait_for_all_edges()
-
-    def check_signet_miner(self):
-        self.warnet("bitcoin rpc miner createwallet miner")
-        self.warnet(
-            f"bitcoin rpc miner importdescriptors {json.dumps(self.signer_data['descriptors'])}"
-        )
-        self.warnet(
-            f"run resources/scenarios/signet_miner.py --tank=0 generate --max-blocks=8 --min-nbits --address={self.signer_data['address']['address']}"
-        )
-
-        def block_one():
-            for n in range(1, 17):
-                height = int(self.warnet(f"bitcoin rpc tank-{n} getblockcount"))
-                if height < 8:
-                    return False
-            return True
-
-        self.wait_for_predicate(block_one)
 
     def check_signet_recon(self):
         scenario_file = "resources/scenarios/reconnaissance.py"
@@ -62,6 +43,10 @@ class SignetTest(TestBase):
         self.wait_for_predicate(check_scenario_clean_exit)
 
     def check_signet_scenario_miner(self):
+        self.warnet("bitcoin rpc miner createwallet miner")
+        self.warnet(
+            f"bitcoin rpc miner importdescriptors {json.dumps(self.signer_data['descriptors'])}"
+        )
         before_count = int(self.warnet("bitcoin rpc tank-1 getblockcount"))
 
         self.log.info("Generate 1 signet block from a scenario using the bitcoin-util grinder")

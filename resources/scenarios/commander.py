@@ -11,6 +11,7 @@ import struct
 import sys
 import tempfile
 import threading
+import types
 from time import sleep
 
 from kubernetes import client, config
@@ -240,6 +241,10 @@ class Commander(BitcoinTestFramework):
         self.lns: dict[str, LNNode] = {}
         self.channels = WARNET["channels"]
 
+        self.binary_paths = types.SimpleNamespace()
+        self.binary_paths.bitcoin_cmd = None
+        self.binary_paths.bitcoind = None
+
         for i, tank in enumerate(WARNET["tanks"]):
             self.log.info(
                 f"Adding TestNode #{i} from pod {tank['tank']} with IP {tank['rpc_host']}"
@@ -251,13 +256,12 @@ class Commander(BitcoinTestFramework):
                 rpchost=tank["rpc_host"],
                 timewait=60,
                 timeout_factor=self.options.timeout_factor,
-                bitcoind=None,
-                bitcoin_cli=None,
+                binaries=self.get_binaries(),
                 cwd=self.options.tmpdir,
                 coverage_dir=self.options.coveragedir,
             )
             node.tank = tank["tank"]
-            node.rpc = get_rpc_proxy(
+            node._rpc = get_rpc_proxy(
                 f"http://{tank['rpc_user']}:{tank['rpc_password']}@{tank['rpc_host']}:{tank['rpc_port']}",
                 i,
                 timeout=60,
@@ -317,7 +321,7 @@ class Commander(BitcoinTestFramework):
                 except Exception as e:
                     self.log.info(f"Failed to get signet network magic bytes from {node.tank}: {e}")
 
-    def parse_args(self):
+    def parse_args(self, _):
         # Only print "outer" args from parent class when using --help
         help_parser = argparse.ArgumentParser(usage="%(prog)s [options]")
         self.add_options(help_parser)
@@ -450,6 +454,12 @@ class Commander(BitcoinTestFramework):
             action="store_true",
             help="use BIP324 v2 connections between all nodes by default",
         )
+        parser.add_argument(
+            "--test_methods",
+            dest="test_methods",
+            nargs="*",
+            help="Run specified test methods sequentially instead of the full test. Use only for methods that do not depend on any context set up in run_test or other methods.",
+        )
 
         self.add_options(parser)
         # Running TestShell in a Jupyter notebook causes an additional -f argument
@@ -565,7 +575,7 @@ class Commander(BitcoinTestFramework):
 
     def generatetoaddress(self, generator, n, addr, sync_fun=None, **kwargs):
         if generator.chain == "regtest":
-            blocks = generator.generatetoaddress(n, addr, invalid_call=False, **kwargs)
+            blocks = generator.generatetoaddress(n, addr, called_by_framework=True, **kwargs)
             sync_fun() if sync_fun else self.sync_all()
             return blocks
         if generator.chain == "signet":
@@ -591,7 +601,7 @@ class Commander(BitcoinTestFramework):
                 ]
                 cbtx.vout = [CTxOut(tmpl["coinbasevalue"], reward_spk)]
                 cbtx.vin[0].nSequence = 2**32 - 2
-                cbtx.rehash()
+
                 # assemble block
                 block = CBlock()
                 block.nVersion = tmpl["version"]
@@ -616,8 +626,7 @@ class Commander(BitcoinTestFramework):
                 txs[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER)
                 hashes = []
                 for tx in txs:
-                    tx.rehash()
-                    hashes.append(ser_uint256(tx.sha256))
+                    hashes.append(ser_uint256(tx.txid_int))
                 mroot = block.get_merkle_root(hashes)
                 sd = b""
                 sd += struct.pack("<i", block.nVersion)
@@ -625,17 +634,17 @@ class Commander(BitcoinTestFramework):
                 sd += ser_uint256(mroot)
                 sd += struct.pack("<I", block.nTime)
                 to_spend = CTransaction()
-                to_spend.nVersion = 0
+                to_spend.version = 0
                 to_spend.nLockTime = 0
                 to_spend.vin = [
                     CTxIn(COutPoint(0, 0xFFFFFFFF), b"\x00" + CScriptOp.encode_op_pushdata(sd), 0)
                 ]
                 to_spend.vout = [CTxOut(0, signet_spk_bin)]
-                to_spend.rehash()
+
                 spend = CTransaction()
-                spend.nVersion = 0
+                spend.version = 0
                 spend.nLockTime = 0
-                spend.vin = [CTxIn(COutPoint(to_spend.sha256, 0), b"", 0)]
+                spend.vin = [CTxIn(COutPoint(to_spend.txid_int, 0), b"", 0)]
                 spend.vout = [CTxOut(0, b"\x6a")]
                 # create PSBT for miner wallet signing
                 psbt = PSBT()
@@ -670,7 +679,7 @@ class Commander(BitcoinTestFramework):
                 signed_block.vtx[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(
                     SIGNET_HEADER + signet_solution
                 )
-                signed_block.vtx[0].rehash()
+
                 signed_block.hashMerkleRoot = signed_block.calc_merkle_root()
                 try:
                     headhex = CBlockHeader.serialize(signed_block).hex()
@@ -690,7 +699,7 @@ class Commander(BitcoinTestFramework):
                         raise Exception(newheadhex)
                     newhead = from_hex(CBlockHeader(), newheadhex.strip())
                     signed_block.nNonce = newhead.nNonce
-                    signed_block.rehash()
+
                 except Exception as e:
                     self.log.info(
                         f"Error grinding signet PoW with bitcoin-util in {generator.tank}: {e}".strip()
@@ -699,7 +708,7 @@ class Commander(BitcoinTestFramework):
                     signed_block.solve()
                 # submit block
                 bcli("submitblock", signed_block.serialize().hex())
-                block_hashes.append(signed_block.hash)
+                block_hashes.append(signed_block.hash_hex)
                 mined_blocks += 1
                 self.log.info(f"Generated {mined_blocks} signet blocks")
 
