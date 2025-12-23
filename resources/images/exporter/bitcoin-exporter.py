@@ -44,6 +44,7 @@ def make_metric_function(cmd):
     except Exception:
         return None
 
+
 def make_counting_function(cmd, key, value):
     try:
         return lambda: sum(1 for x in eval(f"rpc.{cmd}") if x.get(key) == value)
