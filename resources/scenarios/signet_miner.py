@@ -74,8 +74,7 @@ def signet_txs(block, challenge):
     txs[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER)
     hashes = []
     for tx in txs:
-        tx.rehash()
-        hashes.append(ser_uint256(tx.sha256))
+        hashes.append(ser_uint256(tx.txid_int))
     mroot = block.get_merkle_root(hashes)
 
     sd = b""
@@ -89,12 +88,11 @@ def signet_txs(block, challenge):
     to_spend.nLockTime = 0
     to_spend.vin = [CTxIn(COutPoint(0, 0xFFFFFFFF), b"\x00" + CScriptOp.encode_op_pushdata(sd), 0)]
     to_spend.vout = [CTxOut(0, challenge)]
-    to_spend.rehash()
 
     spend = CTransaction()
     spend.nVersion = 0
     spend.nLockTime = 0
-    spend.vin = [CTxIn(COutPoint(to_spend.sha256, 0), b"", 0)]
+    spend.vin = [CTxIn(COutPoint(to_spend.txid_int, 0), b"", 0)]
     spend.vout = [CTxOut(0, b"\x6a")]
 
     return spend, to_spend
@@ -124,7 +122,6 @@ def do_decode_psbt(b64psbt):
 
 def finish_block(block, signet_solution, grind_cmd):
     block.vtx[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER + signet_solution)
-    block.vtx[0].rehash()
     block.hashMerkleRoot = block.calc_merkle_root()
     if grind_cmd is None:
         block.solve()
@@ -134,7 +131,6 @@ def finish_block(block, signet_solution, grind_cmd):
         newheadhex = subprocess.run(cmd, stdout=subprocess.PIPE, input=b"", check=True).stdout.strip()
         newhead = from_hex(CBlockHeader(), newheadhex.decode('utf8'))
         block.nNonce = newhead.nNonce
-        block.rehash()
     return block
 
 def generate_psbt(tmpl, reward_spk, *, blocktime=None):
@@ -143,7 +139,6 @@ def generate_psbt(tmpl, reward_spk, *, blocktime=None):
 
     cbtx = create_coinbase(height=tmpl["height"], value=tmpl["coinbasevalue"], spk=reward_spk)
     cbtx.vin[0].nSequence = 2**32-2
-    cbtx.rehash()
 
     block = CBlock()
     block.nVersion = tmpl["version"]

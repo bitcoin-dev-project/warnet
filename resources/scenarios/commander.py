@@ -601,7 +601,7 @@ class Commander(BitcoinTestFramework):
                 ]
                 cbtx.vout = [CTxOut(tmpl["coinbasevalue"], reward_spk)]
                 cbtx.vin[0].nSequence = 2**32 - 2
-                cbtx.rehash()
+
                 # assemble block
                 block = CBlock()
                 block.nVersion = tmpl["version"]
@@ -626,8 +626,7 @@ class Commander(BitcoinTestFramework):
                 txs[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER)
                 hashes = []
                 for tx in txs:
-                    tx.rehash()
-                    hashes.append(ser_uint256(tx.sha256))
+                    hashes.append(ser_uint256(tx.txid_int))
                 mroot = block.get_merkle_root(hashes)
                 sd = b""
                 sd += struct.pack("<i", block.nVersion)
@@ -635,17 +634,17 @@ class Commander(BitcoinTestFramework):
                 sd += ser_uint256(mroot)
                 sd += struct.pack("<I", block.nTime)
                 to_spend = CTransaction()
-                to_spend.nVersion = 0
+                to_spend.version = 0
                 to_spend.nLockTime = 0
                 to_spend.vin = [
                     CTxIn(COutPoint(0, 0xFFFFFFFF), b"\x00" + CScriptOp.encode_op_pushdata(sd), 0)
                 ]
                 to_spend.vout = [CTxOut(0, signet_spk_bin)]
-                to_spend.rehash()
+
                 spend = CTransaction()
-                spend.nVersion = 0
+                spend.version = 0
                 spend.nLockTime = 0
-                spend.vin = [CTxIn(COutPoint(to_spend.sha256, 0), b"", 0)]
+                spend.vin = [CTxIn(COutPoint(to_spend.txid_int, 0), b"", 0)]
                 spend.vout = [CTxOut(0, b"\x6a")]
                 # create PSBT for miner wallet signing
                 psbt = PSBT()
@@ -680,7 +679,7 @@ class Commander(BitcoinTestFramework):
                 signed_block.vtx[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(
                     SIGNET_HEADER + signet_solution
                 )
-                signed_block.vtx[0].rehash()
+
                 signed_block.hashMerkleRoot = signed_block.calc_merkle_root()
                 try:
                     headhex = CBlockHeader.serialize(signed_block).hex()
@@ -700,7 +699,7 @@ class Commander(BitcoinTestFramework):
                         raise Exception(newheadhex)
                     newhead = from_hex(CBlockHeader(), newheadhex.strip())
                     signed_block.nNonce = newhead.nNonce
-                    signed_block.rehash()
+
                 except Exception as e:
                     self.log.info(
                         f"Error grinding signet PoW with bitcoin-util in {generator.tank}: {e}".strip()
@@ -709,7 +708,7 @@ class Commander(BitcoinTestFramework):
                     signed_block.solve()
                 # submit block
                 bcli("submitblock", signed_block.serialize().hex())
-                block_hashes.append(signed_block.hash)
+                block_hashes.append(signed_block.hash_hex)
                 mined_blocks += 1
                 self.log.info(f"Generated {mined_blocks} signet blocks")
 
