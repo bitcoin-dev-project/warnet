@@ -68,7 +68,14 @@ class Reconnaissance(Commander):
         # unusual or non-standard messages to a "victim" node.
         self.log.info(f"Attacking {dstaddr}:{dstport}")
         attacker = P2PInterface()
-        attacker.peer_connect(dstaddr=dstaddr, dstport=dstport, net=chain, timeout_factor=1)()
+        attacker.peer_connect(
+            dstaddr=dstaddr,
+            dstport=dstport,
+            net=chain,
+            timeout_factor=1,
+            send_version=True,
+            supports_v2_p2p=False,
+        )()
         attacker.wait_until(lambda: attacker.is_connected, check_connected=False)
 
         # Send a harmless network message we expect a response to and wait for it
