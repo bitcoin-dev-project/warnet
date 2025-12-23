@@ -2,7 +2,6 @@ required-version = ">=0.11"
 extend-exclude = [
     "resources/scenarios/test_framework",
     "resources/images/exporter/authproxy.py",
-    "resources/scenarios/signet_miner.py",
     "src/test_framework/*",
 ]
 line-length = 100
