@@ -83,9 +83,7 @@ def setup():
     def is_minikube_tunnel_running() -> tuple[bool, str]:
         try:
             result = subprocess.run(
-                ["pgrep", "-f", "minikube tunnel"],
-                capture_output=True,
-                text=True
+                ["pgrep", "-f", "minikube tunnel"], capture_output=True, text=True
             )
             if result.returncode == 0:
                 return True, "minikube tunnel is running"
@@ -311,7 +309,7 @@ def setup():
         tool_name="Running Minikube Tunnel",
         is_installed_func=is_minikube_tunnel_running,
         install_instruction="Please make sure minikube tunnel is running",
-        install_url="https://minikube.sigs.k8s.io/docs/commands/tunnel/"
+        install_url="https://minikube.sigs.k8s.io/docs/commands/tunnel/",
     )
     kubectl_info = ToolInfo(
         tool_name="Kubectl",
