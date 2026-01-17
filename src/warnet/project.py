@@ -80,6 +80,21 @@ def setup():
             # Minikube command not found
             return False, ""
 
+    def is_minikube_tunnel_running() -> tuple[bool, str]:
+        try:
+            result = subprocess.run(
+                ["pgrep", "-f", "minikube tunnel"],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                return True, "minikube tunnel is running"
+            else:
+                return False, ""
+        except FileNotFoundError:
+            # pgrep command not found
+            return False, "command not found: pgrep"
+
     def is_docker_running() -> tuple[bool, str]:
         try:
             result = subprocess.run(
@@ -292,6 +307,12 @@ def setup():
         install_instruction="Please make sure minikube is running",
         install_url="https://minikube.sigs.k8s.io/docs/start/",
     )
+    minikube_tunnel_running_info = ToolInfo(
+        tool_name="Running Minikube Tunnel",
+        is_installed_func=is_minikube_tunnel_running,
+        install_instruction="Please make sure minikube tunnel is running",
+        install_url="https://minikube.sigs.k8s.io/docs/commands/tunnel/"
+    )
     kubectl_info = ToolInfo(
         tool_name="Kubectl",
         is_installed_func=is_kubectl_installed_and_offer_if_not,
@@ -355,6 +376,7 @@ def setup():
                 if is_platform_darwin():
                     check_results.append(check_installation(minikube_version_info))
                 check_results.append(check_installation(minikube_running_info))
+                check_results.append(check_installation(minikube_tunnel_running_info))
         else:
             click.secho("Please re-run setup.", fg="yellow")
             sys.exit(1)
