@@ -24,4 +24,4 @@ def dashboard():
     url = f"http://{ip}"
 
     webbrowser.open(url)
-    click.echo("Warnet dashboard opened in default browser")
+    click.echo(f"Warnet dashboard opened in default browser. URL: {url}")
