@@ -11,7 +11,7 @@ from .k8s import (
     K8sError,
     get_cluster_of_current_context,
     get_namespaces_by_type,
-    get_service_accounts_in_namespace,
+    get_warnet_user_service_accounts_in_namespace,
     open_kubeconfig,
 )
 from .namespaces import copy_namespaces_defaults, namespaces
@@ -84,7 +84,7 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
     for v1namespace in warnet_namespaces:
         namespace = v1namespace.metadata.name
         click.echo(f"Processing namespace: {namespace}")
-        service_accounts = get_service_accounts_in_namespace(namespace)
+        service_accounts = get_warnet_user_service_accounts_in_namespace(namespace)
 
         for sa in service_accounts:
             # Create a token for the ServiceAccount with specified duration

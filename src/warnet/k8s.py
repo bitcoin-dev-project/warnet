@@ -489,14 +489,14 @@ def get_namespaces_by_type(namespace_type: str) -> list[V1Namespace]:
     return [ns for ns in namespaces if ns.metadata.name.startswith(namespace_type)]
 
 
-def get_service_accounts_in_namespace(namespace):
+def get_warnet_user_service_accounts_in_namespace(namespace):
     """
     Get all service accounts in a namespace. Returns an empty list if no service accounts are found in the specified namespace.
     """
     command = f"kubectl get serviceaccounts -n {namespace} -o jsonpath={{.items[*].metadata.name}}"
     # skip the default service account created by k8s
     service_accounts = run_command(command).split()
-    return [sa for sa in service_accounts if sa != "default"]
+    return [sa for sa in service_accounts if sa == "warnet-user"]
 
 
 def can_delete_pods(namespace: Optional[str] = None) -> bool:
