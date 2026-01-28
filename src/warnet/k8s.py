@@ -494,9 +494,9 @@ def get_warnet_user_service_accounts_in_namespace(namespace):
     Get all service accounts in a namespace. Returns an empty list if no service accounts are found in the specified namespace.
     """
     command = f"kubectl get serviceaccounts -n {namespace} -o jsonpath={{.items[*].metadata.name}}"
-    # skip the default service account created by k8s
+    # skip the default service account created by k8s and commander service accounts created by scenarios
     service_accounts = run_command(command).split()
-    return [sa for sa in service_accounts if sa == "warnet-user"]
+    return [sa for sa in service_accounts if sa != "default" and not sa.startswith("commander-")]
 
 
 def can_delete_pods(namespace: Optional[str] = None) -> bool:
