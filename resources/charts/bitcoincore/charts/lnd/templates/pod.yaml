@@ -45,17 +45,23 @@ spec:
         {{- toYaml .Values.readinessProbe | nindent 8 }}  
       startupProbe:
         failureThreshold: 10
-        periodSeconds: 70
+        periodSeconds: 5
         successThreshold: 1
-        timeoutSeconds: 60
+        timeoutSeconds: 300
         exec:
           command:
             - /bin/sh
             - -c
             - |
-              PHRASE=`curl --silent --insecure https://localhost:8080/v1/genseed | grep -o '\[[^]]*\]'`
-              curl --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"{{ .Values.macaroonRootKey }}\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"
+              until curl --silent --insecure https://localhost:8080/v1/genseed > /tmp/genseed.json; do
+                sleep 5
+              done
 
+              PHRASE=$(cat /tmp/genseed.json | grep -o '\[[^]]*\]')
+
+              until curl --fail --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"{{ .Values.macaroonRootKey }}\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"; do
+                sleep 5
+              done
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
