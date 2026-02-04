@@ -72,11 +72,12 @@ livenessProbe:
     - pidof
     - lnd
   failureThreshold: 3
-  initialDelaySeconds: 5
+  initialDelaySeconds: 60
   periodSeconds: 5
   successThreshold: 1
   timeoutSeconds: 1
 readinessProbe:
+  initialDelaySeconds: 60
   failureThreshold: 1
   periodSeconds: 1
   successThreshold: 1
