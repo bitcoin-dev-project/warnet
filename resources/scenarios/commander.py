@@ -254,7 +254,7 @@ class Commander(BitcoinTestFramework):
                 pathlib.Path(),  # datadir path
                 chain=tank["chain"],
                 rpchost=tank["rpc_host"],
-                timewait=60,
+                timewait=self.rpc_timeout,
                 timeout_factor=self.options.timeout_factor,
                 binaries=self.get_binaries(),
                 cwd=self.options.tmpdir,
@@ -264,7 +264,7 @@ class Commander(BitcoinTestFramework):
             node._rpc = get_rpc_proxy(
                 f"http://{tank['rpc_user']}:{tank['rpc_password']}@{tank['rpc_host']}:{tank['rpc_port']}",
                 i,
-                timeout=60,
+                timeout=self.rpc_timeout,
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
@@ -439,6 +439,7 @@ class Commander(BitcoinTestFramework):
             "--timeout-factor",
             dest="timeout_factor",
             default=1,
+            type=float,
             help="adjust test timeouts by a factor. Setting it to 0 disables all timeouts",
         )
         parser.add_argument(
@@ -468,7 +469,7 @@ class Commander(BitcoinTestFramework):
         parser.add_argument("-f", "--fff", help="a dummy argument to fool ipython", default="1")
         self.options = parser.parse_args()
         if self.options.timeout_factor == 0:
-            self.options.timeout_factor = 99999
+            self.options.timeout_factor = 999
         self.options.timeout_factor = self.options.timeout_factor or (
             4 if self.options.valgrind else 1
         )
@@ -535,42 +536,53 @@ class Commander(BitcoinTestFramework):
         # * Must have a version message before anything else
         # * Must have a verack message before anything else
         self.wait_until(
-            lambda: sum(peer["version"] != 0 for peer in from_connection.getpeerinfo())
-            == from_num_peers
-        )
-        self.wait_until(
-            lambda: sum(peer["version"] != 0 for peer in to_connection.getpeerinfo())
-            == to_num_peers
-        )
-        self.wait_until(
-            lambda: sum(
-                peer["bytesrecv_per_msg"].pop("verack", 0) >= 21
-                for peer in from_connection.getpeerinfo()
+            lambda: (
+                sum(peer["version"] != 0 for peer in from_connection.getpeerinfo())
+                == from_num_peers
             )
-            == from_num_peers
         )
         self.wait_until(
-            lambda: sum(
-                peer["bytesrecv_per_msg"].pop("verack", 0) >= 21
-                for peer in to_connection.getpeerinfo()
+            lambda: (
+                sum(peer["version"] != 0 for peer in to_connection.getpeerinfo()) == to_num_peers
             )
-            == to_num_peers
+        )
+        self.wait_until(
+            lambda: (
+                sum(
+                    peer["bytesrecv_per_msg"].pop("verack", 0) >= 21
+                    for peer in from_connection.getpeerinfo()
+                )
+                == from_num_peers
+            )
+        )
+        self.wait_until(
+            lambda: (
+                sum(
+                    peer["bytesrecv_per_msg"].pop("verack", 0) >= 21
+                    for peer in to_connection.getpeerinfo()
+                )
+                == to_num_peers
+            )
         )
         # The message bytes are counted before processing the message, so make
         # sure it was fully processed by waiting for a ping.
         self.wait_until(
-            lambda: sum(
-                peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
-                for peer in from_connection.getpeerinfo()
+            lambda: (
+                sum(
+                    peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                    for peer in from_connection.getpeerinfo()
+                )
+                == from_num_peers
             )
-            == from_num_peers
         )
         self.wait_until(
-            lambda: sum(
-                peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
-                for peer in to_connection.getpeerinfo()
+            lambda: (
+                sum(
+                    peer["bytesrecv_per_msg"].pop("pong", 0) >= 29
+                    for peer in to_connection.getpeerinfo()
+                )
+                == to_num_peers
             )
-            == to_num_peers
         )
 
     def generatetoaddress(self, generator, n, addr, sync_fun=None, **kwargs):

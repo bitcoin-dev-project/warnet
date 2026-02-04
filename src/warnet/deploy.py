@@ -424,7 +424,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             scenario_file=SCENARIOS_DIR / "ln_init.py",
             debug=False,
             source_dir=SCENARIOS_DIR,
-            additional_args=None,
+            additional_args=("--timeout-factor=0",),
             admin=True,
             namespace=namespace,
         )

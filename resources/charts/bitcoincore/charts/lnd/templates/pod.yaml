@@ -45,7 +45,7 @@ spec:
         {{- toYaml .Values.readinessProbe | nindent 8 }}  
       startupProbe:
         failureThreshold: 10
-        periodSeconds: 30
+        periodSeconds: 70
         successThreshold: 1
         timeoutSeconds: 60
         exec:

@@ -107,18 +107,22 @@ class LNBasicTest(TestBase):
                 addr = json.loads(self.warnet(f"ln rpc {ln} newaddress p2tr"))["address"]
             self.warnet(f"bitcoin rpc tank-0000 sendtoaddress {addr} 10")
         self.wait_for_predicate(
-            lambda: json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"]
-            == len(self.lns)
+            lambda: (
+                json.loads(self.warnet("bitcoin rpc tank-0000 getmempoolinfo"))["size"]
+                == len(self.lns)
+            )
         )
         self.warnet("bitcoin rpc tank-0000 -generate 1")
         # cln takes a long time to register its own balance?
         self.wait_for_predicate(
-            lambda: len(
-                json.loads(self.warnet("ln rpc tank-0000-ln bkpr-listbalances"))["accounts"][0][
-                    "balances"
-                ]
+            lambda: (
+                len(
+                    json.loads(self.warnet("ln rpc tank-0000-ln bkpr-listbalances"))["accounts"][0][
+                        "balances"
+                    ]
+                )
+                > 0
             )
-            > 0
         )
 
     def manual_open_channels(self):
