@@ -4,7 +4,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from time import sleep
+from time import time, sleep
 from typing import Optional
 
 import yaml
@@ -332,6 +332,24 @@ def wait_for_ingress_controller(timeout=300):
     for pod in pods.items:
         if "ingress-nginx-controller" in pod.metadata.name:
             return wait_for_pod_ready(pod.metadata.name, INGRESS_NAMESPACE, timeout)
+
+
+def wait_for_ingress_endpoint(timeout=300):
+    config.load_kube_config()
+    networking_v1 = client.NetworkingV1Api()
+    start = time()
+    while time() - start < timeout:
+        ingress = networking_v1.read_namespaced_ingress(CADDY_INGRESS_NAME, LOGGING_NAMESPACE)
+        lb_ingress = ingress.status.load_balancer.ingress
+        if lb_ingress and (lb_ingress[0].hostname or lb_ingress[0].ip):
+            return True
+        sleep(1)
+    msg = (
+        f"Ingress endpoint not found within {timeout} seconds.\n"
+        + "If you are running Minikube please run 'minikube tunnel' in a separate terminal.\n"
+        + "If you are running in the cloud, you may need to wait a short while while the load balancer is provisioned"
+    )
+    raise TimeoutError(msg)
 
 
 def get_ingress_ip_or_host():
