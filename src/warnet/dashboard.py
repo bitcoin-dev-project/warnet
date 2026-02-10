@@ -13,7 +13,7 @@ def dashboard():
     try:
         wait_for_ingress_endpoint(timeout=timeout)
     except Exception as e:
-        print(e)
+        click.echo(e)
         return
     ip = get_ingress_ip_or_host()
 
