@@ -10,7 +10,11 @@ def dashboard():
 
     timeout = 300
     click.echo(f"Waiting {timeout} seconds for ingress endpoint ...")
-    wait_for_ingress_endpoint(timeout=timeout)
+    try:
+        wait_for_ingress_endpoint(timeout=timeout)
+    except Exception as e:
+        print(e)
+        return
     ip = get_ingress_ip_or_host()
 
     url = f"http://{ip}"
