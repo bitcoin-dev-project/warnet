@@ -347,7 +347,7 @@ def wait_for_ingress_endpoint(timeout=300):
                 + str(e).rstrip()
             )
             if e.status == 404:
-                msg += "\n\nDid you deploy a network?"
+                msg += "\n\nDid you deploy a network with caddy enabled?"
             raise Exception(msg) from e
         lb_ingress = ingress.status.load_balancer.ingress
         if lb_ingress and (lb_ingress[0].hostname or lb_ingress[0].ip):
