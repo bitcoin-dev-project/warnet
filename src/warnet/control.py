@@ -146,14 +146,8 @@ def stop_all_scenarios(scenarios) -> None:
     console.print("[bold green]All scenarios have been stopped.[/bold green]")
 
 
-@click.option(
-    "--force",
-    is_flag=True,
-    default=False,
-    help="Skip confirmations",
-)
 @click.command()
-def down(force):
+def down():
     """Bring down a running warnet quickly"""
 
     def uninstall_release(namespace, release_name):
@@ -181,33 +175,36 @@ def down(force):
             for release in releases:
                 release_list.append({"namespace": namespace, "name": release["name"]})
 
-    if not force:
-        affected_namespaces = set([entry["namespace"] for entry in release_list])
-        namespace_listing = "\n  ".join(affected_namespaces)
-        confirmed = "confirmed"
-        click.secho("Preparing to bring down the running Warnet...", fg="yellow")
-        click.secho("The listed namespaces will be affected:", fg="yellow")
-        click.secho(f"  {namespace_listing}", fg="blue")
+    confirmed = "confirmed"
+    click.secho("Preparing to bring down the running Warnet...", fg="yellow")
 
-        proj_answers = inquirer.prompt(
-            [
-                inquirer.Confirm(
-                    confirmed,
-                    message=click.style(
-                        "Do you want to bring down the running Warnet?", fg="yellow", bold=False
-                    ),
-                    default=False,
+    table = Table(title="PODS TO DESTROY", show_header=True, header_style="bold red")
+    table.add_column("Namespace", style="red")
+    table.add_column("Name", style="red")
+    for release in release_list:
+        table.add_row(release["namespace"], release["name"])
+    console.print(table)
+    click.secho("PODS WILL BE DESTROYED FOREVER IF YOU TYPE 'y'", fg="red", bg="white")
+
+    proj_answers = inquirer.prompt(
+        [
+            inquirer.Confirm(
+                confirmed,
+                message=click.style(
+                    "Do you want to bring down the running Warnet?", fg="yellow", bold=False
                 ),
-            ]
-        )
-        if not proj_answers:
-            click.secho("Operation cancelled by user.", fg="yellow")
-            sys.exit(0)
-        if proj_answers[confirmed]:
-            click.secho("Bringing down the warnet...", fg="yellow")
-        else:
-            click.secho("Operation cancelled by user", fg="yellow")
-            sys.exit(0)
+                default=False,
+            ),
+        ]
+    )
+    if not proj_answers:
+        click.secho("Operation cancelled by user.", fg="yellow")
+        sys.exit(0)
+    if proj_answers[confirmed]:
+        click.secho("Bringing down the warnet...", fg="yellow")
+    else:
+        click.secho("Operation cancelled by user", fg="yellow")
+        sys.exit(0)
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []

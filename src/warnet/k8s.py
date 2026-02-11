@@ -4,7 +4,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from time import time, sleep
+from time import sleep, time
 from typing import Optional
 
 import yaml
