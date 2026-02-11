@@ -11,12 +11,12 @@ from .k8s import (
     K8sError,
     get_cluster_of_current_context,
     get_namespaces_by_type,
-    get_service_accounts_in_namespace,
+    get_token_for_service_acount,
+    get_warnet_user_service_accounts_in_namespace,
     open_kubeconfig,
 )
 from .namespaces import copy_namespaces_defaults, namespaces
 from .network import copy_network_defaults
-from .process import run_command
 
 
 @click.group(name="admin", hidden=True)
@@ -84,21 +84,21 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
     for v1namespace in warnet_namespaces:
         namespace = v1namespace.metadata.name
         click.echo(f"Processing namespace: {namespace}")
-        service_accounts = get_service_accounts_in_namespace(namespace)
+        service_accounts = get_warnet_user_service_accounts_in_namespace(namespace)
 
         for sa in service_accounts:
+            name = sa.metadata.name
             # Create a token for the ServiceAccount with specified duration
-            command = f"kubectl create token {sa} -n {namespace} --duration={token_duration}s"
             try:
-                token = run_command(command)
+                token = get_token_for_service_acount(sa, token_duration)
             except Exception as e:
                 click.echo(
-                    f"Failed to create token for ServiceAccount {sa} in namespace {namespace}. Error: {str(e)}. Skipping..."
+                    f"Failed to create token for ServiceAccount {name} in namespace {namespace}. Error: {str(e)}. Skipping..."
                 )
                 continue
 
             # Create a kubeconfig file for the user
-            kubeconfig_file = os.path.join(kubeconfig_dir, f"{sa}-{namespace}-kubeconfig")
+            kubeconfig_file = os.path.join(kubeconfig_dir, f"{name}-{namespace}-kubeconfig")
 
             # TODO: move yaml  out of python code to resources/manifests/
             #
@@ -109,21 +109,25 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
                 "apiVersion": "v1",
                 "kind": "Config",
                 "clusters": [cluster],
-                "users": [{"name": sa, "user": {"token": token}}],
+                "users": [{"name": name, "user": {"token": token}}],
                 "contexts": [
                     {
-                        "name": f"{sa}-{namespace}",
-                        "context": {"cluster": cluster["name"], "namespace": namespace, "user": sa},
+                        "name": f"{name}-{namespace}",
+                        "context": {
+                            "cluster": cluster["name"],
+                            "namespace": namespace,
+                            "user": name,
+                        },
                     }
                 ],
-                "current-context": f"{sa}-{namespace}",
+                "current-context": f"{name}-{namespace}",
             }
 
             # Write to a YAML file
             with open(kubeconfig_file, "w") as f:
                 yaml.dump(kubeconfig_dict, f, default_flow_style=False)
 
-            click.echo(f"    Created kubeconfig file for {sa}: {kubeconfig_file}")
+            click.echo(f"    Created kubeconfig file for {name}: {kubeconfig_file}")
 
     click.echo("---")
     click.echo(

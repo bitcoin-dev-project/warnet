@@ -4,13 +4,13 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from time import time, sleep
+from time import sleep, time
 from typing import Optional
 
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client import CoreV1Api
-from kubernetes.client.models import V1Namespace, V1Pod, V1PodList
+from kubernetes.client.models import V1Namespace, V1Pod, V1PodList, V1TokenRequestSpec
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -516,14 +516,32 @@ def get_namespaces_by_type(namespace_type: str) -> list[V1Namespace]:
     return [ns for ns in namespaces if ns.metadata.name.startswith(namespace_type)]
 
 
-def get_service_accounts_in_namespace(namespace):
+def get_warnet_user_service_accounts_in_namespace(namespace):
     """
-    Get all service accounts in a namespace. Returns an empty list if no service accounts are found in the specified namespace.
+    Get all service accounts in a namespace that were created for human users
+    (not scenario commanders or other pods)
+    Returns an empty list if no applicable service accounts are found in the specified namespace.
     """
-    command = f"kubectl get serviceaccounts -n {namespace} -o jsonpath={{.items[*].metadata.name}}"
-    # skip the default service account created by k8s
-    service_accounts = run_command(command).split()
-    return [sa for sa in service_accounts if sa != "default"]
+    sclient = get_static_client()
+    sas = sclient.list_namespaced_service_account(namespace)
+    return [
+        sa
+        for sa in sas.items
+        if sa.metadata.labels
+        and "mission" in sa.metadata.labels
+        and sa.metadata.labels["mission"] == "user"
+    ]
+
+
+def get_token_for_service_acount(sa, duration):
+    sclient = get_static_client()
+    spec = V1TokenRequestSpec(
+        audiences=["https://kubernetes.default.svc"], expiration_seconds=duration
+    )
+    resp = sclient.create_namespaced_service_account_token(
+        name=sa.metadata.name, namespace=sa.metadata.namespace, body=spec
+    )
+    return resp.status.token
 
 
 def can_delete_pods(namespace: Optional[str] = None) -> bool:

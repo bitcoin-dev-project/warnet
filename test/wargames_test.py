@@ -87,6 +87,17 @@ class WargamesTest(TestBase):
         # Sanity check
         assert self.warnet("bitcoin rpc miner getblockcount") == "6"
 
+        self.log.info("Re-generate kubeconfigs after a scenario has been run")
+        self.log.info(self.warnet("admin create-kubeconfigs"))
+        kubeconfig_dir = Path("kubeconfigs/")
+        count = 0
+        for p in kubeconfig_dir.iterdir():
+            if p.is_file():
+                print(p)
+                assert "warnet-user" in str(p)
+                count += 1
+                assert count <= 1
+
 
 if __name__ == "__main__":
     test = WargamesTest()
