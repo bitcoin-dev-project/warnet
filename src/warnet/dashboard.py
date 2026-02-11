@@ -1,6 +1,8 @@
+import sys
+
 import click
 
-from .k8s import get_ingress_ip_or_host, wait_for_ingress_controller
+from .k8s import get_ingress_ip_or_host, wait_for_ingress_endpoint
 
 
 @click.command()
@@ -8,18 +10,14 @@ def dashboard():
     """Open the Warnet dashboard in default browser"""
     import webbrowser
 
-    wait_for_ingress_controller()
+    timeout = 300
+    click.echo(f"Waiting {timeout} seconds for ingress endpoint ...")
+    try:
+        wait_for_ingress_endpoint(timeout=timeout)
+    except Exception as e:
+        click.echo(e)
+        sys.exit(1)
     ip = get_ingress_ip_or_host()
-
-    if not ip:
-        click.echo("Error: Could not get the IP address of the dashboard")
-        click.echo(
-            "If you are running Minikube please run 'minikube tunnel' in a separate terminal"
-        )
-        click.echo(
-            "If you are running in the cloud, you may need to wait a short while while the load balancer is provisioned"
-        )
-        return
 
     url = f"http://{ip}"
 
