@@ -44,10 +44,6 @@ options:
 ### `warnet down`
 Bring down a running warnet quickly
 
-options:
-| name   | type   | required   | default   |
-|--------|--------|------------|-----------|
-| force  | Bool   |            | False     |
 
 ### `warnet import-network`
 Create a network from an imported lightning network graph JSON
