@@ -1,3 +1,5 @@
+import sys
+
 import click
 
 from .k8s import get_ingress_ip_or_host, wait_for_ingress_endpoint
@@ -14,7 +16,7 @@ def dashboard():
         wait_for_ingress_endpoint(timeout=timeout)
     except Exception as e:
         click.echo(e)
-        return
+        sys.exit(1)
     ip = get_ingress_ip_or_host()
 
     url = f"http://{ip}"
