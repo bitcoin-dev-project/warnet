@@ -60,24 +60,25 @@ def custom_graph(
                 image = {"tag": entry["version"]}
             node = {"name": f"tank-{index:04d}", "addnode": [], "image": image}
 
-            # Add round-robin connection
-            next_node = (index + 1) % total_count
-            node["addnode"].append(f"tank-{next_node:04d}")
-            connections.add((index, next_node))
-
-            # Add random connections
+            # Connect to other nodes
             available_nodes = list(range(total_count))
+            # Do not connect to self
             available_nodes.remove(index)
-            if next_node in available_nodes:
-                available_nodes.remove(next_node)
-
-            for _ in range(min(int(entry["connections"]) - 1, len(available_nodes))):
-                random_node = random.choice(available_nodes)
-                # Avoid circular loops of A -> B -> A
-                if (random_node, index) not in connections:
-                    node["addnode"].append(f"tank-{random_node:04d}")
-                    connections.add((index, random_node))
-                    available_nodes.remove(random_node)
+            for count in range(min(int(entry["connections"]), len(available_nodes))):
+                # Add neighbor connection first to create minimal round-robin
+                if count == 0:
+                    next_node = (index + 1) % total_count
+                    node["addnode"].append(f"tank-{next_node:04d}")
+                    connections.add((index, next_node))
+                    if next_node in available_nodes:
+                        available_nodes.remove(next_node)
+                else:
+                    random_node = random.choice(available_nodes)
+                    # Avoid circular loops of A -> B -> A
+                    if (random_node, index) not in connections:
+                        node["addnode"].append(f"tank-{random_node:04d}")
+                        connections.add((index, random_node))
+                        available_nodes.remove(random_node)
 
             nodes.append(node)
             index += 1
