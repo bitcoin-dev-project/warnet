@@ -98,6 +98,7 @@ class WargamesTest(TestBase):
                 count += 1
                 assert count <= 1
 
+
 if __name__ == "__main__":
     test = WargamesTest()
     test.run_test()

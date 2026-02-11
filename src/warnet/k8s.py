@@ -4,7 +4,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from time import time, sleep
+from time import sleep, time
 from typing import Optional
 
 import yaml
@@ -524,18 +524,22 @@ def get_warnet_user_service_accounts_in_namespace(namespace):
     """
     sclient = get_static_client()
     sas = sclient.list_namespaced_service_account(namespace)
-    return [sa for sa in sas.items if sa.metadata.labels and "mission" in sa.metadata.labels and sa.metadata.labels["mission"] == "user"]
+    return [
+        sa
+        for sa in sas.items
+        if sa.metadata.labels
+        and "mission" in sa.metadata.labels
+        and sa.metadata.labels["mission"] == "user"
+    ]
+
 
 def get_token_for_service_acount(sa, duration):
     sclient = get_static_client()
     spec = V1TokenRequestSpec(
-        audiences=["https://kubernetes.default.svc"],
-        expiration_seconds=duration
+        audiences=["https://kubernetes.default.svc"], expiration_seconds=duration
     )
     resp = sclient.create_namespaced_service_account_token(
-        name=sa.metadata.name,
-        namespace=sa.metadata.namespace,
-        body=spec
+        name=sa.metadata.name, namespace=sa.metadata.namespace, body=spec
     )
     return resp.status.token
 

@@ -17,7 +17,6 @@ from .k8s import (
 )
 from .namespaces import copy_namespaces_defaults, namespaces
 from .network import copy_network_defaults
-from .process import run_command
 
 
 @click.group(name="admin", hidden=True)
@@ -114,7 +113,11 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
                 "contexts": [
                     {
                         "name": f"{name}-{namespace}",
-                        "context": {"cluster": cluster["name"], "namespace": namespace, "user": name},
+                        "context": {
+                            "cluster": cluster["name"],
+                            "namespace": namespace,
+                            "user": name,
+                        },
                     }
                 ],
                 "current-context": f"{name}-{namespace}",
