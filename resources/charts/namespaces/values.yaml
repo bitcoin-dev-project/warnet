@@ -58,3 +58,4 @@ roles:
       - apiGroups: ["networking.k8s.io"]
         resources: ["ingresses"]
         verbs: ["list", "get", "watch"]
+podLimit: 100

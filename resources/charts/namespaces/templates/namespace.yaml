@@ -2,3 +2,12 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.namespaceName | default .Release.Name }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-pod-limit
+  namespace: {{ .Values.namespaceName | default .Release.Name }}
+spec:
+  hard:
+    pods: {{ .Values.podLimit | quote }}
