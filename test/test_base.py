@@ -2,7 +2,9 @@ import json
 import logging
 import logging.config
 import os
+import pexpect
 import re
+import sys
 import threading
 from pathlib import Path
 from subprocess import run
@@ -45,7 +47,10 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                self.warnet("down --force")
+                session = pexpect.spawn(f"warnet down", encoding="utf-8")
+                session.logfile = sys.stdout
+                session.expect("Do you want to bring down the running Warnet?", timeout=30)
+                session.sendline("y")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")
