@@ -64,7 +64,9 @@ class WargamesTest(TestBase):
 
         self.log.info("Switch to wargames player context")
         self.log.info(self.warnet(f"admin create-kubeconfigs --kubeconfig-dir={self.kconfigdir}"))
-        clicker = pexpect.spawn(f"warnet auth {self.kconfigdir}/warnet-user-wargames-red-kubeconfig")
+        clicker = pexpect.spawn(
+            f"warnet auth {self.kconfigdir}/warnet-user-wargames-red-kubeconfig"
+        )
         while clicker.expect(["Overwrite", "Updated kubeconfig"]) == 0:
             print(clicker.before, clicker.after)
             clicker.sendline("y")
@@ -85,11 +87,13 @@ class WargamesTest(TestBase):
         assert self.warnet("bitcoin rpc armada getblockcount") == "6"
 
         self.log.info("Check pod limit per namespace")
-        for i in range(10):
+        for _ in range(10):
             stream_command(
                 f"warnet run {self.scen_test_dir / 'nothing.py'} --source_dir={self.scen_src_dir}"
             )
-        assert len(scenarios_deployed()) == 2, f"Unexpected scenarios deployed:{scenarios_deployed()}"
+        assert len(scenarios_deployed()) == 2, (
+            f"Unexpected scenarios deployed:{scenarios_deployed()}"
+        )
 
         self.log.info("Restore admin context")
         stream_command(f"kubectl config use-context {self.initial_context}")

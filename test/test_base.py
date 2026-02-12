@@ -2,7 +2,6 @@ import json
 import logging
 import logging.config
 import os
-import pexpect
 import re
 import sys
 import threading
@@ -10,6 +9,8 @@ from pathlib import Path
 from subprocess import run
 from tempfile import mkdtemp
 from time import sleep
+
+import pexpect
 
 from warnet import SRC_DIR
 from warnet.k8s import get_pod_exit_status
@@ -47,7 +48,7 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                session = pexpect.spawn(f"warnet down", encoding="utf-8")
+                session = pexpect.spawn("warnet down", encoding="utf-8")
                 session.logfile = sys.stdout
                 session.expect("Do you want to bring down the running Warnet?", timeout=30)
                 session.sendline("y")
