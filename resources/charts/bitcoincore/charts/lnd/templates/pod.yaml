@@ -57,6 +57,7 @@ spec:
 
               {{- if .Values.cipherSeedMnemonic }}
               PHRASE='{{ .Values.cipherSeedMnemonic | toJson }}'
+              echo "{\"cipher_seed_mnemonic\":$PHRASE}" > /tmp/genseed.json
               {{- else }}
               until curl --silent --insecure https://localhost:8080/v1/genseed > /tmp/genseed.json; do
                 sleep 5
