@@ -8,6 +8,7 @@ from test_base import TestBase
 
 from warnet.k8s import get_kubeconfig_value
 from warnet.process import stream_command
+from warnet.status import _get_deployed_scenarios as scenarios_deployed
 
 
 class WargamesTest(TestBase):
@@ -19,6 +20,7 @@ class WargamesTest(TestBase):
             Path(os.path.dirname(__file__)).parent / "resources" / "scenarios" / "test_scenarios"
         )
         self.initial_context = get_kubeconfig_value("{.current-context}")
+        self.kconfigdir = self.tmpdir / "kubeconfigs"
 
     def run_test(self):
         try:
@@ -61,8 +63,10 @@ class WargamesTest(TestBase):
         assert self.warnet("bitcoin rpc miner getblockcount") == "5"
 
         self.log.info("Switch to wargames player context")
-        self.log.info(self.warnet("admin create-kubeconfigs"))
-        clicker = pexpect.spawn("warnet auth kubeconfigs/warnet-user-wargames-red-kubeconfig")
+        self.log.info(self.warnet(f"admin create-kubeconfigs --kubeconfig-dir={self.kconfigdir}"))
+        clicker = pexpect.spawn(
+            f"warnet auth {self.kconfigdir}/warnet-user-wargames-red-kubeconfig"
+        )
         while clicker.expect(["Overwrite", "Updated kubeconfig"]) == 0:
             print(clicker.before, clicker.after)
             clicker.sendline("y")
@@ -82,16 +86,24 @@ class WargamesTest(TestBase):
         # Nothing was accesible
         assert self.warnet("bitcoin rpc armada getblockcount") == "6"
 
+        self.log.info("Check pod limit per namespace")
+        for _ in range(10):
+            stream_command(
+                f"warnet run {self.scen_test_dir / 'nothing.py'} --source_dir={self.scen_src_dir}"
+            )
+        assert len(scenarios_deployed()) == 2, (
+            f"Unexpected scenarios deployed:{scenarios_deployed()}"
+        )
+
         self.log.info("Restore admin context")
         stream_command(f"kubectl config use-context {self.initial_context}")
         # Sanity check
         assert self.warnet("bitcoin rpc miner getblockcount") == "6"
 
         self.log.info("Re-generate kubeconfigs after a scenario has been run")
-        self.log.info(self.warnet("admin create-kubeconfigs"))
-        kubeconfig_dir = Path("kubeconfigs/")
+        self.log.info(self.warnet(f"admin create-kubeconfigs --kubeconfig-dir={self.kconfigdir}"))
         count = 0
-        for p in kubeconfig_dir.iterdir():
+        for p in self.kconfigdir.iterdir():
             if p.is_file():
                 print(p)
                 assert "warnet-user" in str(p)

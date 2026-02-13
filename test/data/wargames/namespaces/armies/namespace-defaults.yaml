@@ -3,3 +3,4 @@ users:
     roles:
       - pod-viewer
       - pod-manager
+podLimit: 3

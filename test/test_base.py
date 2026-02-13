@@ -3,11 +3,14 @@ import logging
 import logging.config
 import os
 import re
+import sys
 import threading
 from pathlib import Path
 from subprocess import run
 from tempfile import mkdtemp
 from time import sleep
+
+import pexpect
 
 from warnet import SRC_DIR
 from warnet.k8s import get_pod_exit_status
@@ -45,7 +48,10 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                self.warnet("down --force")
+                session = pexpect.spawn("warnet down", encoding="utf-8")
+                session.logfile = sys.stdout
+                session.expect("Do you want to bring down the running Warnet?", timeout=30)
+                session.sendline("y")
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")
