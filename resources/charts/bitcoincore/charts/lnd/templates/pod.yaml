@@ -55,11 +55,15 @@ spec:
             - |
               rm -rf /root/.lnd/data/chain
 
+              {{- if .Values.cipherSeedMnemonic }}
+              PHRASE='{{ .Values.cipherSeedMnemonic | toJson }}'
+              {{- else }}
               until curl --silent --insecure https://localhost:8080/v1/genseed > /tmp/genseed.json; do
                 sleep 5
               done
 
               PHRASE=$(cat /tmp/genseed.json | grep -o '\[[^]]*\]')
+              {{- end }}
 
               until curl --fail --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"{{ .Values.macaroonRootKey }}\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"; do
                 sleep 5
