@@ -393,33 +393,33 @@ def _run(
 @click.command()
 @click.argument("pod_name", type=str, default="")
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
-@click.option("--namespace", type=str, default="default", show_default=True)
+@click.option("--namespace", type=str, default="", show_default=True)
 def logs(pod_name: str, follow: bool, namespace: str):
     """Show the logs of a pod"""
     return _logs(pod_name, follow, namespace)
 
 
 def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
-    namespace = get_default_namespace_or(namespace)
-
-    def format_pods(pods: list[V1Pod]) -> list[str]:
+    def format_pods(pods: list[V1Pod], namespace: Optional[str]) -> list[str]:
+        if namespace:
+            pods = [pod for pod in pods if pod.metadata.namespace == namespace]
         sorted_pods = sorted(pods, key=lambda pod: pod.metadata.creation_timestamp, reverse=True)
         return [f"{pod.metadata.name}: {pod.metadata.namespace}" for pod in sorted_pods]
 
     if pod_name == "":
         try:
             pod_list = []
-            formatted_commanders = format_pods(get_mission(COMMANDER_MISSION))
-            formatted_tanks = format_pods(get_mission(TANK_MISSION))
+            formatted_commanders = format_pods(get_mission(COMMANDER_MISSION), namespace)
+            formatted_tanks = format_pods(get_mission(TANK_MISSION), namespace)
             pod_list.extend(formatted_commanders)
             pod_list.extend(formatted_tanks)
 
         except Exception as e:
-            print(f"Could not fetch any pods in namespace ({namespace}): {e}")
+            click.secho(f"Could not fetch any pods: {e}")
             return
 
         if not pod_list:
-            print(f"Could not fetch any pods in namespace ({namespace})")
+            click.secho("Could not fetch any pods.")
             return
 
         q = [
@@ -435,8 +435,51 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
         else:
             return  # cancelled by user
 
+        try:
+            pod = get_pod(pod_name, namespace=namespace)
+        except Exception as e:
+            click.secho(e)
+            click.secho(f"Could not get pod: {pod_name}: {namespace}")
+            return
+
+    else:
+        pod = None
+        if not namespace:
+            namespaces = []
+            for v1namespace in get_namespaces():
+                namespace_candidate = v1namespace.metadata.name
+                try:
+                    pod = get_pod(pod_name, namespace=namespace_candidate)
+                    namespaces.append(namespace_candidate)
+                except Exception:
+                    pass
+
+            if len(namespaces) > 1:
+                click.secho(f"The pod '{pod.metadata.name}' is found in these namespaces:")
+                for ns in namespaces:
+                    click.secho(f"  - {ns}")
+                click.secho("Please limit your search to one of those namespaces.")
+                return
+
+            if not namespaces:
+                click.echo(f"Could not find pod in any namespaces: {pod_name}")
+                return
+
+            namespace = namespaces[0]
+
+        else:
+            try:
+                pod = get_pod(pod_name, namespace=namespace)
+            except Exception as e:
+                click.secho(e)
+                click.secho(f"Could not get pod: {pod_name}: {namespace}")
+                return
+
+        if not pod:
+            click.secho(f"Could not find: {pod_name}", fg="yellow")
+            sys.exit(1)
+
     try:
-        pod = get_pod(pod_name, namespace=namespace)
         eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
         available_container_names = [container.name for container in pod.spec.containers]
         container_name = next(
