@@ -109,7 +109,17 @@ spec:
         name: {{ include "lnd.fullname" . }}
       name: config
     - name: shared-volume
+      {{- if .Values.persistence.enabled }}
+      {{- if .Values.persistence.existingClaim }}
+      persistentVolumeClaim:
+        claimName: {{ .Values.persistence.existingClaim }}
+      {{- else }}
+      persistentVolumeClaim:
+        claimName: {{ include "lnd.fullname" . }}-data
+      {{- end }}
+      {{- else }}
       emptyDir: {}
+      {{- end }}
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}
