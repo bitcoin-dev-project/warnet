@@ -15,7 +15,7 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-podLabels: 
+podLabels:
   app: "warnet"
   mission: "tank"
 
@@ -61,12 +61,11 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-
 livenessProbe:
   exec:
     command:
-    - pidof
-    - bitcoind
+      - pidof
+      - bitcoind
   failureThreshold: 12
   initialDelaySeconds: 5
   periodSeconds: 5
@@ -78,6 +77,14 @@ readinessProbe:
   successThreshold: 1
   timeoutSeconds: 10
 
+# Node data persistence configuration. Create persisten volume claim, or use an existing one.
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 20Gi
+  # Use existing persistent volume claim instead of creating a new one.
+  existingClaim: ""
 
 # Additional volumes on the output Deployment definition.
 volumes: []

@@ -15,7 +15,7 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-podLabels: 
+podLabels:
   app: "warnet"
   mission: "lightning"
 
@@ -65,12 +65,11 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-
 livenessProbe:
   exec:
     command:
-    - pidof
-    - lnd
+      - pidof
+      - lnd
   failureThreshold: 3
   initialDelaySeconds: 60
   periodSeconds: 5
@@ -84,6 +83,15 @@ readinessProbe:
   tcpSocket:
     port: 10009
   timeoutSeconds: 1
+
+# Node data persistence configuration. Create persistent volume claim, or use an existing one.
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  # Use existing persistent volume claim instead of creating a new one.
+  existingClaim: ""
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -128,6 +136,6 @@ defaultConfig: ""
 channels: []
 
 circuitbreaker:
-  enabled: false  # Default to disabled
+  enabled: false # Default to disabled
   image: carlakirkcohen/circuitbreaker:attackathon-test
   httpPort: 9235
