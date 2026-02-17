@@ -12,21 +12,36 @@ spec:
       targetPort: rpc
       protocol: TCP
       name: rpc
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.rpcNodePort) }}
+      nodePort: {{ .Values.service.rpcNodePort }}
+      {{- end }}
     - port: {{ index .Values.global .Values.global.chain "P2PPort" }}
       targetPort: p2p
       protocol: TCP
       name: p2p
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.p2pNodePort) }}
+      nodePort: {{ .Values.service.p2pNodePort }}
+      {{- end }}
     - port: {{ .Values.global.ZMQTxPort }}
       targetPort: zmq-tx
       protocol: TCP
       name: zmq-tx
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.zmqTxNodePort) }}
+      nodePort: {{ .Values.service.zmqTxNodePort }}
+      {{- end }}
     - port: {{ .Values.global.ZMQBlockPort }}
       targetPort: zmq-block
       protocol: TCP
       name: zmq-block
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.zmqBlockNodePort) }}
+      nodePort: {{ .Values.service.zmqBlockNodePort }}
+      {{- end }}
     - port: {{ .Values.prometheusMetricsPort }}
       targetPort: prom-metrics
       protocol: TCP
       name: prometheus-metrics
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.prometheusNodePort) }}
+      nodePort: {{ .Values.service.prometheusNodePort }}
+      {{- end }}
   selector:
     {{- include "bitcoincore.selectorLabels" . | nindent 4 }}
