@@ -99,6 +99,13 @@ def get_channels(namespace: Optional[str] = None) -> any:
     return channels
 
 
+def get_persistent_volume_claims(namespace: Optional[str] = None) -> any:
+    namespace = get_default_namespace_or(namespace)
+    sclient = get_static_client()
+    pvcs = sclient.list_namespaced_persistent_volume_claim(namespace=namespace)
+    return pvcs.items
+
+
 def create_kubernetes_object(
     kind: str, metadata: dict[str, any], spec: dict[str, any] = None
 ) -> dict[str, any]:
