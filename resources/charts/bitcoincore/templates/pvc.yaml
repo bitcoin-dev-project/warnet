@@ -5,6 +5,8 @@ metadata:
   name: {{ include "bitcoincore.fullname" . }}.{{ .Release.Namespace }}-bitcoincore-data
   labels:
     {{- include "bitcoincore.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}
