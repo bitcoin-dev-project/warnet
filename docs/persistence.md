@@ -11,11 +11,14 @@ Persistence is available for:
 
 Persistence is configured per-node in the network graph definition. Add a `persistence` section to any node's configuration. This creates a new PVC for that node, which is then mounted to the appropriate data directory inside the container.
 
+Also add `restartPolicy: Always` to the node's configuration to ensure that the pod is restarted if it is deleted or crashes. This is important to ensure proper restart after restart of the kubernetes cluster.
+
 ### Bitcoin Core Node
 
 ```yaml
 bitcoin_core:
   image: bitcoincore-27.1:latest
+  restartPolicy: Always
   persistence:
     enabled: true
     size: 20Gi # optional, default is 20Gi
@@ -29,6 +32,7 @@ bitcoin_core:
 <lnd or cln>:
   image:
     tag: <node-version-tag>
+  restartPolicy: Always
   persistence:
     enabled: true
     size: 10Gi # optional, default is 10Gi
