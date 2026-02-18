@@ -9,6 +9,7 @@ metadata:
 spec:
   endpoints:
     - port: prometheus-metrics
+      interval: {{ .Values.metricsScrapeInterval | default "15s" }}
   selector:
     matchLabels:
       app: {{ include "lnd.fullname" . }}
