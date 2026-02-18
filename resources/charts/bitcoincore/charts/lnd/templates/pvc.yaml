@@ -5,6 +5,8 @@ metadata:
   name: {{ include "lnd.fullname" . }}.{{ .Release.Namespace }}-lnd-data
   labels:
     {{- include "lnd.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}
