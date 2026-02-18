@@ -115,7 +115,7 @@ spec:
         claimName: {{ .Values.persistence.existingClaim }}
       {{- else }}
       persistentVolumeClaim:
-        claimName: {{ include "bitcoincore.fullname" . }}-data
+        claimName: {{ include "bitcoincore.fullname" . }}.{{ .Release.Namespace }}-bitcoincore-data
       {{- end }}
       {{- else }}
       emptyDir: {}
