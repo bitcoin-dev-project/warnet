@@ -176,7 +176,7 @@ class Commander(BitcoinTestFramework):
 
         if "miner" not in wallets:
             allwallets = node.listwalletdir()
-            if "miner" in allwallets:
+            if "'miner'" in str(allwallets):
                 node.loadwallet("miner")
             else:
                 node.createwallet("miner", descriptors=True)
