@@ -79,7 +79,7 @@ spec:
         - mountPath: /root/.lnd/tls.cert
           name: config
           subPath: tls.cert
-        - name: shared-volume
+        - name: lnd-data
           mountPath: /root/.lnd/
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
@@ -95,7 +95,7 @@ spec:
         - "--macaroonpath=/root/.lnd/data/chain/bitcoin/{{ .Values.global.chain }}/admin.macaroon"
         - "--httplisten=0.0.0.0:{{ .Values.circuitbreaker.httpPort }}"
       volumeMounts:
-        - name: shared-volume
+        - name: lnd-data
           mountPath: /root/.lnd/
         - name: config
           mountPath: /tls.cert
@@ -108,14 +108,14 @@ spec:
     - configMap:
         name: {{ include "lnd.fullname" . }}
       name: config
-    - name: shared-volume
+    - name: lnd-data
       {{- if .Values.persistence.enabled }}
       {{- if .Values.persistence.existingClaim }}
       persistentVolumeClaim:
         claimName: {{ .Values.persistence.existingClaim }}
       {{- else }}
       persistentVolumeClaim:
-        claimName: {{ include "lnd.fullname" . }}-data
+        claimName: {{ include "lnd.fullname" . }}.{{ .Release.Namespace }}-lnd-data
       {{- end }}
       {{- else }}
       emptyDir: {}

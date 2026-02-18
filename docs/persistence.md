@@ -20,7 +20,7 @@ bitcoin_core:
     enabled: true
     size: 20Gi # optional, default is 20Gi
     storageClass: "" # optional, default is cluster default storage class
-    accessMode: ReadWriteOnce # optional, default is ReadWriteOnce
+    accessMode: ReadWriteOncePod # optional, default is ReadWriteOncePod. For compatibility with older Kubernetes versions, you may need to set this to ReadWriteOnce
 ```
 
 ### Lightning Node
@@ -33,18 +33,29 @@ bitcoin_core:
     enabled: true
     size: 10Gi # optional, default is 10Gi
     storageClass: "" # optional, default is cluster default storage class
-    accessMode: ReadWriteOnce # optional, default is ReadWriteOnce
+    accessMode: ReadWriteOncePod # optional, default is ReadWriteOncePod. For compatibility with older Kubernetes versions, you may need to set this to ReadWriteOnce
 ```
 
 ## Existing PVCs
 
-To use custom made PVC or PVC from previous deployment, use the `existingClaim` field to reference an existing PVC by name:
+To use custom made PVC or PVC from previous deployment, use the `existingClaim` field to reference an existing PVC by name. If the network configuration or namespace did not change, there is no need to explicitly set the `existingClaim`. The existing PVC is used by default, since its generated name matches the default pattern. To explicitly use a PVC set the name like this:
 
 ```yaml
 persistence:
   enabled: true
-  existingClaim: "bitcoin-node-001-data"
+  existingClaim: "tank-0001.default-bitcoincore-data"
 ```
+
+The generated PVC names follow the pattern:
+`<pod-name>.<namespace>-<node-type>-data`
+
+For example for a bitcoin core node:
+`tank-0001.default-bitcoincore-data`
+
+And for a LND node:
+`tank-0001-ln.default-lnd-data`
+
+Get the list of PVCs in the cluster with `kubectl get pvc -A` and delete any PVCs that are no longer needed with `kubectl delete pvc <pvc-name> -n <namespace>`.
 
 ## Mount Paths
 

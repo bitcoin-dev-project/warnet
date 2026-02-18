@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "cln.fullname" . }}-data
+  name: {{ include "cln.fullname" . }}.{{ .Release.Namespace }}-cln-data
   labels:
     {{- include "cln.labels" . | nindent 4 }}
 spec:

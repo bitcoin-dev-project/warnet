@@ -88,7 +88,7 @@ readinessProbe:
 persistence:
   enabled: false
   storageClass: ""
-  accessMode: ReadWriteOnce
+  accessMode: ReadWriteOncePod
   size: 10Gi
   # Use existing persistent volume claim instead of creating a new one.
   existingClaim: ""
