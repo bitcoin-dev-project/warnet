@@ -18,7 +18,7 @@ nodes:
       prometheusMetricsPort: 9332
       extraContainers:
         - name: lnd-exporter
-          image: bitcoindevproject/lnd-exporter:latest
+          image: bitcoindevproject/lnd-exporter:0.2.0
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
