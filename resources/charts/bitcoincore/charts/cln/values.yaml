@@ -82,6 +82,15 @@ startupProbe:
       - "-c"
       - "lightning-cli createrune > /working/rune.json"
 
+# Node data persistence configuration. Create persistent volume claim, or use an existing one.
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOncePod
+  size: 10Gi
+  # Use existing persistent volume claim instead of creating a new one.
+  existingClaim: ""
+
 # Additional volumes on the output Deployment definition.
 volumes:
   - name: working

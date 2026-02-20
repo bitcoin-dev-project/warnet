@@ -33,6 +33,7 @@ from .k8s import (
     get_default_namespace_or,
     get_mission,
     get_namespaces,
+    get_persistent_volume_claims,
     get_pod,
     get_pods,
     pod_log,
@@ -160,12 +161,18 @@ def down():
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
 
+    def delete_persistent_volume_claim(pvc_name, namespace):
+        cmd = f"kubectl delete pvc --ignore-not-found=true {pvc_name} -n {namespace}"
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Initiated deletion of PVC: {pvc_name} in namespace {namespace}"
+
     if not can_delete_pods():
         click.secho("You do not have permission to bring down the network.", fg="red")
         return
 
     namespaces = get_namespaces()
     release_list: list[dict[str, str]] = []
+    pvc_list: list[dict[str, str]] = []
     for v1namespace in namespaces:
         namespace = v1namespace.metadata.name
         command = f"helm list --namespace {namespace} -o json"
@@ -174,6 +181,10 @@ def down():
             releases = json.loads(result)
             for release in releases:
                 release_list.append({"namespace": namespace, "name": release["name"]})
+
+            pvcs = get_persistent_volume_claims(namespace)
+            for pvc in pvcs:
+                pvc_list.append({"namespace": namespace, "name": pvc.metadata.name})
 
     confirmed = "confirmed"
     click.secho("Preparing to bring down the running Warnet...", fg="yellow")
@@ -206,6 +217,36 @@ def down():
         click.secho("Operation cancelled by user", fg="yellow")
         sys.exit(0)
 
+    # Prompt to also delete PVCs containing persistent data
+    pvc_answers = None
+    if len(pvc_list) > 0:
+        table = Table(
+            title="Persistent Volume Claims to be destroyed",
+            show_header=True,
+            header_style="bold red",
+        )
+        table.add_column("Namespace", style="red")
+        table.add_column("Name", style="red")
+        for pvc in pvc_list:
+            table.add_row(pvc["namespace"], pvc["name"])
+        console.print(table)
+        pvc_confirmed = "pvc_confirmed"
+        pvc_answers = inquirer.prompt(
+            [
+                inquirer.Confirm(
+                    pvc_confirmed,
+                    message=click.style(
+                        "Do you also want to delete all PVCs containing persistent node data?",
+                        fg="yellow",
+                        bold=False,
+                    ),
+                    default=False,
+                ),
+            ]
+        )
+
+    delete_pvcs = pvc_answers and pvc_answers[pvc_confirmed]
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
 
@@ -219,6 +260,13 @@ def down():
         pods = get_pods()
         for pod in pods:
             futures.append(executor.submit(delete_pod, pod.metadata.name, pod.metadata.namespace))
+
+        # Delete PVCs if confirmed
+        if delete_pvcs:
+            for pvc in pvc_list:
+                futures.append(
+                    executor.submit(delete_persistent_volume_claim, pvc["name"], pvc["namespace"])
+                )
 
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
