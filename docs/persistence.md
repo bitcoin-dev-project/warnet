@@ -11,7 +11,7 @@ Persistence is available for:
 
 Persistence is configured per-node in the network graph definition. Add a `persistence` section to any node's configuration. This creates a new PVC for that node, which is then mounted to the appropriate data directory inside the container.
 
-Also add `restartPolicy: Always` to the node's configuration to ensure that the pod is restarted if it is deleted or crashes. This is important to ensure proper restart after restart of the kubernetes cluster.
+Also add `restartPolicy: Always` to the node's configuration to ensure that the pod is restarted if it is deleted or crashes. This is important to ensure proper restart after restart of the kubernetes cluster. If there is a risk of hard resets of the cluster, add `reindex=1` to bitcoin_core config to reindex the blockchain on startup and fix potential corrupted chain state.
 
 ### Bitcoin Core Node
 
@@ -24,6 +24,8 @@ bitcoin_core:
     size: 20Gi # optional, default is 20Gi
     storageClass: "" # optional, default is cluster default storage class
     accessMode: ReadWriteOncePod # optional, default is ReadWriteOncePod. For compatibility with older Kubernetes versions, you may need to set this to ReadWriteOnce
+  config: |
+    reindex=1
 ```
 
 ### Lightning Node
