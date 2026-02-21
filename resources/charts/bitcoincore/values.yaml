@@ -32,6 +32,12 @@ securityContext: {}
 
 service:
   type: ClusterIP
+  # NodePorts are only used if service.type is NodePort, values must be in the range 30000-32767
+  p2pNodePort:
+  rpcNodePort:
+  zmqTxNodePort:
+  zmqBlockNodePort:
+  prometheusNodePort:
 
 ingress:
   enabled: false

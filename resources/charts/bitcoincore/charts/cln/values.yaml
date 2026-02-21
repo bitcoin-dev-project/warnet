@@ -22,6 +22,10 @@ securityContext: {}
 
 service:
   type: ClusterIP
+  # NodePorts are only used if service.type is NodePort, values must be in the range 30000-32767
+  p2pNodePort:
+  rpcNodePort:
+  restNodePort:
 
 P2PPort: 9735
 RPCPort: 9736

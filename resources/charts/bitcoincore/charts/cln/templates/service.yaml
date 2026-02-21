@@ -12,13 +12,22 @@ spec:
       targetPort: p2p
       protocol: TCP
       name: p2p
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.p2pNodePort) }}
+      nodePort: {{ .Values.service.p2pNodePort }}
+      {{- end }}
     - port: {{ .Values.RPCPort }}
       targetPort: rpc
       protocol: TCP
       name: rpc
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.rpcNodePort) }}
+      nodePort: {{ .Values.service.rpcNodePort }}
+      {{- end }}
     - port: {{ .Values.RestPort }}
       targetPort: rest
       protocol: TCP
       name: rest
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.restNodePort) }}
+      nodePort: {{ .Values.service.restNodePort }}
+      {{- end }}
   selector:
     {{- include "cln.selectorLabels" . | nindent 4 }}
