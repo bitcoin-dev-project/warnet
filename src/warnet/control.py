@@ -151,9 +151,10 @@ def down():
     """Bring down a running warnet quickly"""
 
     def uninstall_release(namespace, release_name):
-        cmd = f"helm uninstall {release_name} --namespace {namespace} --wait=false"
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Initiated uninstall for: {release_name} in namespace {namespace}"
+        cmd = f"helm uninstall {release_name} --namespace {namespace} --wait"
+        print(f"Initiating uninstall of {release_name} in namespace {namespace}")
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Uninstalled {release_name} in namespace {namespace}"
 
     def delete_pod(pod_name, namespace):
         cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
@@ -214,6 +215,13 @@ def down():
             futures.append(
                 executor.submit(uninstall_release, release["namespace"], release["name"])
             )
+
+        # Wait for all tasks to complete and print results
+        for future in as_completed(futures):
+            console.print(f"[yellow]{future.result()}[/yellow]")
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = []
 
         # Delete remaining pods
         pods = get_pods()
