@@ -159,6 +159,7 @@ def messages(tank_a: str, tank_b: str, chain: str):
     """
     Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
 
+    tank_b can be a tank pod name, an onion address, or any external peer identifier.
     Optionally, include a namespace like so: tank-name.namespace
     """
 
@@ -174,7 +175,7 @@ def messages(tank_a: str, tank_b: str, chain: str):
     tank_b_split = tank_b.split(".")
     if len(tank_a_split) > 2 or len(tank_b_split) > 2:
         click.secho("Accepted formats: tank-name OR tank-name.namespace")
-        click.secho(f"Foramts found: {tank_a} {tank_b}")
+        click.secho(f"Formats found: {tank_a} {tank_b}")
         sys.exit(1)
 
     tank_a, namespace_a = parse_name_and_namespace(tank_a)
@@ -219,20 +220,30 @@ def messages(tank_a: str, tank_b: str, chain: str):
 
 def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespace_b: str):
     """
-    Fetch messages from the message capture files
+    Fetch messages from the message capture files.
+
+    Resolves tank_b to an IP via kubectl for known pods. If that fails (e.g. for
+    onion addresses or external peers), falls back to matching tank_b directly
+    against message capture directory names.
     """
     subdir = "" if chain == "main" else f"{chain}/"
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
-    # Get the IP of node_b
-    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
-    tank_b_ip = run_command(cmd).strip()
+    # Try to resolve tank_b to IPs via kubectl; fall back to tank_b directly on failure.
+    try:
+        cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
+        tank_b_ip = run_command(cmd).strip()
+    except Exception:
+        tank_b_ip = ""
 
-    # Get the service IP of node_b
-    cmd = (
-        f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
-    )
-    tank_b_service_ip = run_command(cmd).strip()
+    try:
+        cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
+        tank_b_service_ip = run_command(cmd).strip()
+    except Exception:
+        tank_b_service_ip = ""
+
+    # Use resolved IPs for matching, or tank_b itself if kubectl lookups came up empty.
+    identifiers = [ip for ip in [tank_b_ip, tank_b_service_ip] if ip] or [tank_b]
 
     # List directories in the message capture folder
     cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- ls {base_dir}"
@@ -242,7 +253,7 @@ def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespa
     messages = []
 
     for dir_name in dirs:
-        if tank_b_ip in dir_name or tank_b_service_ip in dir_name:
+        if any(ident in dir_name for ident in identifiers):
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container

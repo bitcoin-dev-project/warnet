@@ -76,6 +76,18 @@ class OnionTest(TestBase):
 
         self.wait_for_predicate(onion_connect, timeout=20 * 60)
 
+        self.log.info("Checking captured messages from onion peer...")
+
+        # tank-0001's onion address as seen by tank-0000
+        onion_b = onions["tank-0001"]
+
+        result = self.warnet(f"bitcoin messages tank-0000 {onion_b}")
+        self.log.info(f"Messages result: {result}")
+        assert result and len(result.strip()) > 0, (
+            f"Expected messages between tank-0000 and {onion_b} but got none"
+        )
+        self.log.info("Successfully retrieved messages from onion peer!")
+
 
 if __name__ == "__main__":
     test = OnionTest()
