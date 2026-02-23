@@ -155,10 +155,20 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
 @click.argument("tank_a", type=str, required=True)
 @click.argument("tank_b", type=str, required=True)
 @click.option("--chain", default="regtest", show_default=True)
+def is_external_peer(name: str) -> bool:
+    """Check if tank_b is an external/non-tank peer (e.g. onion address or raw IP)"""
+    return ".onion" in name or not name.startswith("tank-")
+
+
+@bitcoin.command()
+@click.argument("tank_a", type=str, required=True)
+@click.argument("tank_b", type=str, required=True)
+@click.option("--chain", default="regtest", show_default=True)
 def messages(tank_a: str, tank_b: str, chain: str):
     """
     Fetch messages sent between <tank_a pod name> and <tank_b pod name> in [chain]
 
+    tank_b can be a tank pod name, an onion address, or any external peer identifier.
     Optionally, include a namespace like so: tank-name.namespace
     """
 
@@ -177,12 +187,26 @@ def messages(tank_a: str, tank_b: str, chain: str):
         click.secho(f"Foramts found: {tank_a} {tank_b}")
         sys.exit(1)
 
+        # Only validate tank_b format if it's not an external peer
+    if not is_external_peer(tank_b):
+        tank_b_split = tank_b.split(".")
+        if len(tank_b_split) > 2:
+            click.secho("Accepted formats: tank-name OR tank-name.namespace")
+            click.secho(f"Format found: {tank_b}")
+            sys.exit(1)
+
     tank_a, namespace_a = parse_name_and_namespace(tank_a)
-    tank_b, namespace_b = parse_name_and_namespace(tank_b)
+
+    # If tank_b is an external peer (onion address etc.), skip namespace parsing
+    if is_external_peer(tank_b):
+        namespace_b = None
+    else:
+        tank_b, namespace_b = parse_name_and_namespace(tank_b)
 
     try:
         namespace_a = get_default_namespace_or(namespace_a)
-        namespace_b = get_default_namespace_or(namespace_b)
+        if namespace_b is not None:
+            namespace_b = get_default_namespace_or(namespace_b)
 
         # Get the messages
         messages = get_messages(
@@ -190,9 +214,8 @@ def messages(tank_a: str, tank_b: str, chain: str):
         )
 
         if not messages:
-            print(
-                f"No messages found between {tank_a} ({namespace_a}) and {tank_b} ({namespace_b})"
-            )
+            peer_display = tank_b if namespace_b is None else f"{tank_b} ({namespace_b})"
+            print(f"No messages found between {tank_a} ({namespace_a}) and {peer_display}")
             return
 
         # Process and print messages
@@ -224,15 +247,17 @@ def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespa
     subdir = "" if chain == "main" else f"{chain}/"
     base_dir = f"/root/.bitcoin/{subdir}message_capture"
 
-    # Get the IP of node_b
-    cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
-    tank_b_ip = run_command(cmd).strip()
+    if namespace_b is None:
+        # External peer (onion address, raw IP, etc.) — use address directly for dir matching
+        tank_b_ip = tank_b
+        tank_b_service_ip = tank_b
+    else:
+        # Known tank — look up IPs via kubectl
+        cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
+        tank_b_ip = run_command(cmd).strip()
 
-    # Get the service IP of node_b
-    cmd = (
-        f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
-    )
-    tank_b_service_ip = run_command(cmd).strip()
+        cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
+        tank_b_service_ip = run_command(cmd).strip()
 
     # List directories in the message capture folder
     cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- ls {base_dir}"
