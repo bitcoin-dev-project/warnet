@@ -151,10 +151,6 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
     return matching_logs
 
 
-@bitcoin.command()
-@click.argument("tank_a", type=str, required=True)
-@click.argument("tank_b", type=str, required=True)
-@click.option("--chain", default="regtest", show_default=True)
 def is_external_peer(name: str) -> bool:
     """Check if tank_b is an external/non-tank peer (e.g. onion address or raw IP)"""
     return ".onion" in name or not name.startswith("tank-")
@@ -181,8 +177,7 @@ def messages(tank_a: str, tank_b: str, chain: str):
         return tank_split[0], namespace
 
     tank_a_split = tank_a.split(".")
-    tank_b_split = tank_b.split(".")
-    if len(tank_a_split) > 2 or len(tank_b_split) > 2:
+    if len(tank_a_split) > 2:
         click.secho("Accepted formats: tank-name OR tank-name.namespace")
         click.secho(f"Foramts found: {tank_a} {tank_b}")
         sys.exit(1)
