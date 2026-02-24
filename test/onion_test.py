@@ -78,23 +78,22 @@ class OnionTest(TestBase):
 
         self.check_messages(onions)
 
+    def check_messages(self, onions: dict):
+        self.log.info("Checking captured messages from onion peer...")
 
-def check_messages(self, onions: dict):
-    self.log.info("Checking captured messages from onion peer...")
+        # tank-0001's onion address as seen by tank-0000
+        onion_b = onions["tank-0001"]
 
-    # tank-0001's onion address as seen by tank-0000
-    onion_b = onions["tank-0001"]
+        # Bitcoin message capture dirs are named like: <ip>_<port> or <onion>_<port>
+        # We pass the onion address with port appended as tank_b
+        onion_b_with_port = f"{onion_b}_18444"
 
-    # Bitcoin message capture dirs are named like: <ip>_<port> or <onion>_<port>
-    # We pass the onion address with port appended as tank_b
-    onion_b_with_port = f"{onion_b}_18444"
-
-    result = self.warnet(f"bitcoin messages tank-0000 {onion_b_with_port}")
-    self.log.info(f"Messages result: {result}")
-    assert result and len(result.strip()) > 0, (
-        f"Expected messages between tank-0000 and {onion_b_with_port} but got none"
-    )
-    self.log.info("Successfully retrieved messages from onion peer!")
+        result = self.warnet(f"bitcoin messages tank-0000 {onion_b_with_port}")
+        self.log.info(f"Messages result: {result}")
+        assert result and len(result.strip()) > 0, (
+            f"Expected messages between tank-0000 and {onion_b_with_port} but got none"
+        )
+        self.log.info("Successfully retrieved messages from onion peer!")
 
 
 if __name__ == "__main__":
