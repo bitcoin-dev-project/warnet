@@ -387,28 +387,27 @@ rpc_password = "{FORK_OBSERVER_RPC_PASSWORD}"
 
 
 def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str] = None):
-    network_file_path = directory / NETWORK_FILE
     namespace = get_default_namespace_or(namespace)
+    network_file_path = directory / NETWORK_FILE
+    default_file_path = directory / DEFAULTS_FILE
 
     with network_file_path.open() as f:
         network_file = yaml.safe_load(f)
 
+    with default_file_path.open() as f:
+        default_file = yaml.safe_load(f)
+
     needs_ln_init = False
     supported_ln_projects = ["lnd", "cln"]
-    for node in network_file["nodes"]:
-        ln_config = node.get("ln", {})
+    merged = network_file["nodes"].copy()
+    merged.append(default_file)
+    for node in merged:
         for key in supported_ln_projects:
-            if ln_config.get(key, False) and key in node and "channels" in node[key]:
+            if key in node and "channels" in node[key]:
                 needs_ln_init = True
                 break
         if needs_ln_init:
             break
-
-    default_file_path = directory / DEFAULTS_FILE
-    with default_file_path.open() as f:
-        default_file = yaml.safe_load(f)
-    if any(default_file.get("ln", {}).get(key, False) for key in supported_ln_projects):
-        needs_ln_init = True
 
     processes = []
     for node in network_file["nodes"]:
