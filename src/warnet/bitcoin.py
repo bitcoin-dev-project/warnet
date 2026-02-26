@@ -197,11 +197,10 @@ def messages(tank_a: str, tank_b: str, chain: str):
         namespace_b = None
     else:
         tank_b, namespace_b = parse_name_and_namespace(tank_b)
+        namespace_b = get_default_namespace_or(namespace_b)
 
     try:
         namespace_a = get_default_namespace_or(namespace_a)
-        if namespace_b is not None:
-            namespace_b = get_default_namespace_or(namespace_b)
 
         # Get the messages
         messages = get_messages(
