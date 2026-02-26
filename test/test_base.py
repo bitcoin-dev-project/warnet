@@ -97,9 +97,11 @@ class TestBase:
             timeout -= interval
         import inspect
 
-        raise Exception(
-            f"Timed out waiting for Truth from predicate: {inspect.getsource(predicate).strip()}"
-        )
+        try:
+            source = inspect.getsource(predicate).strip()
+        except (TypeError, OSError):
+            source = repr(predicate)
+        raise Exception(f"Timed out waiting for Truth from predicate: {source}")
 
     def get_tank(self, index):
         # TODO
