@@ -2,7 +2,9 @@
 
 import json
 import os
+import pexpect
 import subprocess
+import sys
 from pathlib import Path
 from time import sleep
 
@@ -52,6 +54,8 @@ class LNBasicTest(TestBase):
             self.wait_for_gossip_sync(self.lns[:3], 2 + 2)
             self.pay_invoice(sender="tank-0000-ln", recipient="tank-0002-ln")
 
+            # Test data persistence
+            self.test_data_persistence()
         finally:
             self.cleanup()
 
@@ -205,6 +209,61 @@ class LNBasicTest(TestBase):
         self.log.info(f"Got limits: {limits}")
 
         self.log.info("✅ Circuit Breaker API tests passed")
+
+    def get_ln_node_state(self, tankln):
+        if tankln == "tank-0000-ln":
+            # cln
+            pub = json.loads(self.warnet(f"ln rpc {tankln} getinfo"))["id"]
+            pays = json.loads(self.warnet(f"ln rpc {tankln} listpays"))
+        else:
+            # lnd
+            pub = json.loads(self.warnet(f"ln rpc {tankln} getinfo"))["identity_pubkey"]
+            pays = json.loads(self.warnet(f"ln rpc {tankln} listpayments"))
+        # same for both
+        invs = json.loads(self.warnet(f"ln rpc {tankln} listinvoices"))
+        self.log.info(f"{tankln} pubkey: {pub}")
+        return {
+            "pub": pub,
+            "pays": pays,
+            "invs": invs
+        }
+
+    def test_data_persistence(self):
+        self.log.info("Testing data persistence")
+        lns = [
+            # Persistence enabled
+            "tank-0000-ln",
+            "tank-0002-ln",
+            # No persistence
+            "tank-0003-ln",
+            "tank-0005-ln"
+        ]
+        self.log.info("Saving state from LN tanks")
+        first = {}
+        for ln in lns:
+            first[ln] = self.get_ln_node_state(ln)
+
+        self.log.info("Stopping network")
+        session = pexpect.spawn("warnet down", encoding="utf-8", dimensions=(60, 200))
+        session.logfile = sys.stdout
+        session.expect("Do you want to bring down the running Warnet?", timeout=30)
+        session.send("y")
+        session.expect("Do you also want to delete all PVCs", timeout=5)
+        session.send("n")
+        session.expect("Warnet teardown process completed", timeout=300)
+
+        self.log.info("Restarting...")
+        self.setup_network()
+
+        self.log.info("ln tanks 0000 and 0002 should have restored persistent data")
+        for ln in ["tank-0000-ln", "tank-0002-ln"]:
+            second = self.get_ln_node_state(ln)
+            assert first[ln] == second, first.items() ^ second.items()
+
+        self.log.info("ln tanks 0003 and 0005 should NOT have restored persistent data")
+        for ln in ["tank-0003-ln", "tank-0005-ln"]:
+            second = self.get_ln_node_state(ln)
+            assert first[ln] != second, first.items()
 
 
 if __name__ == "__main__":
