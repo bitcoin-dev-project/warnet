@@ -53,7 +53,15 @@ spec:
             - /bin/sh
             - -c
             - |
-              rm -rf /root/.lnd/data/chain
+              MACAROON_PATH="/root/.lnd/data/chain/bitcoin/{{ .Values.global.chain }}/admin.macaroon"
+
+              # If wallet is already initialized, unlock it and exit
+              if [ -f "$MACAROON_PATH" ]; then
+                until [ "$(curl --silent --insecure https://localhost:8080/v1/unlockwallet --data "{\"wallet_password\":\"AAAAAAAAAAA=\"}")" == "{}" ]; do
+                  sleep 5
+                done
+                exit 0
+              fi
 
               until curl --silent --insecure https://localhost:8080/v1/genseed > /tmp/genseed.json; do
                 sleep 5
