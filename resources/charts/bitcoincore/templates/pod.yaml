@@ -109,7 +109,17 @@ spec:
       {{- toYaml . | nindent 4 }}
     {{- end }}
     - name: data
+      {{- if .Values.persistence.enabled }}
+      {{- if .Values.persistence.existingClaim }}
+      persistentVolumeClaim:
+        claimName: {{ .Values.persistence.existingClaim }}
+      {{- else }}
+      persistentVolumeClaim:
+        claimName: {{ include "bitcoincore.fullname" . }}.{{ .Release.Namespace }}-bitcoincore-data
+      {{- end }}
+      {{- else }}
       emptyDir: {}
+      {{- end }}
     - name: config
       configMap:
         name: {{ include "bitcoincore.fullname" . }}

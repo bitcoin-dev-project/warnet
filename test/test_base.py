@@ -48,11 +48,25 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                session = pexpect.spawn("warnet down", encoding="utf-8")
+                session = pexpect.spawn("warnet down", encoding="utf-8", dimensions=(60, 200))
                 session.logfile = sys.stdout
                 session.expect("Do you want to bring down the running Warnet?", timeout=30)
-                session.sendline("y")
-                session.expect("Warnet teardown process completed", timeout=300)
+                session.send("y")
+
+                # Handle PVC question if asked within 5 seconds
+                outcome = session.expect(
+                    ["Do you also want to delete all PVCs", pexpect.EOF, pexpect.TIMEOUT], timeout=5
+                )
+                if outcome == 1:
+                    assert "Warnet teardown process completed" in session.before
+                    self.log.info("Warnet teardown process completed")
+                else:
+                    if outcome == 0:
+                        sleep(1)
+                        session.send("y")
+                    else:
+                        self.log.info("Didn't get delete PVC question, continuing...")
+                    session.expect("Warnet teardown process completed", timeout=300)
                 self.wait_for_all_tanks_status(target="stopped", timeout=60, interval=1)
         except Exception as e:
             self.log.error(f"Error bringing network down: {e}")

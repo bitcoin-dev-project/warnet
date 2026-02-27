@@ -56,6 +56,8 @@ spec:
         - mountPath: /root/.lightning/config
           name: config
           subPath: config
+        - mountPath: /root/.lightning
+          name: cln-data
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -80,6 +82,18 @@ spec:
     - configMap:
         name: {{ include "cln.fullname" . }}
       name: config
+    - name: cln-data
+      {{- if .Values.persistence.enabled }}
+      {{- if .Values.persistence.existingClaim }}
+      persistentVolumeClaim:
+        claimName: {{ .Values.persistence.existingClaim }}
+      {{- else }}
+      persistentVolumeClaim:
+        claimName: {{ include "cln.fullname" . }}.{{ .Release.Namespace }}-cln-data
+      {{- end }}
+      {{- else }}
+      emptyDir: {}
+      {{- end }}
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}

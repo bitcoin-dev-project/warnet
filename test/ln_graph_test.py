@@ -11,7 +11,7 @@ from warnet.k8s import wait_for_pod
 from warnet.process import run_command, stream_command
 
 
-class LNTest(TestBase):
+class LNGraphTest(TestBase):
     def __init__(self):
         super().__init__()
         self.graph_file = Path(os.path.dirname(__file__)) / "data" / "LN_10.json"
@@ -120,5 +120,5 @@ class LNTest(TestBase):
 
 
 if __name__ == "__main__":
-    test = LNTest()
+    test = LNGraphTest()
     test.run_test()
