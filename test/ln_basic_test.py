@@ -2,12 +2,12 @@
 
 import json
 import os
-import pexpect
 import subprocess
 import sys
 from pathlib import Path
 from time import sleep
 
+import pexpect
 from test_base import TestBase
 
 from warnet.process import stream_command
@@ -222,11 +222,7 @@ class LNBasicTest(TestBase):
         # same for both
         invs = json.loads(self.warnet(f"ln rpc {tankln} listinvoices"))
         self.log.info(f"{tankln} pubkey: {pub}")
-        return {
-            "pub": pub,
-            "pays": pays,
-            "invs": invs
-        }
+        return {"pub": pub, "pays": pays, "invs": invs}
 
     def test_data_persistence(self):
         self.log.info("Testing data persistence")
@@ -236,7 +232,7 @@ class LNBasicTest(TestBase):
             "tank-0002-ln",
             # No persistence
             "tank-0003-ln",
-            "tank-0005-ln"
+            "tank-0005-ln",
         ]
         self.log.info("Saving state from LN tanks")
         first = {}
