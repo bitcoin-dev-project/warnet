@@ -63,6 +63,15 @@ class LNInit(Commander):
             mining_tank.rpc_timeout = 6000
             return self.generatetoaddress(mining_tank, n, miner_addr, sync_fun=self.no_op)
 
+        ##
+        # Run only once per network, do this after p2p connections
+        # so everyone is on the same chain if there is a restart
+        # with inconsistent persistence.
+        ##
+        if mining_tank.getblockcount() > 0:
+            self.log.info("Chain already exists, exiting")
+            return
+
         self.log.info("Locking out of IBD...")
         gen(1)
 
