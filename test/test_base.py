@@ -48,10 +48,10 @@ class TestBase:
         try:
             self.log.info("Stopping network")
             if self.network:
-                session = pexpect.spawn("warnet down", encoding="utf-8")
+                session = pexpect.spawn("warnet down", encoding="utf-8", dimensions=(60, 200))
                 session.logfile = sys.stdout
                 session.expect("Do you want to bring down the running Warnet?", timeout=30)
-                session.sendline("y")
+                session.send("y")
 
                 # Handle PVC question if asked within 5 seconds
                 outcome = session.expect(
@@ -62,7 +62,8 @@ class TestBase:
                     self.log.info("Warnet teardown process completed")
                 else:
                     if outcome == 0:
-                        session.sendline("y")
+                        sleep(1)
+                        session.send("y")
                     else:
                         self.log.info("Didn't get delete PVC question, continuing...")
                     session.expect("Warnet teardown process completed", timeout=300)
