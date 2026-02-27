@@ -158,14 +158,16 @@ def down():
         return f"Uninstalled {release_name} in namespace {namespace}"
 
     def delete_pod(pod_name, namespace):
-        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --grace-period=0 --force"
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Initiated deletion of pod: {pod_name} in namespace {namespace}"
+        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --wait"
+        print(f"Initiated deletion of pod: {pod_name} in namespace {namespace}")
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Deleted pod: {pod_name} in namespace {namespace}"
 
     def delete_persistent_volume_claim(pvc_name, namespace):
-        cmd = f"kubectl delete pvc --ignore-not-found=true {pvc_name} -n {namespace}"
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Initiated deletion of PVC: {pvc_name} in namespace {namespace}"
+        cmd = f"kubectl delete pvc --ignore-not-found=true {pvc_name} -n {namespace} --wait"
+        print(f"Initiated deletion of PVC: {pvc_name} in namespace {namespace}")
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"Deleted PVC: {pvc_name} in namespace {namespace}"
 
     if not can_delete_pods():
         click.secho("You do not have permission to bring down the network.", fg="red")
