@@ -29,7 +29,7 @@ roles:
         resources: ["pods", "services"]
         verbs: ["get", "list", "watch", "create", "delete", "update"]
       - apiGroups: [""]
-        resources: ["pods"]
+        resources: ["pods", "secrets"]
         verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
       - apiGroups: [""]
         resources: ["pods/log", "pods/exec", "pods/attach", "pods/portforward"]

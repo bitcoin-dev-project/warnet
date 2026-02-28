@@ -10,7 +10,13 @@ from typing import Optional
 import yaml
 from kubernetes import client, config, watch
 from kubernetes.client import CoreV1Api
-from kubernetes.client.models import V1Namespace, V1Pod, V1PodList, V1TokenRequestSpec
+from kubernetes.client.models import (
+    V1DeleteOptions,
+    V1Namespace,
+    V1Pod,
+    V1PodList,
+    V1TokenRequestSpec,
+)
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
 from kubernetes.stream import stream
@@ -150,14 +156,41 @@ def apply_kubernetes_yaml_obj(yaml_obj: str) -> None:
 
 
 def delete_namespace(namespace: str) -> bool:
-    command = f"kubectl delete namespace {namespace} --ignore-not-found"
-    return run_command(command)
+    sclient = get_static_client()
+    sclient.sclient.delete_namespace(
+        name=namespace,
+        body=V1DeleteOptions,
+    )
+    print(f"Deleted namespace {namespace}")
 
 
-def delete_pod(pod_name: str, namespace: Optional[str] = None) -> bool:
+def delete_pod(pod_name: str, namespace: Optional[str] = None):
     namespace = get_default_namespace_or(namespace)
-    command = f"kubectl -n {namespace} delete pod {pod_name}"
-    return stream_command(command)
+    sclient = get_static_client()
+    sclient.delete_namespaced_pod(name=pod_name, namespace=namespace, body=V1DeleteOptions())
+    print(f"Deleted pod {pod_name}.{namespace}")
+
+
+def delete_release_secrets(release_name: str, namespace: Optional[str] = None):
+    namespace = get_default_namespace_or(namespace)
+    sclient = get_static_client()
+    secrets = sclient.list_namespaced_secret(
+        namespace=namespace, label_selector=f"owner=helm,name={release_name}"
+    )
+    for secret in secrets.items:
+        sclient.delete_namespaced_secret(
+            name=secret.metadata.name, namespace=namespace, body=V1DeleteOptions()
+        )
+        print(f"Deleted secret {release_name}.{namespace}")
+
+
+def delete_persistent_volume_claim(pvc_name: str, namespace: Optional[str] = None):
+    namespace = get_default_namespace_or(namespace)
+    sclient = get_static_client()
+    sclient.delete_namespaced_persistent_volume_claim(
+        name=pvc_name, namespace=namespace, body=V1DeleteOptions()
+    )
+    print(f"Deleted PVC {pvc_name}.{namespace}")
 
 
 def get_default_namespace() -> str:
