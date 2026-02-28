@@ -42,7 +42,7 @@ options:
 | to_all_users | Bool   |            | False     |
 
 ### `warnet down`
-Bring down a running warnet quickly
+Bring down a running warnet carefully
 
 
 ### `warnet import-network`
