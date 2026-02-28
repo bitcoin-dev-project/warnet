@@ -15,7 +15,6 @@ from kubernetes.client.models import (
     V1Namespace,
     V1Pod,
     V1PodList,
-    V1TokenRequestSpec,
 )
 from kubernetes.client.rest import ApiException
 from kubernetes.dynamic import DynamicClient
@@ -574,14 +573,15 @@ def get_warnet_user_service_accounts_in_namespace(namespace):
 
 
 def get_token_for_service_acount(sa, duration):
-    sclient = get_static_client()
-    spec = V1TokenRequestSpec(
-        audiences=["https://kubernetes.default.svc"], expiration_seconds=duration
+    # # The Kubernetes Python client’s TokenRequest calls were routed through
+    # # DigitalOcean’s konnectivity path, which overrides the requested audience
+    # # and enforces a 1-hour max expiration. `kubectl create token` uses a
+    # # different control-plane path that preserves the default API audience and allows longer durations.
+    # # `sclient.create_namespaced_service_account_token()` will NOT work :-(
+    command = (
+        f"kubectl create token {sa.metadata.name} -n {sa.metadata.namespace} --duration={duration}s"
     )
-    resp = sclient.create_namespaced_service_account_token(
-        name=sa.metadata.name, namespace=sa.metadata.namespace, body=spec
-    )
-    return resp.status.token
+    return run_command(command)
 
 
 def can_delete_pods(namespace: Optional[str] = None) -> bool:
