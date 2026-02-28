@@ -28,7 +28,9 @@ from .constants import (
 )
 from .k8s import (
     can_delete_pods,
+    delete_persistent_volume_claim,
     delete_pod,
+    delete_release_secrets,
     get_default_namespace,
     get_default_namespace_or,
     get_mission,
@@ -149,29 +151,16 @@ def stop_all_scenarios(scenarios) -> None:
 
 @click.command()
 def down():
-    """Bring down a running warnet quickly"""
-
-    def uninstall_release(namespace, release_name):
-        cmd = f"helm uninstall {release_name} --namespace {namespace} --wait"
-        print(f"Initiating uninstall of {release_name} in namespace {namespace}")
-        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Uninstalled {release_name} in namespace {namespace}"
-
-    def delete_pod(pod_name, namespace):
-        cmd = f"kubectl delete pod --ignore-not-found=true {pod_name} -n {namespace} --wait"
-        print(f"Initiated deletion of pod: {pod_name} in namespace {namespace}")
-        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Deleted pod: {pod_name} in namespace {namespace}"
-
-    def delete_persistent_volume_claim(pvc_name, namespace):
-        cmd = f"kubectl delete pvc --ignore-not-found=true {pvc_name} -n {namespace} --wait"
-        print(f"Initiated deletion of PVC: {pvc_name} in namespace {namespace}")
-        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return f"Deleted PVC: {pvc_name} in namespace {namespace}"
+    """Bring down a running warnet carefully"""
 
     if not can_delete_pods():
         click.secho("You do not have permission to bring down the network.", fg="red")
         return
+
+    def uninstall_release(namespace, release_name):
+        cmd = f"helm uninstall {release_name} --namespace {namespace} --wait"
+        print(f"Initiating uninstall of {release_name} in namespace {namespace}")
+        return subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     namespaces = get_namespaces()
     release_list: list[dict[str, str]] = []
@@ -261,7 +250,11 @@ def down():
 
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
-            console.print(f"[yellow]{future.result()}[/yellow]")
+            result = future.result()
+            if result.returncode == 0:
+                console.print(f"[yellow]{result.stdout[:-1]}[/yellow]")
+            else:
+                console.print(f"[red]{result.stderr[:-1]}\n\tcmd: {result.args}[/red]")
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
@@ -278,9 +271,17 @@ def down():
                     executor.submit(delete_persistent_volume_claim, pvc["name"], pvc["namespace"])
                 )
 
+        # Clean up Helm release secrets
+        for release in release_list:
+            futures.append(
+                executor.submit(delete_release_secrets, release["name"], release["namespace"])
+            )
+
         # Wait for all tasks to complete and print results
         for future in as_completed(futures):
-            console.print(f"[yellow]{future.result()}[/yellow]")
+            e = future.exception()
+            if e and e.status != 404:
+                console.print(f"[red]{e}[/red]")
 
     console.print("[bold yellow]Teardown process initiated for all components.[/bold yellow]")
     console.print("[bold yellow]Note: Some processes may continue in the background.[/bold yellow]")
