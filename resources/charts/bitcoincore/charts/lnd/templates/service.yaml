@@ -12,19 +12,31 @@ spec:
       targetPort: rpc
       protocol: TCP
       name: rpc
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.rpcNodePort) }}
+      nodePort: {{ .Values.service.rpcNodePort }}
+      {{- end }}
     - port: {{ .Values.P2PPort }}
       targetPort: p2p
       protocol: TCP
       name: p2p
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.p2pNodePort) }}
+      nodePort: {{ .Values.service.p2pNodePort }}
+      {{- end }}
     - port: {{ .Values.RestPort }}
       targetPort: rest
       protocol: TCP
       name: rest
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.restNodePort) }}
+      nodePort: {{ .Values.service.restNodePort }}
+      {{- end }}
 {{- if .Values.metricsExport }}
     - port: {{ .Values.prometheusMetricsPort }}
       targetPort: prom-metrics
       protocol: TCP
       name: prometheus-metrics
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.prometheusNodePort) }}
+      nodePort: {{ .Values.service.prometheusNodePort }}
+      {{- end }}
 {{- end }}
   selector:
     {{- include "lnd.selectorLabels" . | nindent 4 }}
