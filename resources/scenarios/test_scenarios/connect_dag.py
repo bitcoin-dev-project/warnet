@@ -105,12 +105,12 @@ class ConnectDag(Commander):
         if connection_type == ConnectionType.DNS:
             assert any(
                 # ignore the ...-service suffix
-                self.nodes[connectee_index].tank in d.get("addr")
+                self.nodes[connectee_index].tank in (d.get("addr") or "")
                 for d in connector
-            ), "Could not find conectee hostname"
+            ), "Could not find connectee hostname"
         elif connection_type == ConnectionType.IP:
             assert any(
-                d.get("addr").split(":")[0] == self.nodes[connectee_index].rpchost
+                (d.get("addr") or "").split(":")[0] == self.nodes[connectee_index].rpchost
                 for d in connector
             ), "Could not find connectee ip addr"
         else:
