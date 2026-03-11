@@ -44,6 +44,9 @@ spec:
       readinessProbe:
         {{- toYaml .Values.readinessProbe | nindent 8 }}  
       startupProbe:
+        {{- if .Values.startupProbe }}
+        {{- toYaml .Values.startupProbe | nindent 8 }}
+        {{- else }}
         failureThreshold: 10
         periodSeconds: 5
         successThreshold: 1
@@ -72,6 +75,7 @@ spec:
               until curl --fail --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"{{ .Values.macaroonRootKey }}\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"; do
                 sleep 5
               done
+        {{- end }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
