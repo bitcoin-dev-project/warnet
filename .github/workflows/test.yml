@@ -58,8 +58,8 @@ jobs:
         uses: medyagh/setup-minikube@v0.0.20
         id: minikube
         with:
-          minikube-version: 1.37.0
-          kubernetes-version: v1.34.0
+          minikube-version: 1.38.1
+          kubernetes-version: v1.35.1
           cpus: max
           memory: 4000m
       - name: Start minikube's loadbalancer tunnel
