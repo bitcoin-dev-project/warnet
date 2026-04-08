@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "btcd.fullname" . }}
+  labels:
+    {{- include "btcd.labels" . | nindent 4 }}
+    {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+    chain: {{ .Values.global.chain }}
+    P2PPort: "{{ index .Values.global .Values.global.chain "P2PPort" }}"
+    RPCPort: "{{ index .Values.global .Values.global.chain "RPCListenPort" }}"
+    rpcpassword: {{ .Values.global.rpcpassword }}
+    app: {{ include "btcd.fullname" . }}
+    implementation: btcd
+    {{- if .Values.collectLogs }}
+    collect_logs: "true"
+    {{- end }}
+  annotations:
+    init_peers: "{{ .Values.addnode | len }}"
+spec:
+  restartPolicy: "{{ .Values.restartPolicy }}"
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  {{- if .Values.loadSnapshot.enabled }}
+  initContainers:
+    - name: download-blocks
+      image: alpine:latest
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          apk add --no-cache curl
+          mkdir -p /root/.btcd/data
+          curl -L {{ .Values.loadSnapshot.url }} | tar -xz -C /root/.btcd/data
+      volumeMounts:
+        - name: data
+          mountPath: /root/.btcd
+  {{- end }}
+  containers:
+    - name: btcd
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - "/bin/linux_amd64/btcd"
+      args:
+        - "--configfile=/root/.btcd/btcd.conf"
+        {{- if .Values.extraArgs }}
+        {{- range (split " " .Values.extraArgs) }}
+        - {{ . | quote }}
+        {{- end }}
+        {{- end }}
+      ports:
+        - name: rpc
+          containerPort: {{ index .Values.global .Values.global.chain "RPCListenPort" }}
+          protocol: TCP
+        - name: p2p
+          containerPort: {{ index .Values.global .Values.global.chain "P2PPort" }}
+          protocol: TCP
+      livenessProbe:
+        {{- toYaml .Values.livenessProbe | nindent 8 }}
+      readinessProbe:
+        {{- toYaml .Values.readinessProbe | nindent 8 }}
+        tcpSocket:
+          port: {{ index .Values.global .Values.global.chain "RPCListenPort" }}
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      volumeMounts:
+        {{- with .Values.volumeMounts }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        - mountPath: /root/.btcd
+          name: data
+        - mountPath: /root/.btcd/btcd.conf
+          name: config
+          subPath: btcd.conf
+    {{- if .Values.metricsExport }}
+    - name: prometheus
+      image: bitcoindevproject/bitcoin-exporter:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: prom-metrics
+          containerPort: {{ .Values.prometheusMetricsPort }}
+          protocol: TCP
+      env:
+        - name: BITCOIN_RPC_HOST
+          value: "127.0.0.1"
+        - name: BITCOIN_RPC_PORT
+          value: "{{ index .Values.global .Values.global.chain "RPCListenPort" }}"
+        - name: BITCOIN_RPC_USER
+          value: {{ .Values.global.rpcuser }}
+        - name: BITCOIN_RPC_PASSWORD
+          value: {{ .Values.global.rpcpassword }}
+    {{- end }}
+    {{- with .Values.extraContainers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  volumes:
+    {{- with .Values.volumes }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    - name: data
+      {{- if .Values.persistence.enabled }}
+      {{- if .Values.persistence.existingClaim }}
+      persistentVolumeClaim:
+        claimName: {{ .Values.persistence.existingClaim }}
+      {{- else }}
+      persistentVolumeClaim:
+        claimName: {{ include "btcd.fullname" . }}.{{ .Release.Namespace }}-btcd-data
+      {{- end }}
+      {{- else }}
+      emptyDir: {}
+      {{- end }}
+    - name: config
+      configMap:
+        name: {{ include "btcd.fullname" . }}
+  {{- with .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.affinity }}
+  affinity:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
