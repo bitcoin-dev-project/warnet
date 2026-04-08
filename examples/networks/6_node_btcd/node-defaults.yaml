@@ -1,0 +1,13 @@
+chain: regtest
+
+implementation: btcd
+
+collectLogs: true
+metricsExport: false
+
+resources: {}
+
+image:
+  repository: lucasdbr05/btcd
+  pullPolicy: IfNotPresent
+  tag: "latest"
