@@ -12,9 +12,21 @@ from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
-from .constants import BITCOINCORE_CONTAINER
-from .k8s import get_default_namespace_or, get_mission, pod_log
+from .constants import BITCOINCORE_CONTAINER, BTCD_CONTAINER
+from .k8s import get_default_namespace_or, get_mission, get_pod, pod_log
 from .process import run_command
+
+
+def _get_node_container(tank: str, namespace: str) -> str:
+    """Determine which container name is running in the tank pod (bitcoincore or btcd)."""
+    try:
+        pod = get_pod(tank, namespace=namespace)
+        container_names = [c.name for c in pod.spec.containers]
+        if BTCD_CONTAINER in container_names:
+            return BTCD_CONTAINER
+        return BITCOINCORE_CONTAINER
+    except Exception:
+        return BITCOINCORE_CONTAINER
 
 
 @click.group(name="bitcoin")
@@ -42,6 +54,9 @@ def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
 def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = None):
     namespace = get_default_namespace_or(namespace)
 
+    container = _get_node_container(tank, namespace)
+    is_btcd = container == BTCD_CONTAINER
+
     if params:
         # First, try to join all parameters into a single string.
         full_param_str = " ".join(params)
@@ -65,10 +80,16 @@ def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = N
             # Quote each parameter individually to preserve them as separate arguments.
             param_str = " ".join(shlex.quote(p) for p in params)
 
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {param_str}"
+        if is_btcd:
+            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- /bin/linux_amd64/btcctl --rpcuser=user --rpcpass=gn0cchi --rpccert=/root/.btcd/rpc.cert --rpcserver=127.0.0.1:18334 --simnet {method} {param_str}"
+        else:
+            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- bitcoin-cli {method} {param_str}"
     else:
         # Handle commands with no parameters
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
+        if is_btcd:
+            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- /bin/linux_amd64/btcctl --rpcuser=user --rpcpass=gn0cchi --rpccert=/root/.btcd/rpc.cert --rpcserver=127.0.0.1:18334 --simnet {method}"
+        else:
+            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- bitcoin-cli {method}"
 
     return run_command(cmd)
 
@@ -111,7 +132,12 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             longest_namespace_len = len(tank.metadata.namespace)
 
         pod_name = tank.metadata.name
-        logs = pod_log(pod_name, BITCOINCORE_CONTAINER)
+        container_names = [c.name for c in tank.spec.containers]
+        if BTCD_CONTAINER in container_names:
+            log_container = BTCD_CONTAINER
+        else:
+            log_container = BITCOINCORE_CONTAINER
+        logs = pod_log(pod_name, log_container)
 
         if logs is not False:
             try:

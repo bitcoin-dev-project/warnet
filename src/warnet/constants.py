@@ -21,7 +21,14 @@ COMMANDER_MISSION = "commander"
 LIGHTNING_MISSION = "lightning"
 
 BITCOINCORE_CONTAINER = "bitcoincore"
+BTCD_CONTAINER = "btcd"
 COMMANDER_CONTAINER = "commander"
+
+# Supported node implementations
+IMPLEMENTATION_BITCOINCORE = "bitcoincore"
+IMPLEMENTATION_BTCD = "btcd"
+SUPPORTED_IMPLEMENTATIONS = [IMPLEMENTATION_BITCOINCORE, IMPLEMENTATION_BTCD]
+DEFAULT_IMPLEMENTATION = IMPLEMENTATION_BITCOINCORE
 
 
 class HookValue(Enum):
@@ -46,6 +53,7 @@ class AnnexMember(Enum):
 PLUGIN_ANNEX = "annex"
 
 DEFAULT_IMAGE_REPO = "bitcoindevproject/bitcoin"
+DEFAULT_BTCD_IMAGE_REPO = "lucasdbr05/btcd"
 
 # Bitcoin Core config
 FORK_OBSERVER_RPCAUTH = "forkobserver:1418183465eecbd407010cf60811c6a0$d4e5f0647a63429c218da1302d7f19fe627302aeb0a71a74de55346a25d8057c"
@@ -69,6 +77,7 @@ DEFAULTS_NAMESPACE_FILE = "namespace-defaults.yaml"
 
 # Helm charts
 BITCOIN_CHART_LOCATION = str(CHARTS_DIR.joinpath("bitcoincore"))
+BTCD_CHART_LOCATION = str(CHARTS_DIR.joinpath("btcd"))
 FORK_OBSERVER_CHART = str(CHARTS_DIR.joinpath("fork-observer"))
 COMMANDER_CHART = str(CHARTS_DIR.joinpath("commander"))
 NAMESPACES_CHART_LOCATION = CHARTS_DIR.joinpath("namespaces")
