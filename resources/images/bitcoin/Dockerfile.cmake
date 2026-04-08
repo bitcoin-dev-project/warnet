@@ -38,21 +38,18 @@ RUN set -ex \
     && cd /build \
     && git init \
     && git remote add origin "https://github.com/${REPO}" \
-
     # Try commit/branch first
     && if git fetch --depth 1 origin "$COMMIT_SHA:refs/temp/ref" 2>/dev/null; then \
          REF=refs/temp/ref; \
        else \
-
          # Fallback: fetch tag explicitly into local refs
          git fetch --depth 1 origin "refs/tags/$COMMIT_SHA:refs/tags/$COMMIT_SHA"; \
          REF="refs/tags/$COMMIT_SHA"; \
        fi \
-
     # Resolve tag -> commit if needed
     && resolved=$(git rev-parse --verify "$REF^{commit}") \
     && git checkout "$resolved" \
-
+    # Build
     && git apply /tmp/isroutable.patch \
     && git apply /tmp/addrman.patch \
     && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
@@ -66,7 +63,6 @@ RUN set -ex \
     && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.a \
     && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.so.0.0.0
 
-# Final clean stage
 FROM alpine:3.20
 ARG UID=100
 ARG GID=101
