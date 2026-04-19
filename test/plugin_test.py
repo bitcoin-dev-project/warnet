@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import ast
 import os
-from functools import partial
 from pathlib import Path
 from typing import Optional
 
@@ -35,9 +34,7 @@ class PluginTest(TestBase):
 
     def copy_results(self):
         pod = self.get_first_simln_pod()
-        partial_func = partial(self.found_results_remotely, pod)
-        self.wait_for_predicate(partial_func)
-
+        self.wait_for_predicate(lambda: self.found_results_remotely(pod))
         download(pod, Path("/working/results"), Path("."))
         self.wait_for_predicate(self.found_results_locally)
 
