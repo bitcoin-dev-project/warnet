@@ -90,6 +90,12 @@ for pod in pods.items:
     if "mission" not in pod.metadata.labels:
         continue
 
+    pod_ip = pod.status.pod_ip
+    while pod_ip is None:
+        sleep(5)
+        pod = sclient.read_namespaced_pod(pod.metadata.name, pod.metadata.namespace)
+        pod_ip = pod.status.pod_ip
+
     if pod.metadata.labels["mission"] == "tank":
         WARNET["tanks"].append(
             {
@@ -97,7 +103,7 @@ for pod in pods.items:
                 "namespace": pod.metadata.namespace,
                 "chain": pod.metadata.labels["chain"],
                 "p2pport": int(pod.metadata.labels["P2PPort"]),
-                "rpc_host": pod.status.pod_ip,
+                "rpc_host": pod_ip,
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
                 "rpc_user": "user",
                 "rpc_password": pod.metadata.labels["rpcpassword"],
@@ -110,7 +116,7 @@ for pod in pods.items:
             lnnode = LND(
                 pod.metadata.name,
                 pod.metadata.namespace,
-                pod.status.pod_ip,
+                pod_ip,
                 pod.metadata.annotations["adminMacaroon"],
             )
         if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
@@ -196,17 +202,19 @@ class Commander(BitcoinTestFramework):
     def wait_for_tanks_connected(self):
         def tank_connected(self, tank):
             while True:
-                peers = tank.getpeerinfo()
-                count = sum(
-                    1
-                    for peer in peers
-                    if peer.get("connection_type") == "manual" or peer.get("addnode") is True
-                )
-                self.log.info(f"Tank {tank.tank} connected to {count}/{tank.init_peers} peers")
-                if count >= tank.init_peers:
-                    break
-                else:
-                    sleep(5)
+                try:
+                    peers = tank.getpeerinfo()
+                    count = sum(
+                        1
+                        for peer in peers
+                        if peer.get("connection_type") == "manual" or peer.get("addnode") is True
+                    )
+                    self.log.info(f"Tank {tank.tank} connected to {count}/{tank.init_peers} peers")
+                    if count >= tank.init_peers:
+                        break
+                except Exception as e:
+                    self.log.warning(f"Couldn't get peer info from {tank.tank} : {e}")
+                sleep(5)
 
         conn_threads = [
             threading.Thread(target=tank_connected, args=(self, tank)) for tank in self.nodes

@@ -208,7 +208,11 @@ class CLN(LNNode):
 
     def createrune(self):
         while True:
-            response = requests.get(f"http://{self.ip_address}:8080/rune.json", timeout=5).text
+            response = None
+            try:
+                response = requests.get(f"http://{self.ip_address}:8080/rune.json", timeout=5).text
+            except Exception as e:
+                self.log.warning(f"Error requesting /rune.json: {e}")
             if not response:
                 self.log.warning(f"Unable to fetch rune from {self.name}, retrying in 2 seconds...")
                 sleep(2)
