@@ -164,6 +164,7 @@ options:
 ### `warnet bitcoin messages`
 Fetch messages sent between \<tank_a pod name> and \<tank_b pod name> in [chain]
 
+    tank_b can be a tank pod name, an onion address, or any external peer identifier.
     Optionally, include a namespace like so: tank-name.namespace
 
 options:
