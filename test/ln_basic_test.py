@@ -8,9 +8,11 @@ from pathlib import Path
 from time import sleep
 
 import pexpect
+import requests
+from requests.auth import HTTPBasicAuth
 from test_base import TestBase
 
-from warnet.process import stream_command
+from warnet.process import run_command, stream_command
 
 
 class LNBasicTest(TestBase):
@@ -56,6 +58,9 @@ class LNBasicTest(TestBase):
 
             # Test data persistence
             self.test_data_persistence()
+
+            # Check NodePorts feature
+            self.test_nodeports()
         finally:
             self.cleanup()
 
@@ -260,6 +265,46 @@ class LNBasicTest(TestBase):
         for ln in ["tank-0003-ln", "tank-0005-ln"]:
             second = self.get_ln_node_state(ln)
             assert first[ln] != second, first.items()
+
+    def test_nodeports(self):
+        self.log.info("Testing local access via NodePort")
+
+        if sys.platform.lower() == "darwin":
+            cmd = "kubectl config current-context"
+            if run_command(cmd).strip().lower() == "minikube":
+                self.log.warning(
+                    "Skipping test: MiniKube on MacOS requires external tunnels for NodePort"
+                )
+                return
+
+        host = self.warnet("host")
+
+        tank0000_cln_rest = requests.post(
+            f"https://{host}:30001/v1/newaddr",
+            json={"addresstype": "p2tr"},
+            verify=False,  # equivalent to curl --insecure
+        )
+        assert "code" in tank0000_cln_rest.json()
+        assert "data" in tank0000_cln_rest.json()
+        assert "message" in tank0000_cln_rest.json()
+
+        tank0001_bitcoin_rpc = requests.post(
+            f"http://{host}:30002/",
+            json={"method": "getblockcount"},
+            auth=HTTPBasicAuth("user", "gn0cchi"),
+        )
+        assert "result" in tank0001_bitcoin_rpc.json()
+        assert "error" in tank0001_bitcoin_rpc.json()
+        assert "id" in tank0001_bitcoin_rpc.json()
+
+        tank0002_lnd_rest = requests.get(
+            f"https://{host}:30003/v1/newaddress",
+            params={"type": "TAPROOT_PUBKEY"},
+            verify=False,  # equivalent to curl --insecure
+        )
+        assert "code" in tank0002_lnd_rest.json()
+        assert "message" in tank0002_lnd_rest.json()
+        assert "details" in tank0002_lnd_rest.json()
 
 
 if __name__ == "__main__":

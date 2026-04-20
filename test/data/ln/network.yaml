@@ -10,10 +10,16 @@ nodes:
     cln:
       persistence:
         enabled: true
+      service:
+        type: NodePort
+        restNodePort: 30001
 
   - name: tank-0001
     addnode:
       - tank-0002
+    service:
+      type: NodePort
+      rpcNodePort: 30002
 
   - name: tank-0002
     addnode:
@@ -23,6 +29,9 @@ nodes:
     lnd:
       persistence:
         enabled: true
+      service:
+        type: NodePort
+        restNodePort: 30003
 
   - name: tank-0003
     addnode:

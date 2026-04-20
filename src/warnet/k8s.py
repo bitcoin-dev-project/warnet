@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import os
 import sys
@@ -6,10 +7,11 @@ import tempfile
 from pathlib import Path
 from time import sleep, time
 from typing import Optional
+from urllib.parse import urlparse
 
 import yaml
 from kubernetes import client, config, watch
-from kubernetes.client import CoreV1Api
+from kubernetes.client import Configuration, CoreV1Api
 from kubernetes.client.models import (
     V1DeleteOptions,
     V1Namespace,
@@ -411,6 +413,32 @@ def get_ingress_ip_or_host():
     except Exception as e:
         print(f"Error getting ingress IP: {e}")
         return None
+
+
+def get_host():
+    # On macos, k8s runs in a VM with IP addresses that are not directly
+    # accessible from the host. Look for that first and return the provided
+    # by Docker Desktop or Minikube.
+    config.load_kube_config()
+    server = Configuration.get_default_copy().host
+    hostname = urlparse(server).hostname
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback:
+            return hostname
+    except ValueError:
+        if hostname == "localhost" or hostname.endswith((".local", ".internal")):
+            return hostname
+
+    # On Linux or when connecting to a remote cluster, we can get the
+    # actual external IP address of a kubernetes node. A NodePort is exposed
+    # on every node in the cluster so just return the first IP.
+    sclient = get_static_client()
+    addr_list = sclient.list_node().items[0].status.addresses
+    addresses = {addr.type: addr.address for addr in addr_list}
+    # Preference order:
+    # ExternalIP (cloud) > InternalIP (common) > Hostname
+    return addresses.get("ExternalIP") or addresses.get("InternalIP") or addresses.get("Hostname")
 
 
 def pod_log(

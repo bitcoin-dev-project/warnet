@@ -3,7 +3,7 @@ import click
 from .admin import admin
 from .bitcoin import bitcoin
 from .control import down, logs, run, snapshot, stop
-from .dashboard import dashboard
+from .dashboard import dashboard, host
 from .deploy import deploy
 from .graph import create, graph, import_network
 from .image import image
@@ -68,6 +68,7 @@ cli.add_command(deploy)
 cli.add_command(down)
 cli.add_command(dashboard)
 cli.add_command(graph)
+cli.add_command(host)
 cli.add_command(import_network)
 cli.add_command(image)
 cli.add_command(init)
