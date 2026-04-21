@@ -45,6 +45,10 @@ options:
 Bring down a running warnet carefully
 
 
+### `warnet host`
+Get one cluster node IP, used for accessing NodePorts
+
+
 ### `warnet import-network`
 Create a network from an imported lightning network graph JSON
 
