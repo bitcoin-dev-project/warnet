@@ -1,7 +1,7 @@
 import subprocess
 from importlib.resources import files
 
-ARCHES = ["amd64", "arm64", "armhf"]
+ARCHES = ["amd64", "arm64"]
 
 dockerfile_path = files("resources.images.bitcoin").joinpath("Dockerfile.dev")
 
@@ -29,14 +29,9 @@ def build_image(
 
     build_arches = []
     if not arches:
-        build_arches.append("amd64")
+        build_arches = ARCHES
     else:
         build_arches.extend(arches.split(","))
-
-    for arch in build_arches:
-        if arch not in ARCHES:
-            print(f"Error: {arch} is not a supported architecture")
-            return False
 
     print(f"{repo=:}")
     print(f"{commit_sha=:}")
