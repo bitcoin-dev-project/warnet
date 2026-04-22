@@ -194,14 +194,16 @@ options:
 ## Image
 
 ### `warnet image build`
-Build a Bitcoin Core Docker image with specified parameters.
+Build a Bitcoin Core Docker image with specified parameters from specified commit or tag.
 
     
     Usage Examples:
         # Build an image for Warnet repository
-            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --arches amd64,arm64,armhf --action push
-        # Build an image for local testing
-            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --action load
+            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --action push
+        # Build from a tag instead of commit hash
+            warnet image build --repo bitcoin/bitcoin --commit-sha v31.0 --tags bitcoindevproject/bitcoin:v31.0 --action push
+        # Build an image for local testing on arm64 only
+            warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --arches arm64 --action load
 
 options:
 | name       | type   | required   | default   |
