@@ -1,0 +1,72 @@
+name: Build BitcoinCore tank image and push to DockerHub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  detect-new-tags:
+    runs-on: ubuntu-latest
+    outputs:
+      new_tags: ${{ steps.diff.outputs.new_tags }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect new tags
+        id: diff
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Compare PR head against base branch
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            DIFF_BASE="origin/${{ github.base_ref }}"
+          else
+            # Compare push against previous commit
+            DIFF_BASE="${{ github.event.before }}"
+          fi
+
+          new_tags=$(git diff --unified=0 "$DIFF_BASE" HEAD -- src/warnet/bitcoincore.tags \
+            | grep '^+[^+]' \
+            | sed 's/^+//')
+
+          echo "new_tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$new_tags" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  build-images:
+    needs: detect-new-tags
+    if: needs.detect-new-tags.outputs.new_tags != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push multi-platform images
+        run: |
+          for tag in ${{ needs.detect-new-tags.outputs.new_tags }}; do
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              --build-arg REPO=bitcoin/bitcoin \
+              --build-arg COMMIT_SHA=v$tag \
+              --build-arg BUILD_ARGS='-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_UTIL=ON -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON' \
+              -t bitcoindevproject/bitcoin:$tag \
+              --file resources/images/bitcoin/Dockerfile.dev \
+              resources/images/bitcoin/ \
+              --push
+          done

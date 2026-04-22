@@ -3,14 +3,11 @@ from enum import Enum
 from importlib.resources import files
 from pathlib import Path
 
-# Constants used throughout the project
-# Storing as constants for now but we might want a more sophisticated config management
-# at some point.
-SUPPORTED_TAGS = ["29.0", "28.1", "27.0", "26.0", "25.1", "24.2", "23.2", "22.2"]
+SUPPORTED_TAGS = []
+tags_file_path = Path(__file__).with_name("bitcoincore.tags")
+with tags_file_path.open() as f:
+    SUPPORTED_TAGS = [line.strip() for line in f if line.strip()][::-1]
 DEFAULT_TAG = SUPPORTED_TAGS[0]
-WEIGHTED_TAGS = [
-    tag for index, tag in enumerate(reversed(SUPPORTED_TAGS)) for _ in range(index + 1)
-]
 
 DEFAULT_NAMESPACE = "default"
 LOGGING_NAMESPACE = "warnet-logging"
