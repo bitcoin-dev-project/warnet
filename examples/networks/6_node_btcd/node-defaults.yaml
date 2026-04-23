@@ -1,6 +1,7 @@
 chain: regtest
 
 implementation: btcd
+restartPolicy: OnFailure
 
 collectLogs: true
 metricsExport: false
