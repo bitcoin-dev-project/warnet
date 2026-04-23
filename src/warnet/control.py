@@ -380,6 +380,7 @@ def _run(
                 "commander.py",
                 "test_framework",
                 "ln_framework",
+                "btcd_framework",
                 scenario_path.name,
             ]
         ):
