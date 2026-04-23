@@ -13,7 +13,7 @@ CMAKE_BUILD_ARGS = (
 AUTOTOOLS_BUILD_ARGS = (
     '"--disable-tests --without-gui --disable-bench'
     " --disable-fuzz-binary --enable-suppress-external-warnings"
-    ' "'
+    ' --with-incompatible-bdb"'
 )
 
 dockerfile_cmake = files("resources.images.bitcoin").joinpath("Dockerfile.cmake")
@@ -36,8 +36,30 @@ def detect_build_system(repo: str, commit_sha: str) -> str:
             return "cmake"
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            print(f"  HTTP 404 -> autotools")
-            return "autotools"
+            api_url = (
+                f"https://api.github.com/repos/{repo}/contents/CMakeLists.txt?ref={commit_sha}"
+            )
+            req = urllib.request.Request(api_url, headers={"User-Agent": "warnet-image-build"})
+            try:
+                with urllib.request.urlopen(req, timeout=15) as api_resp:
+                    print(f"  HTTP {api_resp.status} -> cmake")
+                    return "cmake"
+            except urllib.error.HTTPError as api_error:
+                body = api_error.read().decode()
+                if api_error.code == 404:
+                    if "No commit found for the ref" in body:
+                        raise ValueError(f"Ref not found in {repo}: {commit_sha}") from api_error
+                    print(f"  HTTP 404 -> autotools")
+                    return "autotools"
+                print(
+                    f"Warning: HTTP {api_error.code} {api_error.reason} probing {api_url}; defaulting to cmake"
+                )
+                return "cmake"
+            except urllib.error.URLError as api_error:
+                print(
+                    f"Warning: could not verify 404 from GitHub API: {api_error}; defaulting to cmake"
+                )
+                return "cmake"
         print(f"Warning: HTTP {e.code} {e.reason} probing {url}; defaulting to cmake")
         return "cmake"
     except urllib.error.URLError as e:
@@ -61,7 +83,11 @@ def build_image(
     arches: str,
     action: str,
 ):
-    build_system = detect_build_system(repo, commit_sha)
+    try:
+        build_system = detect_build_system(repo, commit_sha)
+    except ValueError as e:
+        print(f"Error: {e}")
+        return False
     print(f"Detected build system: {build_system}")
 
     if build_system == "cmake":

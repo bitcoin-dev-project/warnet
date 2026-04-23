@@ -20,7 +20,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
     libtool \
     linux-headers \
     sqlite-dev \
-    zeromq-dev
+    zeromq-dev \
+    db-dev
 
 COPY isroutable.patch /tmp/
 COPY addrman.patch /tmp/
@@ -49,9 +50,9 @@ RUN set -ex \
     && resolved=$(git rev-parse --verify "$REF^{commit}") \
     && git checkout "$resolved" \
     # Build
-    && git apply /tmp/isroutable.patch \
-    && git apply /tmp/addrman.patch \
-    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
+    && git apply /tmp/isroutable.patch || true \
+    && git apply /tmp/addrman.patch || true \
+    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h || true \
     && ./autogen.sh \
     && DB_PREFIX="$(ls -d /opt/db-* 2>/dev/null | head -n1 || true)" \
     && if [ -n "$DB_PREFIX" ] && [ -d "$DB_PREFIX/lib" ]; then \
