@@ -70,9 +70,9 @@ telepresence intercept local-bitcoind --port 18444 -- bitcoind --regtest --datad
 ### Connect to local bitcoind from cluster
 
 ```shell
-warnet bitcoin rpc 0 addnode "local-bitcoind:18444" "onetry"
+warnet bitcoin rpc tank-0000 addnode "local-bitcoind:18444" "onetry"
 # Check that the local node was added
-warnet bitcoin rpc 0 getpeerinfo
+warnet bitcoin rpc tank-0000 getpeerinfo
 ```
 
 ### Disconnect and remove Telepresence
@@ -81,7 +81,7 @@ warnet bitcoin rpc 0 getpeerinfo
 # Disconnect from the cluster
 telepresence quit -s
 # Remove Telepresence from the cluster
-telepresent helm uninstall
+telepresence helm uninstall
 # Remove Telepresence from your computer
 sudo rm /usr/local/bin/telepresence
 ```

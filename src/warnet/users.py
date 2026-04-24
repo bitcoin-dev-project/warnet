@@ -13,7 +13,15 @@ from warnet.k8s import K8sError, open_kubeconfig, write_kubeconfig
 @click.option("--revert", is_flag=True, default=False, show_default=True)
 @click.argument("auth_config", type=str, required=False)
 def auth(revert, auth_config):
-    """Authenticate with a Warnet cluster using a kubernetes config file"""
+    """Authenticate with a Warnet cluster using a kubernetes config file.
+
+    Merges the given kubeconfig into the local kubeconfig and switches the
+    active context. If an entry already exists and differs, a diff is shown
+    and confirmation is requested before overwriting.
+
+    Pass --revert (with no AUTH_CONFIG) to restore the kubeconfig that was
+    active before the most recent `warnet auth` call.
+    """
     if revert:
         auth_config = KUBECONFIG_UNDO
     elif not auth_config:

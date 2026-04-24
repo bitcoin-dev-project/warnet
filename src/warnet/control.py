@@ -52,7 +52,11 @@ console = Console()
 @click.command()
 @click.argument("scenario_name", required=False)
 def stop(scenario_name):
-    """Stop a running scenario or all scenarios"""
+    """Stop a running scenario or all scenarios.
+
+    If scenario_name is omitted, an interactive menu lists all running
+    scenarios. Enter the number to stop one, 'a' to stop all, or 'q' to quit.
+    """
     active_scenarios = [sc.metadata.name for sc in get_mission("commander")]
 
     if not active_scenarios:
@@ -151,7 +155,13 @@ def stop_all_scenarios(scenarios) -> None:
 
 @click.command()
 def down():
-    """Bring down a running warnet carefully"""
+    """Bring down a running warnet carefully.
+
+    Interactive: shows a table of all Helm releases that will be destroyed and
+    asks for confirmation. If Persistent Volume Claims (PVCs) exist, also asks
+    whether to delete them. Answering 'n' to the PVC prompt preserves
+    persistent node data across redeployments.
+    """
 
     if not can_delete_pods():
         click.secho("You do not have permission to bring down the network.", fg="red")
@@ -326,7 +336,12 @@ def run(
 ):
     """
     Run a scenario from a file.
-    Pass `-- --help` to get individual scenario help
+
+    Pass `-- --help` to print that scenario's argument help without deploying a pod.
+
+    Use --source_dir to bundle a directory of helper modules into the commander pod.
+    Use --admin to grant cross-namespace node access (requires admin kubeconfig context).
+    Use --debug to stream logs and delete the pod when the scenario exits.
     """
     return _run(scenario_file, debug, source_dir, additional_args, admin, namespace)
 
@@ -454,7 +469,11 @@ def _run(
 @click.option("--follow", "-f", is_flag=True, default=False, help="Follow logs")
 @click.option("--namespace", type=str, default="default", show_default=True)
 def logs(pod_name: str, follow: bool, namespace: str):
-    """Show the logs of a pod"""
+    """Show the logs of a pod.
+
+    If pod_name is omitted, an interactive menu lists all available commander
+    and tank pods sorted by creation time, most recent first.
+    """
     return _logs(pod_name, follow, namespace)
 
 
@@ -542,7 +561,11 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
     help="Comma-separated list of directories and/or files to include in the snapshot",
 )
 def snapshot(tank_name, snapshot_all, output, filter):
-    """Create a snapshot of a tank's Bitcoin data or snapshot all tanks"""
+    """Create a snapshot of a tank's Bitcoin data or snapshot all tanks.
+
+    If neither tank_name nor --all is given, an interactive menu lets you
+    select which tank to snapshot.
+    """
     tanks = get_mission("tank")
 
     if not tanks:

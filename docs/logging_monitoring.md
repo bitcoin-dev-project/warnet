@@ -118,13 +118,47 @@ mempool_size 0.0
 
 ### Defining lnd metrics to capture
 
-Lightning nodes can also be configured to export metrics to prometheus using `lnd-exporter`.
-Example configuration is provided in `test/data/ln/`. Review `node-defauts.yaml` for a typical logging configuration. All default metrics reported to prometheus are prefixed with `lnd_`
+Lightning nodes can also be configured to export metrics to Prometheus using `lnd-exporter`.
+Example configuration is provided in `test/data/ln/`. Review `node-defaults.yaml` for a typical logging configuration. All default metrics reported to Prometheus are prefixed with `lnd_`.
 
 [lnd-exporter configuration reference](https://github.com/bitcoin-dev-project/lnd-exporter/tree/main?tab=readme-ov-file#configuration)
-lnd-exporter assumes same macaroon referenced in ln_framework (can be overridden by env variable)
 
-**Note: `test/data/ln` and `test/data/logging` take advantage of **extraContainers** configuration option to add containers to default `lnd/templates/pod`*
+The `lnd-exporter` sidecar is added via `lnd.extraContainers` and assumes the same macaroon referenced in `ln_framework` (can be overridden by environment variable). Enable metrics export and configure the scrape interval and port with these `lnd:` keys:
+
+```yaml
+nodes:
+  - name: tank-0000
+    ln:
+      lnd: true
+    lnd:
+      metricsExport: true
+      metricsScrapeInterval: 60s   # how often Prometheus scrapes (default: 15s)
+      prometheusMetricsPort: 9332  # port the exporter listens on (default: 9332)
+      extraContainers:
+        - name: lnd-exporter
+          image: bitcoindevproject/lnd-exporter:0.3.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9332
+              name: prom-metrics
+              protocol: TCP
+          env:
+            - name: METRICS
+              value: 'lnd_block_height=parse("/v1/getinfo","block_height") pending_htlcs=PENDING_HTLCS'
+          volumeMounts:
+            - mountPath: /macaroon.hex
+              name: config
+              subPath: MACAROON_HEX
+```
+
+| Key | Description |
+|-----|-------------|
+| `lnd.metricsExport` | Set to `true` to enable Prometheus metrics scraping for this LND node |
+| `lnd.metricsScrapeInterval` | How often Prometheus scrapes the exporter (e.g. `"60s"`, default `"15s"`) |
+| `lnd.prometheusMetricsPort` | Port the `lnd-exporter` sidecar listens on (default `9332`) |
+| `lnd.extraContainers` | List of additional sidecar containers to add to the LND pod (full Kubernetes container specs) |
+
+**Note:** `test/data/ln` and `test/data/logging` use `lnd.extraContainers` to attach the `lnd-exporter` sidecar to the default `lnd/templates/pod`.
 
 ### Grafana
 
