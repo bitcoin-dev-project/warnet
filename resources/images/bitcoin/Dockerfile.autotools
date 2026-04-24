@@ -1,5 +1,5 @@
 # Setup deps stage
-FROM alpine AS deps
+FROM alpine:3.20 AS deps
 ARG REPO
 ARG COMMIT_SHA
 ARG BUILD_ARGS
@@ -20,7 +20,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
     libtool \
     linux-headers \
     sqlite-dev \
-    zeromq-dev
+    zeromq-dev \
+    db-dev
 
 COPY isroutable.patch /tmp/
 COPY addrman.patch /tmp/
@@ -31,19 +32,37 @@ FROM deps AS build
 ENV BITCOIN_PREFIX=/opt/bitcoin
 WORKDIR /build
 
+# Assume $COMMIT_SHA is a git commit but if that fails, then
+# assume it is a release tag that can be checked out
 RUN set -ex \
     && cd /build \
-    && git clone --depth 1 "https://github.com/${REPO}" \
-    && cd bitcoin \
-    && git fetch --depth 1 origin "$COMMIT_SHA" \
-    && git checkout "$COMMIT_SHA" \
-    && git apply /tmp/isroutable.patch \
-    && git apply /tmp/addrman.patch \
-    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
+    && git init \
+    && git remote add origin "https://github.com/${REPO}" \
+    # Try commit/branch first
+    && if git fetch --depth 1 origin "$COMMIT_SHA:refs/temp/ref" 2>/dev/null; then \
+         REF=refs/temp/ref; \
+       else \
+         # Fallback: fetch tag explicitly into local refs
+         git fetch --depth 1 origin "refs/tags/$COMMIT_SHA:refs/tags/$COMMIT_SHA"; \
+         REF="refs/tags/$COMMIT_SHA"; \
+       fi \
+    # Resolve tag -> commit if needed
+    && resolved=$(git rev-parse --verify "$REF^{commit}") \
+    && git checkout "$resolved" \
+    # Build
+    && git apply /tmp/isroutable.patch || true \
+    && git apply /tmp/addrman.patch || true \
+    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h || true \
     && ./autogen.sh \
+    && DB_PREFIX="$(ls -d /opt/db-* 2>/dev/null | head -n1 || true)" \
+    && if [ -n "$DB_PREFIX" ] && [ -d "$DB_PREFIX/lib" ]; then \
+         export LDFLAGS="-L${DB_PREFIX}/lib"; \
+         export CPPFLAGS="-g0 -I${DB_PREFIX}/include --param ggc-min-expand=1 --param ggc-min-heapsize=32768"; \
+       else \
+         export LDFLAGS=""; \
+         export CPPFLAGS="-g0 --param ggc-min-expand=1 --param ggc-min-heapsize=32768"; \
+       fi \
     && ./configure \
-    LDFLAGS=-L`ls -d /opt/db*`/lib/ \
-    CPPFLAGS="-g0 -I`ls -d /opt/db*`/include/ --param ggc-min-expand=1 --param ggc-min-heapsize=32768" \
     --prefix=${BITCOIN_PREFIX} \
     ${BUILD_ARGS} \
     && make -j$(nproc) \
@@ -56,8 +75,7 @@ RUN set -ex \
     && rm ${BITCOIN_PREFIX}/bin/bitcoin-wallet \
     && rm ${BITCOIN_PREFIX}/bin/bitcoin-util
 
-# Final clean stage
-FROM alpine
+FROM alpine:3.20
 ARG UID=100
 ARG GID=101
 ENV BITCOIN_DATA=/root/.bitcoin
@@ -84,4 +102,3 @@ EXPOSE 8332 8333 18332 18333 18443 18444 38333 38332
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bitcoind"]
-

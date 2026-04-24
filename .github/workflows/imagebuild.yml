@@ -66,7 +66,7 @@ jobs:
               --build-arg COMMIT_SHA=v$tag \
               --build-arg BUILD_ARGS='-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF -DBUILD_UTIL=ON -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON' \
               -t bitcoindevproject/bitcoin:$tag \
-              --file resources/images/bitcoin/Dockerfile.dev \
+              --file resources/images/bitcoin/Dockerfile.cmake \
               resources/images/bitcoin/ \
               --push
           done
