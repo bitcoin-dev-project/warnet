@@ -45,18 +45,28 @@ def format_default_value(default, param_type):
     return default
 
 
+def print_group(cmd, super=""):
+    """Recursively document a command group and its subcommands."""
+    global doc
+    if "commands" in cmd:
+        for subcmd in cmd["commands"].values():
+            print_group(subcmd, super + " " + cmd["name"])
+    else:
+        print_cmd(cmd, super)
+
+
 with Context(cli) as ctx:
     info = ctx.to_info_dict()
     # root-level commands first
     for cmd in info["command"]["commands"].values():
         if "commands" not in cmd:
             print_cmd(cmd)
-    # then groups of subcommands
+    # then groups of subcommands (recurse into nested groups)
     for cmd in info["command"]["commands"].values():
         if "commands" in cmd:
             doc += f"## {cmd['name'].capitalize()}\n\n"
             for subcmd in cmd["commands"].values():
-                print_cmd(subcmd, " " + cmd["name"])
+                print_group(subcmd, " " + cmd["name"])
 
 with open(file_path) as file:
     text = file.read()

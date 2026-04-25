@@ -78,7 +78,7 @@ Here's a step-by-step guide on how to create a snapshot, upload it, and configur
 
 6. Deploy Warnet with the updated configuration:
    ```bash
-   warnet deploy networks/your_cool_network/network.yaml
+   warnet deploy networks/your_cool_network
    ```
 
 7. Warnet will now use the uploaded snapshot to initialize the Bitcoin data directory when creating the "miner" node. In this particular example, the blocks will then be distibuted to the other nodes via IBD and the mining node can resume signet mining off the chaintip by loading the wallet from the snapshot:
