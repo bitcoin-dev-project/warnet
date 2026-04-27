@@ -3,6 +3,10 @@ chain: regtest
 implementation: btcd
 restartPolicy: OnFailure
 
+# TODO: find a better approach to can mine blocks (this address is just for tests)
+config: |
+  miningaddr=bcrt1qthmht0k2qnh3wy7336z05lu2km7emzfpm3wg46
+
 collectLogs: true
 metricsExport: false
 
