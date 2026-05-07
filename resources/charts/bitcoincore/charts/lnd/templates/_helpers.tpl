@@ -85,3 +85,15 @@ Create a hex-encoded RGB color derived from the namespace
 {{- printf "#%s" (substr 0 6 $hash) -}}
 {{- end -}}
 
+{{/*
+Data to init wallet with root key if lnd >= v0.16.0-beta
+*/}}
+{{- define "lnd.initwalletData" -}}
+{{- $tag := .Values.image.tag -}}
+{{- $supportsRootKey := semverCompare ">=0.16.0-beta" $tag -}}
+{{- if $supportsRootKey -}}
+"{\"macaroon_root_key\":\"{{ .Values.macaroonRootKey }}\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"
+{{- else -}}
+"{\"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"
+{{- end -}}
+{{- end -}}
