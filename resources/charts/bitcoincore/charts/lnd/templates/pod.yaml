@@ -69,7 +69,7 @@ spec:
 
               PHRASE=$(cat /tmp/genseed.json | grep -o '\[[^]]*\]')
 
-              until curl --fail --insecure https://localhost:8080/v1/initwallet --data "{\"macaroon_root_key\":\"{{ .Values.macaroonRootKey }}\", \"wallet_password\":\"AAAAAAAAAAA=\", \"cipher_seed_mnemonic\": $PHRASE}"; do
+              until curl --fail --insecure https://localhost:8080/v1/initwallet --data {{ include "lnd.initwalletData" . }}; do
                 sleep 5
               done
       resources:
