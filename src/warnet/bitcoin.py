@@ -2,6 +2,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 from datetime import datetime
 from io import BytesIO
@@ -42,6 +43,19 @@ def rpc(tank: str, method: str, params: list[str], namespace: Optional[str]):
 def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = None):
     namespace = get_default_namespace_or(namespace)
 
+    command_parts = [
+        "kubectl",
+        "-n",
+        namespace,
+        "exec",
+        tank,
+        "--container",
+        BITCOINCORE_CONTAINER,
+        "--",
+        "bitcoin-cli",
+        method,
+    ]
+
     if params:
         # First, try to join all parameters into a single string.
         full_param_str = " ".join(params)
@@ -53,8 +67,8 @@ def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = N
             if full_param_str.strip().startswith(("[", "{")):
                 json.loads(full_param_str)
                 # SUCCESS: The params form a single, valid JSON object.
-                # Quote the entire reconstructed string as one argument.
-                param_str = shlex.quote(full_param_str)
+                # Keep the entire reconstructed string as one argument.
+                command_parts.append(full_param_str)
             else:
                 # It's not a JSON object, so it must be multiple distinct arguments.
                 # Raise an error to fall through to the individual quoting logic.
@@ -62,15 +76,9 @@ def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = N
         except (json.JSONDecodeError, ValueError):
             # FAILURE: The params are not one single JSON object.
             # This handles the `rpc_test` case with mixed arguments.
-            # Quote each parameter individually to preserve them as separate arguments.
-            param_str = " ".join(shlex.quote(p) for p in params)
+            command_parts.extend(params)
 
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method} {param_str}"
-    else:
-        # Handle commands with no parameters
-        cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
-
-    return run_command(cmd)
+    return run_command(shlex.join(command_parts))
 
 
 @bitcoin.command()
@@ -81,7 +89,7 @@ def debug_log(tank: str, namespace: Optional[str]):
     Fetch the Bitcoin Core debug log from <tank pod name>
     """
     namespace = get_default_namespace_or(namespace)
-    cmd = f"kubectl logs {tank} --namespace {namespace}"
+    cmd = shlex.join(["kubectl", "logs", tank, "--namespace", namespace])
     try:
         print(run_command(cmd))
     except Exception as e:
@@ -231,13 +239,35 @@ def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespa
 
     # Try to resolve tank_b to IPs via kubectl; fall back to tank_b directly on failure.
     try:
-        cmd = f"kubectl get pod {tank_b} -o jsonpath='{{.status.podIP}}' --namespace {namespace_b}"
+        cmd = shlex.join(
+            [
+                "kubectl",
+                "get",
+                "pod",
+                tank_b,
+                "-o",
+                "jsonpath={.status.podIP}",
+                "--namespace",
+                namespace_b,
+            ]
+        )
         tank_b_ip = run_command(cmd).strip()
     except Exception:
         tank_b_ip = ""
 
     try:
-        cmd = f"kubectl get service {tank_b} -o jsonpath='{{.spec.clusterIP}}' --namespace {namespace_b}"
+        cmd = shlex.join(
+            [
+                "kubectl",
+                "get",
+                "service",
+                tank_b,
+                "-o",
+                "jsonpath={.spec.clusterIP}",
+                "--namespace",
+                namespace_b,
+            ]
+        )
         tank_b_service_ip = run_command(cmd).strip()
     except Exception:
         tank_b_service_ip = ""
@@ -246,7 +276,7 @@ def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespa
     identifiers = [ip for ip in [tank_b_ip, tank_b_service_ip] if ip] or [tank_b]
 
     # List directories in the message capture folder
-    cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- ls {base_dir}"
+    cmd = shlex.join(["kubectl", "exec", tank_a, "--namespace", namespace_a, "--", "ls", base_dir])
 
     dirs = run_command(cmd).splitlines()
 
@@ -257,11 +287,18 @@ def get_messages(tank_a: str, tank_b: str, chain: str, namespace_a: str, namespa
             for file, outbound in [["msgs_recv.dat", False], ["msgs_sent.dat", True]]:
                 file_path = f"{base_dir}/{dir_name}/{file}"
                 # Fetch the file contents from the container
-                cmd = f"kubectl exec {tank_a} --namespace {namespace_a} -- cat {file_path}"
-                import subprocess
-
                 blob = subprocess.run(
-                    cmd, shell=True, capture_output=True, executable="bash"
+                    [
+                        "kubectl",
+                        "exec",
+                        tank_a,
+                        "--namespace",
+                        namespace_a,
+                        "--",
+                        "cat",
+                        file_path,
+                    ],
+                    capture_output=True,
                 ).stdout
 
                 # Parse the blob
