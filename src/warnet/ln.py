@@ -70,13 +70,8 @@ def host(
 
 
 def _host(pod_name: str):
-    info = _rpc(pod_name, "getinfo")
     pod = get_pod(pod_name)
-    if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
-        return json.loads(info)["alias"]
-    else:
-        uris = json.loads(info)["uris"]
-        if uris and len(uris) >= 0:
-            return uris[0].split("@")[1]
-        else:
-            return ""
+
+    # pod name (lnd.fullname / cln.fullname) matches the configs
+    # 'announce-addr' and 'externalhosts' in configmaps
+    return pod.metadata.name + "." + pod.metadata.namespace
