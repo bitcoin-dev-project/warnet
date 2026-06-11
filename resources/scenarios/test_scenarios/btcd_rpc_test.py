@@ -1,7 +1,7 @@
 import time
 
-from commander import Commander, WARNET
-from btcd_framework import BtcdRPC, BtcdRPCError
+from btcd_framework import BtcdRPC
+from commander import WARNET, Commander
 
 
 class BtcdRpcTest(Commander):
@@ -9,20 +9,15 @@ class BtcdRpcTest(Commander):
         self.num_nodes = 1
 
     def add_options(self, parser):
-        parser.description = (
-            "Validate the BtcdRPC JSON-RPC interface against a live btcd network"
-        )
+        parser.description = "Validate the BtcdRPC JSON-RPC interface against a live btcd network"
         parser.usage = "warnet run /path/to/btcd_rpc_test.py"
-
 
     def _btcd_nodes(self) -> list[BtcdRPC]:
         nodes = []
         for tank in WARNET["tanks"]:
             impl = tank.get("implementation", "bitcoincore")
             if impl != "btcd":
-                self.log.warning(
-                    f"Skipping tank {tank['tank']} (implementation={impl})"
-                )
+                self.log.warning(f"Skipping tank {tank['tank']} (implementation={impl})")
                 continue
 
             node = BtcdRPC(
@@ -43,9 +38,8 @@ class BtcdRpcTest(Commander):
             raise AssertionError(msg)
         self.log.info(f"PASS: {msg}")
 
-
     def test_connection_and_basic_info(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 1: Connection & basic info ===")
+        self.log.info("Test 1: Connection & basic info")
         for node in nodes:
             count = node.getblockcount()
             self._assert(
@@ -58,12 +52,10 @@ class BtcdRpcTest(Commander):
                 isinstance(info, dict) and "version" in info,
                 f"{node._tank_name}: getinfo() has 'version' field",
             )
-            self.log.info(
-                f"  {node._tank_name}: height={count}, version={info['version']}"
-            )
+            self.log.info(f"  {node._tank_name}: height={count}, version={info['version']}")
 
     def test_peer_connectivity(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 2: Peer connectivity ===")
+        self.log.info("Test 2: Peer connectivity")
         for node in nodes:
             peers = node.getpeerinfo()
             self._assert(
@@ -77,7 +69,7 @@ class BtcdRpcTest(Commander):
                 )
 
     def test_block_generation(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 3: Block generation ===")
+        self.log.info("Test 3: Block generation")
         miner = nodes[0]
         height_before = miner.getblockcount()
         self.log.info(f"  Height before generate: {height_before}")
@@ -105,7 +97,7 @@ class BtcdRpcTest(Commander):
                 node.force_sync_from(miner)
 
         SYNC_TIMEOUT = 30
-        for i in range(SYNC_TIMEOUT):
+        for _ in range(SYNC_TIMEOUT):
             heights = {n._tank_name: n.getblockcount() for n in nodes}
             if all(h == height_after for h in heights.values()):
                 break
@@ -119,7 +111,7 @@ class BtcdRpcTest(Commander):
             )
 
     def test_getblock_and_getblockhash(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 4: getblock / getblockhash ===")
+        self.log.info("Test 4: getblock / getblockhash")
         node = nodes[0]
         height = node.getblockcount()
 
@@ -139,12 +131,11 @@ class BtcdRpcTest(Commander):
             f"Block height field matches ({block.get('height')} == {height})",
         )
         self.log.info(
-            f"  Block {height}: txns={len(block.get('tx', []))}, "
-            f"size={block.get('size')} bytes"
+            f"  Block {height}: txns={len(block.get('tx', []))}, size={block.get('size')} bytes"
         )
 
     def test_raw_transaction_roundtrip(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 5: Raw transaction round-trip ===")
+        self.log.info("Test 5: Raw transaction round-trip")
         node = nodes[0]
 
         genesis_hash = node.getblockhash(0)
@@ -169,7 +160,7 @@ class BtcdRpcTest(Commander):
         )
 
     def test_mempool(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 6: Mempool ===")
+        self.log.info("Test 6: Mempool")
         node = nodes[0]
 
         info = node.getmempoolinfo()
@@ -186,7 +177,7 @@ class BtcdRpcTest(Commander):
         )
 
     def test_btcd_extensions(self, nodes: list[BtcdRPC]):
-        self.log.info("=== Test 7: btcd extension methods ===")
+        self.log.info("Test 7: btcd extension methods")
         node = nodes[0]
 
         best = node.getbestblock()
@@ -194,9 +185,7 @@ class BtcdRpcTest(Commander):
             isinstance(best, dict) and "hash" in best and "height" in best,
             "getbestblock() has 'hash' and 'height'",
         )
-        self.log.info(
-            f"  getbestblock: height={best['height']} hash={best['hash'][:16]}…"
-        )
+        self.log.info(f"  getbestblock: height={best['height']} hash={best['hash'][:16]}…")
 
         net_id = node.getcurrentnet()
         self._assert(
@@ -209,9 +198,7 @@ class BtcdRpcTest(Commander):
             isinstance(ver, dict) and "btcdjsonrpcapi" in ver,
             "version() has 'btcdjsonrpcapi' key",
         )
-        self.log.info(
-            f"  API version: {ver['btcdjsonrpcapi'].get('versionstring')}"
-        )
+        self.log.info(f"  API version: {ver['btcdjsonrpcapi'].get('versionstring')}")
 
     def run_test(self):
         nodes = self._btcd_nodes()
@@ -229,7 +216,7 @@ class BtcdRpcTest(Commander):
         self.test_mempool(nodes)
         self.test_btcd_extensions(nodes)
 
-        self.log.info("=== All tests passed ===")
+        self.log.info("All tests passed")
 
 
 def main():
