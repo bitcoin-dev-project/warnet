@@ -12,6 +12,7 @@ from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
 
+from .btcd import get_btcctl_flags
 from .constants import BITCOINCORE_CONTAINER, BTCD_CONTAINER
 from .k8s import get_default_namespace_or, get_mission, get_pod, pod_log
 from .process import run_command
@@ -81,13 +82,15 @@ def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = N
             param_str = " ".join(shlex.quote(p) for p in params)
 
         if is_btcd:
-            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- /bin/linux_amd64/btcctl --rpcuser=user --rpcpass=gn0cchi --rpccert=/root/.btcd/rpc.cert --rpcserver=127.0.0.1:18334 --simnet {method} {param_str}"
+            btcctl_flags = get_btcctl_flags(tank, namespace)
+            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- /bin/linux_amd64/btcctl {btcctl_flags} {method} {param_str}"
         else:
             cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- bitcoin-cli {method} {param_str}"
     else:
         # Handle commands with no parameters
         if is_btcd:
-            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- /bin/linux_amd64/btcctl --rpcuser=user --rpcpass=gn0cchi --rpccert=/root/.btcd/rpc.cert --rpcserver=127.0.0.1:18334 --simnet {method}"
+            btcctl_flags = get_btcctl_flags(tank, namespace)
+            cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- /bin/linux_amd64/btcctl {btcctl_flags} {method}"
         else:
             cmd = f"kubectl -n {namespace} exec {tank} --container {container} -- bitcoin-cli {method}"
 
