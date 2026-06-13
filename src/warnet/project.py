@@ -190,7 +190,7 @@ def setup():
                     inquirer.Confirm(
                         "install_kubectl",
                         message=click.style(
-                            "Would you like Warnet to install Kubectl into your virtual environment?",
+                            "Kubectl is required to run Warnet and was not found. Install it into your virtual environment?",
                             fg="blue",
                             bold=True,
                         ),
@@ -228,7 +228,7 @@ def setup():
                     inquirer.Confirm(
                         "install_helm",
                         message=click.style(
-                            "Would you like Warnet to install Helm into your virtual environment?",
+                            "Helm is required to run Warnet and was not found. Install it into your virtual environment now?",
                             fg="blue",
                             bold=True,
                         ),
