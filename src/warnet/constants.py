@@ -155,51 +155,55 @@ INGRESS_HELM_COMMANDS = [
 # Helm binary
 HELM_DOWNLOAD_URL_STUB = "https://get.helm.sh/"
 HELM_BINARY_NAME = "helm"
-HELM_BLESSED_VERSION = "v4.1.4"
+HELM_BLESSED_VERSION = "v4.2.2"
 HELM_BLESSED_NAME_AND_CHECKSUMS = [
     {
-        "name": "helm-v4.1.4-darwin-amd64.tar.gz",
-        "checksum": "abf09c8503ad1d8ef76d3737a058c3456a998aae5f5966fce4bb3031aeb1654e",
+        "name": "helm-v4.2.2-darwin-amd64.tar.gz",
+        "checksum": "10c1e36ee8c5f2e2ee25a16599cb03ab74c0953cd889cacb980a49ba4b6574ba",
     },
     {
-        "name": "helm-v4.1.4-darwin-arm64.tar.gz",
-        "checksum": "7c2eca678e8001fa863cdf8cbf6ac1b3799f9404a89eb55c08260ef5732e658d",
+        "name": "helm-v4.2.2-darwin-arm64.tar.gz",
+        "checksum": "5410a0dae3d5d91f45653b161260d9301aabc4ae80ae50a6605d66884b6df8ea",
     },
     {
-        "name": "helm-v4.1.4-linux-amd64.tar.gz",
-        "checksum": "70b2c30a19da4db264dfd68c8a3664e05093a361cefd89572ffb36f8abfa3d09",
+        "name": "helm-v4.2.2-linux-amd64.tar.gz",
+        "checksum": "9adafecab4d406853bba163a70e9f104f47dbbf65ce24b7653bae7e36150bcb6",
     },
     {
-        "name": "helm-v4.1.4-linux-arm.tar.gz",
-        "checksum": "c4a7d37032379cc7e82c9c76487d1041b193c9a0fbb4b8f3790230899b830a4f",
+        "name": "helm-v4.2.2-linux-arm.tar.gz",
+        "checksum": "7e9490169874695e04ab1af47c5620621fc13c84219a258fcc1afdcd40ca7438",
     },
     {
-        "name": "helm-v4.1.4-linux-arm64.tar.gz",
-        "checksum": "13d03672be289045d2ff00e4e345d61de1c6f21c1257a45955a30e8ae036d8f1",
+        "name": "helm-v4.2.2-linux-arm64.tar.gz",
+        "checksum": "78803142087a0069fa4b50d3f32a84d3ef25c14d1ee8a40fbccf86a6216d2f36",
     },
     {
-        "name": "helm-v4.1.4-linux-386.tar.gz",
-        "checksum": "3e9bcefb85293854367bea931d669bb742974bbd978b3960df921ed129ff40f9",
+        "name": "helm-v4.2.2-linux-386.tar.gz",
+        "checksum": "8e1fdcda4a476ffc5d1179c7f16d33a3d54267efa08fd720f7678277d68bc2d5",
     },
     {
-        "name": "helm-v4.1.4-linux-ppc64le.tar.gz",
-        "checksum": "35a48f5db5c655b4471b37be75e76bfb2b23fc8a95d0fa2f0f344f0694336358",
+        "name": "helm-v4.2.2-linux-loong64.tar.gz",
+        "checksum": "b8bfe96b8b0b0e2af51af4a00ef521cc5a7e03793aea3568cf8500a63ae05041",
     },
     {
-        "name": "helm-v4.1.4-linux-s390x.tar.gz",
-        "checksum": "c5653d0b3687f008dc48f80219906b574af3b623ddc114f92383327299ad935e",
+        "name": "helm-v4.2.2-linux-ppc64le.tar.gz",
+        "checksum": "814a80fd98eb9e4c5a9d610f3b9c15ffe120c2f5e39df16a2f491723ebc90126",
     },
     {
-        "name": "helm-v4.1.4-linux-riscv64.tar.gz",
-        "checksum": "9d747ed5761a6a5c15aa7ad108b65aee917d8e33448690e83a6451b6a48748e6",
+        "name": "helm-v4.2.2-linux-s390x.tar.gz",
+        "checksum": "d84cdf1123f20cfbef19a2af1cd6afe8b00626bd9846bccb9dae978c810c8274",
     },
     {
-        "name": "helm-v4.1.4-windows-amd64.zip",
-        "checksum": "bd60f567f667631a2c9b698dfabe5e3cd52eaaf4264163c0a9cae566db8560e8",
+        "name": "helm-v4.2.2-linux-riscv64.tar.gz",
+        "checksum": "f07c105180dff2619ab45134b9b47b7845387e8f3299e12ebe0efb87c7548717",
     },
     {
-        "name": "helm-v4.1.4-windows-arm64.zip",
-        "checksum": "d0a651026da4a26b28bdfc3d455ce3dfacbc267182dc2225c2172b1dcc549643",
+        "name": "helm-v4.2.2-windows-amd64.zip",
+        "checksum": "5fad8562e98c34fa5af3ef904086a5874a6701050f9bf36e30238c975df94dcd",
+    },
+    {
+        "name": "helm-v4.2.2-windows-arm64.zip",
+        "checksum": "2e993d6a1dd8197a33e65d8e90b26df9d248ff3501701dea401856aa265a2dab",
     },
 ]
 
