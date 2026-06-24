@@ -7,8 +7,7 @@ ARCHES = ["amd64", "arm64"]
 
 CMAKE_BUILD_ARGS = (
     '"-DBUILD_TESTS=OFF -DBUILD_GUI=OFF -DBUILD_BENCH=OFF'
-    " -DBUILD_UTIL=ON -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON"
-    ' "'
+    ' -DBUILD_UTIL=ON -DBUILD_FUZZ_BINARY=OFF -DWITH_ZMQ=ON"'
 )
 AUTOTOOLS_BUILD_ARGS = (
     '"--disable-tests --without-gui --disable-bench'
@@ -51,20 +50,18 @@ def detect_build_system(repo: str, commit_sha: str) -> str:
                         raise ValueError(f"Ref not found in {repo}: {commit_sha}") from api_error
                     print(f"  HTTP 404 -> autotools")
                     return "autotools"
-                print(
-                    f"Warning: HTTP {api_error.code} {api_error.reason} probing {api_url}; defaulting to cmake"
-                )
-                return "cmake"
+                raise RuntimeError(
+                    f"GitHub API error {api_error.code} {api_error.reason} while probing {api_url}"
+                ) from api_error
             except urllib.error.URLError as api_error:
-                print(
-                    f"Warning: could not verify 404 from GitHub API: {api_error}; defaulting to cmake"
-                )
-                return "cmake"
-        print(f"Warning: HTTP {e.code} {e.reason} probing {url}; defaulting to cmake")
-        return "cmake"
+                raise RuntimeError(
+                    f"Could not reach GitHub API to verify build system: {api_error}"
+                ) from api_error
+        raise RuntimeError(
+            f"GitHub returned HTTP {e.code} {e.reason} while probing {url}"
+        ) from e
     except urllib.error.URLError as e:
-        print(f"Warning: could not reach GitHub to detect build system: {e}; defaulting to cmake")
-        return "cmake"
+        raise RuntimeError(f"Could not reach GitHub to detect build system: {e}") from e
 
 
 def run_command(command):
@@ -82,10 +79,11 @@ def build_image(
     build_args: str,
     arches: str,
     action: str,
+    no_patches: bool = False,
 ):
     try:
         build_system = detect_build_system(repo, commit_sha)
-    except ValueError as e:
+    except (ValueError, RuntimeError) as e:
         print(f"Error: {e}")
         return False
     print(f"Detected build system: {build_system}")
@@ -133,6 +131,7 @@ def build_image(
         f" --build-arg REPO={repo}"
         f" --build-arg COMMIT_SHA={commit_sha}"
         f" --build-arg BUILD_ARGS={build_args}"
+        f" --build-arg NO_PATCHES={'true' if no_patches else 'false'}"
         f" {tag_args}"
         f" --file {dockerfile_path}"
         f" {dockerfile_path.parent}"

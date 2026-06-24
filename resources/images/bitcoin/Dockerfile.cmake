@@ -3,6 +3,7 @@ FROM alpine:3.20 AS deps
 ARG REPO
 ARG COMMIT_SHA
 ARG BUILD_ARGS
+ARG NO_PATCHES=false
 
 RUN --mount=type=cache,target=/var/cache/apk \
     sed -i 's/http\:\/\/dl-cdn.alpinelinux.org/https\:\/\/alpine.global.ssl.fastly.net/g' /etc/apk/repositories \
@@ -50,9 +51,15 @@ RUN set -ex \
     && resolved=$(git rev-parse --verify "$REF^{commit}") \
     && git checkout "$resolved" \
     # Build
-    && git apply /tmp/isroutable.patch \
-    && git apply /tmp/addrman.patch \
-    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
+    && if [ "$NO_PATCHES" = "true" ]; then \
+         echo "Skipping patches (--no-patches)"; \
+       else \
+         git apply /tmp/isroutable.patch \
+         || { echo "ERROR: isroutable.patch failed. If this version is incompatible, rebuild with: warnet image build --no-patches"; exit 1; }; \
+         git apply /tmp/addrman.patch \
+         || { echo "ERROR: addrman.patch failed. If this version is incompatible, rebuild with: warnet image build --no-patches"; exit 1; }; \
+       fi \
+    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h || true \
     && cmake -B build \
     -DCMAKE_INSTALL_PREFIX=${BITCOIN_PREFIX} \
     ${BUILD_ARGS} \

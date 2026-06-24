@@ -22,7 +22,13 @@ def image():
 @click.option("--build-args", required=False, type=str)
 @click.option("--arches", required=False, type=str)
 @click.option("--action", required=False, type=str, default="load")
-def build(repo, commit_sha, tags, build_args, arches, action):
+@click.option(
+    "--no-patches",
+    is_flag=True,
+    default=False,
+    help="Skip applying isroutable and addrman patches (use if patches are incompatible with the target version)",
+)
+def build(repo, commit_sha, tags, build_args, arches, action, no_patches):
     """Build a Bitcoin Core Docker image with specified parameters from specified commit or tag.
 
     \b
@@ -34,6 +40,6 @@ def build(repo, commit_sha, tags, build_args, arches, action):
         # Build an image for local testing on arm64 only
             warnet image build --repo bitcoin/bitcoin --commit-sha d6db87165c6dc2123a759c79ec236ea1ed90c0e3 --tags bitcoindevproject/bitcoin:v29.0-rc2 --arches arm64 --action load
     """
-    res = build_image(repo, commit_sha, tags, build_args, arches, action)
+    res = build_image(repo, commit_sha, tags, build_args, arches, action, no_patches)
     if not res:
         sys.exit(1)
