@@ -48,7 +48,7 @@ def detect_build_system(repo: str, commit_sha: str) -> str:
                 if api_error.code == 404:
                     if "No commit found for the ref" in body:
                         raise ValueError(f"Ref not found in {repo}: {commit_sha}") from api_error
-                    print(f"  HTTP 404 -> autotools")
+                    print("  HTTP 404 -> autotools")
                     return "autotools"
                 raise RuntimeError(
                     f"GitHub API error {api_error.code} {api_error.reason} while probing {api_url}"
@@ -57,9 +57,7 @@ def detect_build_system(repo: str, commit_sha: str) -> str:
                 raise RuntimeError(
                     f"Could not reach GitHub API to verify build system: {api_error}"
                 ) from api_error
-        raise RuntimeError(
-            f"GitHub returned HTTP {e.code} {e.reason} while probing {url}"
-        ) from e
+        raise RuntimeError(f"GitHub returned HTTP {e.code} {e.reason} while probing {url}") from e
     except urllib.error.URLError as e:
         raise RuntimeError(f"Could not reach GitHub to detect build system: {e}") from e
 
