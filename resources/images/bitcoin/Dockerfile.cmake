@@ -3,6 +3,7 @@ FROM alpine:3.20 AS deps
 ARG REPO
 ARG COMMIT_SHA
 ARG BUILD_ARGS
+ARG NO_PATCHES=false
 
 RUN --mount=type=cache,target=/var/cache/apk \
     sed -i 's/http\:\/\/dl-cdn.alpinelinux.org/https\:\/\/alpine.global.ssl.fastly.net/g' /etc/apk/repositories \
@@ -38,24 +39,27 @@ RUN set -ex \
     && cd /build \
     && git init \
     && git remote add origin "https://github.com/${REPO}" \
-
     # Try commit/branch first
     && if git fetch --depth 1 origin "$COMMIT_SHA:refs/temp/ref" 2>/dev/null; then \
          REF=refs/temp/ref; \
        else \
-
          # Fallback: fetch tag explicitly into local refs
          git fetch --depth 1 origin "refs/tags/$COMMIT_SHA:refs/tags/$COMMIT_SHA"; \
          REF="refs/tags/$COMMIT_SHA"; \
        fi \
-
     # Resolve tag -> commit if needed
     && resolved=$(git rev-parse --verify "$REF^{commit}") \
     && git checkout "$resolved" \
-
-    && git apply /tmp/isroutable.patch \
-    && git apply /tmp/addrman.patch \
-    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h \
+    # Build
+    && if [ "$NO_PATCHES" = "true" ]; then \
+         echo "Skipping patches (--no-patches)"; \
+       else \
+         git apply /tmp/isroutable.patch \
+         || { echo "ERROR: isroutable.patch failed. If this version is incompatible, rebuild with: warnet image build --no-patches"; exit 1; }; \
+         git apply /tmp/addrman.patch \
+         || { echo "ERROR: addrman.patch failed. If this version is incompatible, rebuild with: warnet image build --no-patches"; exit 1; }; \
+       fi \
+    && sed -i s:sys/fcntl.h:fcntl.h: src/compat/compat.h || true \
     && cmake -B build \
     -DCMAKE_INSTALL_PREFIX=${BITCOIN_PREFIX} \
     ${BUILD_ARGS} \
@@ -66,7 +70,6 @@ RUN set -ex \
     && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.a \
     && rm -f ${BITCOIN_PREFIX}/lib/libbitcoinconsensus.so.0.0.0
 
-# Final clean stage
 FROM alpine:3.20
 ARG UID=100
 ARG GID=101
