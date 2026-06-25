@@ -214,6 +214,7 @@ options:
 | build_args | String |            |           |
 | arches     | String |            |           |
 | action     | String |            | "load"    |
+| no_patches | Bool   |            | False     |
 
 ## Ln
 
