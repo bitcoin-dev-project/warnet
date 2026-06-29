@@ -172,8 +172,11 @@ def grep_logs(pattern: str, show_k8s_timestamps: bool, no_sort: bool):
             longest_namespace_len = len(tank.metadata.namespace)
 
         pod_name = tank.metadata.name
-        impl = (tank.metadata.labels or {}).get("implementation", BITCOINCORE_CONTAINER)
-        log_container = impl if impl in (BTCD_CONTAINER, BITCOINCORE_CONTAINER) else BITCOINCORE_CONTAINER
+        impl = (tank.metadata.labels or {}).get("implementation")
+        if impl not in (BTCD_CONTAINER, BITCOINCORE_CONTAINER):
+            print(f"Skipping {pod_name}: unsupported implementation label: {impl}")
+            continue
+        log_container = impl
         logs = pod_log(pod_name, log_container)
 
         if logs is not False:

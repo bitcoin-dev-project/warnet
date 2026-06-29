@@ -1,12 +1,12 @@
 import time
 
 from btcd_framework import BtcdRPC, BtcdRPCError
-from commander import Commander, WARNET
+from commander import WARNET, Commander
 
 
 class BtcdMiner(Commander):
     def set_test_params(self):
-        self.num_nodes = 1 
+        self.num_nodes = 1
 
     def add_options(self, parser):
         parser.description = "Mine blocks on a btcd network and log network status"
@@ -38,9 +38,7 @@ class BtcdMiner(Commander):
         for tank in WARNET["tanks"]:
             impl = tank.get("implementation", "bitcoincore")
             if impl != "btcd":
-                self.log.warning(
-                    f"Skipping tank {tank['tank']} (implementation={impl})"
-                )
+                self.log.warning(f"Skipping tank {tank['tank']} (implementation={impl})")
                 continue
             node = BtcdRPC(
                 host=tank["rpc_host"],
@@ -58,11 +56,11 @@ class BtcdMiner(Commander):
         for node in nodes:
             try:
                 height = node.getblockcount()
-                peers  = len(node.getpeerinfo())
+                peers = len(node.getpeerinfo())
                 mempool = node.getmempoolinfo().get("size", 0)
                 status[node._tank_name] = {
-                    "height":  height,
-                    "peers":   peers,
+                    "height": height,
+                    "peers": peers,
                     "mempool": mempool,
                 }
             except Exception as exc:
@@ -70,11 +68,11 @@ class BtcdMiner(Commander):
         return status
 
     def _log_status(self, round_num: int, status: dict):
-        self.log.info("┌────────────────┬──────────┬─────────┬─────────────┐")
-        self.log.info(f"│  Round {round_num:>3}  Network Status                        │")
-        self.log.info("├────────────────┬──────────┬─────────┬─────────────┤")
-        self.log.info("│  Node          │  Height  │  Peers  │  Mempool    │")
-        self.log.info("├────────────────┼──────────┼─────────┼─────────────┤")
+        self.log.info("+----------------+----------+---------+-------------+")
+        self.log.info(f"| Round {round_num:>3}  Network Status                       |")
+        self.log.info("+----------------+----------+---------+-------------+")
+        self.log.info("| Node           | Height   | Peers   | Mempool txs |")
+        self.log.info("+----------------+----------+---------+-------------+")
         for name, data in status.items():
             if "error" in data:
                 self.log.info(f"| {name:<14} | ERROR    |         | {data['error'][:11]:<11} |")
@@ -82,7 +80,7 @@ class BtcdMiner(Commander):
                 self.log.info(
                     f"| {name:<14} | {data['height']:>8} | {data['peers']:>7} | {data['mempool']:>11} |"
                 )
-        self.log.info("└────────────────┴──────────┴─────────┴─────────────┘")
+        self.log.info("+----------------+----------+---------+-------------+")
 
     def _propagate(self, nodes: list[BtcdRPC], miner: BtcdRPC, target_height: int):
         time.sleep(3)
@@ -97,10 +95,7 @@ class BtcdMiner(Commander):
         for elapsed in range(timeout):
             heights = {n._tank_name: n.getblockcount() for n in nodes}
             if all(h >= target_height for h in heights.values()):
-                self.log.info(
-                    f"All nodes synced to height {target_height} "
-                    f"in ~{elapsed}s"
-                )
+                self.log.info(f"All nodes synced to height {target_height} in ~{elapsed}s")
                 return
             if elapsed % 10 == 0 and elapsed > 0:
                 behind = {k: v for k, v in heights.items() if v < target_height}
@@ -110,10 +105,7 @@ class BtcdMiner(Commander):
         heights = {n._tank_name: n.getblockcount() for n in nodes}
         behind = {k: v for k, v in heights.items() if v < target_height}
         if behind:
-            self.log.warning(
-                f" Sync timeout after {timeout}s. Still behind: {behind}"
-            )
-
+            self.log.warning(f" Sync timeout after {timeout}s. Still behind: {behind}")
 
     def run_test(self):
         nodes = self._btcd_nodes()
@@ -147,11 +139,8 @@ class BtcdMiner(Commander):
             try:
                 before = miner.getblockcount()
                 hashes = miner.generate(self.options.blocks)
-                after  = miner.getblockcount()
-                self.log.info(
-                    f"  Mined {len(hashes)} block(s) — "
-                    f"height {before} → {after}"
-                )
+                after = miner.getblockcount()
+                self.log.info(f"  Mined {len(hashes)} block(s): height {before} -> {after}")
                 for h in hashes:
                     self.log.info(f"     {h}")
             except BtcdRPCError as exc:
