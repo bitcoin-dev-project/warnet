@@ -27,6 +27,7 @@ class LNBasicTest(TestBase):
             "tank-0003-ln",
             "tank-0004-ln",
             "tank-0005-ln",
+            "tank-0006-ln",
         ]
 
         self.cb_port = 9235
@@ -101,7 +102,22 @@ class LNBasicTest(TestBase):
         except Exception as e:
             assert "verification failed: signature mismatch after caveat verification" in str(e)
         try:
+            self.warnet("ln rpc tank-0001-ln --rpcserver=tank-0006-ln.default:10009 getinfo")
+            raise AssertionError("That should not have worked!")
+        except Exception as e:
+            assert "verification failed: signature mismatch after caveat verification" in str(e)
+        try:
             self.warnet("ln rpc tank-0003-ln --rpcserver=tank-0004-ln.default:10009 getinfo")
+            raise AssertionError("That should not have worked!")
+        except Exception as e:
+            assert "verification failed: signature mismatch after caveat verification" in str(e)
+        try:
+            self.warnet("ln rpc tank-0003-ln --rpcserver=tank-0006-ln.default:10009 getinfo")
+            raise AssertionError("That should not have worked!")
+        except Exception as e:
+            assert "verification failed: signature mismatch after caveat verification" in str(e)
+        try:
+            self.warnet("ln rpc tank-0006-ln --rpcserver=tank-0004-ln.default:10009 getinfo")
             raise AssertionError("That should not have worked!")
         except Exception as e:
             assert "verification failed: signature mismatch after caveat verification" in str(e)

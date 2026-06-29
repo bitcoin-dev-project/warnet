@@ -16,7 +16,7 @@ from time import sleep
 
 from kubernetes import client, config
 from kubernetes.stream import stream
-from ln_framework.ln import CLN, LND, LNNode
+from ln_framework.ln import CLN, LND, LNNode, get_admin_macaroon
 from test_framework.authproxy import AuthServiceProxy
 from test_framework.blocktools import get_witness_script, script_BIP34_coinbase_height
 from test_framework.messages import (
@@ -117,7 +117,7 @@ for pod in pods.items:
                 pod.metadata.name,
                 pod.metadata.namespace,
                 pod_ip,
-                pod.metadata.annotations["adminMacaroon"],
+                get_admin_macaroon(sclient, pod),
             )
         if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
             lnnode = CLN(pod.metadata.name, pod.metadata.namespace, pod.status.pod_ip)

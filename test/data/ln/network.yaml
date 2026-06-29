@@ -73,3 +73,10 @@ nodes:
   - name: tank-0005
     addnode:
       - tank-0000
+
+  - name: tank-0006
+    addnode:
+      - tank-0000
+    lnd:
+      image:
+        tag: v0.15.5-beta

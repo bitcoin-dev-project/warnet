@@ -2,11 +2,13 @@ import base64
 import http.client
 import json
 import logging
+import re
 import ssl
 from abc import ABC, abstractmethod
 from time import sleep
 
 import requests
+from kubernetes.stream import stream
 
 # Don't worry about lnd's self-signed certificates
 INSECURE_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -420,3 +422,50 @@ class LND(LNNode):
     def graph(self):
         res = self.get("/v1/graph")
         return json.loads(res)
+
+
+def _get_lnd_semver(pod):
+    for c in pod.spec.containers:
+        if c.name == "lnd":
+            return c.image.removeprefix("lightninglabs/lnd:")
+    raise RuntimeError("no lnd container found")
+
+
+def _supports_macaroon_root_key(pod):
+    semver = _get_lnd_semver(pod)
+    minor = int(semver.split(".")[1])
+    return minor >= 16
+
+
+def _read_admin_macaroon(sclient, pod):
+    chain = pod.metadata.labels["chain"]
+    path = f"/root/.lnd/data/chain/bitcoin/{chain}/admin.macaroon"
+    cmd = [
+        "bash",
+        "-c",
+        f"""for i in {{1..10}}; do xxd -p '{path}' 2>/dev/null && exit 0 || sleep 1; done; exit 1""",
+    ]
+    out = stream(
+        sclient.connect_get_namespaced_pod_exec,
+        name=pod.metadata.name,
+        namespace=pod.metadata.namespace,
+        container="lnd",
+        command=cmd,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    admin_macaroon_hex = "".join(out.split())
+    if not re.fullmatch(r"[0-9a-fA-F]+", admin_macaroon_hex):
+        raise RuntimeError(f"could not read admin.macaroon for {pod.metadata.name}")
+    return admin_macaroon_hex
+
+
+def get_admin_macaroon(sclient, pod):
+    # we have to read admin.macaroon for lnd versions below v0.16.0-beta
+    # because they cannot use adminMacaroon from the pod config
+    if _supports_macaroon_root_key(pod):
+        return pod.metadata.annotations["adminMacaroon"]
+    else:
+        return _read_admin_macaroon(sclient, pod)
