@@ -35,7 +35,7 @@ def namespaces():
 
 @namespaces.command()
 def list():
-    """List all namespaces with 'wargames-' prefix"""
+    """List all active namespaces with the 'wargames-' prefix"""
     cmd = "kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'"
     res = run_command(cmd)
     all_namespaces = res.split()
@@ -55,7 +55,10 @@ def list():
 @click.option("--all", "destroy_all", is_flag=True, help="Destroy all warnet- prefixed namespaces")
 @click.argument("namespace", required=False)
 def destroy(destroy_all: bool, namespace: str):
-    """Destroy a specific namespace or all 'wargames-' prefixed namespaces"""
+    """Destroy a specific namespace or all 'wargames-' prefixed namespaces.
+
+    Only namespaces with the 'wargames-' prefix can be destroyed this way.
+    """
     if destroy_all:
         cmd = "kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'"
         res = run_command(cmd)

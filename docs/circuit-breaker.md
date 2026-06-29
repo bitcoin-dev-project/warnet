@@ -39,8 +39,11 @@ nodes:
 
 ### Configuration Options
 
-- `enabled`: Set to `true` to enable Circuit Breaker for the node
-- `httpPort`: Override the default HTTP port (9235) for the web UI (optional)
+| Option | Description |
+|--------|-------------|
+| `enabled` | Set to `true` to enable Circuit Breaker for the node |
+| `httpPort` | Override the default HTTP port (`9235`) for the web UI (optional) |
+| `image` | Override the Circuit Breaker Docker image (e.g. `"bitcoindevproject/circuitbreaker:v0.5.0"`) |
 
 ### Complete Example
 
