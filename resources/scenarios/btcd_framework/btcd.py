@@ -4,7 +4,7 @@ import logging
 import ssl
 import time
 from base64 import b64encode
-from typing import Any
+
 
 def _self_signed_context() -> ssl.SSLContext:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -33,12 +33,9 @@ class BtcdRPC:
         self.host = host
         self.port = port
         self.timeout = timeout
-        self._auth_header = "Basic " + b64encode(
-            f"{user}:{password}".encode()
-        ).decode()
+        self._auth_header = "Basic " + b64encode(f"{user}:{password}".encode()).decode()
         self._request_id = 0
         self.log = logging.getLogger(f"BtcdRPC({host}:{port})")
-
 
     def _new_connection(self) -> http.client.HTTPSConnection:
         return http.client.HTTPSConnection(
@@ -66,24 +63,28 @@ class BtcdRPC:
             "Content-Length": str(len(payload)),
         }
 
-    def _send_with_retry(self, method: str, payload: bytes, headers: dict, max_attempts: int = 5) -> tuple[int, str]:
+    def _send_with_retry(
+        self, method: str, payload: bytes, headers: dict, max_attempts: int = 5
+    ) -> tuple[int, str]:
         last_exc = RuntimeError("unreachable")
 
         for attempt in range(max_attempts):
             if attempt > 0:
-                backoff = 2 ** attempt
+                backoff = 2**attempt
                 self.log.debug("Retry %d for %s (backoff %ds)", attempt, method, backoff)
                 time.sleep(backoff)
 
             conn = self._new_connection()
-            
+
             try:
                 conn.request("POST", "/", body=payload, headers=headers)
                 response = conn.getresponse()
                 return response.status, response.read().decode("utf-8")
             except (BrokenPipeError, ConnectionResetError, OSError) as exc:
                 last_exc = exc
-                self.log.warning("Connection error on attempt %d for %s: %s", attempt + 1, method, exc)
+                self.log.warning(
+                    "Connection error on attempt %d for %s: %s", attempt + 1, method, exc
+                )
             finally:
                 conn.close()
 
@@ -100,8 +101,7 @@ class BtcdRPC:
                     message=err.get("message", raw),
                 )
             except (json.JSONDecodeError, KeyError):
-                raise ConnectionError(f"btcd returned HTTP {status}: {raw[:200]}")
-
+                raise ConnectionError(f"btcd returned HTTP {status}: {raw[:200]}") from None
 
         if body.get("error") is not None:
             err = body["error"]
@@ -112,15 +112,14 @@ class BtcdRPC:
     """
     Execute a JSON-RPC call and return the result field.
     """
+
     def _call(self, method: str, *params):
         payload = self._build_payload(method, list(params))
         headers = self._build_headers(payload)
         status, raw = self._send_with_retry(method, payload, headers)
         return self._parse_response(method, status, raw)
 
-
-
-    # standard Bitcoin methods 
+    # standard Bitcoin methods
 
     def getblockcount(self) -> int:
         return self._call("getblockcount")
@@ -192,7 +191,6 @@ class BtcdRPC:
     def stop(self) -> str:
         return self._call("stop")
 
-    
     # btcd extension methods
 
     def generate(self, num_blocks: int) -> list:
@@ -228,9 +226,8 @@ class BtcdRPC:
             "searchrawtransactions", address, verbose, skip, count, vin_extra, reverse
         )
 
-
     # helpers
-    
+
     def force_sync_from(self, source: "BtcdRPC") -> None:
         p2p_port = getattr(source, "_p2p_port", 18444)
         peer_addr = f"{source.host}:{p2p_port}"
@@ -245,7 +242,6 @@ class BtcdRPC:
             self.node("connect", peer_addr, "perm")
         except Exception as e:
             self.log.debug("connect %s: %s", peer_addr, e)
-
 
     def __repr__(self) -> str:
         return f"BtcdRPC(host={self.host!r}, port={self.port})"
