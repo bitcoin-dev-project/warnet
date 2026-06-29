@@ -45,26 +45,150 @@ app.kubernetes.io/name: {{ include "bitcoincore.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "bitcoincore.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "bitcoincore.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
+
+
 
 
 {{/*
-Add network section heading in bitcoin.conf
-Always add for custom semver, check version for valid semver
+Add network section heading in bitcoin.conf.
+
+Bitcoin Core image tags are not always strict SemVer.
+
+Examples we want to accept:
+  10.0          -> 10.0.0
+  10.0.0        -> 10.0.0
+  10.0.0-rc1    -> 10.0.0-rc.1
+  10.0rc1       -> 10.0.0-rc.1
+  10.0-rc1      -> 10.0.0-rc.1
+
+Helm's semverCompare requires strict SemVer, so normalize first.
 */}}
 {{- define "bitcoincore.check_semver" -}}
-{{- $custom := contains "-" .Values.image.tag -}}
-{{- $newer := semverCompare ">=0.17.0" .Values.image.tag -}}
-{{- if or $newer $custom -}}
+{{- $tag := .Values.image.tag | toString -}}
+{{- $semver := "" -}}
+
+{{/*
+Case: already valid normal SemVer.
+
+Matches:
+  10.0.0
+
+Regex:
+  ^     start of string
+  \d+   major version: one or more digits
+  \.    literal dot
+  \d+   minor version: one or more digits
+  \.    literal dot
+  \d+   patch version: one or more digits
+  $     end of string
+*/}}
+{{- if regexMatch `^\d+\.\d+\.\d+$` $tag -}}
+  {{- $semver = $tag -}}
+
+{{/*
+Case: missing patch version.
+
+Matches:
+  10.0
+
+Converts:
+  10.0 -> 10.0.0
+*/}}
+{{- else if regexMatch `^\d+\.\d+$` $tag -}}
+  {{- $semver = printf "%s.0" $tag -}}
+
+{{/*
+Case: has patch version, but rc prerelease is not strict SemVer.
+
+Matches:
+  10.0.0-rc1
+
+Converts:
+  10.0.0-rc1 -> 10.0.0-rc.1
+
+Regex:
+  ^        start of string
+  (\d+)    capture major version
+  \.       literal dot
+  (\d+)    capture minor version
+  \.       literal dot
+  (\d+)    capture patch version
+  -rc      literal "-rc"
+  (\d+)    capture rc number
+  $        end of string
+
+Replacement:
+  ${1}.${2}.${3}-rc.${4}
+*/}}
+{{- else if regexMatch `^\d+\.\d+\.\d+-rc\d+$` $tag -}}
+  {{- $semver = regexReplaceAll `^(\d+)\.(\d+)\.(\d+)-rc(\d+)$` $tag `${1}.${2}.${3}-rc.${4}` -}}
+
+{{/*
+Case: missing patch version and rc is attached directly to minor version.
+
+Matches:
+  10.0rc1
+
+Converts:
+  10.0rc1 -> 10.0.0-rc.1
+
+Regex:
+  ^       start of string
+  (\d+)   capture major version
+  \.      literal dot
+  (\d+)   capture minor version
+  rc      literal "rc"
+  (\d+)   capture rc number
+  $       end of string
+
+Replacement:
+  ${1}.${2}.0-rc.${3}
+*/}}
+{{- else if regexMatch `^\d+\.\d+rc\d+$` $tag -}}
+  {{- $semver = regexReplaceAll `^(\d+)\.(\d+)rc(\d+)$` $tag `${1}.${2}.0-rc.${3}` -}}
+
+{{/*
+Case: missing patch version, with hyphenated rc prerelease.
+
+Matches:
+  10.0-rc1
+
+Converts:
+  10.0-rc1 -> 10.0.0-rc.1
+
+Regex:
+  ^       start of string
+  (\d+)   capture major version
+  \.      literal dot
+  (\d+)   capture minor version
+  -rc     literal "-rc"
+  (\d+)   capture rc number
+  $       end of string
+
+Replacement:
+  ${1}.${2}.0-rc.${3}
+*/}}
+{{- else if regexMatch `^\d+\.\d+-rc\d+$` $tag -}}
+  {{- $semver = regexReplaceAll `^(\d+)\.(\d+)-rc(\d+)$` $tag `${1}.${2}.0-rc.${3}` -}}
+
+{{/*
+Fallback:
+  Leave the tag unchanged.
+
+Note:
+  If this is not valid SemVer, semverCompare will fail.
+  Add another normalization case above if more tag formats need support.
+*/}}
+{{- else -}}
+  {{- $semver = $tag -}}
+{{- end -}}
+
+{{/*
+Only add the network section heading for Bitcoin Core versions
+where bitcoin.conf supports per-network sections.
+*/}}
+{{- if semverCompare ">=0.17.0" $semver -}}
 [{{ .Values.global.chain }}]
 {{- end -}}
+
 {{- end -}}
