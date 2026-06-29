@@ -14,7 +14,14 @@ parameters in <angle brackets>.
 ## API Commands
 
 ### `warnet auth`
-Authenticate with a Warnet cluster using a kubernetes config file
+Authenticate with a Warnet cluster using a kubernetes config file.
+
+    Merges the given kubeconfig into the local kubeconfig and switches the
+    active context. If an entry already exists and differs, a diff is shown
+    and confirmation is requested before overwriting.
+
+    Pass --revert (with no AUTH_CONFIG) to restore the kubeconfig that was
+    active before the most recent `warnet auth` call.
 
 options:
 | name        | type   | required   | default   |
@@ -42,7 +49,12 @@ options:
 | to_all_users | Bool   |            | False     |
 
 ### `warnet down`
-Bring down a running warnet carefully
+Bring down a running warnet carefully.
+
+    Interactive: shows a table of all Helm releases that will be destroyed and
+    asks for confirmation. If Persistent Volume Claims (PVCs) exist, also asks
+    whether to delete them. Answering 'n' to the PVC prompt preserves
+    persistent node data across redeployments.
 
 
 ### `warnet host`
@@ -63,7 +75,10 @@ Initialize a warnet project in the current directory
 
 
 ### `warnet logs`
-Show the logs of a pod
+Show the logs of a pod.
+
+    If pod_name is omitted, an interactive menu lists all available commander
+    and tank pods sorted by creation time, most recent first.
 
 options:
 | name      | type   | required   | default   |
@@ -82,7 +97,12 @@ options:
 
 ### `warnet run`
 Run a scenario from a file.
-    Pass `-- --help` to get individual scenario help
+
+    Pass `-- --help` to print that scenario's argument help without deploying a pod.
+
+    Use --source_dir to bundle a directory of helper modules into the commander pod.
+    Use --admin to grant cross-namespace node access (requires admin kubeconfig context).
+    Use --debug to stream logs and delete the pod when the scenario exits.
 
 options:
 | name            | type   | required   | default   |
@@ -99,7 +119,10 @@ Setup warnet
 
 
 ### `warnet snapshot`
-Create a snapshot of a tank's Bitcoin data or snapshot all tanks
+Create a snapshot of a tank's Bitcoin data or snapshot all tanks.
+
+    If neither tank_name nor --all is given, an interactive menu lets you
+    select which tank to snapshot.
 
 options:
 | name         | type   | required   | default            |
@@ -114,7 +137,10 @@ Display the unified status of the Warnet network and active scenarios
 
 
 ### `warnet stop`
-Stop a running scenario or all scenarios
+Stop a running scenario or all scenarios.
+
+    If scenario_name is omitted, an interactive menu lists all running
+    scenarios. Enter the number to stop one, 'a' to stop all, or 'q' to quit.
 
 options:
 | name          | type   | required   | default   |
@@ -140,8 +166,19 @@ options:
 Initialize a warnet project in the current directory
 
 
-### `warnet admin namespaces`
-Namespaces commands
+### `warnet admin namespaces destroy`
+Destroy a specific namespace or all 'wargames-' prefixed namespaces.
+
+    Only namespaces with the 'wargames-' prefix can be destroyed this way.
+
+options:
+| name        | type   | required   | default   |
+|-------------|--------|------------|-----------|
+| destroy_all | Bool   |            | False     |
+| namespace   | String |            |           |
+
+### `warnet admin namespaces list`
+List all active namespaces with the 'wargames-' prefix
 
 
 ## Bitcoin
@@ -188,8 +225,6 @@ options:
 | method    | String | yes        |           |
 | params    | String |            |           |
 | namespace | String |            |           |
-
-## Graph
 
 ## Image
 
@@ -244,5 +279,22 @@ options:
 | method    | String | yes        |           |
 | params    | String |            |           |
 | namespace | String |            |           |
+
+## Namespaces
+
+### `warnet namespaces destroy`
+Destroy a specific namespace or all 'wargames-' prefixed namespaces.
+
+    Only namespaces with the 'wargames-' prefix can be destroyed this way.
+
+options:
+| name        | type   | required   | default   |
+|-------------|--------|------------|-----------|
+| destroy_all | Bool   |            | False     |
+| namespace   | String |            |           |
+
+### `warnet namespaces list`
+List all active namespaces with the 'wargames-' prefix
+
 
 
