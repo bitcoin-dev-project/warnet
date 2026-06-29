@@ -25,11 +25,6 @@ from .constants import (
 )
 
 
-@click.group(name="graph", hidden=True)
-def graph():
-    """Create and validate network graphs"""
-
-
 def custom_graph(
     tanks: list,
     datadir: Path,

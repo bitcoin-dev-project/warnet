@@ -11,7 +11,7 @@ Once these files exist you deploy the network with:
 warnet deploy networks/<name>
 ```
 
-There are three ways to produce them. All three result in the same YAML files — the choice is about how much control and scale you need.
+There are four ways to produce them. All result in the same YAML files — the choice is about how much control and scale you need.
 
 For the full list of options available in those files, see:
 - [Tank Options](tank-options.md) — all Bitcoin Core node keys
@@ -259,3 +259,65 @@ Use a script when any of the following are true:
 - The network will need to be regenerated with different parameters in the future
 
 **Best for:** large test networks, wargame infrastructure, reproducible multi-variant deployments.
+
+---
+
+## Method 4: `warnet import-network` (LND graph JSON)
+
+For Lightning Network simulations, you can bootstrap a network directly from the JSON output of `lnd`'s `describegraph` RPC. This lets you replay the topology — nodes, channels, and channel policies — of a real or captured LN graph inside Warnet.
+
+### Getting the graph JSON
+
+Export it from a running `lnd` node:
+
+```sh
+lncli describegraph > ln_graph.json
+```
+
+The file must contain a top-level JSON object with two arrays:
+
+- **`nodes`** — each entry must have a `pub_key` field; all other fields (`alias`, `addresses`, `features`, etc.) are carried along but only `pub_key` is used for identity mapping
+- **`edges`** — each entry must have `node1_pub`, `node2_pub`, `channel_id`, `capacity`, `node1_policy`, and `node2_policy`; policy fields (`fee_base_msat`, `fee_rate_milli_msat`, `time_lock_delta`, `min_htlc`, `max_htlc_msat`) are imported verbatim
+
+Several pre-built graphs of different sizes are included in the test suite under `test/data/` (e.g. `LN_10.json`, `LN_50.json`, `LN_100.json`) and can be used directly.
+
+### Running the import
+
+```sh
+warnet import-network <path/to/ln_graph.json> <output/network/dir>
+```
+
+For example:
+
+```sh
+warnet import-network test/data/LN_10.json networks/my_ln_net
+```
+
+This writes `network.yaml` and `node-defaults.yaml` into the output directory (creating it if it doesn't exist) and prints a summary:
+
+```
+Imported 10 nodes
+Imported 13 channels
+Network created in networks/my_ln_net
+```
+
+Deploy it the same way as any other network:
+
+```sh
+warnet deploy networks/my_ln_net
+```
+
+### What the importer does
+
+- Each node in the JSON becomes a `tank-NNNN` with `ln.lnd: true` enabled
+- Nodes are wired into a ring topology via `addnode` so that Bitcoin P2P connectivity is established
+- Edges are sorted by `channel_id` and assigned sequential block/index positions starting at `CHANNEL_OPEN_START_HEIGHT` (defined in `resources/scenarios/ln_framework/ln.py`), with up to `CHANNEL_OPENS_PER_BLOCK` channel-open transactions per block
+- Channel capacity and push amount (half of capacity) are taken from the edge's `capacity` field
+- Both `node1_policy` and `node2_policy` are translated into Warnet `Policy` objects, preserving fee rates, time-lock deltas, HTLC limits, and other routing parameters
+
+**Best for:** reproducing real Lightning Network topologies, testing routing behaviour against known channel policies, integration testing with SimLN or other payment-activity tools.
+
+**Limitations:**
+- Node identity (pubkeys, aliases) is remapped to `tank-NNNN` names; original pubkeys are not preserved in the running network
+- Only `lnd` JSON format is supported — CLN or other formats require manual conversion
+- No on-chain funding is pre-staged; Warnet handles channel funding via its own startup sequence

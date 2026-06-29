@@ -64,7 +64,7 @@ List of channels to open after the network is initialised. **You do not need to 
 lnd:
   channels:
     - id:
-        block: 500    # block height of the funding tx (must be unique across nodes)
+        block: 500    # block height of the funding tx
         index: 1      # output index within that block (1-based, max 200 per block)
       target: tank-0001-ln   # pod name of the remote LND node (with -ln suffix)
       capacity: 1000000      # channel capacity in satoshis
@@ -89,7 +89,7 @@ When `warnet deploy` finds any `lnd.channels` or `cln.channels` entry — in `ne
 
 1. **Wait for L1 p2p** — holds until all Bitcoin Core nodes have established their connections from `addnode`.
 2. **Mine to near channel-open height** — mines to block 496 (four blocks before the default `id.block` start of 500), building a usable chain. A node named `miner` is used as the block source; if none exists, the first node in the network is used instead.
-3. **Fund LN wallets** — constructs a single transaction that sends 10 BTC UTXOs to the on-chain wallet of every node that opens at least one channel. These UTXOs are sized so that the change output always lands at tx output index 1, leaving the channel funding output at index 0 — which is what makes channel IDs deterministic.
+3. **Fund LN wallets** — constructs a single transaction that sends 10 UTXOs to the on-chain wallet of every node that opens at least one channel. These UTXOs are sized so that the change output always lands at tx output index 1, leaving the channel funding output at index 0 — which is what makes channel IDs deterministic.
 4. **Establish LN p2p connections** — connects every channel pair directly, plus builds a ring through all LN nodes so the gossip graph is connected.
 5. **Open channels block-by-block** — processes all channels sorted by `id.block`, then `id.index`. For each target block:
    - Mines to that height

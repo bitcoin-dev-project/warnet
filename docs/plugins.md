@@ -31,18 +31,6 @@ Hooks control *when* a plugin runs relative to the deploy sequence. All six hook
 | `preNetwork` | After logging infrastructure, before nodes are launched |
 | `postNetwork` | After all node deploy threads have completed |
 
-### Per-node hooks and `node_name`
-
-For `preNode` and `postNode`, Warnet passes the current node's name in the context under the key `node_name`. Plugins can read this to act on a specific node. The pod name Warnet produces for a per-node plugin follows the pattern:
-
-```
-<node-name>-<pre|post>-<podName>
-```
-
-For example, with `podName: hello-pod` on node `tank-0000`:
-- `tank-0000-pre-hello-pod`
-- `tank-0000-post-hello-pod`
-
 ---
 
 ## Writing a plugin

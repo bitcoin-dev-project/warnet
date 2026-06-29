@@ -220,10 +220,3 @@ For the full reference of all `lnd:` and `cln:` configuration keys — including
 
 The `node-defaults.yaml` file accepts the same node-level keys as `network.yaml` and applies them as defaults to every node. It additionally supports:
 
-### `warnet:` — deployment label
-
-A string identifier for the deployment, used as a label on Kubernetes resources:
-
-```yaml
-warnet: my_signet_network
-```
