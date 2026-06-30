@@ -1,0 +1,18 @@
+chain: regtest
+
+implementation: btcd
+restartPolicy: OnFailure
+
+# TODO: find a better approach to can mine blocks (this address is just for tests)
+config: |
+  miningaddr=Sh6VJ4TabWtfBm9kvLWPzj8WGNsMmtyaGF
+
+collectLogs: true
+metricsExport: false
+
+resources: {}
+
+image:
+  repository: lucasdbr05/btcd
+  pullPolicy: IfNotPresent
+  tag: "latest"

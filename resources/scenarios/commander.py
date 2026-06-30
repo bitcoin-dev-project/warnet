@@ -102,6 +102,7 @@ for pod in pods.items:
                 "tank": pod.metadata.name,
                 "namespace": pod.metadata.namespace,
                 "chain": pod.metadata.labels["chain"],
+                "implementation": pod.metadata.labels.get("implementation", "bitcoincore"),
                 "p2pport": int(pod.metadata.labels["P2PPort"]),
                 "rpc_host": pod_ip,
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),

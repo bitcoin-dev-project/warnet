@@ -11,6 +11,7 @@ import yaml
 
 from .constants import (
     BITCOIN_CHART_LOCATION,
+    BTCD_CHART_LOCATION,
     CADDY_CHART,
     DEFAULTS_FILE,
     DEFAULTS_NAMESPACE_FILE,
@@ -18,6 +19,7 @@ from .constants import (
     FORK_OBSERVER_RPC_PASSWORD,
     FORK_OBSERVER_RPC_USER,
     HELM_COMMAND,
+    IMPLEMENTATION_BTCD,
     INGRESS_HELM_COMMANDS,
     LOGGING_CRD_COMMANDS,
     LOGGING_HELM_COMMANDS,
@@ -348,7 +350,7 @@ def deploy_fork_observer(directory: Path, debug: bool) -> bool:
     for i, tank in enumerate(get_mission("tank")):
         node_name = tank.metadata.name
         for container in tank.spec.containers:
-            if container.name == "bitcoincore":
+            if container.name in ("bitcoincore", "btcd"):
                 for port in container.ports:
                     if port.name == "rpc":
                         rpcport = port.container_port
@@ -439,8 +441,20 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
         node_name = node.get("name")
         node_config_override = {k: v for k, v in node.items() if k != "name"}
 
+        implementation = node.get("implementation", None)
+
+        if implementation is None:
+            with open(directory / DEFAULTS_FILE) as f:
+                default_file = yaml.safe_load(f) or {}
+            implementation = default_file.get("implementation", None)
+
+        if implementation == IMPLEMENTATION_BTCD:
+            chart_location = BTCD_CHART_LOCATION
+        else:
+            chart_location = BITCOIN_CHART_LOCATION
+
         defaults_file_path = directory / DEFAULTS_FILE
-        cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
+        cmd = f"{HELM_COMMAND} {node_name} {chart_location} --namespace {namespace} -f {defaults_file_path}"
         if debug:
             cmd += " --debug"
 

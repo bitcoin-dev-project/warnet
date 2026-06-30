@@ -1,0 +1,9 @@
+apiVersion: v2
+name: btcd
+description: A Helm chart for btcd (alternative Bitcoin full node in Go)
+
+# Application chart
+type: application
+
+version: 0.1.0
+appVersion: 0.1.0
