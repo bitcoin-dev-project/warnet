@@ -186,8 +186,13 @@ Note:
 {{/*
 Only add the network section heading for Bitcoin Core versions
 where bitcoin.conf supports per-network sections.
+
+Strip pre-release suffix before comparison because Helm's semverCompare
+does not match pre-release versions with >= constraints by default.
+e.g. "31.1.0-rc.1" would fail ">=0.17.0" without this normalization.
 */}}
-{{- if semverCompare ">=0.17.0" $semver -}}
+{{- $semver_no_prerelease := regexReplaceAll "-.*$" $semver "" -}}
+{{- if semverCompare ">=0.17.0" $semver_no_prerelease -}}
 [{{ .Values.global.chain }}]
 {{- end -}}
 
