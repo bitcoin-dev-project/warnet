@@ -338,6 +338,7 @@ def _run(
     additional_args: tuple[str],
     admin: bool,
     namespace: Optional[str],
+    shared_files: Optional[dict[str, bytes]] = None,
 ) -> str:
     namespace = get_default_namespace_or(namespace)
 
@@ -434,6 +435,10 @@ def _run(
 
     # upload scenario files and network data to the init container
     wait_for_init(name, namespace=namespace)
+    # write any extra shared files
+    for filename, data in (shared_files or {}).items():
+        if write_file_to_container(name, "init", f"/shared/{filename}", data, namespace=namespace):
+            print(f"Successfully uploaded {filename} to commander: {scenario_name}")
     if write_file_to_container(
         name, "init", "/shared/archive.pyz", archive_data, namespace=namespace
     ):

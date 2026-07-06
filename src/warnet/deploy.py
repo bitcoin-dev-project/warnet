@@ -39,6 +39,7 @@ from .k8s import (
     get_mission,
     get_namespaces_by_type,
     wait_for_ingress_controller,
+    wait_for_pod,
     wait_for_pod_ready,
 )
 from .process import run_command, stream_command
@@ -430,6 +431,28 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         wait_for_pod_ready(name, namespace=namespace)
         _logs(pod_name=name, follow=True, namespace=namespace)
 
+    # Open any post-deploy `addconnection` edges via the addconnection RPC.
+    # This allow us to create connections of types other than manual (e.g. blocks-only)
+    # addconnection only works on a running node, so it must happen once the network is up.
+    addconnections = {
+        node["name"]: node["addconnection"]
+        for node in network_file["nodes"]
+        if node.get("addconnection")
+    }
+    if addconnections:
+        name = _run(
+            scenario_file=SCENARIOS_DIR / "addconnection.py",
+            debug=False,
+            source_dir=SCENARIOS_DIR,
+            additional_args=(),
+            admin=True,
+            namespace=namespace,
+            shared_files={"connections.json": json.dumps(addconnections).encode()},
+        )
+        # We only need the pod out of Pending to stream logs.
+        wait_for_pod(name, namespace=namespace)
+        _logs(pod_name=name, follow=True, namespace=namespace)
+
 
 def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
     defaults_file_path = directory / DEFAULTS_FILE
@@ -437,7 +460,9 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
     temp_override_file_path = ""
     try:
         node_name = node.get("name")
-        node_config_override = {k: v for k, v in node.items() if k != "name"}
+        # `addconnection` is consumed post-deploy by the addconnection scenario.
+        # We can remove it from the Helm values passed to the node.
+        node_config_override = {k: v for k, v in node.items() if k not in ("name", "addconnection")}
 
         defaults_file_path = directory / DEFAULTS_FILE
         cmd = f"{HELM_COMMAND} {node_name} {BITCOIN_CHART_LOCATION} --namespace {namespace} -f {defaults_file_path}"
