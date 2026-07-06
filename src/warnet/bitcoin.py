@@ -76,6 +76,36 @@ def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = N
 @bitcoin.command()
 @click.argument("tank", type=str, required=True)
 @click.option("--namespace", default=None, show_default=True)
+def peers(tank: str, namespace: Optional[str]):
+    """
+    List <tank pod name>'s peers by connection type, resolving IPs to tank names
+    """
+    namespace = get_default_namespace_or(namespace)
+
+    # Map pod IP -> tank name so non-manually connected peers show their names (instead of ips).
+    ip_to_name = {t.status.pod_ip: t.metadata.name for t in get_mission("tank") if t.status.pod_ip}
+
+    try:
+        peerinfo = json.loads(_rpc(tank, "getpeerinfo", [], namespace))
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(1)
+
+    rows = [
+        (p["connection_type"], ip_to_name.get(p["addr"].rsplit(":", 1)[0], p["addr"]))
+        for p in peerinfo
+    ]
+    # manual first, inbound last, other types in between alphabetically
+    rows.sort(key=lambda r: (0 if r[0] == "manual" else 2 if r[0] == "inbound" else 1, r[0], r[1]))
+
+    width = max((len(t) for t, _ in rows), default=0)
+    for conn_type, name in rows:
+        print(f"{conn_type:<{width}}  {name}")
+
+
+@bitcoin.command()
+@click.argument("tank", type=str, required=True)
+@click.option("--namespace", default=None, show_default=True)
 def debug_log(tank: str, namespace: Optional[str]):
     """
     Fetch the Bitcoin Core debug log from <tank pod name>
