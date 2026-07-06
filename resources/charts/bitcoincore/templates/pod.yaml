@@ -19,6 +19,7 @@ metadata:
     {{- end }}
   annotations:
     init_peers: "{{ .Values.addnode | len }}"
+    addconnection_peers: {{ .Values.addconnection | toJson | quote }}
 spec:
   restartPolicy: "{{ .Values.restartPolicy }}"
   {{- with .Values.imagePullSecrets }}

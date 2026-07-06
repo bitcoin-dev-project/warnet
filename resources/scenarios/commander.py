@@ -95,7 +95,6 @@ for pod in pods.items:
         sleep(5)
         pod = sclient.read_namespaced_pod(pod.metadata.name, pod.metadata.namespace)
         pod_ip = pod.status.pod_ip
-
     if pod.metadata.labels["mission"] == "tank":
         WARNET["tanks"].append(
             {
@@ -107,7 +106,8 @@ for pod in pods.items:
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
                 "rpc_user": "user",
                 "rpc_password": pod.metadata.labels["rpcpassword"],
-                "init_peers": pod.metadata.annotations["init_peers"],
+                "init_peers": int(pod.metadata.annotations["init_peers"]),
+                "addconnection_peers": json.loads(pod.metadata.annotations["addconnection_peers"]),
             }
         )
 
@@ -281,7 +281,8 @@ class Commander(BitcoinTestFramework):
                 coveragedir=self.options.coveragedir,
             )
             node.rpc_connected = True
-            node.init_peers = int(tank["init_peers"])
+            node.init_peers = tank["init_peers"]
+            node.addconnection_peers = tank["addconnection_peers"]
             node.p2pport = tank["p2pport"]
 
             self.nodes.append(node)

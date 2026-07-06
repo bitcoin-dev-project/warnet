@@ -148,6 +148,7 @@ config: ""
 defaultConfig: ""
 
 addnode: []
+addconnection: []
 
 loadSnapshot:
   enabled: false
