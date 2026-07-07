@@ -29,7 +29,6 @@ class DAGConnectionTest(TestBase):
         self.log.info("Waiting for addnode connections")
         self.wait_for_all_edges()
 
-
     def run_connect_dag_scenario(self):
         scenario_file = self.scen_dir / "test_scenarios" / "connect_dag.py"
         self.log.info(f"Running scenario from: {scenario_file}")

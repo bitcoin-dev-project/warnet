@@ -8,6 +8,7 @@ from commander import Commander
 DEFAULT_CONNECTION_TYPE = "outbound-full-relay"
 DEFAULT_TRANSPORT_PROTOCOL_TYPE = "v2"
 
+
 class AddConnectionInit(Commander):
     def set_test_params(self):
         self.num_nodes = None
