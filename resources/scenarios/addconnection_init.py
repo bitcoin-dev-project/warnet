@@ -5,6 +5,8 @@ from time import sleep
 
 from commander import Commander
 
+DEFAULT_CONNECTION_TYPE = "outbound-full-relay"
+DEFAULT_TRANSPORT_PROTOCOL_TYPE = "v2"
 
 class AddConnectionInit(Commander):
     def set_test_params(self):
@@ -15,7 +17,10 @@ class AddConnectionInit(Commander):
         parser.usage = "warnet run /path/to/addconnection_init.py"
 
     def run_test(self):
-        self.log.info("Connecting tanks...")
+        self.log.info("Waiting for RPC availability and addnode connections...")
+        self.wait_for_tanks_connected()
+
+        self.log.info("Connecting addconnection tanks...")
 
         def addconnection(self, node, peer, conn_type, v2):
             while True:
@@ -41,8 +46,8 @@ class AddConnectionInit(Commander):
                             self,
                             node,
                             connection["to"],
-                            connection.get("type", "outbound-full-relay"),
-                            connection.get("v2", True),
+                            connection.get("type", DEFAULT_CONNECTION_TYPE),
+                            connection.get("v2", DEFAULT_TRANSPORT_PROTOCOL_TYPE == "v2"),
                         ),
                     )
                 )
@@ -51,7 +56,46 @@ class AddConnectionInit(Commander):
             thread.start()
 
         all(thread.join() is None for thread in conn_threads)
-        self.log.info("Post-deploy connections are complete!")
+        self.log.info("All addconnection commands executed, waiting for confirmation...")
+
+        def check_addconnections(self, node):
+            expected = node.addconnection_peers
+            if not expected:
+                return
+            poll = True
+            while poll:
+                actual = node.getpeerinfo()
+                for expected_connection in expected:
+                    if any(
+                        actual_connection["addr"] == expected_connection["to"]
+                        and actual_connection["connection_type"]
+                        == (expected_connection.get("type", DEFAULT_CONNECTION_TYPE))
+                        and actual_connection["transport_protocol_type"]
+                        == (
+                            "v1"
+                            if "v2" in expected_connection and not expected_connection["v2"]
+                            else DEFAULT_TRANSPORT_PROTOCOL_TYPE
+                        )
+                        for actual_connection in actual
+                    ):
+                        self.log.info(f"Connection complete: {node.tank} {expected_connection}")
+                        poll = False
+                    else:
+                        self.log.info(
+                            f"Connection incomplete: {node.tank} {expected_connection}, retrying in 5 seconds..."
+                        )
+                        sleep(5)
+                        poll = True
+                        break
+
+        check_threads = [
+            threading.Thread(target=check_addconnections, args=(self, node)) for node in self.nodes
+        ]
+        for thread in check_threads:
+            thread.start()
+
+        all(thread.join() is None for thread in check_threads)
+        self.log.info("All addconnection connections are complete")
 
 
 def main():
