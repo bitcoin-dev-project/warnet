@@ -31,6 +31,22 @@ addnode:
 
 ---
 
+## `addconnection`
+
+List of objects with peer names this node will connect to after network deployment is completed. Nodes are addressed by their `name` (for same-namespace peers) or by `<name>.default` for cross-namespace connections on the battlefield.
+Relies on `addconnection_init` scenario and calls RPC `addconnection` with connection `type` (default `outbound-full-relay`) and `v2` (default true) options.
+Will only work on tanks running at least Bitcoin Core v22.0
+
+```yaml
+addconnection:
+  - to: tank-0001 # use all defaults
+  - to: tank-0002
+    type: blocks-only
+    v2: false
+```
+
+---
+
 ## `image`
 
 Docker image for the Bitcoin Core container.
