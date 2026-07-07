@@ -327,6 +327,9 @@ def snapshot_bitcoin_datadir(
         print(f"An error occurred: {str(e)}")
 
 
+# "Readiness" depends on pod:
+# A one-shot pod like a scenario that runs to completion and exits 0
+# A long-running pod that is expected to accept network traffic
 def wait_for_pod_ready(name, namespace, timeout=300):
     sclient = get_static_client()
     w = watch.Watch()
@@ -334,7 +337,10 @@ def wait_for_pod_ready(name, namespace, timeout=300):
         sclient.list_namespaced_pod, namespace=namespace, timeout_seconds=timeout
     ):
         pod = event["object"]
-        if pod.metadata.name == name and pod.status.phase == "Running":
+        if pod.metadata.name == name and pod.status.phase in ["Running", "Succeeded"]:
+            if pod.status.phase == "Succeeded":
+                w.stop()
+                return True
             conditions = pod.status.conditions or []
             ready_condition = next((c for c in conditions if c.type == "Ready"), None)
             if ready_condition and ready_condition.status == "True":

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from test_base import TestBase
 
+from warnet.process import stream_command
+
 
 class DAGConnectionTest(TestBase):
     def __init__(self):
@@ -21,14 +23,16 @@ class DAGConnectionTest(TestBase):
 
     def setup_network(self):
         self.log.info("Setting up network")
-        self.log.info(self.warnet(f"deploy {self.network_dir}"))
+        stream_command(f"warnet deploy {self.network_dir}")
+        self.log.info("Waiting for pods")
         self.wait_for_all_tanks_status(target="running")
+        self.log.info("Waiting for addnode connections")
         self.wait_for_all_edges()
 
     def run_connect_dag_scenario(self):
         scenario_file = self.scen_dir / "test_scenarios" / "connect_dag.py"
         self.log.info(f"Running scenario from: {scenario_file}")
-        self.warnet(f"run {scenario_file} --source_dir={self.scen_dir}")
+        stream_command(f"warnet run {scenario_file} --source_dir={self.scen_dir}")
         self.wait_for_all_scenarios()
 
 

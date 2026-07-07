@@ -398,6 +398,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         default_file = yaml.safe_load(f)
 
     needs_ln_init = False
+    addconnections = []
     supported_ln_projects = ["lnd", "cln"]
     merged = network_file["nodes"].copy()
     merged.append(default_file)
@@ -406,8 +407,8 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
             if key in node and "channels" in node[key]:
                 needs_ln_init = True
                 break
-        if needs_ln_init:
-            break
+        if "addconnection" in node:
+            addconnections.append({node["name"]: node["addconnection"]})
 
     processes = []
     for node in network_file["nodes"]:
@@ -417,6 +418,18 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
 
     for p in processes:
         p.join()
+
+    if addconnections:
+        name = _run(
+            scenario_file=SCENARIOS_DIR / "addconnection_init.py",
+            debug=False,
+            source_dir=SCENARIOS_DIR,
+            additional_args=("--timeout-factor=0",),
+            admin=True,
+            namespace=namespace,
+        )
+        wait_for_pod_ready(name, namespace=namespace)
+        _logs(pod_name=name, follow=True, namespace=namespace)
 
     if needs_ln_init:
         name = _run(

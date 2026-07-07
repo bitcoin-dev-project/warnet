@@ -9,7 +9,7 @@ image:
   repository: bitcoindevproject/bitcoin
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "27.0"
+  tag: "31.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -148,6 +148,7 @@ config: ""
 defaultConfig: ""
 
 addnode: []
+addconnection: []
 
 loadSnapshot:
   enabled: false

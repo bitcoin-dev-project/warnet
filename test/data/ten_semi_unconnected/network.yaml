@@ -1,31 +1,23 @@
 nodes:
   - name: tank-0000
-    config: |
-      debug=rpc
-      debug=validation
   - name: tank-0001
-    config: |
-      debug=net
-      debug=validation
   - name: tank-0002
-    config: |
-      debug=validation
   - name: tank-0003
-    config: |
-      debug=validation
+    addconnection:
+      - to: tank-0004
+        type: block-relay-only
   - name: tank-0004
+    addconnection:
+      - to: tank-0006
+        type: addr-fetch
   - name: tank-0005
-    config: |
-      debug=validation
+    addconnection:
+      - to: tank-0006
+      - to: tank-0007
+        v2: false
   - name: tank-0006
   - name: tank-0007
-    config: |
-      debug=validation
   - name: tank-0008
     addnode:
       - tank-0009
-    config: |
-      debug=validation
   - name: tank-0009
-    config: |
-      debug=validation
