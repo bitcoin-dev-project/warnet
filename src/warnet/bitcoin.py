@@ -8,6 +8,9 @@ from io import BytesIO
 from typing import Optional
 
 import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
@@ -71,6 +74,43 @@ def _rpc(tank: str, method: str, params: list[str], namespace: Optional[str] = N
         cmd = f"kubectl -n {namespace} exec {tank} --container {BITCOINCORE_CONTAINER} -- bitcoin-cli {method}"
 
     return run_command(cmd)
+
+
+@bitcoin.command()
+@click.argument("tank", type=str, required=True)
+@click.option("--namespace", default=None, show_default=True)
+def peers(tank: str, namespace: Optional[str]):
+    """
+    List <tank pod name>'s peers by connection type, resolving IPs to tank names
+    """
+    namespace = get_default_namespace_or(namespace)
+
+    # Map pod IP -> tank name so non-manually connected peers show their names (instead of ips).
+    ip_to_name = {t.status.pod_ip: t.metadata.name for t in get_mission("tank") if t.status.pod_ip}
+
+    try:
+        peerinfo = json.loads(_rpc(tank, "getpeerinfo", [], namespace))
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(1)
+
+    rows = [
+        (p["connection_type"], ip_to_name.get(p["addr"].rsplit(":", 1)[0], p["addr"]))
+        for p in peerinfo
+    ]
+    # manual first, inbound last, other types in between alphabetically
+    rows.sort(key=lambda r: (0 if r[0] == "manual" else 2 if r[0] == "inbound" else 1, r[0], r[1]))
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Connection Type", style="cyan")
+    table.add_column("Peer", style="green")
+    for conn_type, name in rows:
+        table.add_row(conn_type, name)
+
+    console = Console()
+    console.print(
+        Panel(table, title=f"Peers of {tank}", expand=False, border_style="blue", padding=(1, 1))
+    )
 
 
 @bitcoin.command()
