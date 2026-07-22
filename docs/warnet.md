@@ -215,6 +215,15 @@ options:
 | tank_b | String | yes        |           |
 | chain  | String |            | "regtest" |
 
+### `warnet bitcoin peers`
+List \<tank pod name>'s peers by connection type, resolving IPs to tank names
+
+options:
+| name      | type   | required   | default   |
+|-----------|--------|------------|-----------|
+| tank      | String | yes        |           |
+| namespace | String |            |           |
+
 ### `warnet bitcoin rpc`
 Call bitcoin-cli \<method> [params] on \<tank pod name>
 
