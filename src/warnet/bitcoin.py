@@ -8,6 +8,9 @@ from io import BytesIO
 from typing import Optional
 
 import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 from test_framework.messages import ser_uint256
 from test_framework.p2p import MESSAGEMAP
 from urllib3.exceptions import MaxRetryError
@@ -98,9 +101,16 @@ def peers(tank: str, namespace: Optional[str]):
     # manual first, inbound last, other types in between alphabetically
     rows.sort(key=lambda r: (0 if r[0] == "manual" else 2 if r[0] == "inbound" else 1, r[0], r[1]))
 
-    width = max((len(t) for t, _ in rows), default=0)
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Connection Type", style="cyan")
+    table.add_column("Peer", style="green")
     for conn_type, name in rows:
-        print(f"{conn_type:<{width}}  {name}")
+        table.add_row(conn_type, name)
+
+    console = Console()
+    console.print(
+        Panel(table, title=f"Peers of {tank}", expand=False, border_style="blue", padding=(1, 1))
+    )
 
 
 @bitcoin.command()
