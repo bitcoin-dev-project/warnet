@@ -1,26 +1,30 @@
 # SimLN Plugin
 
 ## SimLN
+
 SimLN helps you generate lightning payment activity.
 
-* Website: https://simln.dev/
-* Github: https://github.com/bitcoin-dev-project/sim-ln
+- Website: https://simln.dev/
+- Github: https://github.com/bitcoin-dev-project/sim-ln
 
 ## Usage
+
 SimLN uses "activity" definitions to create payment activity between lightning nodes. These definitions are in JSON format.
 
 SimLN also requires access details for each node; however, the SimLN plugin will automatically generate these access details for each LND node. The access details look like this:
 
-```` JSON
+```JSON
 {
   "id": <node_id>,
   "address": https://<ip:port or domain:port>,
   "macaroon": <path_to_selected_macaroon>,
   "cert": <path_to_tls_cert>
 }
-````
-SimLN plugin also supports Core Lightning (CLN).  CLN nodes connection details are transfered from the CLN node to SimLN node during launch-activity processing.
-```` JSON
+```
+
+SimLN plugin also supports Core Lightning (CLN). CLN nodes connection details are transfered from the CLN node to SimLN node during launch-activity processing.
+
+```JSON
 {
   "id": <node_id>,
   "address": https://<domain:port>,
@@ -28,22 +32,28 @@ SimLN plugin also supports Core Lightning (CLN).  CLN nodes connection details a
   "client_cert": /working/<node_id>-client.pem,
   "client_key": /working/<node_id>-client-key.pem
 }
-````
+```
 
 Since SimLN already has access to those LND and CLN connection details, it means you can focus on the "activity" definitions.
 
 ### Launch activity definitions from the command line
+
 The SimLN plugin takes "activity" definitions like so:
 
 `./simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]'"''`
 
+You can also specify a capacity multiplier for random activity:
+
+`./simln/plugin.py launch-activity '[{\"source\": \"tank-0003-ln\", \"destination\": \"tank-0005-ln\", \"interval_secs\": 1, \"amount_msat\": 2000}]' --capacity-multiplier 2.5`
+
 ### Launch activity definitions from within `network.yaml`
-When you initialize a new Warnet network, Warnet will create a new `network.yaml` file.  If your `network.yaml` file includes lightning nodes, then you can use SimLN to produce activity between those nodes like this:
+
+When you initialize a new Warnet network, Warnet will create a new `network.yaml` file. If your `network.yaml` file includes lightning nodes, then you can use SimLN to produce activity between those nodes like this:
 
 <details>
 <summary>network.yaml</summary>
 
-````yaml
+```yaml
 nodes:
   - name: tank-0000
     addnode:
@@ -102,14 +112,15 @@ nodes:
 plugins:
   postDeploy:
     simln:
-      entrypoint: "/path/to/plugins/simln"  # This is the path to the simln plugin folder (relative to the network.yaml file).
+      entrypoint: "/path/to/plugins/simln" # This is the path to the simln plugin folder (relative to the network.yaml file).
       activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
-````
+      capacityMultiplier: 2.5 # Optional: Capacity multiplier for random activity
+```
 
 </details>
 
-
 ## Generating your own SimLN image
+
 The SimLN plugin fetches a SimLN docker image from dockerhub. You can generate your own docker image if you choose:
 
 1. Clone SimLN: `git clone git@github.com:bitcoin-dev-project/sim-ln.git`
@@ -117,6 +128,7 @@ The SimLN plugin fetches a SimLN docker image from dockerhub. You can generate y
 3. Tag the resulting docker image: `docker tag IMAGEID YOURUSERNAME/sim-ln:VERSION`
 4. Push the tagged image to your dockerhub account.
 5. Modify the `values.yaml` file in the plugin's chart to reflect your username and version number:
+
 ```YAML
   repository: "YOURUSERNAME/sim-ln"
   tag: "VERSION"
