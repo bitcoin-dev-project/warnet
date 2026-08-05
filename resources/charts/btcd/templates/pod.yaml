@@ -1,27 +1,25 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ include "bitcoincore.fullname" . }}
+  name: {{ include "btcd.fullname" . }}
   labels:
-    {{- include "bitcoincore.labels" . | nindent 4 }}
+    {{- include "btcd.labels" . | nindent 4 }}
     {{- with .Values.podLabels }}
         {{- toYaml . | nindent 4 }}
     {{- end }}
     chain: {{ .Values.global.chain }}
     P2PPort: "{{ index .Values.global .Values.global.chain "P2PPort" }}"
-    RPCPort: "{{ index .Values.global .Values.global.chain "RPCPort" }}"
-    ZMQTxPort: "{{ .Values.global.ZMQTxPort }}"
-    ZMQBlockPort: "{{ .Values.global.ZMQBlockPort }}"
+    RPCPort: "{{ index .Values.global .Values.global.chain "RPCListenPort" }}"
     rpcuser: {{ .Values.global.rpcuser }}
     rpcpassword: {{ .Values.global.rpcpassword }}
-    app: {{ include "bitcoincore.fullname" . }}
-    implementation: bitcoincore
+    app: {{ include "btcd.fullname" . }}
+    implementation: btcd
     {{- if .Values.collectLogs }}
     collect_logs: "true"
     {{- end }}
   annotations:
     init_peers: "{{ .Values.addnode | len }}"
-    addconnection_peers: {{ .Values.addconnection | toJson | quote }}
+    addconnection_peers: {{ default (list) .Values.addconnection | toJson | quote }}
 spec:
   restartPolicy: "{{ .Values.restartPolicy }}"
   {{- with .Values.imagePullSecrets }}
@@ -38,50 +36,51 @@ spec:
       args:
         - |
           apk add --no-cache curl
-          mkdir -p /root/.bitcoin/{{ .Values.global.chain }}
-          curl -L {{ .Values.loadSnapshot.url }} | tar -xz -C /root/.bitcoin/{{ .Values.global.chain }}
+          mkdir -p /root/.btcd/data
+          curl -L {{ .Values.loadSnapshot.url }} | tar -xz -C /root/.btcd/data
       volumeMounts:
         - name: data
-          mountPath: /root/.bitcoin
+          mountPath: /root/.btcd
   {{- end }}
   containers:
-    - name: {{ .Chart.Name }}
+    - name: btcd
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - "/bin/linux_amd64/btcd"
+      args:
+        - "--configfile=/root/.btcd/btcd.conf"
+        {{- if .Values.extraArgs }}
+        {{- range (split " " .Values.extraArgs) }}
+        - {{ . | quote }}
+        {{- end }}
+        {{- end }}
       ports:
         - name: rpc
-          containerPort: {{ index .Values.global .Values.global.chain "RPCPort" }}
+          containerPort: {{ index .Values.global .Values.global.chain "RPCListenPort" }}
           protocol: TCP
         - name: p2p
           containerPort: {{ index .Values.global .Values.global.chain "P2PPort" }}
-          protocol: TCP
-        - name: zmq-tx
-          containerPort: {{ .Values.global.ZMQTxPort }}
-          protocol: TCP
-        - name: zmq-block
-          containerPort: {{ .Values.global.ZMQBlockPort }}
           protocol: TCP
       livenessProbe:
         {{- toYaml .Values.livenessProbe | nindent 8 }}
       readinessProbe:
         {{- toYaml .Values.readinessProbe | nindent 8 }}
         tcpSocket:
-          port: {{ index .Values.global .Values.global.chain "RPCPort" }}
-      startupProbe:
-        {{- toYaml .Values.startupProbe | nindent 8 }}
+          port: {{ index .Values.global .Values.global.chain "RPCListenPort" }}
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       volumeMounts:
         {{- with .Values.volumeMounts }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
-        - mountPath: /root/.bitcoin
+        - mountPath: /root/.btcd
           name: data
-        - mountPath: /root/.bitcoin/bitcoin.conf
+        - mountPath: /root/.btcd/btcd.conf
           name: config
-          subPath: bitcoin.conf
+          subPath: btcd.conf
     {{- if .Values.metricsExport }}
     - name: prometheus
       image: bitcoindevproject/bitcoin-exporter:latest
@@ -94,16 +93,12 @@ spec:
         - name: BITCOIN_RPC_HOST
           value: "127.0.0.1"
         - name: BITCOIN_RPC_PORT
-          value: "{{ index .Values.global .Values.global.chain "RPCPort" }}"
+          value: "{{ index .Values.global .Values.global.chain "RPCListenPort" }}"
         - name: BITCOIN_RPC_USER
-          value: user
+          value: {{ .Values.global.rpcuser }}
         - name: BITCOIN_RPC_PASSWORD
           value: {{ .Values.global.rpcpassword }}
-        {{- if .Values.metrics }}
-        - name: METRICS
-          value: {{ .Values.metrics }}
-        {{- end }}
-    {{- end}}
+    {{- end }}
     {{- with .Values.extraContainers }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -118,14 +113,14 @@ spec:
         claimName: {{ .Values.persistence.existingClaim }}
       {{- else }}
       persistentVolumeClaim:
-        claimName: {{ include "bitcoincore.fullname" . }}.{{ .Release.Namespace }}-bitcoincore-data
+        claimName: {{ include "btcd.fullname" . }}.{{ .Release.Namespace }}-btcd-data
       {{- end }}
       {{- else }}
       emptyDir: {}
       {{- end }}
     - name: config
       configMap:
-        name: {{ include "bitcoincore.fullname" . }}
+        name: {{ include "btcd.fullname" . }}
   {{- with .Values.nodeSelector }}
   nodeSelector:
     {{- toYaml . | nindent 4 }}

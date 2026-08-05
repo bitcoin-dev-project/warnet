@@ -21,6 +21,7 @@ from rich.table import Table
 
 from .constants import (
     BITCOINCORE_CONTAINER,
+    BTCD_CONTAINER,
     COMMANDER_CHART,
     COMMANDER_CONTAINER,
     COMMANDER_MISSION,
@@ -379,6 +380,7 @@ def _run(
                 "commander.py",
                 "test_framework",
                 "ln_framework",
+                "btcd_framework",
                 scenario_path.name,
             ]
         ):
@@ -515,7 +517,7 @@ def _logs(pod_name: str, follow: bool, namespace: Optional[str] = None):
 
     try:
         pod = get_pod(pod_name, namespace=namespace)
-        eligible_container_names = [BITCOINCORE_CONTAINER, COMMANDER_CONTAINER]
+        eligible_container_names = [BITCOINCORE_CONTAINER, BTCD_CONTAINER, COMMANDER_CONTAINER]
         available_container_names = [container.name for container in pod.spec.containers]
         container_name = next(
             (
