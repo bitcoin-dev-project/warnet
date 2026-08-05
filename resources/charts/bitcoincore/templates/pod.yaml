@@ -12,6 +12,7 @@ metadata:
     RPCPort: "{{ index .Values.global .Values.global.chain "RPCPort" }}"
     ZMQTxPort: "{{ .Values.global.ZMQTxPort }}"
     ZMQBlockPort: "{{ .Values.global.ZMQBlockPort }}"
+    rpcuser: {{ .Values.global.rpcuser }}
     rpcpassword: {{ .Values.global.rpcpassword }}
     app: {{ include "bitcoincore.fullname" . }}
     implementation: bitcoincore

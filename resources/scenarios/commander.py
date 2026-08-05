@@ -105,7 +105,7 @@ for pod in pods.items:
                 "p2pport": int(pod.metadata.labels["P2PPort"]),
                 "rpc_host": pod_ip,
                 "rpc_port": int(pod.metadata.labels["RPCPort"]),
-                "rpc_user": "user",
+                "rpc_user": pod.metadata.labels["rpcuser"],
                 "rpc_password": pod.metadata.labels["rpcpassword"],
                 "init_peers": int(pod.metadata.annotations["init_peers"]),
                 "addconnection_peers": json.loads(pod.metadata.annotations["addconnection_peers"]),

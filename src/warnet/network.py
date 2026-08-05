@@ -6,6 +6,7 @@ from rich import print
 
 from .bitcoin import _rpc
 from .constants import (
+    IMPLEMENTATION_BTCD,
     NETWORK_DIR,
     PLUGINS_DIR,
     SCENARIOS_DIR,
@@ -59,8 +60,10 @@ def copy_plugins_defaults(directory: Path):
     )
 
 
-def is_connection_manual(peer):
+def is_connection_manual(peer, implementation: str | None):
     # newer nodes specify a "connection_type"
+    if implementation == IMPLEMENTATION_BTCD:
+        return not peer.get("inbound", True)
     return bool(peer.get("connection_type") == "manual" or peer.get("addnode") is True)
 
 
@@ -73,8 +76,9 @@ def _connected(end="\n"):
                 _rpc(tank.metadata.name, "getpeerinfo", "", namespace=tank.metadata.namespace)
             )
             actual = 0
+            implementation = (tank.metadata.labels or {}).get("implementation")
             for peer in peerinfo:
-                if is_connection_manual(peer):
+                if is_connection_manual(peer, implementation):
                     actual += 1
             expected = int(tank.metadata.annotations["init_peers"])
             print(
