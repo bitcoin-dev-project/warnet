@@ -68,10 +68,12 @@ for key, value in plugin_config.items():
 run_command(command)
 ```
 
-Start from the `hello` plugin included in every initialised project:
+The `hello` plugin is a complete example that exercises every hook. It isn't copied into new projects automatically — it lives at `test/data/plugins/hello/`. Replace `<path-to-warnet-repo>` below with wherever you cloned warnet:
 
 ```sh
+mkdir my_project && cd my_project
 warnet init
+cp -r <path-to-warnet-repo>/test/data/plugins/hello plugins/
 cat plugins/hello/plugin.py
 ```
 
