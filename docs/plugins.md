@@ -41,8 +41,8 @@ A plugin is a directory containing at minimum a `plugin.py` file. The file must 
 import json, sys
 
 assert sys.argv[1] == "entrypoint"
-plugin_config  = json.loads(sys.argv[2])   # keys declared in network.yaml
-warnet_context = json.loads(sys.argv[3])   # hook_value, namespace, annex
+plugin_config = json.loads(sys.argv[2])  # keys declared in network.yaml
+warnet_context = json.loads(sys.argv[3])  # hook_value, namespace, annex
 ```
 
 `warnet_context` always contains:
@@ -66,15 +66,6 @@ command = f"helm upgrade --install my-plugin {Path(__file__).parent / 'charts' /
 for key, value in plugin_config.items():
     command += f" --set {key}={value}"
 run_command(command)
-```
-
-The `hello` plugin is a complete example that exercises every hook. It isn't copied into new projects automatically — it lives at `test/data/plugins/hello/`. Replace `<path-to-warnet-repo>` below with wherever you cloned warnet:
-
-```sh
-mkdir my_project && cd my_project
-warnet init
-cp -r <path-to-warnet-repo>/test/data/plugins/hello plugins/
-cat plugins/hello/plugin.py
 ```
 
 ---
