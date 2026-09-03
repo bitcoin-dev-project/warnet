@@ -126,7 +126,7 @@ This script generates multiple network sizes (signet_large with 100+ nodes acros
 class Node:
     def __init__(self, game, name):
         self.name = name
-        self.rpcpassword = secrets.token_hex(16)   # unique per node
+        self.rpcpassword = secrets.token_hex(16)  # unique per node
         self.addnode = []
 
     def to_obj(self):
@@ -141,29 +141,40 @@ class Node:
             "config": f"maxconnections=1000\nuacomment={self.name}\n",
         }
 
+
 class VulnNode(Node):
     """A target node: adds metrics export and resource limits."""
+
     def to_obj(self):
         obj = super().to_obj()
-        obj.update({
-            "collectLogs": True,
-            "metricsExport": True,
-            "metrics": 'blocks=getblockcount() mempool_size=getmempoolinfo()["size"]',
-            "resources": {
-                "limits":   {"cpu": "4000m", "memory": "1000Mi"},
-                "requests": {"cpu": "100m",  "memory": "200Mi"},
-            },
-        })
+        obj.update(
+            {
+                "collectLogs": True,
+                "metricsExport": True,
+                "metrics": 'blocks=getblockcount() mempool_size=getmempoolinfo()["size"]',
+                "resources": {
+                    "limits": {"cpu": "4000m", "memory": "1000Mi"},
+                    "requests": {"cpu": "100m", "memory": "200Mi"},
+                },
+            }
+        )
         return obj
+
 
 class Miner(Node):
     """Miner node: startup probe initialises the wallet."""
+
     def to_obj(self):
         obj = super().to_obj()
         obj["startupProbe"] = {
-            "exec": {"command": ["/bin/sh", "-c",
-                f"bitcoin-cli createwallet miner && "
-                f"bitcoin-cli importdescriptors {self.game.desc_string}"]},
+            "exec": {
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    f"bitcoin-cli createwallet miner && "
+                    f"bitcoin-cli importdescriptors {self.game.desc_string}",
+                ]
+            },
             "failureThreshold": 10,
             "periodSeconds": 30,
             "timeoutSeconds": 60,
@@ -178,7 +189,7 @@ def add_connections(self):
     for i, node in enumerate(self.nodes):
         node.addnode.append(self.nodes[(i + 1) % len(self.nodes)].name)  # ring
         for _ in range(4):
-            node.addnode.append(random.choice(self.nodes).name)           # random
+            node.addnode.append(random.choice(self.nodes).name)  # random
 ```
 
 Signet requires a signing key. The script generates one with the Bitcoin Core test framework and embeds the `signetchallenge` directly into every node's config:
@@ -238,14 +249,15 @@ class SpenderNode(MetricsNode):
         obj["lnd"]["extraContainers"][0]["env"][0]["value"] += "failed_payments=FAILED_PAYMENTS "
         return obj
 
+
 def add_payment_routes(self, n):
     for i in range(n):
-        spender  = SpenderNode(self, f"{TEAMS[i]}-spender")
-        router   = RoutingNode(self, f"{TEAMS[i]}-router")
+        spender = SpenderNode(self, f"{TEAMS[i]}-spender")
+        router = RoutingNode(self, f"{TEAMS[i]}-router")
         recipient = RecipientNode(self, f"{TEAMS[i]}-recipient")
         self.nodes += [spender, router, recipient]
-        self.add_channel(spender, router,   int(2e8))
-        self.add_channel(router,  recipient, int(2e8))
+        self.add_channel(spender, router, int(2e8))
+        self.add_channel(router, recipient, int(2e8))
 ```
 
 ### When to write a fleet script
