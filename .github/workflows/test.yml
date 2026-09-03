@@ -24,10 +24,12 @@ jobs:
       - name: Lint
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.16.5"
           args: "check --fix"
       - name: Format
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.16.5"
           args: "format --check --diff"
 
   test:
