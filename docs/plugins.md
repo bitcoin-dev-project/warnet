@@ -41,8 +41,8 @@ A plugin is a directory containing at minimum a `plugin.py` file. The file must 
 import json, sys
 
 assert sys.argv[1] == "entrypoint"
-plugin_config  = json.loads(sys.argv[2])   # keys declared in network.yaml
-warnet_context = json.loads(sys.argv[3])   # hook_value, namespace, annex
+plugin_config = json.loads(sys.argv[2])  # keys declared in network.yaml
+warnet_context = json.loads(sys.argv[3])  # hook_value, namespace, annex
 ```
 
 `warnet_context` always contains:
@@ -66,13 +66,6 @@ command = f"helm upgrade --install my-plugin {Path(__file__).parent / 'charts' /
 for key, value in plugin_config.items():
     command += f" --set {key}={value}"
 run_command(command)
-```
-
-Start from the `hello` plugin included in every initialised project:
-
-```sh
-warnet init
-cat plugins/hello/plugin.py
 ```
 
 ---
@@ -201,47 +194,3 @@ services:
 ```
 
 The sidecar containers themselves are added under `lnd.extraContainers` on the `miner` node — see [LN Options](ln-options.md#extracontainers).
-
----
-
-## Full hook example
-
-```yaml
-nodes:
-  # ... node list ...
-
-plugins:
-  preDeploy:
-    setup:
-      entrypoint: "../plugins/setup"
-      config_value: "foo"
-
-  postDeploy:
-    simln:
-      entrypoint: "../plugins/simln"
-      activity: '[{"source": "tank-0003-ln", "destination": "tank-0005-ln", "interval_secs": 1, "amount_msat": 2000}]'
-
-  preNode:
-    hello:
-      entrypoint: "../plugins/hello"
-      podName: "hello-pre-node"
-      helloTo: "preNode!"
-
-  postNode:
-    hello:
-      entrypoint: "../plugins/hello"
-      podName: "hello-post-node"
-      helloTo: "postNode!"
-
-  preNetwork:
-    hello:
-      entrypoint: "../plugins/hello"
-      podName: "hello-pre-network"
-      helloTo: "preNetwork!"
-
-  postNetwork:
-    hello:
-      entrypoint: "../plugins/hello"
-      podName: "hello-post-network"
-      helloTo: "postNetwork!"
-```
