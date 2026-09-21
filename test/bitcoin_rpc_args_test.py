@@ -8,7 +8,7 @@ from unittest.mock import patch
 # Import TestBase for consistent test structure
 from test_base import TestBase
 
-from warnet.bitcoin import _rpc
+from warnet.bitcoin import BITCOINCORE_CONTAINER, _rpc
 
 # Import _rpc from warnet.bitcoin and run_command from warnet.process
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -139,6 +139,24 @@ class BitcoinRPCRPCArgsTest(TestBase):
                     if not should_fail:
                         raise AssertionError(f"Unexpected failure for params: {params}: {e}") from e
                     self.log.info(f"Expected failure for params: {params}: {e}")
+
+        with patch("warnet.bitcoin.run_command") as mock_run_command:
+            mock_run_command.return_value = "MOCKED"
+            _rpc("tank;bad", "getblockcount;bad", [], "default;bad")
+            called_args = mock_run_command.call_args[0][0]
+            assert shlex.split(called_args) == [
+                "kubectl",
+                "-n",
+                "default;bad",
+                "exec",
+                "tank;bad",
+                "--container",
+                BITCOINCORE_CONTAINER,
+                "--",
+                "bitcoin-cli",
+                "getblockcount;bad",
+            ]
+
         self.log.info("All edge case argument tests passed.")
 
 
