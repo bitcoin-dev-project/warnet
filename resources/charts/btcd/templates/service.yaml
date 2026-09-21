@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "btcd.fullname" . }}
+  labels:
+    {{- include "btcd.labels" . | nindent 4 }}
+    app: {{ include "btcd.fullname" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ index .Values.global .Values.global.chain "RPCListenPort" }}
+      targetPort: rpc
+      protocol: TCP
+      name: rpc
+    - port: {{ index .Values.global .Values.global.chain "P2PPort" }}
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+    - port: {{ .Values.prometheusMetricsPort }}
+      targetPort: prom-metrics
+      protocol: TCP
+      name: prometheus-metrics
+  selector:
+    {{- include "btcd.selectorLabels" . | nindent 4 }}

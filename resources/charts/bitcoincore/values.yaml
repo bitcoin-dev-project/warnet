@@ -126,6 +126,7 @@ global:
     P2PPort: 38333
   ZMQTxPort: 28333
   ZMQBlockPort: 28332
+  rpcuser: user
   rpcpassword: gn0cchi
 
 baseConfig: |

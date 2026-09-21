@@ -1,0 +1,16 @@
+{{- if .Values.metricsExport }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "btcd.fullname" . }}
+  labels:
+    app.kubernetes.io/name: btcd-metrics
+    release: prometheus
+spec:
+  endpoints:
+    - port: prometheus-metrics
+      interval: {{ .Values.metricsScrapeInterval | default "15s" }}
+  selector:
+    matchLabels:
+      app: {{ include "btcd.fullname" . }}
+{{- end }}
