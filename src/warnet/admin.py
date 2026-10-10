@@ -90,7 +90,7 @@ def create_kubeconfigs(kubeconfig_dir, token_duration):
             name = sa.metadata.name
             # Create a token for the ServiceAccount with specified duration
             try:
-                token = get_token_for_service_acount(sa, token_duration)
+                token = get_token_for_service_acount(sa, token_duration, cluster=cluster["name"])
             except Exception as e:
                 click.echo(
                     f"Failed to create token for ServiceAccount {name} in namespace {namespace}. Error: {str(e)}. Skipping..."

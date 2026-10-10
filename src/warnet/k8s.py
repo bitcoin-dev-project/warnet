@@ -1,6 +1,7 @@
 import ipaddress
 import json
 import os
+import shlex
 import sys
 import tarfile
 import tempfile
@@ -606,7 +607,7 @@ def get_warnet_user_service_accounts_in_namespace(namespace):
     ]
 
 
-def get_token_for_service_acount(sa, duration):
+def get_token_for_service_acount(sa, duration, cluster: Optional[str] = None):
     # # The Kubernetes Python client’s TokenRequest calls were routed through
     # # DigitalOcean’s konnectivity path, which overrides the requested audience
     # # and enforces a 1-hour max expiration. `kubectl create token` uses a
@@ -615,6 +616,8 @@ def get_token_for_service_acount(sa, duration):
     command = (
         f"kubectl create token {sa.metadata.name} -n {sa.metadata.namespace} --duration={duration}s"
     )
+    if cluster:
+        command += f" --cluster={shlex.quote(cluster)}"
     return run_command(command)
 
 
