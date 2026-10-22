@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "eclair.fullname" . }}
+  labels:
+    {{- include "eclair.labels" . | nindent 4 }}
+    app: {{ include "eclair.fullname" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.P2PPort }}
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.p2pNodePort) }}
+      nodePort: {{ .Values.service.p2pNodePort }}
+      {{- end }}
+    - port: {{ .Values.RestPort }}
+      targetPort: rest
+      protocol: TCP
+      name: rest
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.restNodePort) }}
+      nodePort: {{ .Values.service.restNodePort }}
+      {{- end }}
+  selector:
+    {{- include "eclair.selectorLabels" . | nindent 4 }}
