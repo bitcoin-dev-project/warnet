@@ -76,7 +76,7 @@ The following plugins ship with Warnet in `resources/plugins/`.
 
 ### SimLN
 
-[SimLN](https://simln.dev/) generates realistic Lightning Network payment activity between nodes. It runs as a `postDeploy` pod and supports both LND and CLN.
+[SimLN](https://simln.dev/) generates realistic Lightning Network payment activity between nodes. It runs as a `postDeploy` pod and supports LND, CLN and Eclair.
 
 #### Configuration in `network.yaml`
 
@@ -92,12 +92,12 @@ The `activity` value is a JSON array of payment flows. Each flow specifies:
 
 | Field | Description |
 |-------|-------------|
-| `source` | Pod name of the sending LND/CLN node |
+| `source` | Pod name of the sending LND/CLN/Eclair node |
 | `destination` | Pod name of the receiving node |
 | `interval_secs` | Seconds between payment attempts |
 | `amount_msat` | Payment amount in millisatoshis |
 
-SimLN automatically discovers node credentials (macaroons, TLS certs) for every LND and CLN node in the network.
+SimLN automatically discovers node credentials (macaroons, TLS certs) for every LND, CLN and Eclair node in the network.
 
 #### CLI subcommands
 
