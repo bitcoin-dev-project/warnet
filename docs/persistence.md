@@ -6,6 +6,7 @@ Persistence is available for:
 - **Bitcoin Core** nodes
 - **LND** nodes
 - **CLN** nodes
+- **Eclair** nodes
 
 ## Enabling Persistence
 
@@ -31,7 +32,7 @@ bitcoin_core:
 ### Lightning Node
 
 ```yaml
-<lnd or cln>:
+<lnd, cln or eclair>:
   image:
     tag: <node-version-tag>
   restartPolicy: Always
@@ -41,6 +42,8 @@ bitcoin_core:
     storageClass: "" # optional, default is cluster default storage class
     accessMode: ReadWriteOncePod # optional, default is ReadWriteOncePod. For compatibility with older Kubernetes versions, you may need to set this to ReadWriteOnce
 ```
+
+Eclair keeps its on-chain funds in a wallet of its Bitcoin Core tank, so enable persistence on that tank as well when persisting an eclair node.
 
 ## Existing PVCs
 
@@ -70,3 +73,4 @@ When persistence is enabled, the following directories are persisted in the PVCs
 - **Bitcoin Core:** `/root/.bitcoin/`
 - **LND:** `/root/.lnd/`
 - **CLN:** `/root/.lightning/`
+- **Eclair:** `/root/.eclair/`
