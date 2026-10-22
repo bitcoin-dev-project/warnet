@@ -330,6 +330,13 @@ class LNInit(Commander):
             all(thread.join() is None for thread in ch_threads)
             for ch in channels:
                 if ch["outpoint"][-2:] != ":0":
+                    if self.lns[ch["source"]].impl == "eclair":
+                        # Eclair funds channels from its Bitcoin Core wallet which
+                        # randomizes the position of the change output.
+                        self.log.warning(
+                            f"Eclair channel open outpoint not tx output index 0\n  {ch}"
+                        )
+                        continue
                     self.log.error(f"Channel open outpoint not tx output index 0\n  {ch}")
                     raise Exception("Channel determinism ruined, abort!")
 
@@ -371,6 +378,19 @@ class LNInit(Commander):
         gen(5)
         self.log.info(f"Confirmed {len(self.channels)} total channel opens")
 
+        # Eclair only syncs gossip from peers it has channels with. Without
+        # channels it only receives its peers' announcements of their own
+        # channels, so it may never learn the complete graph.
+        def syncs_gossip(ln):
+            return ln.impl != "eclair" or any(
+                ln.name in (ch["source"], ch["target"]) for ch in self.channels
+            )
+
+        gossip_lns = [ln for ln in self.lns.values() if syncs_gossip(ln)]
+        for ln in self.lns.values():
+            if ln not in gossip_lns:
+                self.log.info(f"Not checking graph of eclair node {ln.name} without channels")
+
         self.log.info("Waiting for channel announcement gossip...")
 
         def ln_all_chs(self, ln):
@@ -393,9 +413,7 @@ class LNInit(Commander):
                     )
                     sleep(5)
 
-        ch_ann_threads = [
-            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
-        ]
+        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in gossip_lns]
         for thread in ch_ann_threads:
             sleep(0.25)
             thread.start()
@@ -408,12 +426,13 @@ class LNInit(Commander):
         ##
         self.log.info("Updating channel policies...")
 
-        def update_policy(self, ln, txid_hex, policy, capacity):
-            self.log.info(f"Sending update from {ln.name} for channel with outpoint: {txid_hex}:0")
+        def update_policy(self, ln, outpoint, policy, capacity):
+            self.log.info(f"Sending update from {ln.name} for channel with outpoint: {outpoint}")
+            txid_hex, output_index = outpoint.split(":")
             res = None
             while res is None:
                 try:
-                    res = ln.update(txid_hex, policy, capacity)
+                    res = ln.update(txid_hex, policy, capacity, int(output_index))
                     if len(res["failed_updates"]) != 0:
                         self.log.info(
                             f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}\n retrying in 5 seconds..."
@@ -435,7 +454,7 @@ class LNInit(Commander):
                     args=(
                         self,
                         self.lns[ch["source"]],
-                        ch["txid"],
+                        ch["outpoint"],
                         ch["source_policy"],
                         ch["capacity"],
                     ),
@@ -449,7 +468,7 @@ class LNInit(Commander):
                     args=(
                         self,
                         self.lns[ch["target"]],
-                        ch["txid"],
+                        ch["outpoint"],
                         ch["target_policy"],
                         ch["capacity"],
                     ),
@@ -489,13 +508,19 @@ class LNInit(Commander):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
-                    # If this fails we have a bigger issue
-                    assert int(actual_ch["capacity"]) == capacity, (
-                        f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
-                    )
+                    # If this fails we have a bigger issue.
+                    # Eclair does not report capacity of channels in its graph.
+                    if "capacity" in actual_ch:
+                        assert int(actual_ch["capacity"]) == capacity, (
+                            f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
+                        )
 
                     # Policies were not defined in network.yaml
                     if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
+                        continue
+
+                    # Only LND reports both channel policies in its graph
+                    if ln.impl != "lnd":
                         continue
 
                     # policy actual/expected source/target
@@ -520,8 +545,7 @@ class LNInit(Commander):
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln))
-            for ln in self.lns.values()
+            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in gossip_lns
         ]
         for thread in policy_threads:
             sleep(0.25)
