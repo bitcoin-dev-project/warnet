@@ -1,13 +1,14 @@
 # LN Options
 
-Lightning Network nodes are attached to Bitcoin Core tanks via the `ln:` key. Configuration specific to each implementation lives under a matching top-level key (`lnd:` or `cln:`).
+Lightning Network nodes are attached to Bitcoin Core tanks via the `ln:` key. Configuration specific to each implementation lives under a matching top-level key (`lnd:`, `cln:` or `eclair:`).
 
-Two implementations are available:
+Three implementations are available:
 
 | Key | Implementation | Default image |
 |-----|---------------|---------------|
 | `ln.lnd: true` | [LND](https://github.com/lightningnetwork/lnd) by Lightning Labs | `lightninglabs/lnd:v0.20.1-beta` |
 | `ln.cln: true` | [Core Lightning](https://github.com/ElementsProject/lightning) by Blockstream | `elementsproject/lightningd:v25.02` |
+| `ln.eclair: true` | [Eclair](https://github.com/ACINQ/eclair) by ACINQ | `polarlightning/eclair:0.12.0` |
 
 Only one implementation may be enabled per node.
 
@@ -85,7 +86,7 @@ lnd:
 
 #### What `ln_init` does automatically
 
-When `warnet deploy` finds any `lnd.channels` or `cln.channels` entry — in `network.yaml` or `node-defaults.yaml` — it runs `resources/scenarios/ln_init.py` as the final deploy step and streams its logs to the terminal. The full sequence is:
+When `warnet deploy` finds any `lnd.channels`, `cln.channels` or `eclair.channels` entry — in `network.yaml` or `node-defaults.yaml` — it runs `resources/scenarios/ln_init.py` as the final deploy step and streams its logs to the terminal. The full sequence is:
 
 1. **Wait for L1 p2p** — holds until all Bitcoin Core nodes have established their connections from `addnode`.
 2. **Mine to near channel-open height** — mines to block 496 (four blocks before the default `id.block` start of 500), building a usable chain. A node named `miner` is used as the block source; if none exists, the first node in the network is used instead.
@@ -95,7 +96,7 @@ When `warnet deploy` finds any `lnd.channels` or `cln.channels` entry — in `ne
    - Mines to that height
    - Opens all channels assigned to that block in parallel, using decreasing fee rates so transactions land in the block in index order
    - Mines the block
-   - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not
+   - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not (see [Eclair options](#eclair-options-eclair) for the eclair exception)
 6. **Mine 5 confirmation blocks** — waits for channels to reach the required confirmation depth.
 7. **Wait for gossip sync** — polls every LN node until each one reports the full set of channels in its graph.
 8. **Apply channel policies** — for any channel that defined `source_policy` or `target_policy`, sends an `UpdateChannelPolicy` to the respective node and waits for the policy to propagate across the network.
@@ -295,3 +296,60 @@ Core Lightning uses the same top-level structure. The `cln:` key mirrors `lnd:` 
 | `cln.extraContainers` | Same sidecar pattern |
 
 CLN does not currently support `macaroonRootKey`, `adminMacaroon`, `metricsExport`, `metricsScrapeInterval`, `prometheusMetricsPort`, or `circuitbreaker`.
+
+---
+
+## Eclair options (`eclair:`)
+
+[Eclair](https://github.com/ACINQ/eclair) uses the same top-level structure. The `eclair:` key mirrors `lnd:` for the options it shares:
+
+| Key | Notes |
+|-----|-------|
+| `eclair.image` | Same structure as `lnd.image` |
+| `eclair.config` | Lines appended to `eclair.conf` ([HOCON](https://github.com/lightbend/config/blob/main/HOCON.md) format, e.g. `eclair.node-color = "ff3155"`) |
+| `eclair.channels` | Same channel schema as LND |
+| `eclair.resources` | Same Kubernetes resource spec |
+| `eclair.restartPolicy` | Same as `lnd.restartPolicy`; default `Always` |
+| `eclair.persistence` | PVC at `/root/.eclair/`; default size 10Gi |
+| `eclair.extraContainers` | Same sidecar pattern |
+| `eclair.service` | Same as LND, with `p2pNodePort` and `restNodePort` |
+
+Eclair does not currently support `macaroonRootKey`, `adminMacaroon`, `metricsExport`, `metricsScrapeInterval`, `prometheusMetricsPort`, or `circuitbreaker`.
+
+```yaml
+nodes:
+  - name: tank-0000
+    ln:
+      eclair: true
+    eclair:
+      config: |
+        eclair.node-color = "ff3155"
+      channels:
+        - id:
+            block: 500
+            index: 1
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
+```
+
+### Differences from LND and CLN
+
+Eclair does not have its own on-chain wallet. It funds channels from a Bitcoin Core wallet named `eclair` on its tank, which is created automatically when the eclair container starts. This has a few consequences:
+
+- The tank must run Bitcoin Core 28.1 or newer (the default image does). Tanks with eclair attached also get `txindex=1` and `zmqpubhashblock` added to `bitcoin.conf`.
+- If `eclair.persistence` is enabled, enable `persistence` on the tank as well, otherwise eclair's on-chain funds are lost on restart.
+- If the tank has other wallets loaded (for example the `miner` wallet when it is the `ln_init` miner), wallet RPCs sent with `warnet bitcoin rpc` must name a wallet, e.g. `warnet bitcoin rpc tank-0000 -rpcwallet=eclair getbalance`.
+
+Eclair is also handled differently by `ln_init`:
+
+- Bitcoin Core refuses to broadcast transactions above 10,000 sat/vB, so blocks containing channel opens from eclair nodes use a fee rate schedule 10x lower than the default.
+- Bitcoin Core places the change output of eclair funding transactions at a random position. The channel's block height and transaction index are still deterministic, but its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
+- Eclair only syncs gossip from peers it has channels with. An eclair node without channels only receives its peers' announcements of their own channels, so its graph may never be complete, and `ln_init` does not wait for it.
+- Channel policies (`source_policy` / `target_policy`) can not be applied by eclair nodes yet.
+
+Other notes:
+
+- `warnet ln rpc` runs `eclair-cli`, which takes parameters as `--name=value`, e.g. `warnet ln rpc tank-0000-ln open --nodeId=<pubkey> --fundingSatoshis=100000`.
+- The REST API listens on port `8080` with password `21satoshi`. Warnet's own tooling (`ln_init`, scenarios, SimLN) relies on this password, so don't change `eclair.api.password`.
+- The minimum channel size is lowered from eclair's default of 100,000 sats to 20,000 sats, matching LND.
