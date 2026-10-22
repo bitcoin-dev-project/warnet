@@ -1,0 +1,126 @@
+# Default values for eclair.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+restartPolicy: Always
+
+image:
+  repository: polarlightning/eclair
+  pullPolicy: IfNotPresent
+  tag: "0.12.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podLabels:
+  app: "warnet"
+  mission: "lightning"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  # NodePorts are only used if service.type is NodePort, values must be in the range 30000-32767
+  p2pNodePort:
+  restNodePort:
+
+P2PPort: 9735
+RestPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  tcpSocket:
+    port: 8080
+  failureThreshold: 3
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 5
+readinessProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "eclair-cli -p 21satoshi getinfo >/dev/null 2>&1"
+  failureThreshold: 3
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10
+# The JVM is slow to start and eclair waits for its bitcoind wallet first
+startupProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "eclair-cli -p 21satoshi getinfo >/dev/null 2>&1"
+  failureThreshold: 60
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 10
+
+# Node data persistence configuration. Create persistent volume claim, or use an existing one.
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOncePod
+  size: 10Gi
+  # Use existing persistent volume claim instead of creating a new one.
+  existingClaim: ""
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# eclair.conf uses HOCON syntax, later values override earlier ones
+baseConfig: |
+  eclair.api.enabled = true
+  eclair.api.binding-ip = 0.0.0.0
+  # The API password is also used by warnet's eclair clients, do not change it
+  eclair.api.password = 21satoshi
+  eclair.features.keysend = optional
+  # Eclair defaults to 100k sat minimum, use lnd's default instead
+  eclair.channel.min-public-funding-satoshis = 20000
+  eclair.channel.min-private-funding-satoshis = 20000
+  eclair.router.broadcast-interval = 5 seconds
+  eclair.bitcoind.rpcuser = user
+  eclair.bitcoind.startup-locked-utxos-behavior = "unlock"
+  # chain, ports, bitcoind host / password / wallet / zmq are set in configmap.yaml
+
+config: ""
+
+defaultConfig: ""
+
+channels: []

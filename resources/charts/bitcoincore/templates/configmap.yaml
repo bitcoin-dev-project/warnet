@@ -14,6 +14,11 @@ data:
     rpcpassword={{ .Values.global.rpcpassword }}
     zmqpubrawblock=tcp://0.0.0.0:{{ .Values.global.ZMQBlockPort }}
     zmqpubrawtx=tcp://0.0.0.0:{{ .Values.global.ZMQTxPort }}
+    {{- if .Values.ln.eclair }}
+    # Eclair requirements, see https://github.com/ACINQ/eclair#installation
+    txindex=1
+    zmqpubhashblock=tcp://0.0.0.0:{{ .Values.global.ZMQBlockPort }}
+    {{- end }}
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
     {{- range .Values.addnode }}
