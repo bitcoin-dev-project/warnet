@@ -96,17 +96,17 @@ Each entry supports the following fields:
 
 ## Node configuration reference
 
-Each entry in the `nodes:` list is a Bitcoin Core tank. To add a Lightning node to a tank, two sibling keys work together: `ln:` enables the implementation, and `lnd:` or `cln:` holds its configuration.
+Each entry in the `nodes:` list is a Bitcoin Core tank. To add a Lightning node to a tank, two sibling keys work together: `ln:` enables the implementation, and `lnd:`, `cln:` or `eclair:` holds its configuration.
 
 ### Adding a Lightning node
 
-Enable LND or CLN with the `ln:` key, then configure it with a matching sibling key at the same level:
+Enable LND, CLN or Eclair with the `ln:` key, then configure it with a matching sibling key at the same level:
 
 ```yaml
 nodes:
   - name: tank-0000
     ln:
-      lnd: true     # enable LND — use cln: true for Core Lightning instead
+      lnd: true     # enable LND — use cln: true or eclair: true instead
     lnd:            # LND configuration (sibling of ln:, not nested inside it)
       config: |
         color=#3399FF
@@ -118,7 +118,7 @@ nodes:
           capacity: 1000000
 ```
 
-The `ln:` key is the on/off switch. The `lnd:` (or `cln:`) key is the configuration object. They are always at the same indentation level inside the node entry — `lnd:` is **not** nested inside `ln:`.
+The `ln:` key is the on/off switch. The `lnd:` (or `cln:`, `eclair:`) key is the configuration object. They are always at the same indentation level inside the node entry — `lnd:` is **not** nested inside `ln:`.
 
 Only one implementation may be active per node:
 
@@ -126,8 +126,9 @@ Only one implementation may be active per node:
 |-----------|-----|---------------------|
 | LND | `ln.lnd: true` | `lnd:` sibling key |
 | Core Lightning | `ln.cln: true` | `cln:` sibling key |
+| Eclair | `ln.eclair: true` | `eclair:` sibling key |
 
-See [LN Options](ln-options.md) for the full reference of everything that goes under `lnd:` and `cln:`.
+See [LN Options](ln-options.md) for the full reference of everything that goes under `lnd:`, `cln:` and `eclair:`.
 
 ---
 
@@ -214,7 +215,7 @@ nodes:
 
 ## Lightning node configuration reference
 
-For the full reference of all `lnd:` and `cln:` configuration keys — including `channels`, `macaroonRootKey`, `adminMacaroon`, `resources`, `restartPolicy`, `persistence`, `metricsExport`, `extraContainers`, `circuitbreaker`, and more — see [LN Options](ln-options.md).
+For the full reference of all `lnd:`, `cln:` and `eclair:` configuration keys — including `channels`, `macaroonRootKey`, `adminMacaroon`, `resources`, `restartPolicy`, `persistence`, `metricsExport`, `extraContainers`, `circuitbreaker`, and more — see [LN Options](ln-options.md).
 
 ## `node-defaults.yaml` reference
 
