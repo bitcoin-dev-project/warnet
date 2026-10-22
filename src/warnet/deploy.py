@@ -399,7 +399,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
 
     needs_ln_init = False
     addconnections = []
-    supported_ln_projects = ["lnd", "cln"]
+    supported_ln_projects = ["lnd", "cln", "eclair"]
     merged = network_file["nodes"].copy()
     merged.append(default_file)
     for node in merged:
