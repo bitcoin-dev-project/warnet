@@ -1,0 +1,72 @@
+nodes:
+  - name: tank-0000
+    addnode:
+      - tank-0001
+    persistence:
+      enabled: true
+    ln:
+      lnd: true
+    lnd:
+      persistence:
+        enabled: true
+      channels:
+        - id:
+            block: 500
+            index: 1
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
+
+  # Channel opens from eclair and lnd in the same block
+  - name: tank-0001
+    addnode:
+      - tank-0002
+    persistence:
+      enabled: true
+    ln:
+      eclair: true
+    eclair:
+      persistence:
+        enabled: true
+      channels:
+        - id:
+            block: 500
+            index: 2
+          target: tank-0002-ln
+          capacity: 100000
+          push_amt: 50000
+
+  - name: tank-0002
+    addnode:
+      - tank-0003
+    ln:
+      cln: true
+    cln:
+      channels:
+        - id:
+            block: 501
+            index: 1
+          target: tank-0003-ln
+          capacity: 100000
+          push_amt: 50000
+
+  - name: tank-0003
+    addnode:
+      - tank-0004
+    ln:
+      eclair: true
+    eclair:
+      channels:
+        - id:
+            block: 502
+            index: 1
+          target: tank-0000-ln
+          capacity: 100000
+          push_amt: 50000
+
+  # Eclair node without channels, it will only learn its peers' own channels
+  - name: tank-0004
+    addnode:
+      - tank-0000
+    ln:
+      eclair: true
