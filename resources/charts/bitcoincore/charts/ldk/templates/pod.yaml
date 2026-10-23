@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "ldk.fullname" . }}
+  labels:
+    {{- include "ldk.labels" . | nindent 4 }}
+    {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+    app: {{ include "ldk.fullname" . }}
+    {{- if .Values.collectLogs }}
+    collect_logs: "true"
+    {{- end }}
+    chain: {{ .Values.global.chain }}
+  annotations:
+    kubectl.kubernetes.io/default-container: "ldk"
+spec:
+  restartPolicy: "{{ .Values.restartPolicy }}"
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: {{ .Chart.Name }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      args:
+        - /etc/ldk-server/config.toml
+      # Environment variables take precedence over the config file
+      env:
+        - name: LDK_SERVER_NODE_NETWORK
+          value: {{ .Values.global.chain | quote }}
+        - name: LDK_SERVER_NODE_LISTENING_ADDRESSES
+          value: "0.0.0.0:{{ .Values.P2PPort }}"
+        - name: LDK_SERVER_NODE_ANNOUNCEMENT_ADDRESSES
+          value: "{{ include "ldk.fullname" . }}:{{ .Values.P2PPort }}"
+        - name: LDK_SERVER_NODE_GRPC_SERVICE_ADDRESS
+          value: "0.0.0.0:{{ .Values.RPCPort }}"
+        # An alias is required to accept announced channels
+        - name: LDK_SERVER_NODE_ALIAS
+          value: {{ printf "%s.%s" (include "ldk.fullname" .) .Release.Namespace | trunc 32 | quote }}
+        - name: LDK_SERVER_BITCOIND_RPC_ADDRESS
+          value: "{{ include "bitcoincore.fullname" . }}:{{ index .Values.global .Values.global.chain "RPCPort" }}"
+        - name: LDK_SERVER_BITCOIND_RPC_USER
+          value: "user"
+        - name: LDK_SERVER_BITCOIND_RPC_PASSWORD
+          value: {{ .Values.global.rpcpassword | quote }}
+        - name: LDK_SERVER_STORAGE_DIR_PATH
+          value: "/root/.ldk-server"
+      ports:
+        - name: p2p
+          containerPort: {{ .Values.P2PPort }}
+          protocol: TCP
+        - name: rpc
+          containerPort: {{ .Values.RPCPort }}
+          protocol: TCP
+      livenessProbe:
+        {{- toYaml .Values.livenessProbe | nindent 8 }}
+      readinessProbe:
+        {{- toYaml .Values.readinessProbe | nindent 8 }}
+      startupProbe:
+        {{- toYaml .Values.startupProbe | nindent 8 }}
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      volumeMounts:
+        {{- with .Values.volumeMounts }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        - mountPath: /etc/ldk-server/config.toml
+          name: config
+          subPath: config.toml
+        - mountPath: /root/.ldk-server/config.toml
+          name: config
+          subPath: cli.toml
+        - mountPath: /root/.ldk-server
+          name: ldk-data
+    {{- with .Values.extraContainers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  volumes:
+    {{- with .Values.volumes }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    - configMap:
+        name: {{ include "ldk.fullname" . }}
+      name: config
+    - name: ldk-data
+      {{- if .Values.persistence.enabled }}
+      {{- if .Values.persistence.existingClaim }}
+      persistentVolumeClaim:
+        claimName: {{ .Values.persistence.existingClaim }}
+      {{- else }}
+      persistentVolumeClaim:
+        claimName: {{ include "ldk.fullname" . }}.{{ .Release.Namespace }}-ldk-data
+      {{- end }}
+      {{- else }}
+      emptyDir: {}
+      {{- end }}
+  {{- with .Values.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.affinity }}
+  affinity:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

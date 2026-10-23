@@ -1,0 +1,120 @@
+# Default values for ldk.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: warnet
+
+restartPolicy: Always
+
+# https://github.com/lightningdevkit/ldk-server has no releases yet,
+# images are built from a pinned commit.
+image:
+  repository: bitcoindevproject/ldk-server
+  pullPolicy: IfNotPresent
+  tag: "c17dc11"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podLabels:
+  app: "warnet"
+  mission: "lightning"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  # NodePorts are only used if service.type is NodePort, values must be in the range 30000-32767
+  p2pNodePort:
+  rpcNodePort:
+
+P2PPort: 9735
+# gRPC API
+RPCPort: 3536
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  tcpSocket:
+    port: 3536
+  failureThreshold: 3
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 5
+readinessProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "ldk-server-cli get-node-info >/dev/null 2>&1"
+  failureThreshold: 3
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10
+startupProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "ldk-server-cli get-node-info >/dev/null 2>&1"
+  failureThreshold: 60
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 10
+
+# Node data persistence configuration. Create persistent volume claim, or use an existing one.
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOncePod
+  size: 10Gi
+  # Use existing persistent volume claim instead of creating a new one.
+  existingClaim: ""
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ldk-server config file in TOML format. defaultConfig and config are
+# concatenated, so they must not define the same TOML table.
+# Network, ports, alias and bitcoind connection are set by pod.yaml
+# with environment variables, which take precedence over this file.
+# See https://github.com/lightningdevkit/ldk-server/blob/main/contrib/ldk-server-config.toml
+baseConfig: ""
+
+config: ""
+
+defaultConfig: ""
+
+channels: []
