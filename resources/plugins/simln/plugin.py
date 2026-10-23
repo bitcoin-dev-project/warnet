@@ -166,6 +166,11 @@ def _generate_activity_json(activity: Optional[list[dict]]) -> str:
 
     for i in get_mission(LIGHTNING_MISSION):
         ln_name = i.metadata.name
+        if "ldk" in i.metadata.labels["app.kubernetes.io/name"]:
+            # No SimLN release supports ldk-server yet, and SimLN's unreleased
+            # backend uses API key auth which ldk-server replaced with macaroons.
+            log.warning(f"SimLN does not support LDK nodes, skipping {ln_name}")
+            continue
         node = {"id": ln_name}
         if "cln" in i.metadata.labels["app.kubernetes.io/name"]:
             node["address"] = f"https://{ln_name}:9736"

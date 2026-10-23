@@ -42,6 +42,8 @@ SimLN plugin also supports Eclair. Eclair nodes are accessed through their REST 
 
 Since SimLN already has access to those LND, CLN and Eclair connection details, it means you can focus on the "activity" definitions.
 
+LDK nodes are not supported yet and are left out of the SimLN node list. No SimLN release supports [LDK Server](https://github.com/lightningdevkit/ldk-server), and SimLN's unreleased LDK Server backend uses API key authentication, which LDK Server has since replaced with macaroons.
+
 ### Launch activity definitions from the command line
 The SimLN plugin takes "activity" definitions like so:
 
