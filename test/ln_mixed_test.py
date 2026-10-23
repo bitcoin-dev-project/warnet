@@ -17,6 +17,8 @@ IMPLS = {
     "tank-0002-ln": "cln",
     "tank-0003-ln": "eclair",
     "tank-0004-ln": "eclair",
+    "tank-0005-ln": "ldk",
+    "tank-0006-ln": "ldk",
 }
 # (block, index, source, target) opened by ln_init
 CHANNELS = [
@@ -24,6 +26,8 @@ CHANNELS = [
     (500, 2, "tank-0001-ln", "tank-0002-ln"),
     (501, 1, "tank-0002-ln", "tank-0003-ln"),
     (502, 1, "tank-0003-ln", "tank-0000-ln"),
+    (503, 1, "tank-0005-ln", "tank-0002-ln"),
+    (503, 2, "tank-0000-ln", "tank-0006-ln"),
 ]
 
 
@@ -46,6 +50,10 @@ class LNMixedTest(TestBase):
             # Multi-hop payments routed through every implementation
             self.pay_invoice(sender="tank-0002-ln", recipient="tank-0000-ln")
             self.pay_invoice(sender="tank-0003-ln", recipient="tank-0002-ln")
+            # LDK paying, receiving and routing
+            self.pay_invoice(sender="tank-0002-ln", recipient="tank-0005-ln")
+            self.pay_invoice(sender="tank-0005-ln", recipient="tank-0000-ln")
+            self.pay_invoice(sender="tank-0003-ln", recipient="tank-0006-ln")
 
             self.test_data_persistence()
         finally:
@@ -59,15 +67,20 @@ class LNMixedTest(TestBase):
         return json.loads(self.warnet(f"ln rpc {ln} {cmd}"))
 
     def test_cli(self):
-        self.log.info("Testing warnet ln commands with eclair")
+        self.log.info("Testing warnet ln commands with eclair and ldk")
         for ln in ["tank-0001-ln", "tank-0003-ln", "tank-0004-ln"]:
             info = self.rpc(ln, "getinfo")
             assert self.warnet(f"ln pubkey {ln}") == info["nodeId"]
+            assert self.warnet(f"ln host {ln}") == f"{ln}.default"
+        for ln in ["tank-0005-ln", "tank-0006-ln"]:
+            info = self.rpc(ln, "get-node-info")
+            assert self.warnet(f"ln pubkey {ln}") == info["node_id"]
             assert self.warnet(f"ln host {ln}") == f"{ln}.default"
 
     def test_channels(self):
         self.log.info("Checking channels opened by ln_init")
 
+        # lnd and ldk use the integer encoding of short channel IDs
         def lnd_scid(chan_id):
             chan_id = int(chan_id)
             return (chan_id >> 40, (chan_id >> 16) & 0xFFFFFF)
@@ -85,6 +98,10 @@ class LNMixedTest(TestBase):
             for ln in ["tank-0001-ln", "tank-0003-ln"]:
                 eclair = self.rpc(ln, "allchannels")
                 if sorted(eclair_scid(ch["shortChannelId"]) for ch in eclair) != expected:
+                    return False
+            for ln in ["tank-0005-ln", "tank-0006-ln"]:
+                ldk = self.rpc(ln, "graph-list-channels")["short_channel_ids"]
+                if sorted(lnd_scid(scid) for scid in ldk) != expected:
                     return False
             cln = self.rpc("tank-0002-ln", "listchannels")["channels"]
             return len([ch for ch in cln if ch["direction"] == 1]) == len(CHANNELS)
@@ -109,15 +126,20 @@ class LNMixedTest(TestBase):
         if IMPLS[ln] == "cln":
             inv = self.rpc(ln, f"invoice {sats * 1000} {label} {label}")
             return inv["bolt11"], inv["payment_hash"]
-        inv = self.rpc(ln, f"createinvoice --amountMsat={sats * 1000} --description={label}")
-        return inv["serialized"], inv["paymentHash"]
+        if IMPLS[ln] == "eclair":
+            inv = self.rpc(ln, f"createinvoice --amountMsat={sats * 1000} --description={label}")
+            return inv["serialized"], inv["paymentHash"]
+        inv = self.rpc(ln, f"bolt11-receive {sats}sat --description {label}")
+        return inv["invoice"], inv["payment_hash"]
 
     def pay(self, ln, invoice):
         if IMPLS[ln] == "lnd":
             return self.warnet(f"ln rpc {ln} payinvoice -f {invoice}")
         if IMPLS[ln] == "cln":
             return self.warnet(f"ln rpc {ln} pay {invoice}")
-        return self.warnet(f"ln rpc {ln} payinvoice --invoice={invoice} --blocking=true")
+        if IMPLS[ln] == "eclair":
+            return self.warnet(f"ln rpc {ln} payinvoice --invoice={invoice} --blocking=true")
+        return self.warnet(f"ln rpc {ln} bolt11-send {invoice}")
 
     def is_paid(self, ln, payment_hash):
         if IMPLS[ln] == "lnd":
@@ -125,8 +147,12 @@ class LNMixedTest(TestBase):
         if IMPLS[ln] == "cln":
             invs = self.rpc(ln, f"listinvoices -k payment_hash={payment_hash}")["invoices"]
             return invs[0]["status"] == "paid"
-        info = self.rpc(ln, f"getreceivedinfo --paymentHash={payment_hash}")
-        return info["status"]["type"] == "received"
+        if IMPLS[ln] == "eclair":
+            info = self.rpc(ln, f"getreceivedinfo --paymentHash={payment_hash}")
+            return info["status"]["type"] == "received"
+        # The payment id of a received BOLT11 payment is its payment hash
+        info = self.rpc(ln, f"get-payment-details {payment_hash}")
+        return info["payment"]["status"] == "SUCCEEDED"
 
     def pay_invoice(self, sender, recipient):
         self.log.info(
@@ -151,17 +177,25 @@ class LNMixedTest(TestBase):
             "invs": self.rpc(ln, "listinvoices"),
         }
 
+    def get_ldk_state(self, ln):
+        return {
+            "pub": self.rpc(ln, "get-node-info")["node_id"],
+            "channels": sorted(
+                ch["channel_id"] for ch in self.rpc(ln, "list-channels")["channels"]
+            ),
+            "pays": sorted(p["payment_id"] for p in self.rpc(ln, "list-payments")["list"]),
+        }
+
     def test_data_persistence(self):
-        self.log.info("Testing eclair data persistence")
-        lns = [
+        self.log.info("Testing eclair and ldk data persistence")
+        first = {
             # Persistence enabled
-            "tank-0001-ln",
+            "tank-0001-ln": self.get_eclair_state("tank-0001-ln"),
+            "tank-0005-ln": self.get_ldk_state("tank-0005-ln"),
             # No persistence
-            "tank-0003-ln",
-        ]
-        first = {}
-        for ln in lns:
-            first[ln] = self.get_eclair_state(ln)
+            "tank-0003-ln": self.get_eclair_state("tank-0003-ln"),
+            "tank-0006-ln": self.get_ldk_state("tank-0006-ln"),
+        }
 
         self.log.info("Stopping network")
         session = pexpect.spawn("warnet down", encoding="utf-8", dimensions=(60, 200))
@@ -184,6 +218,13 @@ class LNMixedTest(TestBase):
         second = self.get_eclair_state("tank-0003-ln")
         assert first["tank-0003-ln"] != second, first["tank-0003-ln"]
         assert first["tank-0003-ln"]["pub"] != second["pub"]
+
+        self.log.info("ldk tank 0005 should have restored persistent data")
+        self.wait_for_predicate(lambda: self.get_ldk_state("tank-0005-ln") == first["tank-0005-ln"])
+
+        self.log.info("ldk tank 0006 should NOT have restored persistent data")
+        second = self.get_ldk_state("tank-0006-ln")
+        assert first["tank-0006-ln"]["pub"] != second["pub"], first["tank-0006-ln"]
 
 
 if __name__ == "__main__":
