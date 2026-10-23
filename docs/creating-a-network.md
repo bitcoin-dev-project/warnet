@@ -15,7 +15,7 @@ There are four ways to produce them. All result in the same YAML files — the c
 
 For the full list of options available in those files, see:
 - [Tank Options](tank-options.md) — all Bitcoin Core node keys
-- [LN Options](ln-options.md) — LND, CLN and Eclair configuration
+- [LN Options](ln-options.md) — LND, CLN, Eclair and LDK configuration
 - [Plugin Options](plugins.md) — hooks, built-in plugins, writing your own
 
 ---

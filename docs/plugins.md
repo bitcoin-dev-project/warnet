@@ -76,7 +76,7 @@ The following plugins ship with Warnet in `resources/plugins/`.
 
 ### SimLN
 
-[SimLN](https://simln.dev/) generates realistic Lightning Network payment activity between nodes. It runs as a `postDeploy` pod and supports LND, CLN and Eclair.
+[SimLN](https://simln.dev/) generates realistic Lightning Network payment activity between nodes. It runs as a `postDeploy` pod and supports LND, CLN and Eclair. LDK nodes are not supported yet and are skipped.
 
 #### Configuration in `network.yaml`
 
