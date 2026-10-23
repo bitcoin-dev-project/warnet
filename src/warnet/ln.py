@@ -37,6 +37,8 @@ def _rpc(pod_name: str, method: str, params: str = "", namespace: Optional[str] 
     if "eclair" in pod.metadata.labels["app.kubernetes.io/name"]:
         # Password is set by eclair.api.password in the eclair chart
         ln_client = "eclair-cli -p 21satoshi"
+    if "ldk" in pod.metadata.labels["app.kubernetes.io/name"]:
+        ln_client = "ldk-server-cli"
     cmd = f"kubectl -n {namespace} exec {pod_name} -- {ln_client} {method} {' '.join(map(str, params))}"
     return run_command(cmd)
 
@@ -53,8 +55,10 @@ def pubkey(
 
 
 def _pubkey(pod_name: str):
-    info = _rpc(pod_name, "getinfo")
     pod = get_pod(pod_name)
+    if "ldk" in pod.metadata.labels["app.kubernetes.io/name"]:
+        return json.loads(_rpc(pod_name, "get-node-info"))["node_id"]
+    info = _rpc(pod_name, "getinfo")
     pubkey_key = "identity_pubkey"
     if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
         pubkey_key = "id"
@@ -75,8 +79,11 @@ def host(
 
 
 def _host(pod_name: str):
-    info = _rpc(pod_name, "getinfo")
     pod = get_pod(pod_name)
+    if "ldk" in pod.metadata.labels["app.kubernetes.io/name"]:
+        # Reachable by service name, like eclair
+        return f"{pod.metadata.name}.{pod.metadata.namespace}"
+    info = _rpc(pod_name, "getinfo")
     if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
         return json.loads(info)["alias"]
     elif "eclair" in pod.metadata.labels["app.kubernetes.io/name"]:
