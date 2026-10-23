@@ -1,14 +1,15 @@
 # LN Options
 
-Lightning Network nodes are attached to Bitcoin Core tanks via the `ln:` key. Configuration specific to each implementation lives under a matching top-level key (`lnd:`, `cln:` or `eclair:`).
+Lightning Network nodes are attached to Bitcoin Core tanks via the `ln:` key. Configuration specific to each implementation lives under a matching top-level key (`lnd:`, `cln:`, `eclair:` or `ldk:`).
 
-Three implementations are available:
+Four implementations are available:
 
 | Key | Implementation | Default image |
 |-----|---------------|---------------|
 | `ln.lnd: true` | [LND](https://github.com/lightningnetwork/lnd) by Lightning Labs | `lightninglabs/lnd:v0.20.1-beta` |
 | `ln.cln: true` | [Core Lightning](https://github.com/ElementsProject/lightning) by Blockstream | `elementsproject/lightningd:v25.02` |
 | `ln.eclair: true` | [Eclair](https://github.com/ACINQ/eclair) by ACINQ | `polarlightning/eclair:0.12.0` |
+| `ln.ldk: true` | [LDK Server](https://github.com/lightningdevkit/ldk-server) by the LDK team | `bitcoindevproject/ldk-server:c17dc11` |
 
 Only one implementation may be enabled per node.
 
@@ -86,7 +87,7 @@ lnd:
 
 #### What `ln_init` does automatically
 
-When `warnet deploy` finds any `lnd.channels`, `cln.channels` or `eclair.channels` entry — in `network.yaml` or `node-defaults.yaml` — it runs `resources/scenarios/ln_init.py` as the final deploy step and streams its logs to the terminal. The full sequence is:
+When `warnet deploy` finds any `lnd.channels`, `cln.channels`, `eclair.channels` or `ldk.channels` entry — in `network.yaml` or `node-defaults.yaml` — it runs `resources/scenarios/ln_init.py` as the final deploy step and streams its logs to the terminal. The full sequence is:
 
 1. **Wait for L1 p2p** — holds until all Bitcoin Core nodes have established their connections from `addnode`.
 2. **Mine to near channel-open height** — mines to block 496 (four blocks before the default `id.block` start of 500), building a usable chain. A node named `miner` is used as the block source; if none exists, the first node in the network is used instead.
@@ -97,7 +98,7 @@ When `warnet deploy` finds any `lnd.channels`, `cln.channels` or `eclair.channel
    - Opens all channels assigned to that block in parallel, all paying the same low fee rate
    - Uses `prioritisetransaction` on the miner to rank the funding transactions in index order, regardless of the fee each implementation actually paid
    - Mines the block
-   - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not (see [Eclair options](#eclair-options-eclair) for the eclair exception)
+   - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not (see [Eclair options](#eclair-options-eclair) and [LDK options](#ldk-options-ldk) for exceptions)
 6. **Mine 5 confirmation blocks** — waits for channels to reach the required confirmation depth.
 7. **Wait for gossip sync** — polls every LN node until each one reports the full set of channels in its graph.
 8. **Apply channel policies** — for any channel that defined `source_policy` or `target_policy`, sends an `UpdateChannelPolicy` to the respective node and waits for the policy to propagate across the network.
@@ -353,3 +354,59 @@ Other notes:
 - `warnet ln rpc` runs `eclair-cli`, which takes parameters as `--name=value`, e.g. `warnet ln rpc tank-0000-ln open --nodeId=<pubkey> --fundingSatoshis=100000`.
 - The REST API listens on port `8080` with password `21satoshi`. Warnet's own tooling (`ln_init`, scenarios, SimLN) relies on this password, so don't change `eclair.api.password`.
 - The minimum channel size is lowered from eclair's default of 100,000 sats to 20,000 sats, matching LND.
+
+---
+
+## LDK options (`ldk:`)
+
+[LDK Server](https://github.com/lightningdevkit/ldk-server) is a Lightning node daemon built on [LDK Node](https://github.com/lightningdevkit/ldk-node), with its own on-chain wallet and Bitcoin Core as its chain source. It is under active development and has no releases yet, so warnet runs an image built from a pinned commit. Expect its API and storage format to change.
+
+The `ldk:` key mirrors `lnd:` for the options it shares:
+
+| Key | Notes |
+|-----|-------|
+| `ldk.image` | Same structure as `lnd.image` |
+| `ldk.config` | ldk-server config file in [TOML](https://github.com/lightningdevkit/ldk-server/blob/main/contrib/ldk-server-config.toml) format, e.g. `[log]` / `level = "Debug"` |
+| `ldk.channels` | Same channel schema as LND |
+| `ldk.resources` | Same Kubernetes resource spec |
+| `ldk.restartPolicy` | Same as `lnd.restartPolicy`; default `Always` |
+| `ldk.persistence` | PVC at `/root/.ldk-server/`; default size 10Gi |
+| `ldk.extraContainers` | Same sidecar pattern |
+| `ldk.service` | Same as LND, with `p2pNodePort` and `rpcNodePort` (gRPC) |
+
+LDK does not currently support `macaroonRootKey`, `adminMacaroon`, `metricsExport`, `metricsScrapeInterval`, `prometheusMetricsPort`, or `circuitbreaker`. [SimLN](plugins.md) does not support LDK nodes yet and skips them.
+
+```yaml
+nodes:
+  - name: tank-0000
+    ln:
+      ldk: true
+    ldk:
+      config: |
+        [log]
+        level = "Debug"
+      channels:
+        - id:
+            block: 500
+            index: 1
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
+```
+
+### Configuration
+
+Network, ports, node alias and the Bitcoin Core connection are set by warnet with `LDK_SERVER_*` environment variables, which take precedence over the config file. `ldk.defaultConfig` and `ldk.config` are concatenated into one TOML file, and TOML does not allow defining the same table (e.g. `[log]`) twice, so don't set the same table in both.
+
+### Differences from other implementations
+
+LDK's wallet shuffles transaction outputs, so its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
+
+LDK also rejects incoming anchor channels unless it has 25,000 sats on-chain per channel, reserved for fee-bumping a force close. `ln_init` funds LDK nodes that only receive channels as well. If you open channels to an LDK node manually, fund it first.
+
+Channel policies (`source_policy` / `target_policy`) can not be applied by LDK nodes yet.
+
+Other notes:
+
+- ldk-server only has a gRPC API with TLS and macaroon authentication. `warnet ln rpc` and the scenario framework run `ldk-server-cli` inside the pod, which is preconfigured to reach it, e.g. `warnet ln rpc tank-0000-ln get-balances`. Amounts take a unit, e.g. `warnet ln rpc tank-0000-ln bolt11-receive 1000sat`.
+- The node announces itself at `<tank>-ln:9735` within its namespace.

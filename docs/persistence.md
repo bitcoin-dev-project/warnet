@@ -7,6 +7,7 @@ Persistence is available for:
 - **LND** nodes
 - **CLN** nodes
 - **Eclair** nodes
+- **LDK** nodes
 
 ## Enabling Persistence
 
@@ -32,7 +33,7 @@ bitcoin_core:
 ### Lightning Node
 
 ```yaml
-<lnd, cln or eclair>:
+<lnd, cln, eclair or ldk>:
   image:
     tag: <node-version-tag>
   restartPolicy: Always
@@ -74,3 +75,4 @@ When persistence is enabled, the following directories are persisted in the PVCs
 - **LND:** `/root/.lnd/`
 - **CLN:** `/root/.lightning/`
 - **Eclair:** `/root/.eclair/`
+- **LDK:** `/root/.ldk-server/`
