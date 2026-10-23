@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import ssl
+import threading
 import urllib.parse
 from abc import ABC, abstractmethod
 from time import sleep
@@ -403,6 +404,102 @@ class ECLAIR(LNNode):
 
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by ECLAIR yet!")
+
+
+class LDK(LNNode):
+    # kubernetes.stream.stream() temporarily patches the shared api client,
+    # so concurrent calls from ln_init threads must not overlap.
+    stream_lock = threading.Lock()
+
+    def __init__(self, pod_name, pod_namespace, ip_address, sclient):
+        super().__init__(pod_name, pod_namespace, ip_address)
+        self.sclient = sclient
+        self.impl = "ldk"
+
+    # ldk-server only has a gRPC API (with TLS and macaroon auth), so use
+    # its JSON CLI inside the pod which is already configured to reach it.
+    def cli(self, *args) -> dict:
+        with self.stream_lock:
+            resp = stream(
+                self.sclient.connect_get_namespaced_pod_exec,
+                name=self.name,
+                namespace=self.namespace,
+                container="ldk",
+                command=["ldk-server-cli", *map(str, args)],
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+                _preload_content=False,
+            )
+        resp.run_forever(timeout=60)
+        stdout = resp.read_stdout()
+        stderr = resp.read_stderr()
+        returncode = resp.returncode
+        resp.close()
+        if returncode != 0:
+            raise Exception(stderr.strip() or f"ldk-server-cli exited with {returncode}")
+        return json.loads(stdout)
+
+    def newaddress(self):
+        return self.cli("onchain-receive")["address"]
+
+    def uri(self):
+        res = self.cli("get-node-info")
+        return f"{res['node_id']}@{self.name}.{self.namespace}:9735"
+
+    def walletbalance(self) -> int:
+        return int(self.cli("get-balances")["spendable_onchain_balance_sats"])
+
+    def channelbalance(self) -> int:
+        channels = self.cli("list-channels")["channels"]
+        return int(sum(ch["outbound_capacity_msat"] for ch in channels) / 1000)
+
+    def connect(self, target_uri) -> dict:
+        self.cli("connect-peer", target_uri, "--persist")
+        return {}
+
+    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+        # ldk-server can't set the funding fee rate, it uses its own estimate.
+        # ln_init orders funding transactions with prioritisetransaction, so
+        # the fee paid doesn't matter.
+        # ldk-server requires the address of the (already connected) peer.
+        peers = [p for p in self.cli("list-peers")["peers"] if p["node_id"] == pk]
+        if not peers:
+            raise Exception(f"not connected to peer {pk}")
+        args = ["open-channel", pk, peers[0]["address"], f"{capacity}sat", "--announce-channel"]
+        if push_amt:
+            args += ["--push-to-counterparty", f"{push_amt}sat"]
+        res = self.cli(*args)
+        user_channel_id = res["user_channel_id"]
+        # The funding transaction is created asynchronously after the
+        # channel open is negotiated with the peer.
+        # The channel is already open so don't raise and let the caller retry.
+        while True:
+            try:
+                for ch in self.cli("list-channels")["channels"]:
+                    if ch["user_channel_id"] == user_channel_id and ch.get("funding_txo"):
+                        txid = ch["funding_txo"]["txid"]
+                        return {"txid": txid, "outpoint": f"{txid}:{ch['funding_txo']['vout']}"}
+                self.log.info(f"Waiting for funding tx of channel {user_channel_id}")
+            except Exception as e:
+                self.log.warning(f"Couldn't get outpoint of channel {user_channel_id}: {e}")
+            sleep(1)
+
+    def createinvoice(self, sats, label) -> str:
+        return self.cli("bolt11-receive", f"{sats}sat", "--description", label)["invoice"]
+
+    def payinvoice(self, payment_request) -> str:
+        # Returns the payment id, payment is processed asynchronously
+        return self.cli("bolt11-send", payment_request)["payment_id"]
+
+    def graph(self) -> dict:
+        # Short channel IDs only, details require a call per channel
+        res = self.cli("graph-list-channels")
+        return {"edges": [{"short_channel_id": scid} for scid in sorted(res["short_channel_ids"])]}
+
+    def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
+        raise Exception("Channel Policy Updates not supported by LDK yet!")
 
 
 class LND(LNNode):

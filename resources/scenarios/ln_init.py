@@ -131,6 +131,13 @@ class LNInit(Commander):
             # larger and occupy tx output 1, leaving the actual channel open at output 0
             sat_amt = 10 * COIN
             helicopter.vout.append(CTxOut(sat_amt, address_to_scriptpubkey(addr)))
+        # LDK rejects inbound anchor channels unless it has an on-chain
+        # reserve (25k sats per channel) to fee-bump a force close.
+        for ch in self.channels:
+            tgt = ch["target"]
+            if self.lns[tgt].impl == "ldk" and tgt not in channel_openers:
+                channel_openers.append(tgt)
+                helicopter.vout.append(CTxOut(COIN, address_to_scriptpubkey(ln_addrs[tgt])))
         rawtx = miner.fundrawtransaction(helicopter.serialize().hex())
         signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
         txid = miner.sendrawtransaction(signed_tx)
@@ -153,7 +160,8 @@ class LNInit(Commander):
             while True:
                 try:
                     bal = ln.walletbalance()
-                    if bal >= 0:
+                    # LDK won't open or accept channels before its wallet sees the funds
+                    if bal > 0 or ln.impl != "ldk":
                         self.log.info(f"LN node {ln_name} confirmed funds")
                         break
                     else:
@@ -330,12 +338,11 @@ class LNInit(Commander):
             all(thread.join() is None for thread in ch_threads)
             for ch in channels:
                 if ch["outpoint"][-2:] != ":0":
-                    if self.lns[ch["source"]].impl == "eclair":
-                        # Eclair funds channels from its Bitcoin Core wallet which
-                        # randomizes the position of the change output.
-                        self.log.warning(
-                            f"Eclair channel open outpoint not tx output index 0\n  {ch}"
-                        )
+                    if self.lns[ch["source"]].impl in ("eclair", "ldk"):
+                        # Eclair funds channels from its Bitcoin Core wallet and
+                        # LDK from its BDK wallet, both randomize the position
+                        # of the change output.
+                        self.log.warning(f"Channel open outpoint not tx output index 0\n  {ch}")
                         continue
                     self.log.error(f"Channel open outpoint not tx output index 0\n  {ch}")
                     raise Exception("Channel determinism ruined, abort!")
