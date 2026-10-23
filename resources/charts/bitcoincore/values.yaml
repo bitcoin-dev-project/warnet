@@ -158,3 +158,4 @@ ln:
   lnd: false
   cln: false
   eclair: false
+  ldk: false
