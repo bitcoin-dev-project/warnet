@@ -3,6 +3,7 @@ import os
 import random
 import sys
 from pathlib import Path
+from typing import Optional
 
 import click
 import inquirer
@@ -311,31 +312,61 @@ def create():
         return False
 
 
+LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
+
+
 @click.command()
 @click.argument("graph_file_path", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument("output_path", type=click.Path(exists=False, file_okay=False, dir_okay=True))
-def import_network(graph_file_path: str, output_path: str):
+@click.option(
+    "--ln-impls",
+    default="lnd",
+    show_default=True,
+    help=f"Comma-separated lightning implementations to assign to nodes at random, from: {','.join(LN_IMPLS)}",
+)
+@click.option("--seed", type=int, default=None, help="Random seed for assigning implementations")
+def import_network(graph_file_path: str, output_path: str, ln_impls: str, seed: Optional[int]):
     """Create a network from an imported lightning network graph JSON"""
-    print(_import_network(graph_file_path, output_path))
+    impls = [impl.strip() for impl in ln_impls.split(",") if impl.strip()]
+    unknown = [impl for impl in impls if impl not in LN_IMPLS]
+    if not impls or unknown:
+        raise click.BadParameter(
+            f"must be a comma-separated list of {', '.join(LN_IMPLS)}", param_hint="--ln-impls"
+        )
+    print(_import_network(graph_file_path, output_path, impls, seed))
 
 
-def _import_network(graph_file_path, output_path):
+def _import_network(graph_file_path, output_path, impls=None, seed=None):
     output_path = Path(output_path)
     graph_file_path = Path(graph_file_path).resolve()
     with open(graph_file_path) as graph_file:
         graph = json.loads(graph_file.read())
 
+    impls = impls or ["lnd"]
+    if len(impls) > 1:
+        if seed is None:
+            seed = random.randrange(2**32)
+        print(f"Assigning lightning implementations {impls} at random with --seed {seed}")
+    rng = random.Random(seed)
+
     tanks = {}
     pk_to_tank = {}
     tank_to_pk = {}
+    tank_to_impl = {}
     index = 0
     for node in graph["nodes"]:
         tank = f"tank-{index:04d}"
+        impl = rng.choice(impls)
         pk_to_tank[node["pub_key"]] = tank
         tank_to_pk[tank] = node["pub_key"]
-        tanks[tank] = {"name": tank, "ln": {"lnd": True}, "lnd": {"channels": []}}
+        tank_to_impl[tank] = impl
+        tanks[tank] = {"name": tank, "ln": {impl: True}, impl: {"channels": []}}
         index += 1
     print(f"Imported {index} nodes")
+    if len(impls) > 1:
+        for impl in impls:
+            count = list(tank_to_impl.values()).count(impl)
+            print(f"  {impl}: {count}")
 
     sorted_edges = sorted(graph["edges"], key=lambda x: int(x["channel_id"]))
 
@@ -346,15 +377,19 @@ def _import_network(graph_file_path, output_path):
     count = 0
     for edge in sorted_edges:
         source = pk_to_tank[edge["node1_pub"]]
+        target = pk_to_tank[edge["node2_pub"]]
         channel = {
             "id": {"block": block, "index": index},
-            "target": pk_to_tank[edge["node2_pub"]] + "-ln",
+            "target": target + "-ln",
             "capacity": int(edge["capacity"]),
             "push_amt": int(edge["capacity"]) // 2,
-            "source_policy": Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict(),
-            "target_policy": Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict(),
         }
-        tanks[source]["lnd"]["channels"].append(channel)
+        # Only LND nodes can apply channel policies
+        if tank_to_impl[source] == "lnd":
+            channel["source_policy"] = Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict()
+        if tank_to_impl[target] == "lnd":
+            channel["target_policy"] = Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict()
+        tanks[source][tank_to_impl[source]]["channels"].append(channel)
         index += 1
         if index > CHANNEL_OPENS_PER_BLOCK:
             index = 1
