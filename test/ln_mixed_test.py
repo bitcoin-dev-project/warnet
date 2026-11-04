@@ -28,6 +28,8 @@ CHANNELS = [
     (502, 1, "tank-0003-ln", "tank-0000-ln"),
     (503, 1, "tank-0005-ln", "tank-0002-ln"),
     (503, 2, "tank-0000-ln", "tank-0006-ln"),
+    (503, 3, "tank-0002-ln", "tank-0000-ln"),
+    (503, 4, "tank-0005-ln", "tank-0003-ln"),
 ]
 
 

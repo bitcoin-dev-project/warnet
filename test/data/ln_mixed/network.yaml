@@ -56,6 +56,13 @@ nodes:
           target: tank-0003-ln
           capacity: 100000
           push_amt: 50000
+        # Block 503 has channel opens from all four implementations
+        - id:
+            block: 503
+            index: 3
+          target: tank-0000-ln
+          capacity: 100000
+          push_amt: 50000
 
   - name: tank-0003
     addnode:
@@ -93,6 +100,13 @@ nodes:
             block: 503
             index: 1
           target: tank-0002-ln
+          capacity: 100000
+          push_amt: 50000
+        # Opened after the first one, which LDK's wallet must have seen first
+        - id:
+            block: 503
+            index: 4
+          target: tank-0003-ln
           capacity: 100000
           push_amt: 50000
 
