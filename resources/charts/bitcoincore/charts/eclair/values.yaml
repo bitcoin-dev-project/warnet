@@ -115,6 +115,10 @@ baseConfig: |
   eclair.channel.min-public-funding-satoshis = 20000
   eclair.channel.min-private-funding-satoshis = 20000
   eclair.router.broadcast-interval = 5 seconds
+  # ln_init opens every channel before any are confirmed or announced, so all
+  # peers look like private nodes with pending channels. Lift the rate limits.
+  eclair.channel.channel-open-limits.max-pending-channels-per-peer = 1000000
+  eclair.channel.channel-open-limits.max-total-pending-channels-private-nodes = 1000000
   eclair.bitcoind.rpcuser = user
   eclair.bitcoind.startup-locked-utxos-behavior = "unlock"
   # chain, ports, bitcoind host / password / wallet / zmq are set in configmap.yaml
