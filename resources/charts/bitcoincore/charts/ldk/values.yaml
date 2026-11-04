@@ -57,13 +57,18 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+# A tcpSocket probe on the gRPC port would make ldk-server log a failed TLS
+# handshake every period, so use the CLI like the readiness probe.
 livenessProbe:
-  tcpSocket:
-    port: 3536
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "ldk-server-cli get-node-info >/dev/null 2>&1"
   failureThreshold: 3
   periodSeconds: 10
   successThreshold: 1
-  timeoutSeconds: 5
+  timeoutSeconds: 10
 readinessProbe:
   exec:
     command:
