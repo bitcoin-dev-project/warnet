@@ -427,6 +427,7 @@ class LDK(LNNode):
     def __init__(self, pod_name, pod_namespace, ip_address, sclient):
         super().__init__(pod_name, pod_namespace, ip_address)
         self.sclient = sclient
+        self.open_lock = threading.Lock()
         self.impl = "ldk"
 
     # ldk-server only has a gRPC API (with TLS and macaroon auth), so use
@@ -473,6 +474,26 @@ class LDK(LNNode):
         return {}
 
     def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+        # LDK's wallet only learns that its funding transactions spend its coins
+        # when it next polls the mempool, so concurrent channel opens could pick
+        # the same coin. Open one channel at a time and wait for the wallet to
+        # see each funding transaction.
+        with self.open_lock:
+            balance = int(self.cli("get-balances")["total_onchain_balance_sats"])
+            res = self._open_channel(pk, capacity, push_amt, fee_rate)
+            # The channel is already open so don't raise and let the caller retry
+            while True:
+                try:
+                    if int(self.cli("get-balances")["total_onchain_balance_sats"]) <= (
+                        balance - capacity
+                    ):
+                        return res
+                    self.log.info(f"Waiting for wallet to see funding tx {res['txid']}")
+                except Exception as e:
+                    self.log.warning(f"Couldn't get balance: {e}")
+                sleep(1)
+
+    def _open_channel(self, pk, capacity, push_amt, fee_rate) -> dict:
         # ldk-server can't set the funding fee rate, it uses its own estimate.
         # ln_init orders funding transactions with prioritisetransaction, so
         # the fee paid doesn't matter.
