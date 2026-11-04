@@ -34,6 +34,16 @@ class LNInit(Commander):
         )
 
     def run_test(self):
+        # Exceptions in worker threads are only printed, collect them so
+        # ln_init fails instead of reporting success.
+        thread_errors = []
+
+        def excepthook(args):
+            thread_errors.append(args.exc_value)
+            threading.__excepthook__(args)
+
+        threading.excepthook = excepthook
+
         ##
         # L1 P2P
         ##
@@ -568,6 +578,8 @@ class LNInit(Commander):
             thread.start()
 
         all(thread.join() is None for thread in policy_threads)
+        if thread_errors:
+            raise Exception(f"{len(thread_errors)} ln_init thread(s) failed: {thread_errors}")
         self.log.info("All LN nodes have matching graph!")
 
 
