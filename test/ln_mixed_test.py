@@ -150,9 +150,15 @@ class LNMixedTest(TestBase):
         if IMPLS[ln] == "eclair":
             info = self.rpc(ln, f"getreceivedinfo --paymentHash={payment_hash}")
             return info["status"]["type"] == "received"
-        # The payment id of a received BOLT11 payment is its payment hash
-        info = self.rpc(ln, f"get-payment-details {payment_hash}")
-        return info["payment"]["status"] == "SUCCEEDED"
+        # LDK only stores a received payment when it arrives, under an id
+        # that isn't the payment hash, so look for the hash in all payments.
+        payments = self.rpc(ln, "list-payments")["list"]
+        return any(
+            p["direction"] == "INBOUND"
+            and p["status"] == "SUCCEEDED"
+            and payment_hash in json.dumps(p["kind"])
+            for p in payments
+        )
 
     def pay_invoice(self, sender, recipient):
         self.log.info(
