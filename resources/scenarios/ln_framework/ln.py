@@ -286,7 +286,10 @@ class CLN(LNNode):
         # Map to desired output
         filtered_channels = [ch for ch in res["channels"] if ch["direction"] == 1]
         # Sort by short_channel_id - block -> index -> output
-        sorted_channels = sorted(filtered_channels, key=lambda x: x["short_channel_id"])
+        sorted_channels = sorted(
+            filtered_channels,
+            key=lambda x: tuple(int(n) for n in x["short_channel_id"].split("x")),
+        )
         # Add capacity by dividing amount_msat by 1000
         for channel in sorted_channels:
             channel["capacity"] = channel["amount_msat"] // 1000
