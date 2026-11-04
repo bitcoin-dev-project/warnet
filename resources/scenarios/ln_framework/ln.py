@@ -381,7 +381,7 @@ class ECLAIR(LNNode):
         while True:
             try:
                 info = self.post("/channel", {"channelId": channel_id})
-                outpoint = info["data"]["commitments"]["active"][0]["fundingTx"]["outPoint"]
+                outpoint = info["data"]["commitments"]["active"][0]["fundingInput"]
                 return {"txid": txid, "outpoint": outpoint}
             except Exception as e:
                 self.log.warning(f"Couldn't get outpoint of channel {channel_id}: {e}")

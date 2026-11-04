@@ -8,7 +8,7 @@ Four implementations are available:
 |-----|---------------|---------------|
 | `ln.lnd: true` | [LND](https://github.com/lightningnetwork/lnd) by Lightning Labs | `lightninglabs/lnd:v0.20.1-beta` |
 | `ln.cln: true` | [Core Lightning](https://github.com/ElementsProject/lightning) by Blockstream | `elementsproject/lightningd:v25.02` |
-| `ln.eclair: true` | [Eclair](https://github.com/ACINQ/eclair) by ACINQ | `polarlightning/eclair:0.12.0` |
+| `ln.eclair: true` | [Eclair](https://github.com/ACINQ/eclair) by ACINQ | `bitcoindevproject/eclair:v0.14.4` |
 | `ln.ldk: true` | [LDK Server](https://github.com/lightningdevkit/ldk-server) by the LDK team | `bitcoindevproject/ldk-server:c17dc11` |
 
 Only one implementation may be enabled per node.
@@ -339,7 +339,7 @@ nodes:
 
 Eclair does not have its own on-chain wallet. It funds channels from a Bitcoin Core wallet named `eclair` on its tank, which is created automatically when the eclair container starts. This has a few consequences:
 
-- The tank must run Bitcoin Core 28.1 or newer (the default image does). Tanks with eclair attached also get `txindex=1` and `zmqpubhashblock` added to `bitcoin.conf`.
+- The tank must run Bitcoin Core 31 or newer (the default image does). Tanks with eclair attached also get `txindex=1` and `zmqpubhashblock` added to `bitcoin.conf`.
 - If `eclair.persistence` is enabled, enable `persistence` on the tank as well, otherwise eclair's on-chain funds are lost on restart.
 - If the tank has other wallets loaded (for example the `miner` wallet when it is the `ln_init` miner), wallet RPCs sent with `warnet bitcoin rpc` must name a wallet, e.g. `warnet bitcoin rpc tank-0000 -rpcwallet=eclair getbalance`.
 
