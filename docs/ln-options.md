@@ -345,6 +345,8 @@ Eclair does not have its own on-chain wallet. It funds channels from a Bitcoin C
 
 Eclair is also handled differently by `ln_init`:
 
+- Eclair requires more confirmations for large channels opened to it (up to 14 for a 4 BTC channel), so `ln_init` mines extra blocks after the channel opens when needed.
+- Eclair's limits on pending incoming channels are lifted, since `ln_init` opens every channel before any are confirmed.
 - Bitcoin Core places the change output of eclair funding transactions at a random position. The channel's block height and transaction index are still deterministic, but its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
 - Eclair only syncs gossip from peers it has channels with. An eclair node without channels only receives its peers' announcements of their own channels, so its graph may never be complete, and `ln_init` does not wait for it.
 - Channel policies (`source_policy` / `target_policy`) can not be applied by eclair nodes yet.
@@ -400,7 +402,8 @@ Network, ports, node alias and the Bitcoin Core connection are set by warnet wit
 
 ### Differences from other implementations
 
-LDK's wallet shuffles transaction outputs, so its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
+- LDK's wallet doesn't record a funding transaction until it sees it in the mempool, so `ln_init` opens channels from each LDK node one at a time to avoid spending the same coin twice.
+- LDK's wallet shuffles transaction outputs, so its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
 
 LDK also rejects incoming anchor channels unless it has 25,000 sats on-chain per channel, reserved for fee-bumping a force close. `ln_init` funds LDK nodes that only receive channels as well. If you open channels to an LDK node manually, fund it first.
 

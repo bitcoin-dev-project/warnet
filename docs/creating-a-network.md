@@ -305,6 +305,22 @@ For example:
 warnet import-network test/data/LN_10.json networks/my_ln_net
 ```
 
+### Mixing lightning implementations
+
+By default every node runs LND. Pass `--ln-impls` to assign each node one of several implementations at random instead:
+
+```sh
+warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,eclair,ldk
+```
+
+The importer prints the random seed it used and how many nodes got each implementation. Pass the seed back with `--seed` to recreate exactly the same network, e.g. to reproduce an `ln_init` failure:
+
+```sh
+warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,eclair,ldk --seed 42
+```
+
+Only LND can apply channel policies, so each side's policy is only imported when that side is an LND node. See [LN Options](ln-options.md) for how `ln_init` handles each implementation.
+
 This writes `network.yaml` and `node-defaults.yaml` into the output directory (creating it if it doesn't exist) and prints a summary:
 
 ```
@@ -321,11 +337,11 @@ warnet deploy networks/my_ln_net
 
 ### What the importer does
 
-- Each node in the JSON becomes a `tank-NNNN` with `ln.lnd: true` enabled
+- Each node in the JSON becomes a `tank-NNNN` with `ln.lnd: true` enabled (or a random implementation from `--ln-impls`)
 - Nodes are wired into a ring topology via `addnode` so that Bitcoin P2P connectivity is established
 - Edges are sorted by `channel_id` and assigned sequential block/index positions starting at `CHANNEL_OPEN_START_HEIGHT` (defined in `resources/scenarios/ln_framework/ln.py`), with up to `CHANNEL_OPENS_PER_BLOCK` channel-open transactions per block
 - Channel capacity and push amount (half of capacity) are taken from the edge's `capacity` field
-- Both `node1_policy` and `node2_policy` are translated into Warnet `Policy` objects, preserving fee rates, time-lock deltas, HTLC limits, and other routing parameters
+- Both `node1_policy` and `node2_policy` are translated into Warnet `Policy` objects, preserving fee rates, time-lock deltas, HTLC limits, and other routing parameters (for LND nodes only)
 
 **Best for:** reproducing real Lightning Network topologies, testing routing behaviour against known channel policies, integration testing with SimLN or other payment-activity tools.
 
