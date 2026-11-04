@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import threading
-from time import sleep
+from time import sleep, time
 
 from commander import Commander
 from ln_framework.ln import (
@@ -9,6 +9,7 @@ from ln_framework.ln import (
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
     ECLAIR,
+    GOSSIP_STALL_TIMEOUT,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
@@ -419,12 +420,16 @@ class LNInit(Commander):
 
         self.log.info("Waiting for channel announcement gossip...")
 
+        # Channel count in each node's graph, to detect when gossip stalls
+        graph_counts = {}
+
         def ln_all_chs(self, ln):
             expected = len(self.channels)
             actual = 0
             while actual != expected:
                 try:
                     actual = len(ln.graph()["edges"])
+                    graph_counts[ln.name] = actual
                     if actual == expected:
                         self.log.info(f"LN {ln.name} has graph with all {expected} channels")
                         break
@@ -443,6 +448,30 @@ class LNInit(Commander):
         for thread in ch_ann_threads:
             sleep(0.25)
             thread.start()
+
+        # An LDK node can end up never announcing a channel because the exchange
+        # of announcement_signatures with its peer didn't complete. Reconnecting
+        # makes both sides resend them, so do that if no graph has grown for a while.
+        uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
+        last_counts = None
+        last_progress = time()
+        while any(thread.is_alive() for thread in ch_ann_threads):
+            sleep(5)
+            counts = dict(graph_counts)
+            if counts != last_counts:
+                last_counts = counts
+                last_progress = time()
+                continue
+            if time() - last_progress < GOSSIP_STALL_TIMEOUT:
+                continue
+            self.log.info(
+                f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, "
+                "reconnecting LDK nodes to their channel peers..."
+            )
+            for ln in self.lns.values():
+                if ln.impl == "ldk":
+                    ln.reconnect_channel_peers(uris_by_pubkey)
+            last_progress = time()
 
         all(thread.join() is None for thread in ch_ann_threads)
         self.log.info("All LN nodes have complete graph")

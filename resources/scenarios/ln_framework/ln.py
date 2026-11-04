@@ -40,6 +40,8 @@ CHANNEL_OPENS_PER_BLOCK = 200
 # the rate. It is passed explicitly because there are no fee estimates on a
 # new regtest chain.
 CHANNEL_OPEN_FEE_RATE = 10  # s/vB
+# Seconds without any node's graph growing before ln_init tries to recover gossip
+GOSSIP_STALL_TIMEOUT = 60
 
 
 # https://github.com/lightningcn/lightning-rfc/blob/master/07-routing-gossip.md#the-channel_update-message
@@ -534,6 +536,25 @@ class LDK(LNNode):
 
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by LDK yet!")
+
+    def reconnect_channel_peers(self, uris_by_pubkey: dict):
+        # Reconnecting makes both sides resend announcement_signatures for
+        # channels that aren't announced yet. Addresses come from the caller
+        # because LDK only knows the remote port of incoming connections.
+        try:
+            peers = {ch["counterparty_node_id"] for ch in self.cli("list-channels")["channels"]}
+        except Exception as e:
+            self.log.warning(f"Couldn't list channels to reconnect peers: {e}")
+            return
+        for pk in peers:
+            if pk not in uris_by_pubkey:
+                continue
+            try:
+                self.cli("disconnect-peer", pk)
+                self.cli("connect-peer", uris_by_pubkey[pk], "--persist")
+                self.log.info(f"Reconnected to channel peer {pk}")
+            except Exception as e:
+                self.log.warning(f"Couldn't reconnect to channel peer {pk}: {e}")
 
 
 class LND(LNNode):
