@@ -1,13 +1,24 @@
 loki:
-    auth_enabled: false
+  auth_enabled: false
+  # Run as a single binary that stores logs on its own volume.
+  # MinIO, which the chart used for object storage, no longer publishes
+  # public images so its pods can't be pulled.
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
 minio:
-  enabled: true
-write:
-  affinity: []
+  enabled: false
+# The chart refuses filesystem storage unless the single binary is enabled
+# and the scalable targets are disabled
+singleBinary:
+  replicas: 1
 read:
-  affinity: []
+  replicas: 0
+write:
+  replicas: 0
 backend:
-  affinity: []
+  replicas: 0
 monitoring:
   selfMonitoring:
     enabled: false
