@@ -303,6 +303,7 @@ class LNInit(Commander):
                         )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]
+                        ch["fee_rate"] = fee_rate
                         self.log.info(
                             f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}"
                         )
@@ -339,9 +340,25 @@ class LNInit(Commander):
 
             self.log.info(f"Waiting for {len(channels)} channel opens in mempool...")
             self.wait_until(
-                lambda channels=channels: self.nodes[0].getmempoolinfo()["size"] >= len(channels),
+                lambda channels=channels: (
+                    {ch["txid"] for ch in channels} <= set(mining_tank.getrawmempool())
+                ),
                 timeout=500,
             )
+            # Implementations don't all pay exactly the fee rate they are asked
+            # for (e.g. CLN over-estimates the size of its funding transaction).
+            # Make the miner rank each funding transaction at exactly the
+            # requested fee rate, so the block is in channel index order.
+            for ch in channels:
+                entry = mining_tank.getmempoolentry(ch["txid"])
+                paid = round(entry["fees"]["base"] * COIN)
+                delta = ch["fee_rate"] * entry["vsize"] - paid
+                if delta:
+                    self.log.info(
+                        f"Channel {ch['id']} paid {paid / entry['vsize']:.1f} s/vB "
+                        f"instead of {ch['fee_rate']}, prioritising by {delta} sats"
+                    )
+                    mining_tank.prioritisetransaction(ch["txid"], 0, delta)
             block_hash = gen(1)[0]
             self.log.info(f"Confirmed {len(channels)} channel opens in block {target_block}")
             self.log.info("Checking deterministic channel IDs in block...")
