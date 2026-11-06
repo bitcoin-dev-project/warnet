@@ -163,13 +163,12 @@ class LNNode(ABC):
 class CLN(LNNode):
     def __init__(self, pod_name, pod_namespace, ip_address):
         super().__init__(pod_name, pod_namespace, ip_address)
-        self.conn = None
         self.headers = {}
         self.impl = "cln"
-        self.reset_connection()
 
-    def reset_connection(self):
-        self.conn = http.client.HTTPSConnection(
+    # A new connection per request, so one node can be used from many threads
+    def new_connection(self):
+        return http.client.HTTPSConnection(
             host=f"{self.name}.{self.namespace}", port=3010, timeout=60, context=INSECURE_CONTEXT
         )
 
@@ -177,31 +176,36 @@ class CLN(LNNode):
         self.headers = {"Rune": rune}
 
     def get(self, uri):
-        self.reset_connection()
-        self.log.info(f"CLN GET headers: {self.headers}")
-        self.conn.request(
+        if "Rune" not in self.headers:
+            self.createrune()
+        conn = self.new_connection()
+        conn.request(
             method="GET",
             url=uri,
             headers=self.headers,
         )
-        return self.conn.getresponse().read().decode("utf8")
+        return conn.getresponse().read().decode("utf8")
 
     def post(self, uri, data=None):
+        if "Rune" not in self.headers:
+            self.createrune()
         if not data:
             data = {}
         body = json.dumps(data)
-        post_header = self.headers
-        post_header["Content-Length"] = str(len(body))
-        post_header["Content-Type"] = "application/json"
-        self.reset_connection()
-        self.conn.request(
+        post_header = {
+            **self.headers,
+            "Content-Length": str(len(body)),
+            "Content-Type": "application/json",
+        }
+        conn = self.new_connection()
+        conn.request(
             method="POST",
             url=uri,
             body=body,
             headers=post_header,
         )
         # Stream output, otherwise we get a timeout error
-        res = self.conn.getresponse()
+        res = conn.getresponse()
         stream = ""
         while True:
             try:
@@ -273,7 +277,10 @@ class CLN(LNNode):
         return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
 
     def createinvoice(self, sats, label) -> str:
-        response = self.post("invoice", {"amount_msat": sats * 1000, "label": label})
+        # label must be unique, description is required
+        response = self.post(
+            "/v1/invoice", {"amount_msat": sats * 1000, "label": label, "description": label}
+        )
         res = json.loads(response)
         return res["bolt11"]
 
@@ -307,13 +314,13 @@ class ECLAIR(LNNode):
 
     def __init__(self, pod_name, pod_namespace, ip_address):
         super().__init__(pod_name, pod_namespace, ip_address)
-        self.conn = None
         auth = base64.b64encode(f":{self.API_PASSWORD}".encode()).decode()
         self.headers = {"Authorization": f"Basic {auth}"}
         self.impl = "eclair"
 
-    def reset_connection(self):
-        self.conn = http.client.HTTPConnection(
+    # A new connection per request, so one node can be used from many threads
+    def new_connection(self):
+        return http.client.HTTPConnection(
             host=f"{self.name}.{self.namespace}", port=8080, timeout=60
         )
 
@@ -326,14 +333,14 @@ class ECLAIR(LNNode):
             "Content-Length": str(len(body)),
             "Content-Type": "application/x-www-form-urlencoded",
         }
-        self.reset_connection()
-        self.conn.request(
+        conn = self.new_connection()
+        conn.request(
             method="POST",
             url=uri,
             body=body,
             headers=post_header,
         )
-        response = self.conn.getresponse().read().decode("utf8")
+        response = conn.getresponse().read().decode("utf8")
         res = json.loads(response)
         if isinstance(res, dict) and "error" in res:
             raise Exception(res["error"])
@@ -550,7 +557,6 @@ class LDK(LNNode):
 class LND(LNNode):
     def __init__(self, pod_name, pod_namespace, ip_address, admin_macaroon_hex):
         super().__init__(pod_name, pod_namespace, ip_address)
-        self.conn = None
         self.admin_macaroon_hex = admin_macaroon_hex
         self.headers = {
             "Grpc-Metadata-macaroon": admin_macaroon_hex,
@@ -558,34 +564,37 @@ class LND(LNNode):
         }
         self.impl = "lnd"
 
-    def reset_connection(self):
-        self.conn = http.client.HTTPSConnection(
+    # A new connection per request, so one node can be used from many threads
+    def new_connection(self):
+        return http.client.HTTPSConnection(
             host=f"{self.name}.{self.namespace}", port=8080, timeout=60, context=INSECURE_CONTEXT
         )
 
     def get(self, uri):
-        self.reset_connection()
-        self.conn.request(
+        conn = self.new_connection()
+        conn.request(
             method="GET",
             url=uri,
             headers=self.headers,
         )
-        return self.conn.getresponse().read().decode("utf8")
+        return conn.getresponse().read().decode("utf8")
 
     def post(self, uri, data, wait_for_completion=True):
         body = json.dumps(data)
-        post_header = self.headers
-        post_header["Content-Length"] = str(len(body))
-        post_header["Content-Type"] = "application/json"
-        self.reset_connection()
-        self.conn.request(
+        post_header = {
+            **self.headers,
+            "Content-Length": str(len(body)),
+            "Content-Type": "application/json",
+        }
+        conn = self.new_connection()
+        conn.request(
             method="POST",
             url=uri,
             body=body,
             headers=post_header,
         )
         # Stream output, otherwise we get a timeout error
-        res = self.conn.getresponse()
+        res = conn.getresponse()
         stream = ""
         while True:
             try:
