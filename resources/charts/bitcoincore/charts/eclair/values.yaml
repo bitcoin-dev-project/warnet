@@ -5,10 +5,13 @@ namespace: warnet
 
 restartPolicy: Always
 
+# Built from https://github.com/ACINQ/eclair (no multi-arch images are
+# published). Eclair images based on Alpine crash in secp256k1-jni, see
+# https://github.com/ACINQ/eclair/issues/3275
 image:
-  repository: polarlightning/eclair
+  repository: bitcoindevproject/eclair
   pullPolicy: IfNotPresent
-  tag: "0.12.0"
+  tag: "v0.14.4"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -115,6 +118,11 @@ baseConfig: |
   eclair.channel.min-public-funding-satoshis = 20000
   eclair.channel.min-private-funding-satoshis = 20000
   eclair.router.broadcast-interval = 5 seconds
+  # Confirmations required for channels opened to this node. Eclair defaults to
+  # 8, use the minimum of 6 which is also required to announce a channel.
+  eclair.channel.min-depth-blocks = 6
+  # Eclair checks for a transaction of the default signet, warnet's are custom
+  eclair.bitcoind.signet-check-tx = ""
   # ln_init opens every channel before any are confirmed or announced, so all
   # peers look like private nodes with pending channels. Lift the rate limits.
   eclair.channel.channel-open-limits.max-pending-channels-per-peer = 1000000

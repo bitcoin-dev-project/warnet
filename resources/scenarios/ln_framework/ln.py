@@ -2,7 +2,6 @@ import base64
 import http.client
 import json
 import logging
-import math
 import re
 import ssl
 import threading
@@ -306,15 +305,6 @@ class ECLAIR(LNNode):
     # Set by eclair.api.password in the eclair chart
     API_PASSWORD = "21satoshi"
 
-    @staticmethod
-    def min_depth(capacity: int) -> int:
-        # Confirmations eclair requires for a channel opened *to* it, scaled up for
-        # large channels. Mirrors ChannelParams.minDepthScaled in eclair v0.12.0 with
-        # the default eclair.channel.min-depth-blocks = 6
-        if capacity <= 2**24 - 1:
-            return 6
-        return max(6, math.ceil(10 * (capacity / 100_000_000) / 3.125) + 1)
-
     def __init__(self, pod_name, pod_namespace, ip_address):
         super().__init__(pod_name, pod_namespace, ip_address)
         self.conn = None
@@ -393,7 +383,7 @@ class ECLAIR(LNNode):
         while True:
             try:
                 info = self.post("/channel", {"channelId": channel_id})
-                outpoint = info["data"]["commitments"]["active"][0]["fundingTx"]["outPoint"]
+                outpoint = info["data"]["commitments"]["active"][0]["fundingInput"]
                 return {"txid": txid, "outpoint": outpoint}
             except Exception as e:
                 self.log.warning(f"Couldn't get outpoint of channel {channel_id}: {e}")

@@ -8,7 +8,6 @@ from ln_framework.ln import (
     CHANNEL_OPEN_FEE_RATE,
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
-    ECLAIR,
     GOSSIP_STALL_TIMEOUT,
     Policy,
 )
@@ -394,15 +393,7 @@ class LNInit(Commander):
                 )
             self.log.info("👍")
 
-        # Six confirmations are required to announce a channel, but eclair
-        # requires more before using large channels opened to it.
-        tip = self.nodes[0].getblockcount()
-        final_height = tip + 5
-        for ch in self.channels:
-            if self.lns[ch["target"]].impl == "eclair":
-                depth = ECLAIR.min_depth(ch["capacity"])
-                final_height = max(final_height, ch["id"]["block"] + depth - 1)
-        gen(final_height - tip)
+        gen(5)
         self.log.info(f"Confirmed {len(self.channels)} total channel opens")
 
         # Eclair only syncs gossip from peers it has channels with. Without
