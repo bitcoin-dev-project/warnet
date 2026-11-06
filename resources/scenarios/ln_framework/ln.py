@@ -274,6 +274,8 @@ class CLN(LNNode):
         }
         response = self.post("/v1/fundchannel", data)
         res = json.loads(response)
+        if "txid" not in res:
+            raise Exception(res)
         return {"txid": res["txid"], "outpoint": f"{res['txid']}:{res['outnum']}"}
 
     def createinvoice(self, sats, label) -> str:
