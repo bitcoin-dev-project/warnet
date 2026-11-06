@@ -259,7 +259,7 @@ class CLN(LNNode):
     def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
         data = {
             "amount": capacity,
-            "push_msat": push_amt,
+            "push_msat": push_amt * 1000,
             "id": pk,
             # A feerate without a unit suffix is interpreted as sat/kvB
             "feerate": f"{fee_rate * 1000}perkb",
