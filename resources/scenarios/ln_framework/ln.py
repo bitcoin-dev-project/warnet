@@ -28,13 +28,15 @@ INSECURE_CONTEXT.verify_mode = ssl.CERT_NONE
 # - Not enough UTXO value, forcing LN nodes to combine UTXOs to open large channels
 #   which results in the change output being too big which results in the tx
 #   outputs being ordered unexpectedly (which change at 0 and channel open at 1)
-# - LND actual fee rate ends up way off from the expected value
 # LN networks with more than 100 nodes and 500 channels may also need to tweak ln_init.py
 CHANNEL_OPEN_START_HEIGHT = 500
 CHANNEL_OPENS_PER_BLOCK = 200
-MAX_FEE_RATE = 80006  # s/vB
-FEE_RATE_DECREMENT = 400
-assert MAX_FEE_RATE - (FEE_RATE_DECREMENT * CHANNEL_OPENS_PER_BLOCK) > 1
+# Fee rate paid by every channel funding transaction. ln_init orders them in
+# the block with prioritisetransaction on the miner, so it doesn't matter what
+# they pay as long as every node relays them and every implementation accepts
+# the rate. It is passed explicitly because there are no fee estimates on a
+# new regtest chain.
+CHANNEL_OPEN_FEE_RATE = 10  # s/vB
 
 
 # https://github.com/lightningcn/lightning-rfc/blob/master/07-routing-gossip.md#the-channel_update-message
@@ -259,7 +261,8 @@ class CLN(LNNode):
             "amount": capacity,
             "push_msat": push_amt,
             "id": pk,
-            "feerate": fee_rate,
+            # A feerate without a unit suffix is interpreted as sat/kvB
+            "feerate": f"{fee_rate * 1000}perkb",
         }
         response = self.post("/v1/fundchannel", data)
         res = json.loads(response)

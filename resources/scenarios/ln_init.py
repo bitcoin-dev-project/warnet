@@ -5,10 +5,9 @@ from time import sleep
 
 from commander import Commander
 from ln_framework.ln import (
+    CHANNEL_OPEN_FEE_RATE,
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
-    FEE_RATE_DECREMENT,
-    MAX_FEE_RATE,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
@@ -303,7 +302,6 @@ class LNInit(Commander):
                         )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]
-                        ch["fee_rate"] = fee_rate
                         self.log.info(
                             f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}"
                         )
@@ -320,14 +318,11 @@ class LNInit(Commander):
                     f"Too many channels in block {target_block}: {len(channels)} / Maximum: {CHANNEL_OPENS_PER_BLOCK}"
                 )
             index = 0
-            fee_rate = MAX_FEE_RATE
             ch_threads = []
             for ch in channels:
                 index += 1  # noqa
-                fee_rate -= FEE_RATE_DECREMENT
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
-                assert fee_rate >= 1, "Too many TXs in block, out of fee range"
-                t = threading.Thread(target=open_channel, args=(self, ch, fee_rate))
+                t = threading.Thread(target=open_channel, args=(self, ch, CHANNEL_OPEN_FEE_RATE))
                 sleep(0.25)
                 t.start()
                 ch_threads.append(t)
@@ -345,20 +340,20 @@ class LNInit(Commander):
                 ),
                 timeout=500,
             )
-            # Implementations don't all pay exactly the fee rate they are asked
-            # for (e.g. CLN over-estimates the size of its funding transaction).
-            # Make the miner rank each funding transaction at exactly the
-            # requested fee rate, so the block is in channel index order.
+            # Place the funding transactions in channel index order by making the
+            # miner rank them at decreasing fee rates, regardless of what they
+            # paid. Implementations don't all pay exactly the fee rate they are
+            # asked for, e.g. CLN over-estimates the size of its transaction.
             for ch in channels:
                 entry = mining_tank.getmempoolentry(ch["txid"])
                 paid = round(entry["fees"]["base"] * COIN)
-                delta = ch["fee_rate"] * entry["vsize"] - paid
-                if delta:
-                    self.log.info(
-                        f"Channel {ch['id']} paid {paid / entry['vsize']:.1f} s/vB "
-                        f"instead of {ch['fee_rate']}, prioritising by {delta} sats"
-                    )
-                    mining_tank.prioritisetransaction(ch["txid"], 0, delta)
+                rank_fee_rate = (len(channels) - ch["id"]["index"] + 1) * 1000
+                delta = rank_fee_rate * entry["vsize"] - paid
+                self.log.debug(
+                    f"Channel {ch['id']} paid {paid / entry['vsize']:.2f} s/vB, "
+                    f"ranked at {rank_fee_rate} s/vB"
+                )
+                mining_tank.prioritisetransaction(ch["txid"], 0, delta)
             block_hash = gen(1)[0]
             self.log.info(f"Confirmed {len(channels)} channel opens in block {target_block}")
             self.log.info("Checking deterministic channel IDs in block...")

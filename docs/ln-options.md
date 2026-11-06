@@ -93,7 +93,8 @@ When `warnet deploy` finds any `lnd.channels` or `cln.channels` entry — in `ne
 4. **Establish LN p2p connections** — connects every channel pair directly, plus builds a ring through all LN nodes so the gossip graph is connected.
 5. **Open channels block-by-block** — processes all channels sorted by `id.block`, then `id.index`. For each target block:
    - Mines to that height
-   - Opens all channels assigned to that block in parallel, using decreasing fee rates so transactions land in the block in index order
+   - Opens all channels assigned to that block in parallel, all paying the same low fee rate
+   - Uses `prioritisetransaction` on the miner to rank the funding transactions in index order, regardless of the fee each implementation actually paid
    - Mines the block
    - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not
 6. **Mine 5 confirmation blocks** — waits for channels to reach the required confirmation depth.
