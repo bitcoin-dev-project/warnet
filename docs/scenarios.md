@@ -75,6 +75,16 @@ Successfully stopped scenario: commander-minerstd-1724708498
 Total Tanks: 6 | Active Scenarios: 0
 ```
 
+## Lightning payment activity
+
+The [`ln_activity`](../resources/scenarios/ln_activity.py) scenario creates a storm of parallel Lightning payments. Each thread repeatedly picks two random LN nodes, creates an invoice on one and pays it from the other. It works with every LN implementation warnet supports, unlike [SimLN](plugins.md), which doesn't support LDK yet.
+
+```bash
+warnet run resources/scenarios/ln_activity.py --threads=20 --interval=0.5 --min-amount=1000 --max-amount=5000
+```
+
+Each payment is logged with its result. Payments between nodes without a route, e.g. an eclair node without channels, fail and are logged as such. Pass `--payments=N` to stop each thread after N payments instead of running forever.
+
 ## Running a custom scenario
 
 You can write your own scenario file and run it in the same way.
