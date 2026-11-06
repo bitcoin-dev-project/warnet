@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import threading
-from time import sleep
+from time import sleep, time
 
 from commander import Commander
 from ln_framework.ln import (
     CHANNEL_OPEN_FEE_RATE,
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    GOSSIP_STALL_TIMEOUT,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
@@ -33,6 +34,16 @@ class LNInit(Commander):
         )
 
     def run_test(self):
+        # Exceptions in worker threads are only printed, collect them so
+        # ln_init fails instead of reporting success.
+        thread_errors = []
+
+        def excepthook(args):
+            thread_errors.append(args.exc_value)
+            threading.__excepthook__(args)
+
+        threading.excepthook = excepthook
+
         ##
         # L1 P2P
         ##
@@ -131,6 +142,13 @@ class LNInit(Commander):
             # larger and occupy tx output 1, leaving the actual channel open at output 0
             sat_amt = 10 * COIN
             helicopter.vout.append(CTxOut(sat_amt, address_to_scriptpubkey(addr)))
+        # LDK rejects inbound anchor channels unless it has an on-chain
+        # reserve (25k sats per channel) to fee-bump a force close.
+        for ch in self.channels:
+            tgt = ch["target"]
+            if self.lns[tgt].impl == "ldk" and tgt not in channel_openers:
+                channel_openers.append(tgt)
+                helicopter.vout.append(CTxOut(COIN, address_to_scriptpubkey(ln_addrs[tgt])))
         rawtx = miner.fundrawtransaction(helicopter.serialize().hex())
         signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
         txid = miner.sendrawtransaction(signed_tx)
@@ -153,7 +171,8 @@ class LNInit(Commander):
             while True:
                 try:
                     bal = ln.walletbalance()
-                    if bal >= 0:
+                    # LDK won't open or accept channels before its wallet sees the funds
+                    if bal > 0 or ln.impl != "ldk":
                         self.log.info(f"LN node {ln_name} confirmed funds")
                         break
                     else:
@@ -330,6 +349,12 @@ class LNInit(Commander):
             all(thread.join() is None for thread in ch_threads)
             for ch in channels:
                 if ch["outpoint"][-2:] != ":0":
+                    if self.lns[ch["source"]].impl in ("eclair", "ldk"):
+                        # Eclair funds channels from its Bitcoin Core wallet and
+                        # LDK from its BDK wallet, both randomize the position
+                        # of the change output.
+                        self.log.warning(f"Channel open outpoint not tx output index 0\n  {ch}")
+                        continue
                     self.log.error(f"Channel open outpoint not tx output index 0\n  {ch}")
                     raise Exception("Channel determinism ruined, abort!")
 
@@ -349,9 +374,9 @@ class LNInit(Commander):
                 paid = round(entry["fees"]["base"] * COIN)
                 rank_fee_rate = (len(channels) - ch["id"]["index"] + 1) * 1000
                 delta = rank_fee_rate * entry["vsize"] - paid
-                self.log.debug(
+                self.log.info(
                     f"Channel {ch['id']} paid {paid / entry['vsize']:.2f} s/vB, "
-                    f"ranked at {rank_fee_rate} s/vB"
+                    f"ranked at {rank_fee_rate} s/vB. Applying delta: {delta}"
                 )
                 mining_tank.prioritisetransaction(ch["txid"], 0, delta)
             block_hash = gen(1)[0]
@@ -371,7 +396,23 @@ class LNInit(Commander):
         gen(5)
         self.log.info(f"Confirmed {len(self.channels)} total channel opens")
 
+        # Eclair only syncs gossip from peers it has channels with. Without
+        # channels it only receives its peers' announcements of their own
+        # channels, so it may never learn the complete graph.
+        def syncs_gossip(ln):
+            return ln.impl != "eclair" or any(
+                ln.name in (ch["source"], ch["target"]) for ch in self.channels
+            )
+
+        gossip_lns = [ln for ln in self.lns.values() if syncs_gossip(ln)]
+        for ln in self.lns.values():
+            if ln not in gossip_lns:
+                self.log.info(f"Not checking graph of eclair node {ln.name} without channels")
+
         self.log.info("Waiting for channel announcement gossip...")
+
+        # Channel count in each node's graph, to detect when gossip stalls
+        graph_counts = {}
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
@@ -379,6 +420,7 @@ class LNInit(Commander):
             while actual != expected:
                 try:
                     actual = len(ln.graph()["edges"])
+                    graph_counts[ln.name] = actual
                     if actual == expected:
                         self.log.info(f"LN {ln.name} has graph with all {expected} channels")
                         break
@@ -393,12 +435,34 @@ class LNInit(Commander):
                     )
                     sleep(5)
 
-        ch_ann_threads = [
-            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
-        ]
+        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in gossip_lns]
         for thread in ch_ann_threads:
             sleep(0.25)
             thread.start()
+
+        # An LDK node can end up never announcing a channel because the exchange
+        # of announcement_signatures with its peer didn't complete. Reconnecting
+        # makes both sides resend them, so do that if no graph has grown for a while.
+        uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
+        last_counts = None
+        last_progress = time()
+        while any(thread.is_alive() for thread in ch_ann_threads):
+            sleep(5)
+            counts = dict(graph_counts)
+            if counts != last_counts:
+                last_counts = counts
+                last_progress = time()
+                continue
+            if time() - last_progress < GOSSIP_STALL_TIMEOUT:
+                continue
+            self.log.info(
+                f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, "
+                "reconnecting LDK nodes to their channel peers..."
+            )
+            for ln in self.lns.values():
+                if ln.impl == "ldk":
+                    ln.reconnect_channel_peers(uris_by_pubkey)
+            last_progress = time()
 
         all(thread.join() is None for thread in ch_ann_threads)
         self.log.info("All LN nodes have complete graph")
@@ -408,12 +472,13 @@ class LNInit(Commander):
         ##
         self.log.info("Updating channel policies...")
 
-        def update_policy(self, ln, txid_hex, policy, capacity):
-            self.log.info(f"Sending update from {ln.name} for channel with outpoint: {txid_hex}:0")
+        def update_policy(self, ln, outpoint, policy, capacity):
+            self.log.info(f"Sending update from {ln.name} for channel with outpoint: {outpoint}")
+            txid_hex, output_index = outpoint.split(":")
             res = None
             while res is None:
                 try:
-                    res = ln.update(txid_hex, policy, capacity)
+                    res = ln.update(txid_hex, policy, capacity, int(output_index))
                     if len(res["failed_updates"]) != 0:
                         self.log.info(
                             f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}\n retrying in 5 seconds..."
@@ -435,7 +500,7 @@ class LNInit(Commander):
                     args=(
                         self,
                         self.lns[ch["source"]],
-                        ch["txid"],
+                        ch["outpoint"],
                         ch["source_policy"],
                         ch["capacity"],
                     ),
@@ -449,7 +514,7 @@ class LNInit(Commander):
                     args=(
                         self,
                         self.lns[ch["target"]],
-                        ch["txid"],
+                        ch["outpoint"],
                         ch["target_policy"],
                         ch["capacity"],
                     ),
@@ -489,13 +554,19 @@ class LNInit(Commander):
                     expected_ch = expected[i]
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
-                    # If this fails we have a bigger issue
-                    assert int(actual_ch["capacity"]) == capacity, (
-                        f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
-                    )
+                    # If this fails we have a bigger issue.
+                    # Eclair does not report capacity of channels in its graph.
+                    if "capacity" in actual_ch:
+                        assert int(actual_ch["capacity"]) == capacity, (
+                            f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
+                        )
 
                     # Policies were not defined in network.yaml
                     if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
+                        continue
+
+                    # Only LND reports both channel policies in its graph
+                    if ln.impl != "lnd":
                         continue
 
                     # policy actual/expected source/target
@@ -520,14 +591,15 @@ class LNInit(Commander):
 
         expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln))
-            for ln in self.lns.values()
+            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in gossip_lns
         ]
         for thread in policy_threads:
             sleep(0.25)
             thread.start()
 
         all(thread.join() is None for thread in policy_threads)
+        if thread_errors:
+            raise Exception(f"{len(thread_errors)} ln_init thread(s) failed: {thread_errors}")
         self.log.info("All LN nodes have matching graph!")
 
 
