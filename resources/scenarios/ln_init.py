@@ -374,9 +374,9 @@ class LNInit(Commander):
                 paid = round(entry["fees"]["base"] * COIN)
                 rank_fee_rate = (len(channels) - ch["id"]["index"] + 1) * 1000
                 delta = rank_fee_rate * entry["vsize"] - paid
-                self.log.debug(
+                self.log.info(
                     f"Channel {ch['id']} paid {paid / entry['vsize']:.2f} s/vB, "
-                    f"ranked at {rank_fee_rate} s/vB"
+                    f"ranked at {rank_fee_rate} s/vB. Applying delta: {delta}"
                 )
                 mining_tank.prioritisetransaction(ch["txid"], 0, delta)
             block_hash = gen(1)[0]
