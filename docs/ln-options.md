@@ -109,6 +109,17 @@ The terminal will stream `ln_init` log output during this process. On large netw
 
 The `id.block` and `id.index` values directly determine the [short channel ID](https://github.com/lightning/bolts/blob/master/07-routing-gossip.md#definition-of-short_channel_id) (SCID) that the channel will receive. Because SCIDs encode the funding transaction's block height and position, `ln_init` must place each funding transaction at *exactly* the right position in the mined chain.
 
+An SCID has three parts: `block x index x output`. `id.block` and `id.index` set the first two for every implementation. The `output` part is the position of the channel's output in its funding transaction:
+
+| Channel opened by | `output` |
+|-------------------|----------|
+| LND, CLN | Always `0`, e.g. `id: {block: 500, index: 3}` gets SCID `500x3x0` |
+| Eclair, LDK | `0` or `1` at random, e.g. `500x3x0` or `500x3x1` |
+
+LND sorts the outputs of its funding transactions by amount, and CLN puts the channel output before the change, which `ln_init` makes larger than the channel. Eclair (funded by Bitcoin Core) and LDK place the change output at a random position. The Lightning spec allows this: [BOLT 2](https://github.com/lightning/bolts/blob/master/02-peer-protocol.md#the-funding_created-message) lets the opener put the funding output at any position and tell its peer with `funding_output_index`, unlike commitment transactions, whose outputs [BOLT 3](https://github.com/lightning/bolts/blob/master/03-transactions.md#transaction-output-ordering) requires to be sorted.
+
+So don't derive the full SCID of a channel opened by an eclair or LDK node from `network.yaml`, look it up after `ln_init` has run. `ln_init` logs `Channel open outpoint not tx output index 0` with the channel's outpoint for every channel that got output `1`. Any node's graph also lists every SCID, e.g. `warnet ln rpc <lnd node> describegraph`, `<cln node> listchannels`, `<eclair node> allchannels` or `<ldk node> graph-list-channels`.
+
 Rules that must be followed across the entire network:
 
 | Constraint | Value |
@@ -117,7 +128,7 @@ Rules that must be followed across the entire network:
 | Maximum channels per block (`id.index` range) | `200` (indices 1–200) |
 | Indices within a block | Must be consecutive starting at `1` with no gaps |
 | Global uniqueness | No two channels may share the same `block`/`index` pair |
-| Channel capacity | Must be below ~4 BTC so the change output lands at tx index 1, not 0 |
+| Channel capacity | Must be below ~4 BTC so the change output of LND channel opens is larger than the channel and sorted after it |
 
 Violating any of these causes `ln_init` to abort with an assertion error.
 
