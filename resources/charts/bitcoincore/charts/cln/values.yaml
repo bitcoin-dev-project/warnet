@@ -116,6 +116,10 @@ baseConfig: |
   developer
   dev-fast-gossip
   bitcoin-rpcuser=user
+  # CLN rejects channels whose capacity, capped at the peer's
+  # max_htlc_value_in_flight, is below this (default 10000). LDK and eclair
+  # cap that at 25% and 45% of the channel, too low for small channels.
+  min-capacity-sat=1000
   # bitcoind.rpcpass are set in configmap.yaml
 
 config: ""
