@@ -7,7 +7,7 @@ import ssl
 import threading
 import urllib.parse
 from abc import ABC, abstractmethod
-from time import sleep
+from time import sleep, time
 
 import requests
 from kubernetes.stream import stream
@@ -424,6 +424,9 @@ class LDK(LNNode):
     # kubernetes.stream.stream() temporarily patches the shared api client,
     # so concurrent calls from ln_init threads must not overlap.
     stream_lock = threading.Lock()
+    # Seconds to wait for the wallet to see a funding transaction before restarting
+    # ldk-server, the wallet polls bitcoind's mempool every 2 seconds
+    WALLET_SYNC_TIMEOUT = 20
 
     def __init__(self, pod_name, pod_namespace, ip_address, sclient):
         super().__init__(pod_name, pod_namespace, ip_address)
@@ -433,14 +436,14 @@ class LDK(LNNode):
 
     # ldk-server only has a gRPC API (with TLS and macaroon auth), so use
     # its JSON CLI inside the pod which is already configured to reach it.
-    def cli(self, *args) -> dict:
+    def exec(self, command: list) -> tuple[int, str, str]:
         with self.stream_lock:
             resp = stream(
                 self.sclient.connect_get_namespaced_pod_exec,
                 name=self.name,
                 namespace=self.namespace,
                 container="ldk",
-                command=["ldk-server-cli", *map(str, args)],
+                command=command,
                 stderr=True,
                 stdin=False,
                 stdout=True,
@@ -452,9 +455,20 @@ class LDK(LNNode):
         stderr = resp.read_stderr()
         returncode = resp.returncode
         resp.close()
+        return returncode, stdout, stderr
+
+    def cli(self, *args) -> dict:
+        returncode, stdout, stderr = self.exec(["ldk-server-cli", *map(str, args)])
         if returncode != 0:
             raise Exception(stderr.strip() or f"ldk-server-cli exited with {returncode}")
         return json.loads(stdout)
+
+    def restart(self):
+        # ldk-server shuts down cleanly on SIGTERM and the pod restarts it
+        try:
+            self.exec(["/bin/sh", "-c", "kill 1"])
+        except Exception as e:
+            self.log.warning(f"Error sending SIGTERM to ldk-server: {e}")
 
     def newaddress(self):
         return self.cli("onchain-receive")["address"]
@@ -482,6 +496,7 @@ class LDK(LNNode):
         with self.open_lock:
             balance = int(self.cli("get-balances")["total_onchain_balance_sats"])
             res = self._open_channel(pk, capacity, push_amt, fee_rate)
+            waiting_since = time()
             # The channel is already open so don't raise and let the caller retry
             while True:
                 try:
@@ -489,8 +504,21 @@ class LDK(LNNode):
                         balance - capacity
                     ):
                         return res
-                    self.log.info(f"Waiting for wallet to see funding tx {res['txid']}")
+                    # ldk-node skips mempool transactions that entered bitcoind's
+                    # mempool in the same second as one it already processed, until
+                    # they confirm. A restart makes it process the whole mempool again.
+                    if time() - waiting_since > self.WALLET_SYNC_TIMEOUT:
+                        self.log.warning(
+                            f"Wallet hasn't seen funding tx {res['txid']} after "
+                            f"{self.WALLET_SYNC_TIMEOUT} seconds, restarting ldk-server"
+                        )
+                        self.restart()
+                        waiting_since = time()
+                    else:
+                        self.log.info(f"Waiting for wallet to see funding tx {res['txid']}")
                 except Exception as e:
+                    # Don't count time ldk-server is unreachable, e.g. restarting
+                    waiting_since = time()
                     self.log.warning(f"Couldn't get balance: {e}")
                 sleep(1)
 
