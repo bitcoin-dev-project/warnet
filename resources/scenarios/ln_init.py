@@ -404,18 +404,29 @@ class LNInit(Commander):
         gen(5)
         self.log.info(f"Confirmed {len(self.channels)} total channel opens")
 
-        # Eclair only syncs gossip from peers it has channels with. Without
-        # channels it only receives its peers' announcements of their own
-        # channels, so it may never learn the complete graph.
+        # Eclair only syncs gossip from the (at most 5) channel peers with the
+        # largest capacity. It syncs with query_short_channel_ids, which LDK
+        # doesn't answer, and asks for no backlog of older gossip. An eclair
+        # node without channels to other implementations only receives gossip
+        # broadcast after it connected, so it may never learn the complete graph.
         def syncs_gossip(ln):
-            return ln.impl != "eclair" or any(
-                ln.name in (ch["source"], ch["target"]) for ch in self.channels
-            )
+            if ln.impl != "eclair":
+                return True
+            peers = []
+            for ch in self.channels:
+                if ln.name in (ch["source"], ch["target"]):
+                    peer = ch["target"] if ch["source"] == ln.name else ch["source"]
+                    peers.append((ch["capacity"], peer))
+            sync_peers = sorted(peers, reverse=True)[:5]
+            return any(self.lns[peer].impl != "ldk" for _, peer in sync_peers)
 
         gossip_lns = [ln for ln in self.lns.values() if syncs_gossip(ln)]
         for ln in self.lns.values():
             if ln not in gossip_lns:
-                self.log.info(f"Not checking graph of eclair node {ln.name} without channels")
+                self.log.info(
+                    f"Not checking graph of eclair node {ln.name} without channels "
+                    "to a node it can sync gossip from (any but LDK)"
+                )
 
         self.log.info("Waiting for channel announcement gossip...")
 
@@ -473,7 +484,7 @@ class LNInit(Commander):
                 # An LDK node's own graph may be complete while the rest of the
                 # network misses its channel updates
                 incomplete = last_counts.get(ln.name, 0) < len(self.channels)
-                if ln.impl == "ldk" or (ln.impl == "eclair" and incomplete):
+                if ln.impl == "ldk" or (ln.impl == "eclair" and ln in gossip_lns and incomplete):
                     ln.reconnect_channel_peers(uris_by_pubkey)
             last_progress = time()
 
