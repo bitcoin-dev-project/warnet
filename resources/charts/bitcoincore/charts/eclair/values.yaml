@@ -121,6 +121,10 @@ baseConfig: |
   # above the reserve it requires, 1% of the channel by default, which is
   # only 200 sat for the smallest channel above. 3% is 600 sat.
   eclair.channel.reserve-to-funding-ratio = 0.03
+  # LND requires a channel reserve of 1% of the channel but at least 354 sat
+  # from its peer, and eclair rejects reserves below its own dust limit (546
+  # by default). Use the minimum dust limit eclair allows.
+  eclair.channel.dust-limit-satoshis = 354
   eclair.router.broadcast-interval = 5 seconds
   # Confirmations required for channels opened to this node. Eclair defaults to
   # 8, use the minimum of 6 which is also required to announce a channel.
