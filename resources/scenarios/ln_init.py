@@ -344,13 +344,32 @@ class LNInit(Commander):
                 raise Exception(
                     f"Too many channels in block {target_block}: {len(channels)} / Maximum: {CHANNEL_OPENS_PER_BLOCK}"
                 )
+
+            # LDK funds channels with unconfirmed change from its earlier opens, and
+            # a child transaction can't be mined ahead of its parent. Open each LDK
+            # node's channels one at a time in index order, so a parent always has
+            # a lower index (higher rank below) than its children.
+            def open_channels_in_order(self, chs, fee_rate):
+                for ch in chs:
+                    open_channel(self, ch, fee_rate)
+
             index = 0
+            ldk_opens = {}
             ch_threads = []
             for ch in channels:
                 index += 1  # noqa
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
+                if self.lns[ch["source"]].impl == "ldk":
+                    ldk_opens.setdefault(ch["source"], []).append(ch)
+                    continue
                 t = threading.Thread(target=open_channel, args=(self, ch, CHANNEL_OPEN_FEE_RATE))
                 sleep(0.25)
+                t.start()
+                ch_threads.append(t)
+            for chs in ldk_opens.values():
+                t = threading.Thread(
+                    target=open_channels_in_order, args=(self, chs, CHANNEL_OPEN_FEE_RATE)
+                )
                 t.start()
                 ch_threads.append(t)
 

@@ -412,7 +412,7 @@ Network, ports, node alias and the Bitcoin Core connection are set by warnet wit
 
 ### Differences from other implementations
 
-- LDK's wallet doesn't record a funding transaction until it sees it in the mempool, so `ln_init` opens channels from each LDK node one at a time to avoid spending the same coin twice.
+- LDK's wallet doesn't record a funding transaction until it sees it in the mempool, so `ln_init` opens channels from each LDK node one at a time to avoid spending the same coin twice. It opens them in channel index order, because LDK funds channels with change from its earlier unconfirmed funding transactions, and a transaction can't be mined before the one it spends.
 - LDK's wallet shuffles transaction outputs, so its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
 
 LDK also rejects incoming anchor channels unless it has 25,000 sats on-chain per channel, reserved for fee-bumping a force close. `ln_init` funds LDK nodes that only receive channels as well. If you open channels to an LDK node manually, fund it first.
