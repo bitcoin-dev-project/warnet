@@ -448,9 +448,11 @@ class LNInit(Commander):
             sleep(0.25)
             thread.start()
 
-        # An LDK node can end up never announcing a channel because the exchange
-        # of announcement_signatures with its peer didn't complete. Reconnecting
-        # makes both sides resend them, so do that if no graph has grown for a while.
+        # If no graph has grown for a while, reconnect nodes to their channel peers:
+        # - An LDK node can end up never announcing a channel because the exchange
+        #   of announcement_signatures with its peer didn't complete. Reconnecting
+        #   makes both sides resend them.
+        # - Eclair only runs a full gossip sync with a channel peer on connection.
         uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
         last_counts = None
         last_progress = time()
@@ -465,10 +467,13 @@ class LNInit(Commander):
                 continue
             self.log.info(
                 f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, "
-                "reconnecting LDK nodes to their channel peers..."
+                "reconnecting LDK nodes and incomplete eclair nodes to their channel peers..."
             )
             for ln in self.lns.values():
-                if ln.impl == "ldk":
+                # An LDK node's own graph may be complete while the rest of the
+                # network misses its channel updates
+                incomplete = last_counts.get(ln.name, 0) < len(self.channels)
+                if ln.impl == "ldk" or (ln.impl == "eclair" and incomplete):
                     ln.reconnect_channel_peers(uris_by_pubkey)
             last_progress = time()
 

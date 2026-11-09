@@ -419,6 +419,24 @@ class ECLAIR(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by ECLAIR yet!")
 
+    def reconnect_channel_peers(self, uris_by_pubkey: dict):
+        # Eclair only runs a full gossip sync with a channel peer when the
+        # connection is established, so reconnecting fetches what it missed.
+        try:
+            peers = {ch["nodeId"] for ch in self.post("/channels")}
+        except Exception as e:
+            self.log.warning(f"Couldn't list channels to reconnect peers: {e}")
+            return
+        for pk in peers:
+            if pk not in uris_by_pubkey:
+                continue
+            try:
+                self.post("/disconnect", {"nodeId": pk})
+                self.connect(uris_by_pubkey[pk])
+                self.log.info(f"Reconnected to channel peer {pk}")
+            except Exception as e:
+                self.log.warning(f"Couldn't reconnect to channel peer {pk}: {e}")
+
 
 class LDK(LNNode):
     # kubernetes.stream.stream() temporarily patches the shared api client,
