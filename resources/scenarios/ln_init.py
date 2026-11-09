@@ -499,12 +499,16 @@ class LNInit(Commander):
                 f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, "
                 "reconnecting LDK nodes and incomplete eclair nodes to their channel peers..."
             )
+            reconnect_threads = []
             for ln in self.lns.values():
                 # An LDK node's own graph may be complete while the rest of the
                 # network misses its channel updates
                 incomplete = last_counts.get(ln.name, 0) < len(self.channels)
                 if ln.impl == "ldk" or (ln.impl == "eclair" and ln in gossip_lns and incomplete):
-                    ln.reconnect_channel_peers(uris_by_pubkey)
+                    t = threading.Thread(target=ln.reconnect_channel_peers, args=(uris_by_pubkey,))
+                    t.start()
+                    reconnect_threads.append(t)
+            all(thread.join() is None for thread in reconnect_threads)
             last_progress = time()
 
         all(thread.join() is None for thread in ch_ann_threads)

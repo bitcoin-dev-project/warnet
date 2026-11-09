@@ -3,6 +3,7 @@ import http.client
 import json
 import logging
 import re
+import shlex
 import ssl
 import threading
 import urllib.parse
@@ -454,7 +455,7 @@ class LDK(LNNode):
 
     # ldk-server only has a gRPC API (with TLS and macaroon auth), so use
     # its JSON CLI inside the pod which is already configured to reach it.
-    def exec(self, command: list) -> tuple[int, str, str]:
+    def exec(self, command: list, timeout=60) -> tuple[int, str, str]:
         with self.stream_lock:
             resp = stream(
                 self.sclient.connect_get_namespaced_pod_exec,
@@ -468,7 +469,7 @@ class LDK(LNNode):
                 tty=False,
                 _preload_content=False,
             )
-        resp.run_forever(timeout=60)
+        resp.run_forever(timeout=timeout)
         stdout = resp.read_stdout()
         stderr = resp.read_stderr()
         returncode = resp.returncode
@@ -591,15 +592,33 @@ class LDK(LNNode):
         except Exception as e:
             self.log.warning(f"Couldn't list channels to reconnect peers: {e}")
             return
+        # Every exec takes seconds, so reconnect all peers from one shell script
+        script = []
         for pk in peers:
             if pk not in uris_by_pubkey:
                 continue
-            try:
-                self.cli("disconnect-peer", pk)
-                self.cli("connect-peer", uris_by_pubkey[pk], "--persist")
+            pk_q, uri_q = shlex.quote(pk), shlex.quote(uris_by_pubkey[pk])
+            script.append(
+                f"if out=$(ldk-server-cli disconnect-peer {pk_q} 2>&1 >/dev/null && "
+                f"ldk-server-cli connect-peer {uri_q} --persist 2>&1 >/dev/null); "
+                f"then echo ok {pk_q}; else echo fail {pk_q} $out; fi"
+            )
+        if not script:
+            return
+        try:
+            # Allow a few seconds per peer
+            _, stdout, _ = self.exec(["/bin/sh", "-c", "\n".join(script)], 60 + 5 * len(script))
+        except Exception as e:
+            self.log.warning(f"Couldn't reconnect channel peers: {e}")
+            return
+        for line in stdout.splitlines():
+            if not line.strip():
+                continue
+            status, pk, *error = line.split(" ", 2)
+            if status == "ok":
                 self.log.info(f"Reconnected to channel peer {pk}")
-            except Exception as e:
-                self.log.warning(f"Couldn't reconnect to channel peer {pk}: {e}")
+            else:
+                self.log.warning(f"Couldn't reconnect to channel peer {pk}: {' '.join(error)}")
 
 
 class LND(LNNode):
