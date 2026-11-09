@@ -330,6 +330,14 @@ class LNInit(Commander):
                             f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
                         )
                         sleep(5)
+                        # The peers may have been disconnected, e.g. by a restart. Peers
+                        # don't reconnect to nodes they didn't dial themselves.
+                        try:
+                            src.connect(tgt_uri)
+                        except Exception as e:
+                            self.log.info(
+                                f"Couldn't reconnect {ch['source']} -> {ch['target']}: {e}"
+                            )
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
             if len(channels) > CHANNEL_OPENS_PER_BLOCK:
