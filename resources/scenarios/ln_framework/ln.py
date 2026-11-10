@@ -42,6 +42,9 @@ CHANNEL_OPENS_PER_BLOCK = 200
 CHANNEL_OPEN_FEE_RATE = 10  # s/vB
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
+# Seconds pay() waits for a payment to succeed or fail, below the 60 second
+# HTTP timeout of the clients
+PAYMENT_TIMEOUT = 50
 
 
 # https://github.com/lightningcn/lightning-rfc/blob/master/07-routing-gossip.md#the-channel_update-message
@@ -158,6 +161,11 @@ class LNNode(ABC):
 
     @abstractmethod
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
+        pass
+
+    @abstractmethod
+    def pay(self, payment_request) -> tuple[bool, str]:
+        """Pay an invoice and wait for the result: (succeeded, failure reason)"""
         pass
 
 
@@ -292,6 +300,13 @@ class CLN(LNNode):
         res = json.loads(response)
         return res
 
+    def pay(self, payment_request) -> tuple[bool, str]:
+        response = self.post("/v1/pay", {"bolt11": payment_request, "retry_for": PAYMENT_TIMEOUT})
+        res = json.loads(response)
+        if res.get("status") == "complete":
+            return True, ""
+        return False, res.get("message") or json.dumps(res)
+
     def graph(self) -> dict:
         response = self.post("/v1/listchannels")
         res = json.loads(response)
@@ -406,6 +421,24 @@ class ECLAIR(LNNode):
     def payinvoice(self, payment_request) -> str:
         # Returns the payment id, payment is processed asynchronously
         return self.post("/payinvoice", {"invoice": payment_request})
+
+    def pay(self, payment_request) -> tuple[bool, str]:
+        payment_id = self.payinvoice(payment_request)
+        deadline = time() + PAYMENT_TIMEOUT
+        while time() < deadline:
+            sleep(1)
+            # One entry per attempt, failed parts may be retried
+            statuses = [p["status"] for p in self.post("/getsentinfo", {"id": payment_id})]
+            if any(status["type"] == "sent" for status in statuses):
+                return True, ""
+            if statuses and all(status["type"] == "failed" for status in statuses):
+                failures = [
+                    f"{failure.get('failureType')}: {failure.get('failureMessage')}"
+                    for status in statuses
+                    for failure in status.get("failures", [])
+                ]
+                return False, "; ".join(dict.fromkeys(failures)) or "failed"
+        return False, f"still pending after {PAYMENT_TIMEOUT} seconds"
 
     def graph(self) -> dict:
         # Channel announcements only, eclair does not know capacity
@@ -574,6 +607,19 @@ class LDK(LNNode):
     def payinvoice(self, payment_request) -> str:
         # Returns the payment id, payment is processed asynchronously
         return self.cli("bolt11-send", payment_request)["payment_id"]
+
+    def pay(self, payment_request) -> tuple[bool, str]:
+        payment_id = self.payinvoice(payment_request)
+        deadline = time() + PAYMENT_TIMEOUT
+        while time() < deadline:
+            sleep(2)
+            payment = self.cli("get-payment-details", payment_id).get("payment") or {}
+            if payment.get("status") == "SUCCEEDED":
+                return True, ""
+            if payment.get("status") == "FAILED":
+                # Only ldk-server's event stream has the reason of a failure
+                return False, f"failed, no reason reported (payment id {payment_id})"
+        return False, f"still pending after {PAYMENT_TIMEOUT} seconds"
 
     def graph(self) -> dict:
         # Short channel IDs only, details require a call per channel
@@ -753,6 +799,27 @@ class LND(LNNode):
         )
         res = json.loads(response)
         return res
+
+    def pay(self, payment_request) -> tuple[bool, str]:
+        # Streams a status update for every change, the last one is the result
+        response = self.post(
+            "/v2/router/send",
+            data={
+                "payment_request": payment_request,
+                "fee_limit_sat": 2100000000,
+                "timeout_seconds": PAYMENT_TIMEOUT,
+            },
+        )
+        lines = [line for line in response.splitlines() if line.strip()]
+        if not lines:
+            return False, "no response"
+        res = json.loads(lines[-1])
+        if "error" in res:
+            return False, res["error"].get("message", json.dumps(res["error"]))
+        result = res.get("result", res)
+        if result.get("status") == "SUCCEEDED":
+            return True, ""
+        return False, result.get("failure_reason") or f"status {result.get('status')}"
 
     def graph(self):
         res = self.get("/v1/graph")
