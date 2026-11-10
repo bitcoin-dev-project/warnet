@@ -47,6 +47,7 @@ options:
 | debug        | Bool   |            | False     |
 | namespace    | String |            |           |
 | to_all_users | Bool   |            | False     |
+| jobs         | Int    |            | 16        |
 
 ### `warnet down`
 Bring down a running warnet carefully.
