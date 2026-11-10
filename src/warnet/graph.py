@@ -1,7 +1,9 @@
+import heapq
 import json
 import os
 import random
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Optional
 
@@ -314,6 +316,13 @@ def create():
 
 LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
 
+# ln_init funds every channel with a 10 BTC UTXO. The change output must stay
+# larger than the channel, so LND (which sorts outputs by amount) puts the
+# channel at output 0.
+MAX_CHANNEL_CAPACITY = 499_000_000
+# The smallest channel LND accepts, also the minimum warnet sets for eclair
+MIN_CHANNEL_CAPACITY = 20_000
+
 
 @click.command()
 @click.argument("graph_file_path", type=click.Path(exists=True, file_okay=True, dir_okay=False))
@@ -325,7 +334,26 @@ LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
     help=f"Comma-separated lightning implementations to assign to nodes at random, from: {','.join(LN_IMPLS)}",
 )
 @click.option("--seed", type=int, default=None, help="Random seed for assigning implementations")
-def import_network(graph_file_path: str, output_path: str, ln_impls: str, seed: Optional[int]):
+@click.option(
+    "--max-nodes",
+    type=click.IntRange(min=2),
+    default=None,
+    help="Import a connected core of at most this many nodes, starting from the best connected node",
+)
+@click.option(
+    "--max-channels",
+    type=click.IntRange(min=1),
+    default=None,
+    help="With --max-nodes, import at most this many channels, keeping the network connected",
+)
+def import_network(
+    graph_file_path: str,
+    output_path: str,
+    ln_impls: str,
+    seed: Optional[int],
+    max_nodes: Optional[int],
+    max_channels: Optional[int],
+):
     """Create a network from an imported lightning network graph JSON"""
     impls = [impl.strip() for impl in ln_impls.split(",") if impl.strip()]
     unknown = [impl for impl in impls if impl not in LN_IMPLS]
@@ -333,14 +361,134 @@ def import_network(graph_file_path: str, output_path: str, ln_impls: str, seed: 
         raise click.BadParameter(
             f"must be a comma-separated list of {', '.join(LN_IMPLS)}", param_hint="--ln-impls"
         )
-    print(_import_network(graph_file_path, output_path, impls, seed))
+    if max_channels is not None:
+        if max_nodes is None:
+            raise click.BadParameter("requires --max-nodes", param_hint="--max-channels")
+        if max_channels < max_nodes - 1:
+            raise click.BadParameter(
+                f"must be at least --max-nodes - 1 ({max_nodes - 1}) to connect every node",
+                param_hint="--max-channels",
+            )
+    print(_import_network(graph_file_path, output_path, impls, seed, max_nodes, max_channels))
 
 
-def _import_network(graph_file_path, output_path, impls=None, seed=None):
+def _usable_edges(graph):
+    """Channels warnet can recreate: both policies known, capacity within ln_init's limits"""
+    pub_keys = {node["pub_key"] for node in graph["nodes"]}
+    edges = []
+    dropped = 0
+    clamped = 0
+    for edge in graph["edges"]:
+        if (
+            not edge.get("node1_policy")
+            or not edge.get("node2_policy")
+            or edge["node1_pub"] not in pub_keys
+            or edge["node2_pub"] not in pub_keys
+        ):
+            dropped += 1
+            continue
+        capacity = int(edge["capacity"])
+        clamped_capacity = min(max(capacity, MIN_CHANNEL_CAPACITY), MAX_CHANNEL_CAPACITY)
+        if clamped_capacity != capacity:
+            clamped += 1
+            edge = {**edge, "capacity": str(clamped_capacity)}
+        edges.append(edge)
+    if dropped:
+        print(f"Dropped {dropped} channels without both policies")
+    if clamped:
+        print(
+            f"Clamped the capacity of {clamped} channels to "
+            f"{MIN_CHANNEL_CAPACITY}-{MAX_CHANNEL_CAPACITY} sats"
+        )
+    return edges
+
+
+def _select_core(nodes, edges, max_nodes, max_channels):
+    """
+    Grow a connected core from the node with the most channels, always adding
+    the node with the most channels to the nodes already selected. Ties are
+    broken by channel count, total capacity and public key, so the result
+    doesn't depend on the order of the input.
+    Then keep the channel each node joined through, which connects them all,
+    and fill up to max_channels with the largest remaining channels.
+    """
+    channels = defaultdict(list)
+    degree = Counter()
+    capacity = Counter()
+    for edge in edges:
+        for a, b in (
+            (edge["node1_pub"], edge["node2_pub"]),
+            (edge["node2_pub"], edge["node1_pub"]),
+        ):
+            channels[a].append((b, edge))
+            degree[a] += 1
+            capacity[a] += int(edge["capacity"])
+
+    def rank(pk):
+        return (degree[pk], capacity[pk], pk)
+
+    start = max(channels, key=rank)
+    selected = [start]
+    selected_set = {start}
+    links = Counter()
+    # Best channel from each frontier node into the selected nodes
+    best_link = {}
+    heap = []
+
+    def add(pk):
+        for peer, edge in channels[pk]:
+            if peer in selected_set:
+                continue
+            links[peer] += 1
+            key = (int(edge["capacity"]), -int(edge["channel_id"]))
+            if peer not in best_link or key > best_link[peer][0]:
+                best_link[peer] = (key, edge)
+            heapq.heappush(heap, (-links[peer], *(-x for x in rank(peer)[:2]), peer))
+
+    add(start)
+    tree = []
+    while len(selected) < max_nodes and heap:
+        neg_links, _, _, pk = heapq.heappop(heap)
+        # Skip stale heap entries
+        if pk in selected_set or -neg_links != links[pk]:
+            continue
+        selected.append(pk)
+        selected_set.add(pk)
+        tree.append(best_link[pk][1])
+        add(pk)
+
+    core_edges = [
+        edge
+        for edge in edges
+        if edge["node1_pub"] in selected_set and edge["node2_pub"] in selected_set
+    ]
+    if max_channels is not None and len(core_edges) > max_channels:
+        tree_ids = {edge["channel_id"] for edge in tree}
+        extra = sorted(
+            (edge for edge in core_edges if edge["channel_id"] not in tree_ids),
+            key=lambda edge: (-int(edge["capacity"]), int(edge["channel_id"])),
+        )
+        core_edges = tree + extra[: max_channels - len(tree)]
+    print(
+        f"Selected a connected core of {len(selected)} of {len(channels)} nodes "
+        f"with {len(core_edges)} channels"
+    )
+    selected_nodes = {node["pub_key"]: node for node in nodes}
+    return [selected_nodes[pk] for pk in selected], core_edges
+
+
+def _import_network(
+    graph_file_path, output_path, impls=None, seed=None, max_nodes=None, max_channels=None
+):
     output_path = Path(output_path)
     graph_file_path = Path(graph_file_path).resolve()
     with open(graph_file_path) as graph_file:
         graph = json.loads(graph_file.read())
+
+    nodes = graph["nodes"]
+    edges = _usable_edges(graph)
+    if max_nodes is not None:
+        nodes, edges = _select_core(nodes, edges, max_nodes, max_channels)
 
     impls = impls or ["lnd"]
     if len(impls) > 1:
@@ -354,7 +502,7 @@ def _import_network(graph_file_path, output_path, impls=None, seed=None):
     tank_to_pk = {}
     tank_to_impl = {}
     index = 0
-    for node in graph["nodes"]:
+    for node in nodes:
         tank = f"tank-{index:04d}"
         impl = rng.choice(impls)
         pk_to_tank[node["pub_key"]] = tank
@@ -368,7 +516,7 @@ def _import_network(graph_file_path, output_path, impls=None, seed=None):
             count = list(tank_to_impl.values()).count(impl)
             print(f"  {impl}: {count}")
 
-    sorted_edges = sorted(graph["edges"], key=lambda x: int(x["channel_id"]))
+    sorted_edges = sorted(edges, key=lambda x: int(x["channel_id"]))
 
     # Start including channel open txs at this block height
     block = CHANNEL_OPEN_START_HEIGHT

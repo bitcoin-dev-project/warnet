@@ -321,6 +321,23 @@ warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,ec
 
 Only LND can apply channel policies, so each side's policy is only imported when that side is an LND node. See [LN Options](ln-options.md) for how `ln_init` handles each implementation.
 
+### Importing part of a large graph
+
+A dump of the mainnet graph has tens of thousands of nodes. Pass `--max-nodes` to import a smaller network that is still connected, without islands:
+
+```sh
+warnet import-network mainnet.json networks/mainnet_100 --max-nodes 100 --max-channels 300
+```
+
+- The importer starts from the node with the most channels and repeatedly adds the node with the most channels to the nodes already selected. It needs no seed: the same file and options always import the same network (`--seed` still picks the implementations).
+- Every channel between the selected nodes is imported. Channels between the busiest nodes of the real network make this core far denser than the network as a whole, e.g. 100 mainnet nodes share over 3,000 channels. `--max-channels` limits that: it keeps the channel each node was added through, which connects all of them, then adds the largest remaining channels up to the limit. It must be at least `--max-nodes` - 1.
+- Tanks are numbered in the order they were selected, so `tank-0000` is the best connected node.
+
+Every import, truncated or not, also adjusts the graph to what warnet can recreate:
+
+- Channels without both policies are dropped. Most of them have no updates from either side, which usually means the channel is no longer used.
+- Capacities are clamped to between 20,000 sats (the smallest channel LND accepts) and 4.99 BTC. `ln_init` funds every channel with a 10 BTC UTXO and its change output must stay larger than the channel.
+
 This writes `network.yaml` and `node-defaults.yaml` into the output directory (creating it if it doesn't exist) and prints a summary:
 
 ```
