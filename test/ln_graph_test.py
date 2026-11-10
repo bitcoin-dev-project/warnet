@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+import yaml
 from test_base import TestBase
 
 from warnet.k8s import wait_for_pod
@@ -22,6 +23,7 @@ class LNGraphTest(TestBase):
 
     def run_test(self):
         try:
+            self.test_import_truncated()
             self.import_network()
             self.setup_network()
             self.test_channel_policies()
@@ -29,6 +31,34 @@ class LNGraphTest(TestBase):
             self.run_simln()
         finally:
             self.cleanup()
+
+    def test_import_truncated(self):
+        self.log.info("Importing a truncated network graph from JSON...")
+        graph_file = Path(os.path.dirname(__file__)) / "data" / "LN_100.json"
+        networks = []
+        for name in ("truncated_a", "truncated_b"):
+            path = self.tmpdir / name
+            self.warnet(f"import-network {graph_file} {path} --max-nodes 20 --max-channels 30")
+            networks.append((path / "network.yaml").read_text())
+        assert networks[0] == networks[1], "Truncated import is not reproducible"
+
+        nodes = yaml.safe_load(networks[0])["nodes"]
+        assert len(nodes) == 20, f"Expected 20 nodes, got {len(nodes)}"
+        peers = {node["name"]: set() for node in nodes}
+        for node in nodes:
+            for ch in node["lnd"]["channels"]:
+                target = ch["target"].removesuffix("-ln")
+                peers[node["name"]].add(target)
+                peers[target].add(node["name"])
+        channels = sum(len(node["lnd"]["channels"]) for node in nodes)
+        assert channels == 30, f"Expected 30 channels, got {channels}"
+        reached = {"tank-0000"}
+        todo = ["tank-0000"]
+        while todo:
+            for peer in peers[todo.pop()] - reached:
+                reached.add(peer)
+                todo.append(peer)
+        assert reached == set(peers), f"Truncated network is not connected: {set(peers) - reached}"
 
     def import_network(self):
         self.log.info("Importing network graph from JSON...")

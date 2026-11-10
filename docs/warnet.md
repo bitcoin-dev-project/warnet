@@ -69,6 +69,10 @@ options:
 |-----------------|--------|------------|-----------|
 | graph_file_path | Path   | yes        |           |
 | output_path     | Path   | yes        |           |
+| ln_impls        | String |            | "lnd"     |
+| seed            | Int    |            |           |
+| max_nodes       | Int    |            |           |
+| max_channels    | Int    |            |           |
 
 ### `warnet init`
 Initialize a warnet project in the current directory
