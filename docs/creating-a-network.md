@@ -313,6 +313,8 @@ By default every node runs LND. Pass `--ln-impls` to assign each node one of sev
 warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,eclair,ldk
 ```
 
+`--ln-impls ALL` is short for all of them.
+
 The importer prints the random seed it used and how many nodes got each implementation. Pass the seed back with `--seed` to recreate exactly the same network, e.g. to reproduce an `ln_init` failure:
 
 ```sh

@@ -331,7 +331,7 @@ MIN_CHANNEL_CAPACITY = 20_000
     "--ln-impls",
     default="lnd",
     show_default=True,
-    help=f"Comma-separated lightning implementations to assign to nodes at random, from: {','.join(LN_IMPLS)}",
+    help=f"Comma-separated lightning implementations to assign to nodes at random, from: {','.join(LN_IMPLS)}, or ALL for all of them",
 )
 @click.option("--seed", type=int, default=None, help="Random seed for assigning implementations")
 @click.option(
@@ -355,11 +355,14 @@ def import_network(
     max_channels: Optional[int],
 ):
     """Create a network from an imported lightning network graph JSON"""
+    if ln_impls.strip() == "ALL":
+        ln_impls = ",".join(LN_IMPLS)
     impls = [impl.strip() for impl in ln_impls.split(",") if impl.strip()]
     unknown = [impl for impl in impls if impl not in LN_IMPLS]
     if not impls or unknown:
         raise click.BadParameter(
-            f"must be a comma-separated list of {', '.join(LN_IMPLS)}", param_hint="--ln-impls"
+            f"must be ALL or a comma-separated list of {', '.join(LN_IMPLS)}",
+            param_hint="--ln-impls",
         )
     if max_channels is not None:
         if max_nodes is None:
