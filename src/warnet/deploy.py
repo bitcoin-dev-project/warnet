@@ -2,7 +2,8 @@ import json
 import subprocess
 import sys
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+import threading
+from concurrent.futures import ThreadPoolExecutor, wait
 from multiprocessing import Process
 from pathlib import Path
 from typing import Optional
@@ -51,13 +52,34 @@ HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
 DEFAULT_DEPLOY_JOBS = 16
 
 
+# Set when the deploy is cancelled with Ctrl-C. The helm commands that are
+# running get the same SIGINT and fail, don't report each of them.
+interrupted = threading.Event()
+
+
 def run_parallel(function, args_list, jobs):
     """Call function with each tuple of args, at most jobs at a time, and wait for all"""
-    with ThreadPoolExecutor(max_workers=jobs) as executor:
-        futures = [executor.submit(function, *args) for args in args_list]
+    executor = ThreadPoolExecutor(max_workers=jobs)
+    futures = [executor.submit(function, *args) for args in args_list]
+    try:
+        wait(futures)
+    except KeyboardInterrupt:
+        # Don't start the jobs that are still queued
+        interrupted.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    executor.shutdown()
     for future in futures:
         if future.exception():
             click.echo(f"Error: {future.exception()}")
+
+
+def quiet_on_interrupt(function, *args):
+    """Process target that exits without a traceback when the deploy is cancelled"""
+    try:
+        function(*args)
+    except KeyboardInterrupt:
+        interrupted.set()
 
 
 def validate_directory(ctx, param, value):
@@ -94,7 +116,13 @@ def deploy(directory, debug, namespace, to_all_users, jobs, unknown_args):
     if unknown_args:
         raise click.BadParameter(f"Unknown args: {unknown_args}{HINT}")
 
-    _deploy(directory, debug, namespace, to_all_users, jobs)
+    try:
+        _deploy(directory, debug, namespace, to_all_users, jobs)
+    except KeyboardInterrupt:
+        click.secho(
+            "\nDeploy cancelled, nodes that were not deployed yet were skipped", fg="yellow"
+        )
+        sys.exit(130)
 
 
 def _deploy(directory, debug, namespace, to_all_users, jobs=DEFAULT_DEPLOY_JOBS):
@@ -114,20 +142,26 @@ def _deploy(directory, debug, namespace, to_all_users, jobs=DEFAULT_DEPLOY_JOBS)
         # Deploy logging CRD first to avoid synchronisation issues
         deploy_logging_crd(directory, debug)
 
-        logging_process = Process(target=deploy_logging_stack, args=(directory, debug))
+        logging_process = Process(
+            target=quiet_on_interrupt, args=(deploy_logging_stack, directory, debug)
+        )
         logging_process.start()
         processes.append(logging_process)
 
         run_plugins(directory, HookValue.PRE_NETWORK, namespace, jobs=jobs)
 
-        network_process = Process(target=deploy_network, args=(directory, debug, namespace, jobs))
+        network_process = Process(
+            target=quiet_on_interrupt, args=(deploy_network, directory, debug, namespace, jobs)
+        )
         network_process.start()
 
-        ingress_process = Process(target=deploy_ingress, args=(directory, debug))
+        ingress_process = Process(
+            target=quiet_on_interrupt, args=(deploy_ingress, directory, debug)
+        )
         ingress_process.start()
         processes.append(ingress_process)
 
-        caddy_process = Process(target=deploy_caddy, args=(directory, debug))
+        caddy_process = Process(target=quiet_on_interrupt, args=(deploy_caddy, directory, debug))
         caddy_process.start()
         processes.append(caddy_process)
 
@@ -137,7 +171,9 @@ def _deploy(directory, debug, namespace, to_all_users, jobs=DEFAULT_DEPLOY_JOBS)
         run_plugins(directory, HookValue.POST_NETWORK, namespace, jobs=jobs)
 
         # Start the fork observer process immediately after network process completes
-        fork_observer_process = Process(target=deploy_fork_observer, args=(directory, debug))
+        fork_observer_process = Process(
+            target=quiet_on_interrupt, args=(deploy_fork_observer, directory, debug)
+        )
         fork_observer_process.start()
         processes.append(fork_observer_process)
 
@@ -490,6 +526,10 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
             jobs=1,
         )
 
+        # The deploy may have been cancelled while this job was getting ready
+        if interrupted.is_set():
+            return
+
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
@@ -503,7 +543,8 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
         )
 
     except Exception as e:
-        click.echo(f"Error: {e}")
+        if not interrupted.is_set():
+            click.echo(f"Error: {e}")
         return
     finally:
         if temp_override_file_path:
@@ -548,11 +589,15 @@ def deploy_single_namespace(namespace, defaults_file_path: Path):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
+        if interrupted.is_set():
+            return
+
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
     except Exception as e:
-        click.echo(f"Error: {e}")
+        if not interrupted.is_set():
+            click.echo(f"Error: {e}")
         return
     finally:
         if temp_override_file_path:
