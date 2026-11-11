@@ -320,6 +320,11 @@ LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
 MAX_CHANNEL_CAPACITY = 1_000_000_000
 # The smallest channel LND accepts, also the minimum warnet sets for eclair
 MIN_CHANNEL_CAPACITY = 20_000
+# ln_init funds each channel an eclair node opens with a UTXO big enough for
+# its largest channel, because its Bitcoin Core wallet can't be told which UTXO
+# to use. Don't make eclair nodes of nodes that would need more than this much
+# on top of the capacity of their channels, e.g. hubs with one large channel.
+ECLAIR_MAX_EXTRA_FUNDING = 1_000_000_000  # sats
 
 
 @click.command()
@@ -478,6 +483,34 @@ def _select_core(nodes, edges, max_nodes, max_channels):
     return [selected_nodes[pk] for pk in selected], core_edges
 
 
+def _avoid_eclair_hubs(tank_to_impl, pk_to_tank, edges, impls, seed):
+    """Assign another implementation to eclair nodes that would need too much funding"""
+    others = [impl for impl in impls if impl != "eclair"]
+    if "eclair" not in impls or not others:
+        return
+    # The first node of an edge opens the channel
+    opened = defaultdict(list)
+    for edge in edges:
+        opened[pk_to_tank[edge["node1_pub"]]].append(int(edge["capacity"]))
+    # A separate generator, so only these nodes change for a given seed
+    rng = random.Random(f"{seed}-eclair")
+    moved = []
+    for tank, impl in tank_to_impl.items():
+        capacities = opened.get(tank)
+        if impl != "eclair" or not capacities:
+            continue
+        extra = len(capacities) * max(capacities) - sum(capacities)
+        if extra > ECLAIR_MAX_EXTRA_FUNDING:
+            tank_to_impl[tank] = rng.choice(others)
+            moved.append(f"{tank} ({tank_to_impl[tank]})")
+    if moved:
+        print(
+            f"Assigned other implementations to {len(moved)} nodes that would need more than "
+            f"{ECLAIR_MAX_EXTRA_FUNDING // 100_000_000} BTC of extra funding as eclair nodes: "
+            + ", ".join(moved)
+        )
+
+
 def _import_network(
     graph_file_path, output_path, impls=None, seed=None, max_nodes=None, max_channels=None
 ):
@@ -498,19 +531,21 @@ def _import_network(
         print(f"Assigning lightning implementations {impls} at random with --seed {seed}")
     rng = random.Random(seed)
 
-    tanks = {}
     pk_to_tank = {}
     tank_to_pk = {}
     tank_to_impl = {}
     index = 0
     for node in nodes:
         tank = f"tank-{index:04d}"
-        impl = rng.choice(impls)
         pk_to_tank[node["pub_key"]] = tank
         tank_to_pk[tank] = node["pub_key"]
-        tank_to_impl[tank] = impl
-        tanks[tank] = {"name": tank, "ln": {impl: True}, impl: {"channels": []}}
+        tank_to_impl[tank] = rng.choice(impls)
         index += 1
+    _avoid_eclair_hubs(tank_to_impl, pk_to_tank, edges, impls, seed)
+    tanks = {
+        tank: {"name": tank, "ln": {impl: True}, impl: {"channels": []}}
+        for tank, impl in tank_to_impl.items()
+    }
     print(f"Imported {index} nodes")
     if len(impls) > 1:
         for impl in impls:
