@@ -141,6 +141,16 @@ options:
 Display the unified status of the Warnet network and active scenarios
 
 
+### `warnet top`
+Show cluster resource usage, to judge if the cluster fits the network and scenarios
+
+options:
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| watch    | Float  |            |           |
+| num_pods | Int    |            | 10        |
+| yes      | Bool   |            | False     |
+
 ### `warnet stop`
 Stop a running scenario or all scenarios.
 

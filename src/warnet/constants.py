@@ -152,6 +152,24 @@ INGRESS_HELM_COMMANDS = [
     f"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace {INGRESS_NAMESPACE} --create-namespace --set controller.progressDeadlineSeconds=600",
 ]
 
+# metrics-server provides the CPU and memory usage of nodes and pods (kubectl top)
+METRICS_API_SERVICE = "v1beta1.metrics.k8s.io"
+METRICS_SERVER_HELM_COMMANDS = [
+    "helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/",
+    "helm repo update metrics-server",
+    "helm upgrade --install metrics-server metrics-server/metrics-server --namespace kube-system --version 3.14.0",
+]
+# Kubelets of local clusters have self-signed certificates metrics-server must accept
+LOCAL_CLUSTER_CONTEXTS = (
+    "minikube",
+    "docker-desktop",
+    "kind-",
+    "k3d-",
+    "orbstack",
+    "rancher-desktop",
+    "colima",
+)
+
 # Helm binary
 HELM_DOWNLOAD_URL_STUB = "https://get.helm.sh/"
 HELM_BINARY_NAME = "helm"

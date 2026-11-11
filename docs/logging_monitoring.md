@@ -49,6 +49,29 @@ tank-0002: 2023-10-11T17:44:52.173199Z [validation] Enqueuing TransactionAddedTo
 ```
 
 
+## Cluster resources
+
+`warnet top` shows how much of the cluster's CPU, memory, pod slots, disk and network the network and running scenarios use, and whether the cluster is under-provisioned, over-provisioned or sufficient. It needs no Prometheus or Grafana.
+
+```sh
+warnet top              # one snapshot
+warnet top --watch 15   # refresh every 15 seconds, e.g. while ln_init or a scenario runs
+```
+
+It shows:
+
+- **Cluster nodes**: CPU and memory used and requested, pods out of the node's maximum, disk used and network throughput of each node, any pressure condition, and the cluster total
+- **Usage by workload**: CPU and memory of bitcoind, each lightning implementation, scenarios (commanders) and cluster services, in total and per pod
+- **Busiest pods** by CPU
+- **Verdict**:
+  - *under-provisioned* if pods can't be scheduled (e.g. `Too many pods`), a node reports memory, disk or PID pressure, or the cluster uses over 80% of its CPU, 85% of its memory or disk or 90% of its pod slots
+  - *over-provisioned* if it uses under 20% of its CPU, 30% of its memory and half its pod slots
+  - *sufficient* otherwise
+
+CPU and memory usage come from [metrics-server](https://github.com/kubernetes-sigs/metrics-server). Many managed clusters (and `minikube addons enable metrics-server`) already run it. If it isn't installed, `warnet top` offers to install it into `kube-system` with Helm (`--yes` installs without asking), which requires cluster admin. On local clusters (minikube, Docker Desktop, kind, ...) it is installed with `--kubelet-insecure-tls`, because their kubelets use self-signed certificates.
+
+Disk and network usage come from each node's kubelet stats, which require the `nodes/proxy` permission. Without it those columns are left out. Network throughput is measured over 5 seconds.
+
 ## Monitoring and Metrics
 
 ## Install logging infrastructure
