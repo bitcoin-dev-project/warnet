@@ -338,7 +338,7 @@ warnet import-network mainnet.json networks/mainnet_100 --max-nodes 100 --max-ch
 Every import, truncated or not, also adjusts the graph to what warnet can recreate:
 
 - Channels without both policies are dropped. Most of them have no updates from either side, which usually means the channel is no longer used.
-- Capacities are clamped to between 20,000 sats (the smallest channel LND accepts) and 4.99 BTC. `ln_init` funds every channel with a 10 BTC UTXO and its change output must stay larger than the channel.
+- Capacities are clamped to between 20,000 sats and 10 BTC, the smallest and largest channels LND accepts.
 
 This writes `network.yaml` and `node-defaults.yaml` into the output directory (creating it if it doesn't exist) and prints a summary:
 

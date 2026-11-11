@@ -1,22 +1,133 @@
 #!/usr/bin/env python3
 
 import threading
+from collections import Counter, defaultdict
+from decimal import Decimal
 from time import sleep, time
 
 from commander import Commander
 from ln_framework.ln import (
+    CHANNEL_FUNDING_BUFFER,
     CHANNEL_OPEN_FEE_RATE,
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    FUNDING_OUTPUTS_PER_TX,
+    FUNDING_TX_FEE,
     GOSSIP_STALL_TIMEOUT,
+    LDK_ANCHOR_RESERVE,
+    MAX_FUNDING_TXS,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
 from test_framework.messages import (
     COIN,
+    COutPoint,
     CTransaction,
+    CTxIn,
     CTxOut,
 )
+
+
+def plan_funding(channels, impls):
+    """
+    UTXOs to fund LN nodes with, just enough for the channels they open.
+    Multiple UTXOs per LN wallet so multiple channels can be opened per block.
+    Returns a list of (LN node name, amount in sats, channel the UTXO must fund or None)
+    """
+    funding = []  # (LN node name, amount in sats, channel the UTXO is for or None)
+    opens = defaultdict(list)
+    for ch in channels:
+        opens[ch["source"]].append(ch)
+    for name, chs in opens.items():
+        impl = impls[name]
+        if impl == "eclair":
+            # Eclair opens its channels concurrently and its Bitcoin Core wallet
+            # picks the coins, spending unconfirmed change if no confirmed coin is
+            # big enough. Make each UTXO big enough for any of its channels.
+            amount = max(ch["capacity"] for ch in chs) + CHANNEL_FUNDING_BUFFER
+            funding += [(name, amount, None) for _ in chs]
+            continue
+        for ch in chs:
+            # LND and CLN are told which UTXO funds each channel. LND sorts the
+            # funding transaction outputs by amount, so the change must be larger
+            # than the channel to put the channel at output 0. CLN always puts
+            # the channel first. LDK opens one channel at a time and can spend
+            # change from its previous opens.
+            amount = (2 if impl == "lnd" else 1) * ch["capacity"] + CHANNEL_FUNDING_BUFFER
+            funding.append((name, amount, ch if impl in ("lnd", "cln") else None))
+    # LDK rejects inbound anchor channels unless it has an on-chain
+    # reserve to fee-bump a force close.
+    ldk_inbound = Counter(ch["target"] for ch in channels if impls[ch["target"]] == "ldk")
+    for name, count in ldk_inbound.items():
+        funding.append((name, LDK_ANCHOR_RESERVE * count + CHANNEL_FUNDING_BUFFER, None))
+    return funding
+
+
+def distribute_funds(miner, gen, ln_addrs, funding, log):
+    """
+    Send the UTXOs of plan_funding() from the miner's wallet to the LN wallets and
+    confirm them in the next block. Records the UTXO of each channel that must be
+    funded with a specific one as ch["funding_utxo"].
+    """
+    if not funding:
+        return
+    # Split the outputs over transactions below the standard weight limit. They
+    # must all be confirmed in the block before the first channel opens.
+    batches = [
+        funding[first : first + FUNDING_OUTPUTS_PER_TX]
+        for first in range(0, len(funding), FUNDING_OUTPUTS_PER_TX)
+    ]
+    if len(batches) > MAX_FUNDING_TXS:
+        raise Exception(
+            f"{len(funding)} funding outputs don't fit in one block, the maximum is "
+            f"{MAX_FUNDING_TXS * FUNDING_OUTPUTS_PER_TX}. Use fewer channels."
+        )
+    total = sum(amount for _, amount, _ in funding)
+    # Only coinbases with 100 confirmations are spendable
+    miner_balance = int(miner.getbalance())
+    nodes = len({name for name, _, _ in funding})
+    log.info(
+        f"Funding {nodes} LN nodes with {total / COIN:.8f} BTC in {len(funding)} UTXOs "
+        f"from {len(batches)} transactions, miner has {miner_balance} BTC"
+    )
+    if total + len(batches) * FUNDING_TX_FEE > (miner_balance - 1) * COIN:
+        raise Exception(
+            f"The miner only has {miner_balance} BTC to fund {total / COIN:.8f} BTC "
+            f"of channels. Use smaller or fewer channels."
+        )
+    # Consolidate the miner's coins into one coin per funding transaction, to
+    # reduce their weight. They can't spend each other's unconfirmed change,
+    # Bitcoin Core limits clusters of unconfirmed transactions to 101 kvB.
+    batch_amounts = {}
+    for batch in batches:
+        amount = sum(amount for _, amount, _ in batch) + FUNDING_TX_FEE
+        batch_amounts[miner.getnewaddress()] = Decimal(amount) / COIN
+    consolidation_txid = miner.sendmany("", batch_amounts)
+    gen(1)
+    consolidation = miner.decoderawtransaction(miner.gettransaction(consolidation_txid)["hex"])
+    # sendmany shuffles the outputs
+    batch_vouts = {vout["scriptPubKey"].get("address"): vout["n"] for vout in consolidation["vout"]}
+
+    for address, batch in zip(batch_amounts, batches):
+        helicopter = CTransaction()
+        prevout = COutPoint(int(consolidation_txid, 16), batch_vouts[address])
+        helicopter.vin.append(CTxIn(prevout))
+        for name, amount, _ in batch:
+            helicopter.vout.append(CTxOut(amount, address_to_scriptpubkey(ln_addrs[name])))
+        # Add the change after our outputs so their indexes don't change
+        rawtx = miner.fundrawtransaction(
+            helicopter.serialize().hex(),
+            {"changePosition": len(batch), "add_inputs": False},
+        )
+        signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
+        txid = miner.sendrawtransaction(signed_tx)
+        for vout, (_, _, ch) in enumerate(batch):
+            if ch is not None:
+                ch["funding_utxo"] = f"{txid}:{vout}"
+        log.info(f"Funding tx {txid} with {len(batch)} outputs")
+    # confirm funds in last block before channel opens
+    gen(1)
+    log.info(f"Funds distributed, remaining miner balance: {miner.getbalance()}")
 
 
 class LNInit(Commander):
@@ -122,47 +233,10 @@ class LNInit(Commander):
         # One next block to confirm the distributed coins
         # Then the channel open TXs go in the expected block height
         gen(CHANNEL_OPEN_START_HEIGHT - 4)
-        # divvy up the goods, except fee.
-        # Multiple UTXOs per LN wallet so multiple channels can be opened per block
-        miner_balance = int(miner.getbalance())
-        # To reduce individual TX weight, consolidate all outputs before distribution
-        miner.sendtoaddress(miner_addr, miner_balance - 1)
-        gen(1)
-        helicopter = CTransaction()
+        funding = plan_funding(self.channels, {name: ln.impl for name, ln in self.lns.items()})
+        channel_openers = list(dict.fromkeys(name for name, _, _ in funding))
 
-        # Provide the source LN node for each channel with a UTXO just big enough
-        # to open that channel with its capacity plus fee.
-        channel_openers = []
-        for ch in self.channels:
-            if ch["source"] not in channel_openers:
-                channel_openers.append(ch["source"])
-            addr = ln_addrs[ch["source"]]
-            # More than enough to open the channel plus fee and cover LND's "maxFeeRatio"
-            # As long as all channel capacities are < 4 BTC the change output will be
-            # larger and occupy tx output 1, leaving the actual channel open at output 0
-            sat_amt = 10 * COIN
-            helicopter.vout.append(CTxOut(sat_amt, address_to_scriptpubkey(addr)))
-        # LDK rejects inbound anchor channels unless it has an on-chain
-        # reserve (25k sats per channel) to fee-bump a force close.
-        for ch in self.channels:
-            tgt = ch["target"]
-            if self.lns[tgt].impl == "ldk" and tgt not in channel_openers:
-                channel_openers.append(tgt)
-                helicopter.vout.append(CTxOut(COIN, address_to_scriptpubkey(ln_addrs[tgt])))
-        rawtx = miner.fundrawtransaction(helicopter.serialize().hex())
-        signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
-        txid = miner.sendrawtransaction(signed_tx)
-        # confirm funds in last block before channel opens
-        gen(1)
-
-        txstats = miner.gettransaction(txid)
-        self.log.info(
-            "Funds distribution from miner:\n  "
-            + f"txid: {txid}\n  "
-            + f"# outputs: {len(txstats['details'])}\n  "
-            + f"total amount: {txstats['amount']}\n  "
-            + f"remaining miner balance: {miner.getbalance()}"
-        )
+        distribute_funds(miner, gen, ln_addrs, funding, self.log)
 
         self.log.info("Waiting for funds to be spendable by channel-openers")
 
@@ -318,6 +392,7 @@ class LNInit(Commander):
                             capacity=ch["capacity"],
                             push_amt=ch["push_amt"],
                             fee_rate=fee_rate,
+                            utxo=ch.get("funding_utxo"),
                         )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]

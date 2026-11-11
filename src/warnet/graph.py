@@ -316,10 +316,8 @@ def create():
 
 LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
 
-# ln_init funds every channel with a 10 BTC UTXO. The change output must stay
-# larger than the channel, so LND (which sorts outputs by amount) puts the
-# channel at output 0.
-MAX_CHANNEL_CAPACITY = 499_000_000
+# The largest channel LND accepts, even with wumbo channels enabled
+MAX_CHANNEL_CAPACITY = 1_000_000_000
 # The smallest channel LND accepts, also the minimum warnet sets for eclair
 MIN_CHANNEL_CAPACITY = 20_000
 
