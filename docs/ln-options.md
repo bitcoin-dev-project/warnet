@@ -91,7 +91,11 @@ When `warnet deploy` finds any `lnd.channels`, `cln.channels`, `eclair.channels`
 
 1. **Wait for L1 p2p** — holds until all Bitcoin Core nodes have established their connections from `addnode`.
 2. **Mine to near channel-open height** — mines to block 496 (four blocks before the default `id.block` start of 500), building a usable chain. A node named `miner` is used as the block source; if none exists, the first node in the network is used instead.
-3. **Fund LN wallets** — constructs a single transaction that sends 10 UTXOs to the on-chain wallet of every node that opens at least one channel. These UTXOs are sized so that the change output always lands at tx output index 1, leaving the channel funding output at index 0 — which is what makes channel IDs deterministic.
+3. **Fund LN wallets** — sends every node that opens channels one UTXO per channel, so it can open several channels in the same block from confirmed coins, and fails early if the miner doesn't have enough. Each UTXO holds the channel's capacity plus 100,000 sats for the fee and on-chain reserves:
+   - LND gets twice the capacity, so the change output is larger than the channel and LND (which sorts outputs by amount) puts the channel at output 0, which is what makes channel IDs deterministic. LND and CLN are told which UTXO to fund each channel with, so a small channel can't take the UTXO meant for a large one.
+   - Eclair's Bitcoin Core wallet can't be told which coins to use, so each of an eclair node's UTXOs is big enough for its largest channel.
+   - LDK nodes also get 25,000 sats for each incoming channel.
+   - The UTXOs are split over transactions of at most 1,500 outputs, all confirmed in block 499. The 500 blocks mined before then leave the miner 12,425 BTC to spend (regtest halves the subsidy every 150 blocks, and coinbases need 100 confirmations).
 4. **Establish LN p2p connections** — connects every channel pair directly, plus builds a ring through all LN nodes so the gossip graph is connected.
 5. **Open channels block-by-block** — processes all channels sorted by `id.block`, then `id.index`. For each target block:
    - Mines to that height
@@ -128,7 +132,7 @@ Rules that must be followed across the entire network:
 | Maximum channels per block (`id.index` range) | `200` (indices 1–200) |
 | Indices within a block | Must be consecutive starting at `1` with no gaps |
 | Global uniqueness | No two channels may share the same `block`/`index` pair |
-| Channel capacity | Must be below ~4 BTC so the change output of LND channel opens is larger than the channel and sorted after it |
+| Total funding | All funding UTXOs (see step 3 above) must fit in the miner's 12,425 BTC and in one block (21,000 UTXOs) |
 
 Violating any of these causes `ln_init` to abort with an assertion error.
 

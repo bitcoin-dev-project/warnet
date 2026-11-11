@@ -40,6 +40,20 @@ CHANNEL_OPENS_PER_BLOCK = 200
 # the rate. It is passed explicitly because there are no fee estimates on a
 # new regtest chain.
 CHANNEL_OPEN_FEE_RATE = 10  # s/vB
+# Funding UTXOs ln_init gives channel openers hold the channel capacity (twice
+# for LND, see ln_init) plus this much for the funding fee and the on-chain
+# reserves implementations keep for anchor channels (LND 10k sat per channel up
+# to 100k, CLN 25k, LDK 25k per channel).
+CHANNEL_FUNDING_BUFFER = 100_000  # sats
+# On-chain reserve LDK requires for each anchor channel, including inbound ones
+LDK_ANCHOR_RESERVE = 25_000  # sats
+# Outputs per transaction distributing the miner's coins to LN wallets, keeping
+# each one below the 400,000 WU standard weight limit (a P2TR output is 172 WU)
+FUNDING_OUTPUTS_PER_TX = 1500
+# All funding transactions are confirmed in one block (4,000,000 WU)
+MAX_FUNDING_TXS = 14
+# Fee set aside for each funding transaction
+FUNDING_TX_FEE = 10_000_000  # sats
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
 # Seconds pay() waits for a payment to succeed or fail, below the 60 second
@@ -152,7 +166,8 @@ class LNNode(ABC):
         pass
 
     @abstractmethod
-    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate, utxo=None) -> dict:
+        """utxo ("txid:vout") funds the channel, if the implementation can be told which"""
         pass
 
     @abstractmethod
@@ -277,7 +292,7 @@ class CLN(LNNode):
         else:
             return res
 
-    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate, utxo=None) -> dict:
         data = {
             "amount": capacity,
             "push_msat": push_amt * 1000,
@@ -285,6 +300,8 @@ class CLN(LNNode):
             # A feerate without a unit suffix is interpreted as sat/kvB
             "feerate": f"{fee_rate * 1000}perkb",
         }
+        if utxo:
+            data["utxos"] = [utxo]
         response = self.post("/v1/fundchannel", data)
         res = json.loads(response)
         if "txid" not in res:
@@ -391,7 +408,8 @@ class ECLAIR(LNNode):
             return {}
         raise Exception(res)
 
-    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate, utxo=None) -> dict:
+        # Bitcoin Core's wallet picks the coins, eclair can't be told which
         data = {
             "nodeId": pk,
             "fundingSatoshis": capacity,
@@ -549,7 +567,8 @@ class LDK(LNNode):
         self.cli("connect-peer", target_uri, "--persist")
         return {}
 
-    def channel(self, pk, capacity, push_amt, fee_rate) -> dict:
+    def channel(self, pk, capacity, push_amt, fee_rate, utxo=None) -> dict:
+        # ldk-server picks the coins itself, utxo is ignored.
         # LDK's wallet only learns that its funding transactions spend its coins
         # when it next polls the mempool, so concurrent channel opens could pick
         # the same coin. Open one channel at a time and wait for the wallet to
@@ -763,17 +782,18 @@ class LND(LNNode):
         else:
             return res
 
-    def channel(self, pk, capacity, push_amt, fee_rate):
+    def channel(self, pk, capacity, push_amt, fee_rate, utxo=None):
         b64_pk = self.hex_to_b64(pk)
-        response = self.post(
-            "/v1/channels/stream",
-            data={
-                "local_funding_amount": capacity,
-                "push_sat": push_amt,
-                "node_pubkey": b64_pk,
-                "sat_per_vbyte": fee_rate,
-            },
-        )
+        data = {
+            "local_funding_amount": capacity,
+            "push_sat": push_amt,
+            "node_pubkey": b64_pk,
+            "sat_per_vbyte": fee_rate,
+        }
+        if utxo:
+            txid, vout = utxo.split(":")
+            data["outpoints"] = [{"txid_str": txid, "output_index": int(vout)}]
+        response = self.post("/v1/channels/stream", data=data)
         res = json.loads(response)
         if "result" not in res:
             raise Exception(res)
