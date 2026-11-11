@@ -321,6 +321,8 @@ The importer prints the random seed it used and how many nodes got each implemen
 warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,eclair,ldk --seed 42
 ```
 
+`ln_init` funds every channel an eclair node opens with a UTXO big enough for the node's largest channel, because eclair's Bitcoin Core wallet can't be told which UTXO to use for which channel. An eclair hub with many channels and one large one would need far more coins than its channels hold, so a node that would need more than 10 BTC on top of its channels' capacity gets one of the other implementations instead. The importer lists these nodes. With the same seed only these nodes differ from a plain random assignment.
+
 Only LND can apply channel policies, so each side's policy is only imported when that side is an LND node. See [LN Options](ln-options.md) for how `ln_init` handles each implementation.
 
 ### Importing part of a large graph
