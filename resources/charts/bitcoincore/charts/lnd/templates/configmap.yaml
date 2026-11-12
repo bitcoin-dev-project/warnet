@@ -9,6 +9,12 @@ data:
   lnd.conf: |
     color={{ include "namespace.color" . }}
     {{- .Values.baseConfig | nindent 4 }}
+    {{- if semverCompare ">=0.19.0-beta" .Values.image.tag }}
+    # Incoming connections from peers without a channel (default 100). ln_init
+    # connects every channel's peers before opening any, so hubs need more.
+    # Older lnd versions don't have this option and refuse to start with it.
+    num-restricted-slots=10000
+    {{- end }}
     {{- .Values.defaultConfig | nindent 4 }}
     {{- .Values.config | nindent 4 }}
     bitcoin.{{ .Values.global.chain }}=1
