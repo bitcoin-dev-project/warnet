@@ -600,6 +600,7 @@ class LNInit(Commander):
         #   reconnect those, every reconnection disrupts the gossip of both nodes
         #   (CLN can lose updates for good when its gossip peers disconnect).
         # - Eclair only runs a full gossip sync with a channel peer on connection.
+        # CLN doesn't fetch gossip it missed again, copy it from a complete CLN node.
         uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
         pubkeys = {name: uri.split("@")[0] for name, uri in ln_uris.items()}
 
@@ -617,6 +618,29 @@ class LNInit(Commander):
                     if (scid, direction) not in known:
                         missing[node].add(pubkeys[peer])
             return missing
+
+        def copy_cln_gossip(counts):
+            expected = len(self.channels)
+            clns = [ln for ln in gossip_lns if ln.impl == "cln"]
+            incomplete = [ln for ln in clns if counts.get(ln.name, 0) < expected]
+            donor = next((ln for ln in clns if counts.get(ln.name) == expected), None)
+            if not incomplete:
+                return
+            if donor is None:
+                self.log.info("No CLN node has the complete graph to copy gossip from yet")
+                return
+
+            def copy(ln):
+                try:
+                    added = ln.copy_gossip_from(donor)
+                    self.log.info(f"Added {added} gossip messages from {donor.name} to {ln.name}")
+                except Exception as e:
+                    self.log.warning(f"Couldn't copy gossip from {donor.name} to {ln.name}: {e}")
+
+            copy_threads = [threading.Thread(target=copy, args=(ln,)) for ln in incomplete]
+            for thread in copy_threads:
+                thread.start()
+            all(thread.join() is None for thread in copy_threads)
 
         last_counts = None
         last_progress = time()
@@ -648,6 +672,7 @@ class LNInit(Commander):
                 t.start()
                 reconnect_threads.append(t)
             all(thread.join() is None for thread in reconnect_threads)
+            copy_cln_gossip(last_counts)
             last_progress = time()
 
         all(thread.join() is None for thread in ch_ann_threads)

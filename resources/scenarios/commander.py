@@ -120,7 +120,7 @@ for pod in pods.items:
                 get_admin_macaroon(sclient, pod),
             )
         if "cln" in pod.metadata.labels["app.kubernetes.io/name"]:
-            lnnode = CLN(pod.metadata.name, pod.metadata.namespace, pod.status.pod_ip)
+            lnnode = CLN(pod.metadata.name, pod.metadata.namespace, pod.status.pod_ip, sclient)
         if "eclair" in pod.metadata.labels["app.kubernetes.io/name"]:
             lnnode = ECLAIR(pod.metadata.name, pod.metadata.namespace, pod.status.pod_ip)
         if "ldk" in pod.metadata.labels["app.kubernetes.io/name"]:
