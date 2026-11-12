@@ -8,6 +8,7 @@ import ssl
 import threading
 import urllib.parse
 from abc import ABC, abstractmethod
+from collections import Counter, defaultdict
 from time import sleep, time
 
 import requests
@@ -54,14 +55,95 @@ FUNDING_OUTPUTS_PER_TX = 1500
 MAX_FUNDING_TXS = 14
 # Fee set aside for each funding transaction
 FUNDING_TX_FEE = 10_000_000  # sats
-# Unconfirmed incoming channels nodes accept from one peer: LDK's limit is hard
-# coded (MAX_UNFUNDED_CHANS_PER_PEER), LND's is maxpendingchannels in the chart.
-# ln_init opens all channels of a block before mining it, so a block can't
-# hold more channels from one peer to a node than that.
-MAX_PENDING_CHANNELS_PER_PEER = {"ldk": 4, "lnd": 64}
-# LDK refuses incoming channels from new peers once this many peers only have
-# unconfirmed incoming channels with it (MAX_UNFUNDED_CHANNEL_PEERS)
-LDK_MAX_UNFUNDED_PEERS = 50
+# Limits on the incoming channels nodes accept while channels are pending. ln_init
+# opens all channels of a block before mining it, and mines only one block between
+# channel blocks, see PendingChannels.
+# LDK, hard coded in rust-lightning: unconfirmed incoming channels from one peer
+# (MAX_UNFUNDED_CHANS_PER_PEER), and peers that only have unconfirmed incoming
+# channels (MAX_UNFUNDED_CHANNEL_PEERS)
+LDK_MAX_UNCONFIRMED_PER_PEER = 4
+LDK_MAX_UNCONFIRMED_PEERS = 50
+# LND: pending channels with one peer (maxpendingchannels in the chart), and in
+# total (pendingChansLimit, hard coded). A channel is pending until it has the
+# confirmations its peers require, at most 6 for any implementation in warnet.
+LND_MAX_PENDING_PER_PEER = 64
+LND_MAX_PENDING = 50
+PENDING_BLOCKS = 6
+
+
+class PendingChannels:
+    """
+    Tracks the channels ln_init opens, block by block in order, to tell if the
+    target of a new channel would refuse it because of the channels pending then.
+    """
+
+    def __init__(self, impls: dict):
+        # Implementation of each LN node
+        self.impls = impls
+        self.block = None
+        # Channels of each block still pending: (source, target)
+        self.blocks = {}
+        # Pending channels per pair of nodes and per node, over the last PENDING_BLOCKS
+        self.pending_pairs = Counter()
+        self.pending_nodes = Counter()
+        # Pairs of nodes with a channel in an earlier block (confirmed)
+        self.confirmed_pairs = set()
+        # This block's (unconfirmed) channels to LDK nodes per (source, target), and
+        # the peers of each LDK node without a confirmed channel
+        self.unconfirmed = Counter()
+        self.new_peers = defaultdict(set)
+
+    def start_block(self, block):
+        for channels in self.blocks.values():
+            self.confirmed_pairs.update(frozenset(ch) for ch in channels)
+        for old in [b for b in self.blocks if b <= block - PENDING_BLOCKS]:
+            for source, target in self.blocks.pop(old):
+                self.pending_pairs[frozenset((source, target))] -= 1
+                self.pending_nodes[source] -= 1
+                self.pending_nodes[target] -= 1
+        self.block = block
+        self.blocks[block] = []
+        self.unconfirmed = Counter()
+        self.new_peers = defaultdict(set)
+
+    def refusal(self, source, target):
+        """Why target would refuse a channel from source now, None if it wouldn't"""
+        impl = self.impls[target]
+        pair = frozenset((source, target))
+        if impl == "ldk":
+            if self.unconfirmed[(source, target)] >= LDK_MAX_UNCONFIRMED_PER_PEER:
+                return (
+                    f"LDK accepts at most {LDK_MAX_UNCONFIRMED_PER_PEER} unconfirmed channels "
+                    "from one peer"
+                )
+            peers = self.new_peers[target]
+            if (
+                pair not in self.confirmed_pairs
+                and source not in peers
+                and len(peers) >= LDK_MAX_UNCONFIRMED_PEERS
+            ):
+                return (
+                    f"LDK accepts unconfirmed channels from at most {LDK_MAX_UNCONFIRMED_PEERS} "
+                    "peers without a confirmed channel"
+                )
+        if impl == "lnd":
+            if self.pending_pairs[pair] >= LND_MAX_PENDING_PER_PEER:
+                return f"LND accepts at most {LND_MAX_PENDING_PER_PEER} pending channels per peer"
+            if self.pending_nodes[target] >= LND_MAX_PENDING:
+                return f"LND accepts no channels while it has {LND_MAX_PENDING} pending"
+        return None
+
+    def add(self, source, target):
+        self.blocks[self.block].append((source, target))
+        self.pending_pairs[frozenset((source, target))] += 1
+        self.pending_nodes[source] += 1
+        self.pending_nodes[target] += 1
+        if self.impls[target] == "ldk":
+            self.unconfirmed[(source, target)] += 1
+            if frozenset((source, target)) not in self.confirmed_pairs:
+                self.new_peers[target].add(source)
+
+
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
 # Seconds pay() waits for a payment to succeed or fail, below the 60 second

@@ -132,6 +132,7 @@ Rules that must be followed across the entire network:
 | Maximum channels per block (`id.index` range) | `200` (indices 1–200) |
 | Indices within a block | Must be consecutive starting at `1` with no gaps |
 | Global uniqueness | No two channels may share the same `block`/`index` pair |
+| Pending channels | `ln_init` opens all channels of a block before mining it, and mines one block between channel blocks, so channels stay pending (below 6 confirmations) for several blocks. Their targets refuse more than: LDK 4 unconfirmed channels from one peer, or channels from more than 50 new peers per block; LND 64 pending channels with one peer, or any channel while it has 50 pending. `warnet import-network` moves channels to later blocks to respect these |
 | Total funding | All funding UTXOs (see step 3 above) must fit in the miner's 12,425 BTC and in one block (21,000 UTXOs) |
 
 Violating any of these causes `ln_init` to abort with an assertion error.

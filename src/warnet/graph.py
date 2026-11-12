@@ -17,8 +17,8 @@ from rich.table import Table
 from resources.scenarios.ln_framework.ln import (
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
-    LDK_MAX_UNFUNDED_PEERS,
-    MAX_PENDING_CHANNELS_PER_PEER,
+    PENDING_BLOCKS,
+    PendingChannels,
     Policy,
 )
 
@@ -489,42 +489,31 @@ def _place_channels(channels, tank_to_impl):
     """
     Assign each (source, target, edge) a block and index for ln_init to open it at,
     in order, but moving channels to later blocks where the target would refuse
-    them: ln_init opens all channels of a block before it mines the block.
+    them because of the channels pending then (see PendingChannels).
     Returns a list of (block, index, channel).
     """
+    pending = PendingChannels(tank_to_impl)
     placed = []
     remaining = channels
     block = CHANNEL_OPEN_START_HEIGHT
-    # Pairs of nodes with a channel confirmed in an earlier block
-    funded = set()
+    empty_blocks = 0
     while remaining:
+        pending.start_block(block)
         in_block = []
         later = []
-        per_pair = Counter()
-        new_peers = defaultdict(set)
         for channel in remaining:
             source, target, _ = channel
-            pair = frozenset((source, target))
-            limit = MAX_PENDING_CHANNELS_PER_PEER.get(tank_to_impl[target])
-            ldk_new_peer = tank_to_impl[target] == "ldk" and pair not in funded
-            if (
-                len(in_block) == CHANNEL_OPENS_PER_BLOCK
-                or (limit is not None and per_pair[(source, target)] >= limit)
-                or (
-                    ldk_new_peer
-                    and source not in new_peers[target]
-                    and len(new_peers[target]) >= LDK_MAX_UNFUNDED_PEERS
-                )
-            ):
+            if len(in_block) == CHANNEL_OPENS_PER_BLOCK or pending.refusal(source, target):
                 later.append(channel)
                 continue
-            per_pair[(source, target)] += 1
-            if ldk_new_peer:
-                new_peers[target].add(source)
+            pending.add(source, target)
             in_block.append(channel)
+        # Leave a block empty while pending channels confirm, ln_init mines through it
+        empty_blocks = 0 if in_block else empty_blocks + 1
+        if empty_blocks > PENDING_BLOCKS:
+            raise Exception(f"Channel can't be placed in any block: {later[0][:2]}")
         # Coinbase occupies the 0 position!
         placed += [(block, index, channel) for index, channel in enumerate(in_block, start=1)]
-        funded.update(frozenset((source, target)) for source, target, _ in in_block)
         remaining = later
         block += 1
     return placed
