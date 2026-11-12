@@ -991,6 +991,14 @@ class LND(LNNode):
 
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0):
         ln_policy = Policy.from_dict(policy).to_lnd_chanpolicy(capacity)
+        # LND rejects a max htlc above what the peer lets it have in flight, e.g.
+        # 25% of the channel for LDK and 45% for eclair. Cap it, the result has
+        # the value used in "max_htlc_msat".
+        channel_point = f"{txid_hex}:{output_index}"
+        for ch in json.loads(self.get("/v1/channels")).get("channels", []):
+            if ch["channel_point"] == channel_point:
+                max_pending = int(ch["local_constraints"]["max_pending_amt_msat"])
+                ln_policy["max_htlc_msat"] = min(ln_policy["max_htlc_msat"], max_pending)
         data = {
             "chan_point": {"funding_txid_str": txid_hex, "output_index": output_index},
             **ln_policy,
@@ -1002,7 +1010,7 @@ class LND(LNNode):
             # by the UpdateChannelPolicy API.
             data=data,
         )
-        return json.loads(res)
+        return {**json.loads(res), "max_htlc_msat": ln_policy["max_htlc_msat"]}
 
     def createinvoice(self, sats, label) -> str:
         response = self.post("/v1/invoices", data={"value": sats, "memo": label})
