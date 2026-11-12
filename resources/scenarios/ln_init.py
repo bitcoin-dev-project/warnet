@@ -696,6 +696,12 @@ class LNInit(Commander):
                         )
                         sleep(5)
                         continue
+                    # Expect the max htlc LND applied, it caps it to what the peer allows
+                    if res["max_htlc_msat"] < policy["htlc_maximum_msat"]:
+                        self.log.info(
+                            f"{ln.name} capped max htlc of {outpoint} to {res['max_htlc_msat']} msat"
+                        )
+                        policy["htlc_maximum_msat"] = res["max_htlc_msat"]
                     break
                 except Exception as e:
                     self.log.info(
