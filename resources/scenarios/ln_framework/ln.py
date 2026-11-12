@@ -215,6 +215,67 @@ class Policy:
         }
 
 
+# kubernetes.stream.stream() temporarily patches the shared api client,
+# so concurrent calls from ln_init threads must not overlap.
+stream_lock = threading.Lock()
+
+
+def pod_exec(sclient, pod, namespace, container, command: list, timeout=60):
+    """Run a command in a pod's container, returns (returncode, stdout, stderr)"""
+    with stream_lock:
+        resp = stream(
+            sclient.connect_get_namespaced_pod_exec,
+            name=pod,
+            namespace=namespace,
+            container=container,
+            command=command,
+            stderr=True,
+            stdin=False,
+            stdout=True,
+            tty=False,
+            _preload_content=False,
+        )
+    resp.run_forever(timeout=timeout)
+    stdout = resp.read_stdout()
+    stderr = resp.read_stderr()
+    returncode = resp.returncode
+    resp.close()
+    return returncode, stdout, stderr
+
+
+# Prints the latest raw channel_announcement and channel_updates of the short
+# channel ids ("BxIxO") given as arguments from CLN's gossip_store, announcements
+# first, one "<scid> <ann or direction> <hex>" per line. See common/gossip_store.h
+# in CLN.
+CLN_GOSSIP_DUMP = """
+import glob, struct, sys
+wanted = set(sys.argv[1:])
+def scid(raw):
+    n = int.from_bytes(raw, "big")
+    return f"{n >> 40}x{(n >> 16) & 0xFFFFFF}x{n & 0xFFFF}"
+data = open(glob.glob("/root/.lightning/*/gossip_store")[0], "rb").read()
+pos, found = 1, {}
+while pos + 12 <= len(data):
+    flags, length, _, timestamp = struct.unpack(">HHII", data[pos : pos + 12])
+    msg = data[pos + 12 : pos + 12 + length]
+    pos += 12 + length
+    if flags & 0x8000 or len(msg) < 2:
+        continue
+    kind = int.from_bytes(msg[:2], "big")
+    if kind == 256:
+        offset = 2 + 256 + 2 + int.from_bytes(msg[258:260], "big") + 32
+        key = (scid(msg[offset : offset + 8]), "ann")
+    elif kind == 258:
+        key = (scid(msg[98:106]), msg[111] & 1)
+    else:
+        continue
+    if key[0] in wanted and (key not in found or timestamp >= found[key][0]):
+        found[key] = (timestamp, kind, msg.hex())
+for key, (_, kind, raw) in sorted(found.items(), key=lambda f: f[1][1]):
+    print(key[0], key[1], raw)
+"""
+
+
 class LNNode(ABC):
     @abstractmethod
     def __init__(self, pod_name, pod_namespace, ip_address):
@@ -287,9 +348,10 @@ class LNNode(ABC):
 
 
 class CLN(LNNode):
-    def __init__(self, pod_name, pod_namespace, ip_address):
+    def __init__(self, pod_name, pod_namespace, ip_address, sclient=None):
         super().__init__(pod_name, pod_namespace, ip_address)
         self.headers = {}
+        self.sclient = sclient
         self.impl = "cln"
 
     # A new connection per request, so one node can be used from many threads
@@ -445,6 +507,48 @@ class CLN(LNNode):
     def channel_directions(self):
         res = json.loads(self.post("/v1/listchannels"))
         return {(ch["short_channel_id"], ch["direction"]) for ch in res["channels"]}
+
+    def raw_gossip(self, scids) -> list[tuple[str, str, str]]:
+        """
+        Raw channel_announcements, then channel_updates, of these channels:
+        (short channel id, "ann" or direction, hex message)
+        """
+        rc, stdout, stderr = pod_exec(
+            self.sclient,
+            self.name,
+            self.namespace,
+            "cln",
+            ["python3", "-c", CLN_GOSSIP_DUMP, *sorted(scids)],
+            timeout=120,
+        )
+        if rc != 0:
+            raise Exception(stderr.strip() or f"gossip_store dump exited with {rc}")
+        return [tuple(line.split()) for line in stdout.splitlines() if line.strip()]
+
+    def copy_gossip_from(self, donor: "CLN") -> int:
+        """
+        CLN doesn't fetch channel_announcements or channel_updates it missed again
+        (its gossip peers are expected to stream them). Add the ones donor has.
+        Returns the number of messages added.
+        """
+        have = self.channel_directions()
+        missing = donor.channel_directions() - have
+        if not missing:
+            return 0
+        known = {scid for scid, _ in have}
+        added = 0
+        for scid, kind, raw in donor.raw_gossip({scid for scid, _ in missing}):
+            # Announcements come first, then the updates that need them
+            if kind == "ann" and scid in known:
+                continue
+            if kind != "ann" and (scid, int(kind)) not in missing:
+                continue
+            res = json.loads(self.post("/v1/addgossip", {"message": raw}))
+            if "code" in res and "message" in res:
+                self.log.debug(f"addgossip: {res['message']}")
+            else:
+                added += 1
+        return added
 
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by CLN yet!")
@@ -602,9 +706,6 @@ class ECLAIR(LNNode):
 
 
 class LDK(LNNode):
-    # kubernetes.stream.stream() temporarily patches the shared api client,
-    # so concurrent calls from ln_init threads must not overlap.
-    stream_lock = threading.Lock()
     # Seconds to wait for the wallet to see a funding transaction before restarting
     # ldk-server, the wallet polls bitcoind's mempool every 2 seconds
     WALLET_SYNC_TIMEOUT = 20
@@ -618,25 +719,7 @@ class LDK(LNNode):
     # ldk-server only has a gRPC API (with TLS and macaroon auth), so use
     # its JSON CLI inside the pod which is already configured to reach it.
     def exec(self, command: list, timeout=60) -> tuple[int, str, str]:
-        with self.stream_lock:
-            resp = stream(
-                self.sclient.connect_get_namespaced_pod_exec,
-                name=self.name,
-                namespace=self.namespace,
-                container="ldk",
-                command=command,
-                stderr=True,
-                stdin=False,
-                stdout=True,
-                tty=False,
-                _preload_content=False,
-            )
-        resp.run_forever(timeout=timeout)
-        stdout = resp.read_stdout()
-        stderr = resp.read_stderr()
-        returncode = resp.returncode
-        resp.close()
-        return returncode, stdout, stderr
+        return pod_exec(self.sclient, self.name, self.namespace, "ldk", command, timeout)
 
     def cli(self, *args) -> dict:
         returncode, stdout, stderr = self.exec(["ldk-server-cli", *map(str, args)])
