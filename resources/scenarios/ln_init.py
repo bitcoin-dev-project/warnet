@@ -16,6 +16,7 @@ from ln_framework.ln import (
     GOSSIP_STALL_TIMEOUT,
     LDK_ANCHOR_RESERVE,
     MAX_FUNDING_TXS,
+    PendingChannels,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
@@ -61,6 +62,26 @@ def plan_funding(channels, impls):
     for name, count in ldk_inbound.items():
         funding.append((name, LDK_ANCHOR_RESERVE * count + CHANNEL_FUNDING_BUFFER, None))
     return funding
+
+
+def pending_channel_problems(channels, impls):
+    """
+    Channels their targets would refuse because of the channels pending when they
+    are opened (see PendingChannels). ln_init would retry them forever.
+    """
+    problems = []
+    pending = PendingChannels(impls)
+    by_block = defaultdict(list)
+    for ch in channels:
+        by_block[ch["id"]["block"]].append(ch)
+    for block in sorted(by_block):
+        pending.start_block(block)
+        for ch in sorted(by_block[block], key=lambda ch: ch["id"]["index"]):
+            reason = pending.refusal(ch["source"], ch["target"])
+            if reason:
+                problems.append(f"{ch['id']} {ch['source']} -> {ch['target']}: {reason}")
+            pending.add(ch["source"], ch["target"])
+    return problems
 
 
 def distribute_funds(miner, gen, ln_addrs, funding, log):
@@ -193,6 +214,14 @@ class LNInit(Commander):
             self.log.info("Chain already exists, exiting")
             return
 
+        impls = {name: ln.impl for name, ln in self.lns.items()}
+        problems = pending_channel_problems(self.channels, impls)
+        if problems:
+            raise Exception(
+                "Channels that would be refused, move them to later blocks "
+                "(warnet import-network does):\n  " + "\n  ".join(problems)
+            )
+
         self.log.info("Locking out of IBD...")
         gen(1)
 
@@ -233,7 +262,7 @@ class LNInit(Commander):
         # One next block to confirm the distributed coins
         # Then the channel open TXs go in the expected block height
         gen(CHANNEL_OPEN_START_HEIGHT - 4)
-        funding = plan_funding(self.channels, {name: ln.impl for name, ln in self.lns.items()})
+        funding = plan_funding(self.channels, impls)
         channel_openers = list(dict.fromkeys(name for name, _, _ in funding))
 
         distribute_funds(miner, gen, ln_addrs, funding, self.log)

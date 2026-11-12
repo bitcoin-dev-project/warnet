@@ -17,6 +17,8 @@ from rich.table import Table
 from resources.scenarios.ln_framework.ln import (
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    PENDING_BLOCKS,
+    PendingChannels,
     Policy,
 )
 
@@ -483,6 +485,40 @@ def _select_core(nodes, edges, max_nodes, max_channels):
     return [selected_nodes[pk] for pk in selected], core_edges
 
 
+def _place_channels(channels, tank_to_impl):
+    """
+    Assign each (source, target, edge) a block and index for ln_init to open it at,
+    in order, but moving channels to later blocks where the target would refuse
+    them because of the channels pending then (see PendingChannels).
+    Returns a list of (block, index, channel).
+    """
+    pending = PendingChannels(tank_to_impl)
+    placed = []
+    remaining = channels
+    block = CHANNEL_OPEN_START_HEIGHT
+    empty_blocks = 0
+    while remaining:
+        pending.start_block(block)
+        in_block = []
+        later = []
+        for channel in remaining:
+            source, target, _ = channel
+            if len(in_block) == CHANNEL_OPENS_PER_BLOCK or pending.refusal(source, target):
+                later.append(channel)
+                continue
+            pending.add(source, target)
+            in_block.append(channel)
+        # Leave a block empty while pending channels confirm, ln_init mines through it
+        empty_blocks = 0 if in_block else empty_blocks + 1
+        if empty_blocks > PENDING_BLOCKS:
+            raise Exception(f"Channel can't be placed in any block: {later[0][:2]}")
+        # Coinbase occupies the 0 position!
+        placed += [(block, index, channel) for index, channel in enumerate(in_block, start=1)]
+        remaining = later
+        block += 1
+    return placed
+
+
 def _avoid_eclair_hubs(tank_to_impl, pk_to_tank, edges, impls, seed):
     """Assign another implementation to eclair nodes that would need too much funding"""
     others = [impl for impl in impls if impl != "eclair"]
@@ -553,15 +589,13 @@ def _import_network(
             print(f"  {impl}: {count}")
 
     sorted_edges = sorted(edges, key=lambda x: int(x["channel_id"]))
+    placed = _place_channels(
+        [(pk_to_tank[e["node1_pub"]], pk_to_tank[e["node2_pub"]], e) for e in sorted_edges],
+        tank_to_impl,
+    )
 
-    # Start including channel open txs at this block height
-    block = CHANNEL_OPEN_START_HEIGHT
-    # Coinbase occupies the 0 position!
-    index = 1
     count = 0
-    for edge in sorted_edges:
-        source = pk_to_tank[edge["node1_pub"]]
-        target = pk_to_tank[edge["node2_pub"]]
+    for block, index, (source, target, edge) in placed:
         channel = {
             "id": {"block": block, "index": index},
             "target": target + "-ln",
@@ -574,10 +608,6 @@ def _import_network(
         if tank_to_impl[target] == "lnd":
             channel["target_policy"] = Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict()
         tanks[source][tank_to_impl[source]]["channels"].append(channel)
-        index += 1
-        if index > CHANNEL_OPENS_PER_BLOCK:
-            index = 1
-            block += 1
         count += 1
 
     print(f"Imported {count} channels")
