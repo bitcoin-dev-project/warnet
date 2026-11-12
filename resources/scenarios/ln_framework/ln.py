@@ -268,6 +268,14 @@ class LNNode(ABC):
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         pass
 
+    def channel_directions(self):
+        """
+        Set of (short channel id "BxIxO", direction) of the channel_updates in this
+        node's graph, direction 0 being from the node with the lower public key.
+        None if the implementation doesn't report them.
+        """
+        return None
+
     @abstractmethod
     def pay(self, payment_request) -> tuple[bool, str, int | None]:
         """
@@ -433,6 +441,10 @@ class CLN(LNNode):
         for channel in sorted_channels:
             channel["capacity"] = channel["amount_msat"] // 1000
         return {"edges": sorted_channels}
+
+    def channel_directions(self):
+        res = json.loads(self.post("/v1/listchannels"))
+        return {(ch["short_channel_id"], ch["direction"]) for ch in res["channels"]}
 
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by CLN yet!")
@@ -748,12 +760,15 @@ class LDK(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by LDK yet!")
 
-    def reconnect_channel_peers(self, uris_by_pubkey: dict):
+    def reconnect_channel_peers(self, uris_by_pubkey: dict, only=None):
         # Reconnecting makes both sides resend announcement_signatures for
         # channels that aren't announced yet. Addresses come from the caller
         # because LDK only knows the remote port of incoming connections.
+        # only: reconnect only to these public keys
         try:
             peers = {ch["counterparty_node_id"] for ch in self.cli("list-channels")["channels"]}
+            if only is not None:
+                peers &= set(only)
         except Exception as e:
             self.log.warning(f"Couldn't list channels to reconnect peers: {e}")
             return
@@ -950,6 +965,19 @@ class LND(LNNode):
     def graph(self):
         res = self.get("/v1/graph")
         return json.loads(res)
+
+    def channel_directions(self):
+        directions = set()
+        for edge in self.graph()["edges"]:
+            chan_id = int(edge["channel_id"])
+            scid = f"{chan_id >> 40}x{(chan_id >> 16) & 0xFFFFFF}x{chan_id & 0xFFFF}"
+            # node1 has the lower public key
+            for direction, policy in enumerate(
+                (edge.get("node1_policy"), edge.get("node2_policy"))
+            ):
+                if policy:
+                    directions.add((scid, direction))
+        return directions
 
 
 def _get_lnd_semver(pod):
