@@ -555,13 +555,24 @@ class LNInit(Commander):
 
         # Channel count in each node's graph, to detect when gossip stalls
         graph_counts = {}
+        # (short channel id, direction) of every channel_update any node has
+        known_directions = set()
+        directions_lock = threading.Lock()
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
             actual = 0
             while actual != expected:
                 try:
-                    actual = len(ln.graph()["edges"])
+                    directions = ln.channel_directions()
+                    if directions is None:
+                        actual = len(ln.graph()["edges"])
+                    else:
+                        # Only count channels with the updates of both directions
+                        scids = Counter(scid for scid, _ in directions)
+                        actual = sum(count == 2 for count in scids.values())
+                        with directions_lock:
+                            known_directions.update(directions)
                     graph_counts[ln.name] = actual
                     if actual == expected:
                         self.log.info(f"LN {ln.name} has graph with all {expected} channels")
@@ -582,12 +593,31 @@ class LNInit(Commander):
             sleep(0.25)
             thread.start()
 
-        # If no graph has grown for a while, reconnect nodes to their channel peers:
-        # - An LDK node can end up never announcing a channel because the exchange
-        #   of announcement_signatures with its peer didn't complete. Reconnecting
-        #   makes both sides resend them.
+        # If no graph has grown for a while, reconnect nodes to channel peers:
+        # - An LDK node can end up never announcing a channel or never sending its
+        #   channel_update because the exchange of announcement_signatures with its
+        #   peer didn't complete. Reconnecting makes both sides resend them. Only
+        #   reconnect those, every reconnection disrupts the gossip of both nodes
+        #   (CLN can lose updates for good when its gossip peers disconnect).
         # - Eclair only runs a full gossip sync with a channel peer on connection.
         uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
+        pubkeys = {name: uri.split("@")[0] for name, uri in ln_uris.items()}
+
+        def ldk_updates_missing():
+            """{LDK node: peers} of channels whose LDK side update no node has"""
+            missing = defaultdict(set)
+            with directions_lock:
+                known = set(known_directions)
+            for ch in self.channels:
+                scid = f"{ch['id']['block']}x{ch['id']['index']}x{ch['outpoint'].split(':')[1]}"
+                for node, peer in ((ch["source"], ch["target"]), (ch["target"], ch["source"])):
+                    if self.lns[node].impl != "ldk":
+                        continue
+                    direction = 0 if pubkeys[node] < pubkeys[peer] else 1
+                    if (scid, direction) not in known:
+                        missing[node].add(pubkeys[peer])
+            return missing
+
         last_counts = None
         last_progress = time()
         while any(thread.is_alive() for thread in ch_ann_threads):
@@ -599,19 +629,24 @@ class LNInit(Commander):
                 continue
             if time() - last_progress < GOSSIP_STALL_TIMEOUT:
                 continue
+            missing = ldk_updates_missing()
             self.log.info(
-                f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, "
-                "reconnecting LDK nodes and incomplete eclair nodes to their channel peers..."
+                f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, reconnecting "
+                f"{len(missing)} LDK nodes to peers of channels whose LDK update no node has, "
+                "and incomplete eclair nodes to their channel peers..."
             )
             reconnect_threads = []
             for ln in self.lns.values():
-                # An LDK node's own graph may be complete while the rest of the
-                # network misses its channel updates
                 incomplete = last_counts.get(ln.name, 0) < len(self.channels)
-                if ln.impl == "ldk" or (ln.impl == "eclair" and ln in gossip_lns and incomplete):
-                    t = threading.Thread(target=ln.reconnect_channel_peers, args=(uris_by_pubkey,))
-                    t.start()
-                    reconnect_threads.append(t)
+                if ln.name in missing:
+                    args = (uris_by_pubkey, missing[ln.name])
+                elif ln.impl == "eclair" and ln in gossip_lns and incomplete:
+                    args = (uris_by_pubkey,)
+                else:
+                    continue
+                t = threading.Thread(target=ln.reconnect_channel_peers, args=args)
+                t.start()
+                reconnect_threads.append(t)
             all(thread.join() is None for thread in reconnect_threads)
             last_progress = time()
 

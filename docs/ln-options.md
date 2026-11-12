@@ -104,7 +104,7 @@ When `warnet deploy` finds any `lnd.channels`, `cln.channels`, `eclair.channels`
    - Mines the block
    - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not (see [Eclair options](#eclair-options-eclair) and [LDK options](#ldk-options-ldk) for exceptions)
 6. **Mine 5 confirmation blocks** — waits for channels to reach the required confirmation depth.
-7. **Wait for gossip sync** — polls every LN node until each one reports the full set of channels in its graph.
+7. **Wait for gossip sync** — polls every LN node until each one reports the full set of channels in its graph. LND and CLN nodes must also have the `channel_update` of both directions of every channel; eclair and LDK don't report updates in their graph, so only their announcements are counted. If no graph grows for 60 seconds, `ln_init` reconnects only the LDK nodes whose own `channel_update` no LND or CLN node has to the peer of that channel (LDK resends its announcement signatures and update on reconnection), and incomplete eclair nodes to their channel peers.
 8. **Apply channel policies** — for any channel that defined `source_policy` or `target_policy`, sends an `UpdateChannelPolicy` to the respective node and waits for the policy to propagate across the network.
 
 The terminal will stream `ln_init` log output during this process. On large networks it can take several minutes.
