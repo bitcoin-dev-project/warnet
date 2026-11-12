@@ -54,6 +54,14 @@ FUNDING_OUTPUTS_PER_TX = 1500
 MAX_FUNDING_TXS = 14
 # Fee set aside for each funding transaction
 FUNDING_TX_FEE = 10_000_000  # sats
+# Unconfirmed incoming channels nodes accept from one peer: LDK's limit is hard
+# coded (MAX_UNFUNDED_CHANS_PER_PEER), LND's is maxpendingchannels in the chart.
+# ln_init opens all channels of a block before mining it, so a block can't
+# hold more channels from one peer to a node than that.
+MAX_PENDING_CHANNELS_PER_PEER = {"ldk": 4, "lnd": 64}
+# LDK refuses incoming channels from new peers once this many peers only have
+# unconfirmed incoming channels with it (MAX_UNFUNDED_CHANNEL_PEERS)
+LDK_MAX_UNFUNDED_PEERS = 50
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
 # Seconds pay() waits for a payment to succeed or fail, below the 60 second

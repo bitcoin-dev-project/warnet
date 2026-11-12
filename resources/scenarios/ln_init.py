@@ -15,7 +15,9 @@ from ln_framework.ln import (
     FUNDING_TX_FEE,
     GOSSIP_STALL_TIMEOUT,
     LDK_ANCHOR_RESERVE,
+    LDK_MAX_UNFUNDED_PEERS,
     MAX_FUNDING_TXS,
+    MAX_PENDING_CHANNELS_PER_PEER,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
@@ -61,6 +63,43 @@ def plan_funding(channels, impls):
     for name, count in ldk_inbound.items():
         funding.append((name, LDK_ANCHOR_RESERVE * count + CHANNEL_FUNDING_BUFFER, None))
     return funding
+
+
+def pending_channel_problems(channels, impls):
+    """
+    Blocks with more channels than their targets accept before the block is mined
+    (all channels of a block are opened first). ln_init would retry them forever.
+    """
+    problems = []
+    funded = set()
+    by_block = defaultdict(list)
+    for ch in channels:
+        by_block[ch["id"]["block"]].append(ch)
+    for block in sorted(by_block):
+        per_pair = Counter((ch["source"], ch["target"]) for ch in by_block[block])
+        for (source, target), count in sorted(per_pair.items()):
+            limit = MAX_PENDING_CHANNELS_PER_PEER.get(impls[target])
+            if limit is not None and count > limit:
+                problems.append(
+                    f"block {block}: {count} channels {source} -> {target}, "
+                    f"{impls[target]} accepts at most {limit} unconfirmed channels from a peer"
+                )
+        new_peers = defaultdict(set)
+        for ch in by_block[block]:
+            if (
+                impls[ch["target"]] == "ldk"
+                and frozenset((ch["source"], ch["target"])) not in funded
+            ):
+                new_peers[ch["target"]].add(ch["source"])
+        for target, peers in sorted(new_peers.items()):
+            if len(peers) > LDK_MAX_UNFUNDED_PEERS:
+                problems.append(
+                    f"block {block}: {len(peers)} new peers open channels to {target}, LDK accepts "
+                    f"unconfirmed channels from at most {LDK_MAX_UNFUNDED_PEERS} peers without "
+                    "a confirmed channel"
+                )
+        funded.update(frozenset((ch["source"], ch["target"])) for ch in by_block[block])
+    return problems
 
 
 def distribute_funds(miner, gen, ln_addrs, funding, log):
@@ -193,6 +232,14 @@ class LNInit(Commander):
             self.log.info("Chain already exists, exiting")
             return
 
+        impls = {name: ln.impl for name, ln in self.lns.items()}
+        problems = pending_channel_problems(self.channels, impls)
+        if problems:
+            raise Exception(
+                "Channels that would be refused, move them to later blocks "
+                "(warnet import-network does):\n  " + "\n  ".join(problems)
+            )
+
         self.log.info("Locking out of IBD...")
         gen(1)
 
@@ -233,7 +280,7 @@ class LNInit(Commander):
         # One next block to confirm the distributed coins
         # Then the channel open TXs go in the expected block height
         gen(CHANNEL_OPEN_START_HEIGHT - 4)
-        funding = plan_funding(self.channels, {name: ln.impl for name, ln in self.lns.items()})
+        funding = plan_funding(self.channels, impls)
         channel_openers = list(dict.fromkeys(name for name, _, _ in funding))
 
         distribute_funds(miner, gen, ln_addrs, funding, self.log)

@@ -17,6 +17,8 @@ from rich.table import Table
 from resources.scenarios.ln_framework.ln import (
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    LDK_MAX_UNFUNDED_PEERS,
+    MAX_PENDING_CHANNELS_PER_PEER,
     Policy,
 )
 
@@ -483,6 +485,51 @@ def _select_core(nodes, edges, max_nodes, max_channels):
     return [selected_nodes[pk] for pk in selected], core_edges
 
 
+def _place_channels(channels, tank_to_impl):
+    """
+    Assign each (source, target, edge) a block and index for ln_init to open it at,
+    in order, but moving channels to later blocks where the target would refuse
+    them: ln_init opens all channels of a block before it mines the block.
+    Returns a list of (block, index, channel).
+    """
+    placed = []
+    remaining = channels
+    block = CHANNEL_OPEN_START_HEIGHT
+    # Pairs of nodes with a channel confirmed in an earlier block
+    funded = set()
+    while remaining:
+        in_block = []
+        later = []
+        per_pair = Counter()
+        new_peers = defaultdict(set)
+        for channel in remaining:
+            source, target, _ = channel
+            pair = frozenset((source, target))
+            limit = MAX_PENDING_CHANNELS_PER_PEER.get(tank_to_impl[target])
+            ldk_new_peer = tank_to_impl[target] == "ldk" and pair not in funded
+            if (
+                len(in_block) == CHANNEL_OPENS_PER_BLOCK
+                or (limit is not None and per_pair[(source, target)] >= limit)
+                or (
+                    ldk_new_peer
+                    and source not in new_peers[target]
+                    and len(new_peers[target]) >= LDK_MAX_UNFUNDED_PEERS
+                )
+            ):
+                later.append(channel)
+                continue
+            per_pair[(source, target)] += 1
+            if ldk_new_peer:
+                new_peers[target].add(source)
+            in_block.append(channel)
+        # Coinbase occupies the 0 position!
+        placed += [(block, index, channel) for index, channel in enumerate(in_block, start=1)]
+        funded.update(frozenset((source, target)) for source, target, _ in in_block)
+        remaining = later
+        block += 1
+    return placed
+
+
 def _avoid_eclair_hubs(tank_to_impl, pk_to_tank, edges, impls, seed):
     """Assign another implementation to eclair nodes that would need too much funding"""
     others = [impl for impl in impls if impl != "eclair"]
@@ -553,15 +600,13 @@ def _import_network(
             print(f"  {impl}: {count}")
 
     sorted_edges = sorted(edges, key=lambda x: int(x["channel_id"]))
+    placed = _place_channels(
+        [(pk_to_tank[e["node1_pub"]], pk_to_tank[e["node2_pub"]], e) for e in sorted_edges],
+        tank_to_impl,
+    )
 
-    # Start including channel open txs at this block height
-    block = CHANNEL_OPEN_START_HEIGHT
-    # Coinbase occupies the 0 position!
-    index = 1
     count = 0
-    for edge in sorted_edges:
-        source = pk_to_tank[edge["node1_pub"]]
-        target = pk_to_tank[edge["node2_pub"]]
+    for block, index, (source, target, edge) in placed:
         channel = {
             "id": {"block": block, "index": index},
             "target": target + "-ln",
@@ -574,10 +619,6 @@ def _import_network(
         if tank_to_impl[target] == "lnd":
             channel["target_policy"] = Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict()
         tanks[source][tank_to_impl[source]]["channels"].append(channel)
-        index += 1
-        if index > CHANNEL_OPENS_PER_BLOCK:
-            index = 1
-            block += 1
         count += 1
 
     print(f"Imported {count} channels")
