@@ -151,6 +151,59 @@ def distribute_funds(miner, gen, ln_addrs, funding, log):
     log.info(f"Funds distributed, remaining miner balance: {miner.getbalance()}")
 
 
+def good_enough(progress, names, total, min_nodes, min_channels):
+    """
+    Gossip is never perfect on large networks: accept when enough nodes are
+    complete and every node is close.
+    """
+    if not names:
+        return True
+    done = sum(progress.get(name, 0) >= total for name in names)
+    worst = min(progress.get(name, 0) for name in names)
+    return done >= min_nodes * len(names) and worst >= min_channels * total
+
+
+def wait_for_phase(log, options, phase, threads, progress, names, total, stop, on_stall=None):
+    """
+    Wait for the threads of a phase, one per LN node, each reporting its node's
+    progress out of total in progress. When nothing progresses for
+    GOSSIP_STALL_TIMEOUT seconds, run on_stall to repair, and after at least
+    one repair accept the phase if it is good enough.
+    """
+    last = None
+    last_progress = time()
+    stalls = 0
+    while any(thread.is_alive() for thread in threads):
+        sleep(5)
+        snapshot = dict(progress)
+        if snapshot != last:
+            last = snapshot
+            last_progress = time()
+            continue
+        if time() - last_progress < GOSSIP_STALL_TIMEOUT:
+            continue
+        stalls += 1
+        if stalls > (1 if on_stall else 0) and good_enough(
+            snapshot, names, total, options.gossip_min_nodes, options.gossip_min_channels
+        ):
+            incomplete = {
+                name: total - snapshot.get(name, 0)
+                for name in names
+                if snapshot.get(name, 0) < total
+            }
+            log.warning(
+                f"{phase} stalled, continuing with {len(names) - len(incomplete)} of "
+                f"{len(names)} nodes complete. Missing per node: {incomplete}"
+            )
+            stop.set()
+            break
+        log.info(f"{phase} stalled for {GOSSIP_STALL_TIMEOUT} seconds")
+        if on_stall:
+            on_stall(snapshot)
+        last_progress = time()
+    all(thread.join() is None for thread in threads)
+
+
 class LNInit(Commander):
     def set_test_params(self):
         self.num_nodes = None
@@ -158,6 +211,22 @@ class LNInit(Commander):
     def add_options(self, parser):
         parser.description = "Fund LN wallets and open channels"
         parser.usage = "warnet run /path/to/ln_init.py"
+        parser.add_argument(
+            "--gossip-min-nodes",
+            dest="gossip_min_nodes",
+            type=float,
+            default=0.9,
+            help="When gossip stalls, continue if this fraction of LN nodes has the complete "
+            "graph (and policies) (default 0.9, 1 waits for all)",
+        )
+        parser.add_argument(
+            "--gossip-min-channels",
+            dest="gossip_min_channels",
+            type=float,
+            default=0.99,
+            help="When gossip stalls, continue if every LN node has this fraction of the "
+            "channels (and policies) (default 0.99)",
+        )
         parser.add_argument(
             "--miner",
             dest="miner",
@@ -558,11 +627,12 @@ class LNInit(Commander):
         # (short channel id, direction) of every channel_update any node has
         known_directions = set()
         directions_lock = threading.Lock()
+        gossip_stop = threading.Event()
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
             actual = 0
-            while actual != expected:
+            while actual != expected and not gossip_stop.is_set():
                 try:
                     directions = ln.channel_directions()
                     if directions is None:
@@ -593,31 +663,38 @@ class LNInit(Commander):
             sleep(0.25)
             thread.start()
 
-        # If no graph has grown for a while, reconnect nodes to channel peers:
-        # - An LDK node can end up never announcing a channel or never sending its
-        #   channel_update because the exchange of announcement_signatures with its
-        #   peer didn't complete. Reconnecting makes both sides resend them. Only
-        #   reconnect those, every reconnection disrupts the gossip of both nodes
-        #   (CLN can lose updates for good when its gossip peers disconnect).
-        # - Eclair only runs a full gossip sync with a channel peer on connection.
+        # When gossip stalls, reconnect the peers of channels that may be stuck:
+        # - Channels no node has announced: their peers can wait for each other's
+        #   channel_ready or announcement_signatures forever, e.g. CLN waiting for
+        #   LND's channel_reestablish. A new connection makes both resend them.
+        # - Channels whose LDK side update no node has: LDK sometimes never sends
+        #   it, it does on reconnection.
+        # - Incomplete eclair nodes: eclair only runs a full gossip sync with a
+        #   channel peer on connection.
+        # Only reconnect those, every reconnection disrupts the gossip of both nodes.
         # CLN doesn't fetch gossip it missed again, copy it from a complete CLN node.
         uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
         pubkeys = {name: uri.split("@")[0] for name, uri in ln_uris.items()}
 
-        def ldk_updates_missing():
-            """{LDK node: peers} of channels whose LDK side update no node has"""
-            missing = defaultdict(set)
+        def stuck_channel_peers():
+            """{LN node: peers} to reconnect, see above"""
+            peers = defaultdict(set)
             with directions_lock:
                 known = set(known_directions)
+            # Without LND or CLN nodes, nothing is known about announcements
+            known_scids = {scid for scid, _ in known}
             for ch in self.channels:
                 scid = f"{ch['id']['block']}x{ch['id']['index']}x{ch['outpoint'].split(':')[1]}"
+                if known_scids and scid not in known_scids:
+                    peers[ch["source"]].add(pubkeys[ch["target"]])
+                    continue
                 for node, peer in ((ch["source"], ch["target"]), (ch["target"], ch["source"])):
                     if self.lns[node].impl != "ldk":
                         continue
                     direction = 0 if pubkeys[node] < pubkeys[peer] else 1
                     if (scid, direction) not in known:
-                        missing[node].add(pubkeys[peer])
-            return missing
+                        peers[node].add(pubkeys[peer])
+            return peers
 
         def copy_cln_gossip(counts):
             expected = len(self.channels)
@@ -642,41 +719,40 @@ class LNInit(Commander):
                 thread.start()
             all(thread.join() is None for thread in copy_threads)
 
-        last_counts = None
-        last_progress = time()
-        while any(thread.is_alive() for thread in ch_ann_threads):
-            sleep(5)
-            counts = dict(graph_counts)
-            if counts != last_counts:
-                last_counts = counts
-                last_progress = time()
-                continue
-            if time() - last_progress < GOSSIP_STALL_TIMEOUT:
-                continue
-            missing = ldk_updates_missing()
+        def repair_gossip(counts):
+            stuck = stuck_channel_peers()
             self.log.info(
-                f"Channel gossip stalled for {GOSSIP_STALL_TIMEOUT} seconds, reconnecting "
-                f"{len(missing)} LDK nodes to peers of channels whose LDK update no node has, "
-                "and incomplete eclair nodes to their channel peers..."
+                f"Reconnecting {sum(len(p) for p in stuck.values())} channel peers of {len(stuck)} "
+                "nodes (channels no node has announced, LDK updates no node has) and "
+                "incomplete eclair nodes to their channel peers..."
             )
             reconnect_threads = []
             for ln in self.lns.values():
-                incomplete = last_counts.get(ln.name, 0) < len(self.channels)
-                if ln.name in missing:
-                    args = (uris_by_pubkey, missing[ln.name])
-                elif ln.impl == "eclair" and ln in gossip_lns and incomplete:
+                incomplete = counts.get(ln.name, 0) < len(self.channels)
+                if ln.impl == "eclair" and ln in gossip_lns and incomplete:
                     args = (uris_by_pubkey,)
+                elif ln.name in stuck:
+                    args = (uris_by_pubkey, stuck[ln.name])
                 else:
                     continue
                 t = threading.Thread(target=ln.reconnect_channel_peers, args=args)
                 t.start()
                 reconnect_threads.append(t)
             all(thread.join() is None for thread in reconnect_threads)
-            copy_cln_gossip(last_counts)
-            last_progress = time()
+            copy_cln_gossip(counts)
 
-        all(thread.join() is None for thread in ch_ann_threads)
-        self.log.info("All LN nodes have complete graph")
+        wait_for_phase(
+            self.log,
+            self.options,
+            "Channel gossip",
+            ch_ann_threads,
+            graph_counts,
+            [ln.name for ln in gossip_lns],
+            len(self.channels),
+            gossip_stop,
+            repair_gossip,
+        )
+        self.log.info("LN nodes have the channel graph")
 
         ##
         # UPDATE CHANNEL POLICIES
@@ -749,9 +825,17 @@ class LNInit(Commander):
         def policy_equal(pol1, pol2, capacity):
             return pol1.to_lnd_chanpolicy(capacity) == pol2.to_lnd_chanpolicy(capacity)
 
-        def matching_graph(self, expected, ln):
-            done = False
-            while not done:
+        # Only LND reports both channel policies in its graph
+        expected_policies = {
+            (ch["id"]["block"], ch["id"]["index"]): ch
+            for ch in self.channels
+            if "source_policy" in ch and "target_policy" in ch
+        }
+        policy_counts = {}
+        policy_stop = threading.Event()
+
+        def matching_graph(self, ln):
+            while not policy_stop.is_set():
                 try:
                     actual = ln.graph()["edges"]
                 except Exception as e:
@@ -760,64 +844,71 @@ class LNInit(Commander):
                     )
                     sleep(5)
                     continue
-
-                self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
-                if len(actual) > 0:
-                    done = True
-                    assert len(expected) == len(actual), (
-                        f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
-                    )
-                for i, actual_ch in enumerate(actual):
-                    expected_ch = expected[i]
+                matched = 0
+                present = 0
+                for actual_ch in actual:
+                    chan_id = int(actual_ch["channel_id"])
+                    expected_ch = expected_policies.get((chan_id >> 40, (chan_id >> 16) & 0xFFFFFF))
+                    if expected_ch is None:
+                        continue
+                    present += 1
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
                     # If this fails we have a bigger issue.
-                    # Eclair does not report capacity of channels in its graph.
-                    if "capacity" in actual_ch:
-                        assert int(actual_ch["capacity"]) == capacity, (
-                            f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
-                        )
-
-                    # Policies were not defined in network.yaml
-                    if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
+                    assert int(actual_ch["capacity"]) == capacity, (
+                        f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
+                    )
+                    if not actual_ch.get("node1_policy") or not actual_ch.get("node2_policy"):
                         continue
-
-                    # Only LND reports both channel policies in its graph
-                    if ln.impl != "lnd":
-                        continue
-
                     # policy actual/expected source/target
                     polas = Policy.from_lnd_describegraph(actual_ch["node1_policy"])
                     polat = Policy.from_lnd_describegraph(actual_ch["node2_policy"])
                     poles = Policy(**expected_ch["source_policy"])
                     polet = Policy(**expected_ch["target_policy"])
                     # Allow policy swap when comparing channels
-                    if policy_equal(polas, poles, capacity) and policy_equal(
-                        polat, polet, capacity
+                    if (
+                        policy_equal(polas, poles, capacity)
+                        and policy_equal(polat, polet, capacity)
+                    ) or (
+                        policy_equal(polas, polet, capacity)
+                        and policy_equal(polat, poles, capacity)
                     ):
-                        continue
-                    if policy_equal(polas, polet, capacity) and policy_equal(
-                        polat, poles, capacity
-                    ):
-                        continue
-                    done = False
-                if done:
-                    self.log.info(f"LN {ln.name} graph channel policies all match expected source")
-                else:
-                    sleep(5)
+                        matched += 1
+                # Channels missing from this node's graph were accepted in the
+                # gossip phase, only check the policies of the others
+                policy_counts[ln.name] = matched + len(expected_policies) - present
+                if matched == present:
+                    self.log.info(
+                        f"LN {ln.name} graph channel policies all match expected source "
+                        f"({present} of {len(expected_policies)} channels in its graph)"
+                    )
+                    return
+                self.log.info(
+                    f"LN {ln.name} has {matched} of {present} expected policies in its graph"
+                )
+                sleep(5)
 
-        expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
+        policy_lns = [ln for ln in gossip_lns if ln.impl == "lnd"]
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln)) for ln in gossip_lns
+            threading.Thread(target=matching_graph, args=(self, ln)) for ln in policy_lns
         ]
         for thread in policy_threads:
             sleep(0.25)
             thread.start()
 
-        all(thread.join() is None for thread in policy_threads)
+        wait_for_phase(
+            self.log,
+            self.options,
+            "Channel policy gossip",
+            policy_threads,
+            policy_counts,
+            [ln.name for ln in policy_lns],
+            len(expected_policies),
+            policy_stop,
+        )
         if thread_errors:
             raise Exception(f"{len(thread_errors)} ln_init thread(s) failed: {thread_errors}")
-        self.log.info("All LN nodes have matching graph!")
+        self.log.info("LN nodes have matching graph!")
 
 
 def main():

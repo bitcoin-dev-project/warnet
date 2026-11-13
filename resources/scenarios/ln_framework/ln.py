@@ -329,6 +329,25 @@ class LNNode(ABC):
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         pass
 
+    def disconnect(self, pk):
+        raise NotImplementedError(f"disconnect not supported by {self.impl}")
+
+    def reconnect_channel_peers(self, uris_by_pubkey: dict, only=None):
+        """
+        Disconnect and connect again to the peers in only. A new connection makes
+        both sides exchange channel_reestablish and resend what the other may have
+        missed, e.g. channel_ready or announcement_signatures.
+        """
+        for pk in only or []:
+            if pk not in uris_by_pubkey:
+                continue
+            try:
+                self.disconnect(pk)
+                self.connect(uris_by_pubkey[pk])
+                self.log.info(f"Reconnected to channel peer {pk}")
+            except Exception as e:
+                self.log.warning(f"Couldn't reconnect to channel peer {pk}: {e}")
+
     def channel_directions(self):
         """
         Set of (short channel id "BxIxO", direction) of the channel_updates in this
@@ -503,6 +522,11 @@ class CLN(LNNode):
         for channel in sorted_channels:
             channel["capacity"] = channel["amount_msat"] // 1000
         return {"edges": sorted_channels}
+
+    def disconnect(self, pk):
+        res = json.loads(self.post("/v1/disconnect", {"id": pk, "force": True}))
+        if "code" in res and "message" in res:
+            raise Exception(res["message"])
 
     def channel_directions(self):
         res = json.loads(self.post("/v1/listchannels"))
@@ -686,11 +710,13 @@ class ECLAIR(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by ECLAIR yet!")
 
-    def reconnect_channel_peers(self, uris_by_pubkey: dict):
+    def reconnect_channel_peers(self, uris_by_pubkey: dict, only=None):
         # Eclair only runs a full gossip sync with a channel peer when the
         # connection is established, so reconnecting fetches what it missed.
         try:
             peers = {ch["nodeId"] for ch in self.post("/channels")}
+            if only is not None:
+                peers &= set(only)
         except Exception as e:
             self.log.warning(f"Couldn't list channels to reconnect peers: {e}")
             return
@@ -978,6 +1004,13 @@ class LND(LNNode):
         res = self.get("/v1/getinfo")
         info = json.loads(res)
         return info["uris"][0]
+
+    def disconnect(self, pk):
+        conn = self.new_connection()
+        conn.request(method="DELETE", url=f"/v1/peers/{pk}", headers=self.headers)
+        res = json.loads(conn.getresponse().read().decode("utf8"))
+        if "code" in res and "message" in res:
+            raise Exception(res["message"])
 
     def connect(self, target_uri):
         pk, host = target_uri.split("@")
