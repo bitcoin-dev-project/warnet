@@ -802,16 +802,25 @@ class LDK(LNNode):
         user_channel_id = res["user_channel_id"]
         # The funding transaction is created asynchronously after the
         # channel open is negotiated with the peer.
-        # The channel is already open so don't raise and let the caller retry.
         while True:
             try:
-                for ch in self.cli("list-channels")["channels"]:
-                    if ch["user_channel_id"] == user_channel_id and ch.get("funding_txo"):
-                        txid = ch["funding_txo"]["txid"]
-                        return {"txid": txid, "outpoint": f"{txid}:{ch['funding_txo']['vout']}"}
-                self.log.info(f"Waiting for funding tx of channel {user_channel_id}")
+                channels = self.cli("list-channels")["channels"]
             except Exception as e:
                 self.log.warning(f"Couldn't get outpoint of channel {user_channel_id}: {e}")
+                sleep(1)
+                continue
+            channel = next(
+                (ch for ch in channels if ch["user_channel_id"] == user_channel_id), None
+            )
+            # The peer refused the channel during negotiation and it was closed,
+            # e.g. LDK peers refusing more than 4 unconfirmed channels before they
+            # processed the last block. Let the caller retry.
+            if channel is None:
+                raise Exception(f"channel {user_channel_id} to {pk} was closed before funding")
+            if channel.get("funding_txo"):
+                txid = channel["funding_txo"]["txid"]
+                return {"txid": txid, "outpoint": f"{txid}:{channel['funding_txo']['vout']}"}
+            self.log.info(f"Waiting for funding tx of channel {user_channel_id}")
             sleep(1)
 
     def createinvoice(self, sats, label) -> str:
