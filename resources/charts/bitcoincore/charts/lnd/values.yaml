@@ -128,6 +128,9 @@ baseConfig: |
   bitcoin.active=true
   bitcoin.node=bitcoind
   maxpendingchannels=64
+  # Incoming connections from peers without a channel (default 100). ln_init
+  # connects every channel's peers before opening any, so hubs need more.
+  num-restricted-slots=10000
   trickledelay=1
   rpclisten=0.0.0.0:10009
   bitcoind.rpcuser=user

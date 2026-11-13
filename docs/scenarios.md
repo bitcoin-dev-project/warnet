@@ -75,6 +75,24 @@ Successfully stopped scenario: commander-minerstd-1724708498
 Total Tanks: 6 | Active Scenarios: 0
 ```
 
+## Lightning payment activity
+
+The [`ln_activity`](../resources/scenarios/ln_activity.py) scenario creates a storm of parallel Lightning payments. Each thread repeatedly picks two random LN nodes, creates an invoice on one and pays it from the other. It works with every LN implementation warnet supports, unlike [SimLN](plugins.md), which doesn't support LDK yet.
+
+```bash
+warnet run resources/scenarios/ln_activity.py --threads=20 --interval=0.5 --min-amount=1000 --max-amount=5000
+```
+
+Each thread waits for the result of its payment (up to 50 seconds) before starting the next one, and logs it on one line with the amount, number of hops (`?` if the sender doesn't report its route: CLN and LDK), duration and failure reason, in aligned columns. Payments between nodes without a route, e.g. an eclair node without channels, fail and are logged as such. Pass `--payments=N` to stop each thread after N payments instead of running forever.
+
+Every 60 seconds (`--report-interval`), and when the scenario ends, it logs a report of all payments so far:
+
+- attempted, succeeded and failed payments for each sender -> receiver implementation pair, each with their range of amounts, number of payments by number of hops and average duration
+- failure reasons grouped by implementation pair, ignoring ids and amounts, with the same amount, hops and duration summary and an example of each
+- the nodes with the most failures as sender and as receiver
+
+Reasons come from the sender: LND's failure reason, CLN's error message, or eclair's failures for each attempt. LDK Server doesn't report why a payment failed, only that it did. Look up the payment id in the sender's log, e.g. `warnet logs <ldk node> | grep <payment id>`.
+
 ## Running a custom scenario
 
 You can write your own scenario file and run it in the same way.

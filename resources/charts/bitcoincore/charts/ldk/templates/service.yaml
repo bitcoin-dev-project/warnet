@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ldk.fullname" . }}
+  labels:
+    {{- include "ldk.labels" . | nindent 4 }}
+    app: {{ include "ldk.fullname" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.P2PPort }}
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.p2pNodePort) }}
+      nodePort: {{ .Values.service.p2pNodePort }}
+      {{- end }}
+    - port: {{ .Values.RPCPort }}
+      targetPort: rpc
+      protocol: TCP
+      name: rpc
+      {{- if and (eq .Values.service.type "NodePort") (.Values.service.rpcNodePort) }}
+      nodePort: {{ .Values.service.rpcNodePort }}
+      {{- end }}
+  selector:
+    {{- include "ldk.selectorLabels" . | nindent 4 }}

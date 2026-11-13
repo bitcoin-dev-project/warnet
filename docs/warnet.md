@@ -47,6 +47,7 @@ options:
 | debug        | Bool   |            | False     |
 | namespace    | String |            |           |
 | to_all_users | Bool   |            | False     |
+| jobs         | Int    |            | 16        |
 
 ### `warnet down`
 Bring down a running warnet carefully.
@@ -69,6 +70,10 @@ options:
 |-----------------|--------|------------|-----------|
 | graph_file_path | Path   | yes        |           |
 | output_path     | Path   | yes        |           |
+| ln_impls        | String |            | "lnd"     |
+| seed            | Int    |            |           |
+| max_nodes       | Int    |            |           |
+| max_channels    | Int    |            |           |
 
 ### `warnet init`
 Initialize a warnet project in the current directory
@@ -135,6 +140,16 @@ options:
 ### `warnet status`
 Display the unified status of the Warnet network and active scenarios
 
+
+### `warnet top`
+Show cluster resource usage, to judge if the cluster fits the network and scenarios
+
+options:
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| watch    | Float  |            |           |
+| num_pods | Int    |            | 10        |
+| yes      | Bool   |            | False     |
 
 ### `warnet stop`
 Stop a running scenario or all scenarios.

@@ -1,13 +1,15 @@
 # LN Options
 
-Lightning Network nodes are attached to Bitcoin Core tanks via the `ln:` key. Configuration specific to each implementation lives under a matching top-level key (`lnd:` or `cln:`).
+Lightning Network nodes are attached to Bitcoin Core tanks via the `ln:` key. Configuration specific to each implementation lives under a matching top-level key (`lnd:`, `cln:`, `eclair:` or `ldk:`).
 
-Two implementations are available:
+Four implementations are available:
 
 | Key | Implementation | Default image |
 |-----|---------------|---------------|
 | `ln.lnd: true` | [LND](https://github.com/lightningnetwork/lnd) by Lightning Labs | `lightninglabs/lnd:v0.20.1-beta` |
 | `ln.cln: true` | [Core Lightning](https://github.com/ElementsProject/lightning) by Blockstream | `elementsproject/lightningd:v25.02` |
+| `ln.eclair: true` | [Eclair](https://github.com/ACINQ/eclair) by ACINQ | `bitcoindevproject/eclair:v0.14.4` |
+| `ln.ldk: true` | [LDK Server](https://github.com/lightningdevkit/ldk-server) by the LDK team | `bitcoindevproject/ldk-server:c17dc11` |
 
 Only one implementation may be enabled per node.
 
@@ -85,27 +87,42 @@ lnd:
 
 #### What `ln_init` does automatically
 
-When `warnet deploy` finds any `lnd.channels` or `cln.channels` entry — in `network.yaml` or `node-defaults.yaml` — it runs `resources/scenarios/ln_init.py` as the final deploy step and streams its logs to the terminal. The full sequence is:
+When `warnet deploy` finds any `lnd.channels`, `cln.channels`, `eclair.channels` or `ldk.channels` entry — in `network.yaml` or `node-defaults.yaml` — it runs `resources/scenarios/ln_init.py` as the final deploy step and streams its logs to the terminal. The full sequence is:
 
 1. **Wait for L1 p2p** — holds until all Bitcoin Core nodes have established their connections from `addnode`.
 2. **Mine to near channel-open height** — mines to block 496 (four blocks before the default `id.block` start of 500), building a usable chain. A node named `miner` is used as the block source; if none exists, the first node in the network is used instead.
-3. **Fund LN wallets** — constructs a single transaction that sends 10 UTXOs to the on-chain wallet of every node that opens at least one channel. These UTXOs are sized so that the change output always lands at tx output index 1, leaving the channel funding output at index 0 — which is what makes channel IDs deterministic.
+3. **Fund LN wallets** — sends every node that opens channels one UTXO per channel, so it can open several channels in the same block from confirmed coins, and fails early if the miner doesn't have enough. Each UTXO holds the channel's capacity plus 100,000 sats for the fee and on-chain reserves:
+   - LND gets twice the capacity, so the change output is larger than the channel and LND (which sorts outputs by amount) puts the channel at output 0, which is what makes channel IDs deterministic. LND and CLN are told which UTXO to fund each channel with, so a small channel can't take the UTXO meant for a large one.
+   - Eclair's Bitcoin Core wallet can't be told which coins to use, so each of an eclair node's UTXOs is big enough for its largest channel.
+   - LDK nodes also get 25,000 sats for each incoming channel.
+   - The UTXOs are split over transactions of at most 1,500 outputs, all confirmed in block 499. The 500 blocks mined before then leave the miner 12,425 BTC to spend (regtest halves the subsidy every 150 blocks, and coinbases need 100 confirmations).
 4. **Establish LN p2p connections** — connects every channel pair directly, plus builds a ring through all LN nodes so the gossip graph is connected.
 5. **Open channels block-by-block** — processes all channels sorted by `id.block`, then `id.index`. For each target block:
    - Mines to that height
    - Opens all channels assigned to that block in parallel, all paying the same low fee rate
    - Uses `prioritisetransaction` on the miner to rank the funding transactions in index order, regardless of the fee each implementation actually paid
    - Mines the block
-   - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not
+   - **Asserts determinism**: verifies that `block_txs[id.index] == channel_txid` and the funding output is at index 0; aborts if not (see [Eclair options](#eclair-options-eclair) and [LDK options](#ldk-options-ldk) for exceptions)
 6. **Mine 5 confirmation blocks** — waits for channels to reach the required confirmation depth.
-7. **Wait for gossip sync** — polls every LN node until each one reports the full set of channels in its graph.
-8. **Apply channel policies** — for any channel that defined `source_policy` or `target_policy`, sends an `UpdateChannelPolicy` to the respective node and waits for the policy to propagate across the network.
+7. **Wait for gossip sync** — polls every LN node until each one reports the full set of channels in its graph. LND and CLN nodes must also have the `channel_update` of both directions of every channel; eclair and LDK don't report updates in their graph, so only their announcements are counted. If no graph grows for 60 seconds, `ln_init` reconnects only the LDK nodes whose own `channel_update` no LND or CLN node has to the peer of that channel (LDK resends its announcement signatures and update on reconnection), and incomplete eclair nodes to their channel peers. CLN never fetches gossip it missed again, so `ln_init` copies the missing channel announcements and updates of incomplete CLN nodes from the gossip store of a complete CLN node.
+8. **Apply channel policies** — for any channel that defined `source_policy` or `target_policy`, sends an `UpdateChannelPolicy` to the respective node and waits for the policy to propagate across the network. LND rejects a `htlc_maximum_msat` above what the peer lets it have in flight (e.g. 25% of the channel for LDK peers, 45% for eclair), so `ln_init` caps it to that.
 
 The terminal will stream `ln_init` log output during this process. On large networks it can take several minutes.
 
 #### `id` constraints
 
 The `id.block` and `id.index` values directly determine the [short channel ID](https://github.com/lightning/bolts/blob/master/07-routing-gossip.md#definition-of-short_channel_id) (SCID) that the channel will receive. Because SCIDs encode the funding transaction's block height and position, `ln_init` must place each funding transaction at *exactly* the right position in the mined chain.
+
+An SCID has three parts: `block x index x output`. `id.block` and `id.index` set the first two for every implementation. The `output` part is the position of the channel's output in its funding transaction:
+
+| Channel opened by | `output` |
+|-------------------|----------|
+| LND, CLN | Always `0`, e.g. `id: {block: 500, index: 3}` gets SCID `500x3x0` |
+| Eclair, LDK | `0` or `1` at random, e.g. `500x3x0` or `500x3x1` |
+
+LND sorts the outputs of its funding transactions by amount, and CLN puts the channel output before the change, which `ln_init` makes larger than the channel. Eclair (funded by Bitcoin Core) and LDK place the change output at a random position. The Lightning spec allows this: [BOLT 2](https://github.com/lightning/bolts/blob/master/02-peer-protocol.md#the-funding_created-message) lets the opener put the funding output at any position and tell its peer with `funding_output_index`, unlike commitment transactions, whose outputs [BOLT 3](https://github.com/lightning/bolts/blob/master/03-transactions.md#transaction-output-ordering) requires to be sorted.
+
+So don't derive the full SCID of a channel opened by an eclair or LDK node from `network.yaml`, look it up after `ln_init` has run. `ln_init` logs `Channel open outpoint not tx output index 0` with the channel's outpoint for every channel that got output `1`. Any node's graph also lists every SCID, e.g. `warnet ln rpc <lnd node> describegraph`, `<cln node> listchannels`, `<eclair node> allchannels` or `<ldk node> graph-list-channels`.
 
 Rules that must be followed across the entire network:
 
@@ -115,7 +132,8 @@ Rules that must be followed across the entire network:
 | Maximum channels per block (`id.index` range) | `200` (indices 1–200) |
 | Indices within a block | Must be consecutive starting at `1` with no gaps |
 | Global uniqueness | No two channels may share the same `block`/`index` pair |
-| Channel capacity | Must be below ~4 BTC so the change output lands at tx index 1, not 0 |
+| Pending channels | `ln_init` opens all channels of a block before mining it, and mines one block between channel blocks, so channels stay pending (below 6 confirmations) for several blocks. Their targets refuse more than: LDK 4 unconfirmed channels from one peer, or channels from more than 50 new peers per block; LND 64 pending channels with one peer, or any channel while it has 50 pending. `warnet import-network` moves channels to later blocks to respect these |
+| Total funding | All funding UTXOs (see step 3 above) must fit in the miner's 12,425 BTC and in one block (21,000 UTXOs) |
 
 Violating any of these causes `ln_init` to abort with an assertion error.
 
@@ -296,3 +314,117 @@ Core Lightning uses the same top-level structure. The `cln:` key mirrors `lnd:` 
 | `cln.extraContainers` | Same sidecar pattern |
 
 CLN does not currently support `macaroonRootKey`, `adminMacaroon`, `metricsExport`, `metricsScrapeInterval`, `prometheusMetricsPort`, or `circuitbreaker`.
+
+---
+
+## Eclair options (`eclair:`)
+
+[Eclair](https://github.com/ACINQ/eclair) uses the same top-level structure. The `eclair:` key mirrors `lnd:` for the options it shares:
+
+| Key | Notes |
+|-----|-------|
+| `eclair.image` | Same structure as `lnd.image` |
+| `eclair.config` | Lines appended to `eclair.conf` ([HOCON](https://github.com/lightbend/config/blob/main/HOCON.md) format, e.g. `eclair.node-color = "ff3155"`) |
+| `eclair.channels` | Same channel schema as LND |
+| `eclair.resources` | Same Kubernetes resource spec |
+| `eclair.restartPolicy` | Same as `lnd.restartPolicy`; default `Always` |
+| `eclair.persistence` | PVC at `/root/.eclair/`; default size 10Gi |
+| `eclair.extraContainers` | Same sidecar pattern |
+| `eclair.service` | Same as LND, with `p2pNodePort` and `restNodePort` |
+
+Eclair does not currently support `macaroonRootKey`, `adminMacaroon`, `metricsExport`, `metricsScrapeInterval`, `prometheusMetricsPort`, or `circuitbreaker`.
+
+```yaml
+nodes:
+  - name: tank-0000
+    ln:
+      eclair: true
+    eclair:
+      config: |
+        eclair.node-color = "ff3155"
+      channels:
+        - id:
+            block: 500
+            index: 1
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
+```
+
+### Differences from LND and CLN
+
+Eclair does not have its own on-chain wallet. It funds channels from a Bitcoin Core wallet named `eclair` on its tank, which is created automatically when the eclair container starts. This has a few consequences:
+
+- The tank must run Bitcoin Core 31 or newer (the default image does). Tanks with eclair attached also get `txindex=1` and `zmqpubhashblock` added to `bitcoin.conf`.
+- If `eclair.persistence` is enabled, enable `persistence` on the tank as well, otherwise eclair's on-chain funds are lost on restart.
+- If the tank has other wallets loaded (for example the `miner` wallet when it is the `ln_init` miner), wallet RPCs sent with `warnet bitcoin rpc` must name a wallet, e.g. `warnet bitcoin rpc tank-0000 -rpcwallet=eclair getbalance`.
+
+Eclair is also handled differently by `ln_init`:
+
+- Eclair's limits on pending incoming channels are lifted, since `ln_init` opens every channel before any are confirmed.
+- Bitcoin Core places the change output of eclair funding transactions at a random position. The channel's block height and transaction index are still deterministic, but its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
+- Eclair only syncs gossip from the (up to 5) channel peers with the largest capacity, and LDK nodes don't answer the queries eclair syncs with. An eclair node without channels, or whose largest channels are all with LDK nodes, only receives gossip broadcast after it connected, so its graph may never be complete, and `ln_init` does not wait for it.
+- Channel policies (`source_policy` / `target_policy`) can not be applied by eclair nodes yet.
+
+Other notes:
+
+- `warnet ln rpc` runs `eclair-cli`, which takes parameters as `--name=value`, e.g. `warnet ln rpc tank-0000-ln open --nodeId=<pubkey> --fundingSatoshis=100000`.
+- The REST API listens on port `8080` with password `21satoshi`. Warnet's own tooling (`ln_init`, scenarios, SimLN) relies on this password, so don't change `eclair.api.password`.
+- The minimum channel size is lowered from eclair's default of 100,000 sats to 20,000 sats, matching LND.
+
+---
+
+## LDK options (`ldk:`)
+
+[LDK Server](https://github.com/lightningdevkit/ldk-server) is a Lightning node daemon built on [LDK Node](https://github.com/lightningdevkit/ldk-node), with its own on-chain wallet and Bitcoin Core as its chain source. It is under active development and has no releases yet, so warnet runs an image built from a pinned commit. Expect its API and storage format to change.
+
+The `ldk:` key mirrors `lnd:` for the options it shares:
+
+| Key | Notes |
+|-----|-------|
+| `ldk.image` | Same structure as `lnd.image` |
+| `ldk.config` | ldk-server config file in [TOML](https://github.com/lightningdevkit/ldk-server/blob/main/contrib/ldk-server-config.toml) format, e.g. `[log]` / `level = "Debug"` |
+| `ldk.channels` | Same channel schema as LND |
+| `ldk.resources` | Same Kubernetes resource spec |
+| `ldk.restartPolicy` | Same as `lnd.restartPolicy`; default `Always` |
+| `ldk.persistence` | PVC at `/root/.ldk-server/`; default size 10Gi |
+| `ldk.extraContainers` | Same sidecar pattern |
+| `ldk.service` | Same as LND, with `p2pNodePort` and `rpcNodePort` (gRPC) |
+
+LDK does not currently support `macaroonRootKey`, `adminMacaroon`, `metricsExport`, `metricsScrapeInterval`, `prometheusMetricsPort`, or `circuitbreaker`. [SimLN](plugins.md) does not support LDK nodes yet and skips them.
+
+```yaml
+nodes:
+  - name: tank-0000
+    ln:
+      ldk: true
+    ldk:
+      config: |
+        [log]
+        level = "Debug"
+      channels:
+        - id:
+            block: 500
+            index: 1
+          target: tank-0001-ln
+          capacity: 100000
+          push_amt: 50000
+```
+
+### Configuration
+
+Network, ports, node alias and the Bitcoin Core connection are set by warnet with `LDK_SERVER_*` environment variables, which take precedence over the config file. `ldk.defaultConfig` and `ldk.config` are concatenated into one TOML file, and TOML does not allow defining the same table (e.g. `[log]`) twice, so don't set the same table in both.
+
+### Differences from other implementations
+
+- LDK's wallet doesn't record a funding transaction until it sees it in the mempool, so `ln_init` opens channels from each LDK node one at a time to avoid spending the same coin twice. It opens them in channel index order, because LDK funds channels with change from its earlier unconfirmed funding transactions, and a transaction can't be mined before the one it spends.
+- LDK's wallet shuffles transaction outputs, so its funding output (the last part of the SCID) may be `1` instead of `0`. `ln_init` logs a warning instead of aborting.
+
+LDK also rejects incoming anchor channels unless it has 25,000 sats on-chain per channel, reserved for fee-bumping a force close. `ln_init` funds LDK nodes that only receive channels as well. If you open channels to an LDK node manually, fund it first.
+
+Channel policies (`source_policy` / `target_policy`) can not be applied by LDK nodes yet.
+
+Other notes:
+
+- ldk-server only has a gRPC API with TLS and macaroon authentication. `warnet ln rpc` and the scenario framework run `ldk-server-cli` inside the pod, which is preconfigured to reach it, e.g. `warnet ln rpc tank-0000-ln get-balances`. Amounts take a unit, e.g. `warnet ln rpc tank-0000-ln bolt11-receive 1000sat`.
+- The node announces itself at `<tank>-ln:9735` within its namespace.

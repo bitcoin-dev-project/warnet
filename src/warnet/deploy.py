@@ -2,6 +2,8 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor, wait
 from multiprocessing import Process
 from pathlib import Path
 from typing import Optional
@@ -44,6 +46,40 @@ from .k8s import (
 from .process import run_command, stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
+# Helm commands (and plugin commands) run at the same time while deploying.
+# Each helm process takes significant memory and CPU, running one for every
+# node of a large network at once can bring down the machine.
+DEFAULT_DEPLOY_JOBS = 16
+
+
+# Set when the deploy is cancelled with Ctrl-C. The helm commands that are
+# running get the same SIGINT and fail, don't report each of them.
+interrupted = threading.Event()
+
+
+def run_parallel(function, args_list, jobs):
+    """Call function with each tuple of args, at most jobs at a time, and wait for all"""
+    executor = ThreadPoolExecutor(max_workers=jobs)
+    futures = [executor.submit(function, *args) for args in args_list]
+    try:
+        wait(futures)
+    except KeyboardInterrupt:
+        # Don't start the jobs that are still queued
+        interrupted.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    executor.shutdown()
+    for future in futures:
+        if future.exception():
+            click.echo(f"Error: {future.exception()}")
+
+
+def quiet_on_interrupt(function, *args):
+    """Process target that exits without a traceback when the deploy is cancelled"""
+    try:
+        function(*args)
+    except KeyboardInterrupt:
+        interrupted.set()
 
 
 def validate_directory(ctx, param, value):
@@ -66,61 +102,78 @@ def validate_directory(ctx, param, value):
 @click.option("--debug", is_flag=True)
 @click.option("--namespace", type=str, help="Specify a namespace in which to deploy the network")
 @click.option("--to-all-users", is_flag=True, help="Deploy network to all user namespaces")
+@click.option(
+    "--jobs",
+    type=click.IntRange(min=1),
+    default=DEFAULT_DEPLOY_JOBS,
+    show_default=True,
+    envvar="WARNET_DEPLOY_JOBS",
+    help="Maximum number of helm (and plugin) commands to run at the same time",
+)
 @click.argument("unknown_args", nargs=-1)
-def deploy(directory, debug, namespace, to_all_users, unknown_args):
+def deploy(directory, debug, namespace, to_all_users, jobs, unknown_args):
     """Deploy a warnet with topology loaded from <directory>"""
     if unknown_args:
         raise click.BadParameter(f"Unknown args: {unknown_args}{HINT}")
 
-    _deploy(directory, debug, namespace, to_all_users)
+    try:
+        _deploy(directory, debug, namespace, to_all_users, jobs)
+    except KeyboardInterrupt:
+        click.secho(
+            "\nDeploy cancelled, nodes that were not deployed yet were skipped", fg="yellow"
+        )
+        sys.exit(130)
 
 
-def _deploy(directory, debug, namespace, to_all_users):
+def _deploy(directory, debug, namespace, to_all_users, jobs=DEFAULT_DEPLOY_JOBS):
     """Deploy a warnet with topology loaded from <directory>"""
     directory = Path(directory)
 
     if to_all_users:
-        namespaces = get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX)
-        processes = []
-        for namespace in namespaces:
-            p = Process(target=_deploy, args=(directory, debug, namespace.metadata.name, False))
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+        # One namespace at a time, so at most jobs helm commands run in total
+        for namespace in get_namespaces_by_type(WARGAMES_NAMESPACE_PREFIX):
+            _deploy(directory, debug, namespace.metadata.name, False, jobs)
         return
 
     if (directory / NETWORK_FILE).exists():
-        run_plugins(directory, HookValue.PRE_DEPLOY, namespace)
+        run_plugins(directory, HookValue.PRE_DEPLOY, namespace, jobs=jobs)
 
         processes = []
         # Deploy logging CRD first to avoid synchronisation issues
         deploy_logging_crd(directory, debug)
 
-        logging_process = Process(target=deploy_logging_stack, args=(directory, debug))
+        logging_process = Process(
+            target=quiet_on_interrupt, args=(deploy_logging_stack, directory, debug)
+        )
         logging_process.start()
         processes.append(logging_process)
 
-        run_plugins(directory, HookValue.PRE_NETWORK, namespace)
+        run_plugins(directory, HookValue.PRE_NETWORK, namespace, jobs=jobs)
 
-        network_process = Process(target=deploy_network, args=(directory, debug, namespace))
+        network_process = Process(
+            target=quiet_on_interrupt, args=(deploy_network, directory, debug, namespace, jobs)
+        )
         network_process.start()
 
-        ingress_process = Process(target=deploy_ingress, args=(directory, debug))
+        ingress_process = Process(
+            target=quiet_on_interrupt, args=(deploy_ingress, directory, debug)
+        )
         ingress_process.start()
         processes.append(ingress_process)
 
-        caddy_process = Process(target=deploy_caddy, args=(directory, debug))
+        caddy_process = Process(target=quiet_on_interrupt, args=(deploy_caddy, directory, debug))
         caddy_process.start()
         processes.append(caddy_process)
 
         # Wait for the network process to complete
         network_process.join()
 
-        run_plugins(directory, HookValue.POST_NETWORK, namespace)
+        run_plugins(directory, HookValue.POST_NETWORK, namespace, jobs=jobs)
 
         # Start the fork observer process immediately after network process completes
-        fork_observer_process = Process(target=deploy_fork_observer, args=(directory, debug))
+        fork_observer_process = Process(
+            target=quiet_on_interrupt, args=(deploy_fork_observer, directory, debug)
+        )
         fork_observer_process.start()
         processes.append(fork_observer_process)
 
@@ -128,17 +181,23 @@ def _deploy(directory, debug, namespace, to_all_users):
         for p in processes:
             p.join()
 
-        run_plugins(directory, HookValue.POST_DEPLOY, namespace)
+        run_plugins(directory, HookValue.POST_DEPLOY, namespace, jobs=jobs)
 
     elif (directory / NAMESPACES_FILE).exists():
-        deploy_namespaces(directory)
+        deploy_namespaces(directory, jobs)
     else:
         click.echo(
             "Error: Neither network.yaml nor namespaces.yaml found in the specified directory."
         )
 
 
-def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dict] = None):
+def run_plugins(
+    directory,
+    hook_value: HookValue,
+    namespace,
+    annex: Optional[dict] = None,
+    jobs=DEFAULT_DEPLOY_JOBS,
+):
     """Run the plugin commands within a given hook value"""
 
     network_file_path = directory / NETWORK_FILE
@@ -148,7 +207,7 @@ def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dic
         if not isinstance(network_file, dict):
             raise ValueError(f"Invalid network file structure: {network_file_path}")
 
-    processes = []
+    commands = []
 
     plugins_section = network_file.get("plugins", {})
     hook_section = plugins_section.get(hook_value.value, {})
@@ -174,8 +233,7 @@ def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dic
                     f"Queuing {hook_value.value} plugin command: {plugin_name} with {plugin_content}"
                 )
 
-                process = Process(target=run_command, args=(cmd,))
-                processes.append(process)
+                commands.append((cmd,))
 
             case _:
                 print(
@@ -183,15 +241,9 @@ def run_plugins(directory, hook_value: HookValue, namespace, annex: Optional[dic
                 )
                 sys.exit(1)
 
-    if processes:
+    if commands:
         print(f"Starting {hook_value.value} plugins")
-
-        for process in processes:
-            process.start()
-
-        for process in processes:
-            process.join()
-
+        run_parallel(run_command, commands, jobs)
         print(f"Completed {hook_value.value} plugins")
 
 
@@ -386,7 +438,12 @@ rpc_password = "{FORK_OBSERVER_RPC_PASSWORD}"
     return True
 
 
-def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str] = None):
+def deploy_network(
+    directory: Path,
+    debug: bool = False,
+    namespace: Optional[str] = None,
+    jobs=DEFAULT_DEPLOY_JOBS,
+):
     namespace = get_default_namespace_or(namespace)
     network_file_path = directory / NETWORK_FILE
     default_file_path = directory / DEFAULTS_FILE
@@ -399,7 +456,7 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
 
     needs_ln_init = False
     addconnections = []
-    supported_ln_projects = ["lnd", "cln"]
+    supported_ln_projects = ["lnd", "cln", "eclair", "ldk"]
     merged = network_file["nodes"].copy()
     merged.append(default_file)
     for node in merged:
@@ -410,14 +467,11 @@ def deploy_network(directory: Path, debug: bool = False, namespace: Optional[str
         if "addconnection" in node:
             addconnections.append({node["name"]: node["addconnection"]})
 
-    processes = []
-    for node in network_file["nodes"]:
-        p = Process(target=deploy_single_node, args=(node, directory, debug, namespace))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
+    run_parallel(
+        deploy_single_node,
+        [(node, directory, debug, namespace) for node in network_file["nodes"]],
+        jobs,
+    )
 
     if addconnections:
         name = _run(
@@ -463,9 +517,18 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
+        # Already one of the parallel jobs, run its plugins one at a time
         run_plugins(
-            directory, HookValue.PRE_NODE, namespace, annex={AnnexMember.NODE_NAME.value: node_name}
+            directory,
+            HookValue.PRE_NODE,
+            namespace,
+            annex={AnnexMember.NODE_NAME.value: node_name},
+            jobs=1,
         )
+
+        # The deploy may have been cancelled while this job was getting ready
+        if interrupted.is_set():
+            return
 
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
@@ -476,17 +539,19 @@ def deploy_single_node(node, directory: Path, debug: bool, namespace: str):
             HookValue.POST_NODE,
             namespace,
             annex={AnnexMember.NODE_NAME.value: node_name},
+            jobs=1,
         )
 
     except Exception as e:
-        click.echo(f"Error: {e}")
+        if not interrupted.is_set():
+            click.echo(f"Error: {e}")
         return
     finally:
         if temp_override_file_path:
             Path(temp_override_file_path).unlink()
 
 
-def deploy_namespaces(directory: Path):
+def deploy_namespaces(directory: Path, jobs=DEFAULT_DEPLOY_JOBS):
     namespaces_file_path = directory / NAMESPACES_FILE
     defaults_file_path = directory / DEFAULTS_NAMESPACE_FILE
 
@@ -502,14 +567,11 @@ def deploy_namespaces(directory: Path):
             )
             return
 
-    processes = []
-    for namespace in namespaces_file["namespaces"]:
-        p = Process(target=deploy_single_namespace, args=(namespace, defaults_file_path))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
+    run_parallel(
+        deploy_single_namespace,
+        [(namespace, defaults_file_path) for namespace in namespaces_file["namespaces"]],
+        jobs,
+    )
 
 
 def deploy_single_namespace(namespace, defaults_file_path: Path):
@@ -527,11 +589,15 @@ def deploy_single_namespace(namespace, defaults_file_path: Path):
                 temp_override_file_path = Path(temp_file.name)
             cmd = f"{cmd} -f {temp_override_file_path}"
 
+        if interrupted.is_set():
+            return
+
         if not stream_command(cmd):
             click.echo(f"Failed to run Helm command: {cmd}")
             return
     except Exception as e:
-        click.echo(f"Error: {e}")
+        if not interrupted.is_set():
+            click.echo(f"Error: {e}")
         return
     finally:
         if temp_override_file_path:

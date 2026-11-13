@@ -1,8 +1,11 @@
+import heapq
 import json
 import os
 import random
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
+from typing import Optional
 
 import click
 import inquirer
@@ -14,6 +17,8 @@ from rich.table import Table
 from resources.scenarios.ln_framework.ln import (
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    PENDING_BLOCKS,
+    PendingChannels,
     Policy,
 )
 
@@ -311,54 +316,298 @@ def create():
         return False
 
 
+LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
+
+# The largest channel LND accepts, even with wumbo channels enabled
+MAX_CHANNEL_CAPACITY = 1_000_000_000
+# The smallest channel LND accepts, also the minimum warnet sets for eclair
+MIN_CHANNEL_CAPACITY = 20_000
+# ln_init funds each channel an eclair node opens with a UTXO big enough for
+# its largest channel, because its Bitcoin Core wallet can't be told which UTXO
+# to use. Don't make eclair nodes of nodes that would need more than this much
+# on top of the capacity of their channels, e.g. hubs with one large channel.
+ECLAIR_MAX_EXTRA_FUNDING = 1_000_000_000  # sats
+
+
 @click.command()
 @click.argument("graph_file_path", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.argument("output_path", type=click.Path(exists=False, file_okay=False, dir_okay=True))
-def import_network(graph_file_path: str, output_path: str):
+@click.option(
+    "--ln-impls",
+    default="lnd",
+    show_default=True,
+    help=f"Comma-separated lightning implementations to assign to nodes at random, from: {','.join(LN_IMPLS)}, or ALL for all of them",
+)
+@click.option("--seed", type=int, default=None, help="Random seed for assigning implementations")
+@click.option(
+    "--max-nodes",
+    type=click.IntRange(min=2),
+    default=None,
+    help="Import a connected core of at most this many nodes, starting from the best connected node",
+)
+@click.option(
+    "--max-channels",
+    type=click.IntRange(min=1),
+    default=None,
+    help="With --max-nodes, import at most this many channels, keeping the network connected",
+)
+def import_network(
+    graph_file_path: str,
+    output_path: str,
+    ln_impls: str,
+    seed: Optional[int],
+    max_nodes: Optional[int],
+    max_channels: Optional[int],
+):
     """Create a network from an imported lightning network graph JSON"""
-    print(_import_network(graph_file_path, output_path))
+    if ln_impls.strip() == "ALL":
+        ln_impls = ",".join(LN_IMPLS)
+    impls = [impl.strip() for impl in ln_impls.split(",") if impl.strip()]
+    unknown = [impl for impl in impls if impl not in LN_IMPLS]
+    if not impls or unknown:
+        raise click.BadParameter(
+            f"must be ALL or a comma-separated list of {', '.join(LN_IMPLS)}",
+            param_hint="--ln-impls",
+        )
+    if max_channels is not None:
+        if max_nodes is None:
+            raise click.BadParameter("requires --max-nodes", param_hint="--max-channels")
+        if max_channels < max_nodes - 1:
+            raise click.BadParameter(
+                f"must be at least --max-nodes - 1 ({max_nodes - 1}) to connect every node",
+                param_hint="--max-channels",
+            )
+    print(_import_network(graph_file_path, output_path, impls, seed, max_nodes, max_channels))
 
 
-def _import_network(graph_file_path, output_path):
+def _usable_edges(graph):
+    """Channels warnet can recreate: both policies known, capacity within ln_init's limits"""
+    pub_keys = {node["pub_key"] for node in graph["nodes"]}
+    edges = []
+    dropped = 0
+    clamped = 0
+    for edge in graph["edges"]:
+        if (
+            not edge.get("node1_policy")
+            or not edge.get("node2_policy")
+            or edge["node1_pub"] not in pub_keys
+            or edge["node2_pub"] not in pub_keys
+        ):
+            dropped += 1
+            continue
+        capacity = int(edge["capacity"])
+        clamped_capacity = min(max(capacity, MIN_CHANNEL_CAPACITY), MAX_CHANNEL_CAPACITY)
+        if clamped_capacity != capacity:
+            clamped += 1
+            edge = {**edge, "capacity": str(clamped_capacity)}
+        edges.append(edge)
+    if dropped:
+        print(f"Dropped {dropped} channels without both policies")
+    if clamped:
+        print(
+            f"Clamped the capacity of {clamped} channels to "
+            f"{MIN_CHANNEL_CAPACITY}-{MAX_CHANNEL_CAPACITY} sats"
+        )
+    return edges
+
+
+def _select_core(nodes, edges, max_nodes, max_channels):
+    """
+    Grow a connected core from the node with the most channels, always adding
+    the node with the most channels to the nodes already selected. Ties are
+    broken by channel count, total capacity and public key, so the result
+    doesn't depend on the order of the input.
+    Then keep the channel each node joined through, which connects them all,
+    and fill up to max_channels with the largest remaining channels.
+    """
+    channels = defaultdict(list)
+    degree = Counter()
+    capacity = Counter()
+    for edge in edges:
+        for a, b in (
+            (edge["node1_pub"], edge["node2_pub"]),
+            (edge["node2_pub"], edge["node1_pub"]),
+        ):
+            channels[a].append((b, edge))
+            degree[a] += 1
+            capacity[a] += int(edge["capacity"])
+
+    def rank(pk):
+        return (degree[pk], capacity[pk], pk)
+
+    start = max(channels, key=rank)
+    selected = [start]
+    selected_set = {start}
+    links = Counter()
+    # Best channel from each frontier node into the selected nodes
+    best_link = {}
+    heap = []
+
+    def add(pk):
+        for peer, edge in channels[pk]:
+            if peer in selected_set:
+                continue
+            links[peer] += 1
+            key = (int(edge["capacity"]), -int(edge["channel_id"]))
+            if peer not in best_link or key > best_link[peer][0]:
+                best_link[peer] = (key, edge)
+            heapq.heappush(heap, (-links[peer], *(-x for x in rank(peer)[:2]), peer))
+
+    add(start)
+    tree = []
+    while len(selected) < max_nodes and heap:
+        neg_links, _, _, pk = heapq.heappop(heap)
+        # Skip stale heap entries
+        if pk in selected_set or -neg_links != links[pk]:
+            continue
+        selected.append(pk)
+        selected_set.add(pk)
+        tree.append(best_link[pk][1])
+        add(pk)
+
+    core_edges = [
+        edge
+        for edge in edges
+        if edge["node1_pub"] in selected_set and edge["node2_pub"] in selected_set
+    ]
+    if max_channels is not None and len(core_edges) > max_channels:
+        tree_ids = {edge["channel_id"] for edge in tree}
+        extra = sorted(
+            (edge for edge in core_edges if edge["channel_id"] not in tree_ids),
+            key=lambda edge: (-int(edge["capacity"]), int(edge["channel_id"])),
+        )
+        core_edges = tree + extra[: max_channels - len(tree)]
+    print(
+        f"Selected a connected core of {len(selected)} of {len(channels)} nodes "
+        f"with {len(core_edges)} channels"
+    )
+    selected_nodes = {node["pub_key"]: node for node in nodes}
+    return [selected_nodes[pk] for pk in selected], core_edges
+
+
+def _place_channels(channels, tank_to_impl):
+    """
+    Assign each (source, target, edge) a block and index for ln_init to open it at,
+    in order, but moving channels to later blocks where the target would refuse
+    them because of the channels pending then (see PendingChannels).
+    Returns a list of (block, index, channel).
+    """
+    pending = PendingChannels(tank_to_impl)
+    placed = []
+    remaining = channels
+    block = CHANNEL_OPEN_START_HEIGHT
+    empty_blocks = 0
+    while remaining:
+        pending.start_block(block)
+        in_block = []
+        later = []
+        for channel in remaining:
+            source, target, _ = channel
+            if len(in_block) == CHANNEL_OPENS_PER_BLOCK or pending.refusal(source, target):
+                later.append(channel)
+                continue
+            pending.add(source, target)
+            in_block.append(channel)
+        # Leave a block empty while pending channels confirm, ln_init mines through it
+        empty_blocks = 0 if in_block else empty_blocks + 1
+        if empty_blocks > PENDING_BLOCKS:
+            raise Exception(f"Channel can't be placed in any block: {later[0][:2]}")
+        # Coinbase occupies the 0 position!
+        placed += [(block, index, channel) for index, channel in enumerate(in_block, start=1)]
+        remaining = later
+        block += 1
+    return placed
+
+
+def _avoid_eclair_hubs(tank_to_impl, pk_to_tank, edges, impls, seed):
+    """Assign another implementation to eclair nodes that would need too much funding"""
+    others = [impl for impl in impls if impl != "eclair"]
+    if "eclair" not in impls or not others:
+        return
+    # The first node of an edge opens the channel
+    opened = defaultdict(list)
+    for edge in edges:
+        opened[pk_to_tank[edge["node1_pub"]]].append(int(edge["capacity"]))
+    # A separate generator, so only these nodes change for a given seed
+    rng = random.Random(f"{seed}-eclair")
+    moved = []
+    for tank, impl in tank_to_impl.items():
+        capacities = opened.get(tank)
+        if impl != "eclair" or not capacities:
+            continue
+        extra = len(capacities) * max(capacities) - sum(capacities)
+        if extra > ECLAIR_MAX_EXTRA_FUNDING:
+            tank_to_impl[tank] = rng.choice(others)
+            moved.append(f"{tank} ({tank_to_impl[tank]})")
+    if moved:
+        print(
+            f"Assigned other implementations to {len(moved)} nodes that would need more than "
+            f"{ECLAIR_MAX_EXTRA_FUNDING // 100_000_000} BTC of extra funding as eclair nodes: "
+            + ", ".join(moved)
+        )
+
+
+def _import_network(
+    graph_file_path, output_path, impls=None, seed=None, max_nodes=None, max_channels=None
+):
     output_path = Path(output_path)
     graph_file_path = Path(graph_file_path).resolve()
     with open(graph_file_path) as graph_file:
         graph = json.loads(graph_file.read())
 
-    tanks = {}
+    nodes = graph["nodes"]
+    edges = _usable_edges(graph)
+    if max_nodes is not None:
+        nodes, edges = _select_core(nodes, edges, max_nodes, max_channels)
+
+    impls = impls or ["lnd"]
+    if len(impls) > 1:
+        if seed is None:
+            seed = random.randrange(2**32)
+        print(f"Assigning lightning implementations {impls} at random with --seed {seed}")
+    rng = random.Random(seed)
+
     pk_to_tank = {}
     tank_to_pk = {}
+    tank_to_impl = {}
     index = 0
-    for node in graph["nodes"]:
+    for node in nodes:
         tank = f"tank-{index:04d}"
         pk_to_tank[node["pub_key"]] = tank
         tank_to_pk[tank] = node["pub_key"]
-        tanks[tank] = {"name": tank, "ln": {"lnd": True}, "lnd": {"channels": []}}
+        tank_to_impl[tank] = rng.choice(impls)
         index += 1
+    _avoid_eclair_hubs(tank_to_impl, pk_to_tank, edges, impls, seed)
+    tanks = {
+        tank: {"name": tank, "ln": {impl: True}, impl: {"channels": []}}
+        for tank, impl in tank_to_impl.items()
+    }
     print(f"Imported {index} nodes")
+    if len(impls) > 1:
+        for impl in impls:
+            count = list(tank_to_impl.values()).count(impl)
+            print(f"  {impl}: {count}")
 
-    sorted_edges = sorted(graph["edges"], key=lambda x: int(x["channel_id"]))
+    sorted_edges = sorted(edges, key=lambda x: int(x["channel_id"]))
+    placed = _place_channels(
+        [(pk_to_tank[e["node1_pub"]], pk_to_tank[e["node2_pub"]], e) for e in sorted_edges],
+        tank_to_impl,
+    )
 
-    # Start including channel open txs at this block height
-    block = CHANNEL_OPEN_START_HEIGHT
-    # Coinbase occupies the 0 position!
-    index = 1
     count = 0
-    for edge in sorted_edges:
-        source = pk_to_tank[edge["node1_pub"]]
+    for block, index, (source, target, edge) in placed:
         channel = {
             "id": {"block": block, "index": index},
-            "target": pk_to_tank[edge["node2_pub"]] + "-ln",
+            "target": target + "-ln",
             "capacity": int(edge["capacity"]),
             "push_amt": int(edge["capacity"]) // 2,
-            "source_policy": Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict(),
-            "target_policy": Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict(),
         }
-        tanks[source]["lnd"]["channels"].append(channel)
-        index += 1
-        if index > CHANNEL_OPENS_PER_BLOCK:
-            index = 1
-            block += 1
+        # Only LND nodes can apply channel policies
+        if tank_to_impl[source] == "lnd":
+            channel["source_policy"] = Policy.from_lnd_describegraph(edge["node1_policy"]).to_dict()
+        if tank_to_impl[target] == "lnd":
+            channel["target_policy"] = Policy.from_lnd_describegraph(edge["node2_policy"]).to_dict()
+        tanks[source][tank_to_impl[source]]["channels"].append(channel)
         count += 1
 
     print(f"Imported {count} channels")
