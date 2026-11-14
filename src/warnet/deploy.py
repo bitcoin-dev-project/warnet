@@ -1,3 +1,4 @@
+import functools
 import json
 import subprocess
 import sys
@@ -46,6 +47,8 @@ from .k8s import (
 from .process import run_command, stream_command
 
 HINT = "\nAre you trying to run a scenario? See `warnet run --help`"
+# PyYAML's C parser is several times faster on large network files
+YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 # Helm commands (and plugin commands) run at the same time while deploying.
 # Each helm process takes significant memory and CPU, running one for every
 # node of a large network at once can bring down the machine.
@@ -191,6 +194,28 @@ def _deploy(directory, debug, namespace, to_all_users, jobs=DEFAULT_DEPLOY_JOBS)
         )
 
 
+_network_plugins_lock = threading.Lock()
+
+
+@functools.lru_cache
+def _network_plugins(network_file_path: Path, mtime: float) -> dict:
+    with network_file_path.open() as f:
+        network_file = yaml.load(f, Loader=YAML_LOADER) or {}
+    if not isinstance(network_file, dict):
+        raise ValueError(f"Invalid network file structure: {network_file_path}")
+    return network_file.get("plugins", {})
+
+
+def network_plugins(network_file_path: Path) -> dict:
+    """
+    The plugins section of a network file. Plugins run for every node, and parsing
+    the network file of a large imported network takes seconds, so parse it once.
+    """
+    # One thread parses it, the others wait for the cached result
+    with _network_plugins_lock:
+        return _network_plugins(network_file_path, network_file_path.stat().st_mtime)
+
+
 def run_plugins(
     directory,
     hook_value: HookValue,
@@ -201,15 +226,9 @@ def run_plugins(
     """Run the plugin commands within a given hook value"""
 
     network_file_path = directory / NETWORK_FILE
-
-    with network_file_path.open() as f:
-        network_file = yaml.safe_load(f) or {}
-        if not isinstance(network_file, dict):
-            raise ValueError(f"Invalid network file structure: {network_file_path}")
-
     commands = []
 
-    plugins_section = network_file.get("plugins", {})
+    plugins_section = network_plugins(network_file_path)
     hook_section = plugins_section.get(hook_value.value, {})
     for plugin_name, plugin_content in hook_section.items():
         match (plugin_name, plugin_content):
@@ -251,7 +270,7 @@ def check_logging_required(directory: Path):
     # check if node-defaults has logging or metrics enabled
     default_file_path = directory / DEFAULTS_FILE
     with default_file_path.open() as f:
-        default_file = yaml.safe_load(f)
+        default_file = yaml.load(f, Loader=YAML_LOADER)
     if default_file.get("collectLogs", False):
         return True
     if default_file.get("metricsExport", False):
@@ -262,7 +281,7 @@ def check_logging_required(directory: Path):
     # check to see if individual nodes have logging enabled
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
+        network_file = yaml.load(f, Loader=YAML_LOADER)
 
     nodes = network_file.get("nodes") or []
     for node in nodes:
@@ -311,7 +330,7 @@ def deploy_logging_stack(directory: Path, debug: bool) -> bool:
 def deploy_caddy(directory: Path, debug: bool):
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
+        network_file = yaml.load(f, Loader=YAML_LOADER)
 
     namespace = LOGGING_NAMESPACE
     # TODO: get this from the helm chart
@@ -362,7 +381,7 @@ def deploy_ingress(directory: Path, debug: bool):
     # Deploy ingress if either logging or fork observer is enabled
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
+        network_file = yaml.load(f, Loader=YAML_LOADER)
     # Only start if caddy is enabled in the network file
     if not network_file.get("caddy", {}).get("enabled", False):
         return
@@ -381,7 +400,7 @@ def deploy_ingress(directory: Path, debug: bool):
 def deploy_fork_observer(directory: Path, debug: bool) -> bool:
     network_file_path = directory / NETWORK_FILE
     with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
+        network_file = yaml.load(f, Loader=YAML_LOADER)
 
     # Only start if configured in the network file
     if not network_file.get("fork_observer", {}).get("enabled", False):
@@ -449,10 +468,10 @@ def deploy_network(
     default_file_path = directory / DEFAULTS_FILE
 
     with network_file_path.open() as f:
-        network_file = yaml.safe_load(f)
+        network_file = yaml.load(f, Loader=YAML_LOADER)
 
     with default_file_path.open() as f:
-        default_file = yaml.safe_load(f)
+        default_file = yaml.load(f, Loader=YAML_LOADER)
 
     needs_ln_init = False
     addconnections = []
@@ -556,7 +575,7 @@ def deploy_namespaces(directory: Path, jobs=DEFAULT_DEPLOY_JOBS):
     defaults_file_path = directory / DEFAULTS_NAMESPACE_FILE
 
     with namespaces_file_path.open() as f:
-        namespaces_file = yaml.safe_load(f)
+        namespaces_file = yaml.load(f, Loader=YAML_LOADER)
 
     names = [n.get("name") for n in namespaces_file["namespaces"]]
     for n in names:
