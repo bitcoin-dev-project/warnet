@@ -28,8 +28,24 @@ spec:
         {{- toYaml .Values.securityContext | nindent 8 }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
-      args:
-        - /etc/ldk-server/config.toml
+      # ldk-server exits if bitcoind doesn't answer on its first start, wait for it.
+      # The image has no curl, use bash's /dev/tcp.
+      command:
+        - /usr/bin/bash
+        - -c
+        - |
+          bitcoind_ready() {
+            exec 3<>/dev/tcp/{{ include "bitcoincore.fullname" . }}/{{ index .Values.global .Values.global.chain "RPCPort" }} || return 1
+            body='{"jsonrpc":"1.0","id":"warnet","method":"getblockchaininfo","params":[]}'
+            auth=$(printf 'user:%s' '{{ .Values.global.rpcpassword }}' | base64 -w0)
+            printf 'POST / HTTP/1.1\r\nHost: bitcoind\r\nAuthorization: Basic %s\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s' "$auth" "${#body}" "$body" >&3
+            timeout 5 cat <&3 | grep -q '"result":{'
+          }
+          until bitcoind_ready 2>/dev/null; do
+            echo "Waiting for bitcoind..."
+            sleep 2
+          done
+          exec ldk-server /etc/ldk-server/config.toml
       # Environment variables take precedence over the config file
       env:
         - name: LDK_SERVER_NODE_NETWORK
