@@ -45,7 +45,20 @@ spec:
             echo "Waiting for bitcoind..."
             sleep 2
           done
-          exec ldk-server /etc/ldk-server/config.toml
+          # ln_init restarts ldk-server when its wallet misses a funding transaction.
+          # Restart it here when asked to, restarting the container would be delayed
+          # by Kubernetes' crash loop back-off. Any other exit ends the container.
+          trap 'kill -TERM "$child" 2>/dev/null; wait "$child"; exit 0' TERM INT
+          while true; do
+            rm -f /tmp/restart-ldk-server
+            ldk-server /etc/ldk-server/config.toml &
+            child=$!
+            echo "$child" > /tmp/ldk-server.pid
+            wait "$child"
+            code=$?
+            [ -f /tmp/restart-ldk-server ] || exit "$code"
+            echo "Restarting ldk-server"
+          done
       # Environment variables take precedence over the config file
       env:
         - name: LDK_SERVER_NODE_NETWORK

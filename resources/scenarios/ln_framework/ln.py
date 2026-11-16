@@ -754,9 +754,18 @@ class LDK(LNNode):
         return json.loads(stdout)
 
     def restart(self):
-        # ldk-server shuts down cleanly on SIGTERM and the pod restarts it
+        # ldk-server shuts down cleanly on SIGTERM. The chart's script starts it
+        # again when asked to with /tmp/restart-ldk-server, older charts run it as
+        # PID 1 and the pod restarts it.
         try:
-            self.exec(["/bin/sh", "-c", "kill 1"])
+            self.exec(
+                [
+                    "/bin/sh",
+                    "-c",
+                    "touch /tmp/restart-ldk-server; "
+                    "kill $(cat /tmp/ldk-server.pid 2>/dev/null) 2>/dev/null || kill 1",
+                ]
+            )
         except Exception as e:
             self.log.warning(f"Error sending SIGTERM to ldk-server: {e}")
 
