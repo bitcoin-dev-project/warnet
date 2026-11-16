@@ -266,33 +266,40 @@ def run_plugins(
         print(f"Completed {hook_value.value} plugins")
 
 
-def check_logging_required(directory: Path):
-    # check if node-defaults has logging or metrics enabled
-    default_file_path = directory / DEFAULTS_FILE
-    with default_file_path.open() as f:
-        default_file = yaml.load(f, Loader=YAML_LOADER)
-    if default_file.get("collectLogs", False):
-        return True
-    if default_file.get("metricsExport", False):
-        return True
-    if default_file.get("lnd", {}).get("metricsExport"):
-        return True
-
-    # check to see if individual nodes have logging enabled
-    network_file_path = directory / NETWORK_FILE
-    with network_file_path.open() as f:
-        network_file = yaml.load(f, Loader=YAML_LOADER)
-
-    nodes = network_file.get("nodes") or []
-    for node in nodes:
-        if node.get("collectLogs", False):
+def logging_required(network: dict, defaults: dict) -> bool:
+    """Whether node-defaults or any node enables logging or metrics"""
+    for node in [defaults or {}, *(network.get("nodes") or [])]:
+        if node.get("collectLogs", False) or node.get("metricsExport", False):
             return True
-        if node.get("metricsExport", False):
+        if (node.get("lnd") or {}).get("metricsExport"):
             return True
-        if node.get("lnd", {}).get("metricsExport"):
-            return True
-
     return False
+
+
+def check_logging_required(directory: Path):
+    with (directory / DEFAULTS_FILE).open() as f:
+        defaults = yaml.load(f, Loader=YAML_LOADER) or {}
+    with (directory / NETWORK_FILE).open() as f:
+        network = yaml.load(f, Loader=YAML_LOADER) or {}
+    return logging_required(network, defaults)
+
+
+def init_scenarios(network: dict, defaults: dict) -> tuple[bool, list]:
+    """
+    Whether the network needs ln_init (any node, or node-defaults, has LN
+    channels), and the addconnection entries addconnection_init sets up
+    """
+    needs_ln_init = False
+    addconnections = []
+    supported_ln_projects = ["lnd", "cln", "eclair", "ldk"]
+    for node in [*(network.get("nodes") or []), defaults or {}]:
+        for key in supported_ln_projects:
+            if key in node and "channels" in node[key]:
+                needs_ln_init = True
+                break
+        if "addconnection" in node:
+            addconnections.append({node["name"]: node["addconnection"]})
+    return needs_ln_init, addconnections
 
 
 def deploy_logging_crd(directory: Path, debug: bool) -> bool:
@@ -473,18 +480,7 @@ def deploy_network(
     with default_file_path.open() as f:
         default_file = yaml.load(f, Loader=YAML_LOADER)
 
-    needs_ln_init = False
-    addconnections = []
-    supported_ln_projects = ["lnd", "cln", "eclair", "ldk"]
-    merged = network_file["nodes"].copy()
-    merged.append(default_file)
-    for node in merged:
-        for key in supported_ln_projects:
-            if key in node and "channels" in node[key]:
-                needs_ln_init = True
-                break
-        if "addconnection" in node:
-            addconnections.append({node["name"]: node["addconnection"]})
+    needs_ln_init, addconnections = init_scenarios(network_file, default_file)
 
     run_parallel(
         deploy_single_node,
