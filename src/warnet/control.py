@@ -48,6 +48,9 @@ from .process import run_command, stream_command
 
 console = Console()
 
+# helm list returns at most 256 releases by default, warnet down missed the rest
+HELM_LIST_MAX = 100_000
+
 
 @click.command()
 @click.argument("scenario_name", required=False)
@@ -177,7 +180,7 @@ def down():
     pvc_list: list[dict[str, str]] = []
     for v1namespace in namespaces:
         namespace = v1namespace.metadata.name
-        command = f"helm list --namespace {namespace} -o json"
+        command = f"helm list --namespace {namespace} -o json --max {HELM_LIST_MAX}"
         result = run_command(command)
         if result:
             releases = json.loads(result)
@@ -300,7 +303,7 @@ def down():
 
 def get_active_network(namespace):
     """Get the name of the active network (Helm release) in the given namespace"""
-    cmd = f"helm list --namespace {namespace} --output json"
+    cmd = f"helm list --namespace {namespace} --output json --max {HELM_LIST_MAX}"
     result = run_command(cmd)
     if result:
         import json
