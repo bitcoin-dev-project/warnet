@@ -82,6 +82,18 @@ readinessProbe:
   periodSeconds: 5
   successThreshold: 1
   timeoutSeconds: 10
+# The liveness probe only starts once bitcoind is running. Many pods starting at
+# once on a node can delay bitcoind for minutes, and with restartPolicy Never a
+# failed liveness probe ends the tank for good.
+startupProbe:
+  exec:
+    command:
+      - pidof
+      - bitcoind
+  failureThreshold: 60
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 10
 
 # Node data persistence configuration. Create persisten volume claim, or use an existing one.
 persistence:
