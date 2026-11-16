@@ -100,6 +100,22 @@ options:
 |-----------|--------|------------|-----------|
 | directory | Path   | yes        |           |
 
+### `warnet plan`
+Estimate the Kubernetes cluster (node count and size) a network needs
+
+Counts the pods `warnet deploy` creates for the network, the Kubernetes nodes they
+need (pods per node are limited, 110 on DigitalOcean), and the smallest DigitalOcean
+node size with enough CPU and memory per node. Idle usage per pod was measured, busy
+usage is an estimate.
+
+options:
+| name        | type   | required   | default   |
+|-------------|--------|------------|-----------|
+| directory   | Path   | yes        |           |
+| max_pods    | Int    |            | 110       |
+| system_pods | Int    |            | 25        |
+| nodes       | Int    |            |           |
+
 ### `warnet run`
 Run a scenario from a file.
 
