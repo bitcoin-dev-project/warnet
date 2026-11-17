@@ -17,6 +17,8 @@ from rich.table import Table
 from resources.scenarios.ln_framework.ln import (
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    LND_MAX_PENDING,
+    LND_PENDING_MARGIN,
     PENDING_BLOCKS,
     PendingChannels,
     Policy,
@@ -492,7 +494,8 @@ def _place_channels(channels, tank_to_impl):
     them because of the channels pending then (see PendingChannels).
     Returns a list of (block, index, channel).
     """
-    pending = PendingChannels(tank_to_impl)
+    # Leave room for pending channels of failed opens LND keeps
+    pending = PendingChannels(tank_to_impl, LND_MAX_PENDING - LND_PENDING_MARGIN)
     placed = []
     remaining = channels
     block = CHANNEL_OPEN_START_HEIGHT

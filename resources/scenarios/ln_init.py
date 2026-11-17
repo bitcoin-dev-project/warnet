@@ -16,6 +16,8 @@ from ln_framework.ln import (
     GOSSIP_STALL_TIMEOUT,
     LDK_ANCHOR_RESERVE,
     MAX_FUNDING_TXS,
+    OPEN_REFUSED_TIMEOUT,
+    PENDING_LIMIT_ERRORS,
     PendingChannels,
     Policy,
 )
@@ -482,6 +484,8 @@ class LNInit(Commander):
                 tgt_uri = ln_uris[ch["target"]]
                 tgt_pk, _ = tgt_uri.split("@")
                 log = f"  {ch['source']} -> {ch['target']}\n  {ch['id']} fee: {fee_rate}"
+                # When the target started refusing because of its pending channels
+                refused_since = None
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
@@ -499,6 +503,18 @@ class LNInit(Commander):
                         )
                         break
                     except Exception as e:
+                        if any(error in str(e).lower() for error in PENDING_LIMIT_ERRORS):
+                            refused_since = refused_since or time()
+                            if time() - refused_since > OPEN_REFUSED_TIMEOUT:
+                                raise Exception(
+                                    f"{ch['target']} refused channel {ch['id']} from "
+                                    f"{ch['source']} for {OPEN_REFUSED_TIMEOUT} seconds: {e}. "
+                                    "It has too many pending channels, and ln_init can't "
+                                    "mine the block without this channel. Re-import the "
+                                    "network to spread its channels over more blocks."
+                                ) from e
+                        else:
+                            refused_since = None
                         self.log.info(
                             f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
                         )
@@ -547,6 +563,10 @@ class LNInit(Commander):
                 ch_threads.append(t)
 
             all(thread.join() is None for thread in ch_threads)
+            if thread_errors:
+                raise Exception(
+                    f"Couldn't open the channels of block {target_block}: {thread_errors}"
+                )
             for ch in channels:
                 if ch["outpoint"][-2:] != ":0":
                     if self.lns[ch["source"]].impl in ("eclair", "ldk"):

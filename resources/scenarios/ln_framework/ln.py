@@ -68,6 +68,10 @@ LDK_MAX_UNCONFIRMED_PEERS = 50
 # confirmations its peers require, at most 6 for any implementation in warnet.
 LND_MAX_PENDING_PER_PEER = 64
 LND_MAX_PENDING = 50
+# import-network places channels for this many fewer: an open that fails after
+# LND signed the funding transaction leaves a pending channel that never confirms
+# (until LND forgets it after 2 weeks), and a retry adds another.
+LND_PENDING_MARGIN = 10
 PENDING_BLOCKS = 6
 
 
@@ -77,9 +81,10 @@ class PendingChannels:
     target of a new channel would refuse it because of the channels pending then.
     """
 
-    def __init__(self, impls: dict):
+    def __init__(self, impls: dict, lnd_max_pending=LND_MAX_PENDING):
         # Implementation of each LN node
         self.impls = impls
+        self.lnd_max_pending = lnd_max_pending
         self.block = None
         # Channels of each block still pending: (source, target)
         self.blocks = {}
@@ -129,8 +134,8 @@ class PendingChannels:
         if impl == "lnd":
             if self.pending_pairs[pair] >= LND_MAX_PENDING_PER_PEER:
                 return f"LND accepts at most {LND_MAX_PENDING_PER_PEER} pending channels per peer"
-            if self.pending_nodes[target] >= LND_MAX_PENDING:
-                return f"LND accepts no channels while it has {LND_MAX_PENDING} pending"
+            if self.pending_nodes[target] >= self.lnd_max_pending:
+                return f"LND accepts no channels while it has {self.lnd_max_pending} pending"
         return None
 
     def add(self, source, target):
@@ -144,6 +149,15 @@ class PendingChannels:
                 self.new_peers[target].add(source)
 
 
+# Errors of targets refusing a channel because of their pending channels, which
+# only confirming a block clears: ln_init can't mine the block of a channel it
+# couldn't open, so it gives up after OPEN_REFUSED_TIMEOUT seconds.
+PENDING_LIMIT_ERRORS = (
+    "unfunded channels",
+    "pending channels exceed maximum",
+    "too many peers with unfunded channels",
+)
+OPEN_REFUSED_TIMEOUT = 600
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
 # Seconds pay() waits for a payment to succeed or fail, below the 60 second
@@ -753,6 +767,26 @@ class LDK(LNNode):
             raise Exception(stderr.strip() or f"ldk-server-cli exited with {returncode}")
         return json.loads(stdout)
 
+    def peer_error(self, pk):
+        """
+        The last error message pk sent, from ldk-server's log: list-channels doesn't
+        say why a channel was closed
+        """
+        try:
+            log = self.sclient.read_namespaced_pod_log(
+                self.name, self.namespace, container="ldk", tail_lines=5000
+            )
+        except Exception:
+            return None
+        for line in reversed(log.splitlines()):
+            # "Got Err message from <pk>: <message> (p:<pk prefix>)"
+            if f"Got Err message from {pk}: " in line:
+                return line.split(f"Got Err message from {pk}: ", 1)[1].rsplit(" (p:", 1)[0]
+            # "... counterparty force-closed with message: <message> (ch:... p:...)"
+            if f"p:{pk[:6]})" in line and "force-closed with message: " in line:
+                return line.split("force-closed with message: ", 1)[1].rsplit(" (ch:", 1)[0]
+        return None
+
     def restart(self):
         # ldk-server shuts down cleanly on SIGTERM. The chart's script starts it
         # again when asked to with /tmp/restart-ldk-server, older charts run it as
@@ -851,7 +885,10 @@ class LDK(LNNode):
             # e.g. LDK peers refusing more than 4 unconfirmed channels before they
             # processed the last block. Let the caller retry.
             if channel is None:
-                raise Exception(f"channel {user_channel_id} to {pk} was closed before funding")
+                reason = self.peer_error(pk) or "reason not found in ldk-server's log"
+                raise Exception(
+                    f"channel {user_channel_id} to {pk} was closed before funding: {reason}"
+                )
             if channel.get("funding_txo"):
                 txid = channel["funding_txo"]["txid"]
                 return {"txid": txid, "outpoint": f"{txid}:{channel['funding_txo']['vout']}"}
