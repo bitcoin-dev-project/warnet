@@ -158,6 +158,9 @@ PENDING_LIMIT_ERRORS = (
     "too many peers with unfunded channels",
 )
 OPEN_REFUSED_TIMEOUT = 600
+# Seconds ln_init retries a channel open that keeps failing for any other reason
+# before it gives up, e.g. an incompatibility between the two implementations
+OPEN_FAILING_TIMEOUT = 1800
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
 # Seconds pay() waits for a payment to succeed or fail, below the 60 second
