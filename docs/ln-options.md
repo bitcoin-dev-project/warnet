@@ -6,7 +6,7 @@ Four implementations are available:
 
 | Key | Implementation | Default image |
 |-----|---------------|---------------|
-| `ln.lnd: true` | [LND](https://github.com/lightningnetwork/lnd) by Lightning Labs | `lightninglabs/lnd:v0.20.1-beta` |
+| `ln.lnd: true` | [LND](https://github.com/lightningnetwork/lnd) by Lightning Labs | `lightninglabs/lnd:v0.21.8-beta` |
 | `ln.cln: true` | [Core Lightning](https://github.com/ElementsProject/lightning) by Blockstream | `elementsproject/lightningd:v25.02` |
 | `ln.eclair: true` | [Eclair](https://github.com/ACINQ/eclair) by ACINQ | `bitcoindevproject/eclair:v0.14.4` |
 | `ln.ldk: true` | [LDK Server](https://github.com/lightningdevkit/ldk-server) by the LDK team | `bitcoindevproject/ldk-server:c17dc11` |
