@@ -324,6 +324,11 @@ LN_IMPLS = ["lnd", "cln", "eclair", "ldk"]
 MAX_CHANNEL_CAPACITY = 1_000_000_000
 # The smallest channel LND accepts, also the minimum warnet sets for eclair
 MIN_CHANNEL_CAPACITY = 20_000
+# Smallest channel an implementation can open to another, where above that.
+# CLN asks the opener for a channel reserve of 1% of the channel (at least the
+# opener's dust limit) and eclair refuses a reserve below CLN's own dust limit,
+# 546 sats: eclair can't open channels to CLN below 54,600 sats.
+MIN_CHANNEL_CAPACITY_BETWEEN = {("eclair", "cln"): 54_600}
 # ln_init funds each channel an eclair node opens with a UTXO big enough for
 # its largest channel, because its Bitcoin Core wallet can't be told which UTXO
 # to use. Don't make eclair nodes of nodes that would need more than this much
@@ -598,12 +603,20 @@ def _import_network(
     )
 
     count = 0
+    raised = 0
     for block, index, (source, target, edge) in placed:
+        capacity = int(edge["capacity"])
+        min_capacity = MIN_CHANNEL_CAPACITY_BETWEEN.get(
+            (tank_to_impl[source], tank_to_impl[target])
+        )
+        if min_capacity and capacity < min_capacity:
+            capacity = min_capacity
+            raised += 1
         channel = {
             "id": {"block": block, "index": index},
             "target": target + "-ln",
-            "capacity": int(edge["capacity"]),
-            "push_amt": int(edge["capacity"]) // 2,
+            "capacity": capacity,
+            "push_amt": capacity // 2,
         }
         # Only LND nodes can apply channel policies
         if tank_to_impl[source] == "lnd":
@@ -614,6 +627,8 @@ def _import_network(
         count += 1
 
     print(f"Imported {count} channels")
+    if raised:
+        print(f"Raised the capacity of {raised} channels to what their implementations accept")
 
     network = {"nodes": []}
     prev_node_name = list(tanks.keys())[-1]
