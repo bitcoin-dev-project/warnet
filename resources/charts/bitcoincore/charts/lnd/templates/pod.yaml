@@ -55,21 +55,39 @@ spec:
             - |
               MACAROON_PATH="/root/.lnd/data/chain/bitcoin/{{ .Values.global.chain }}/admin.macaroon"
 
+              # Call lnd's REST API: rest <path> [JSON body]. Prints the response,
+              # nothing and a non-zero exit status on errors. lnd images from
+              # v0.21 have no curl, only (GNU) wget.
+              rest() {
+                if command -v curl > /dev/null; then
+                  if [ -n "$2" ]; then
+                    curl --silent --fail --insecure "https://localhost:8080$1" --data "$2"
+                  else
+                    curl --silent --fail --insecure "https://localhost:8080$1"
+                  fi
+                elif [ -n "$2" ]; then
+                  wget -q -O - --no-check-certificate --header "Content-Type: application/json" \
+                    --post-data "$2" "https://localhost:8080$1"
+                else
+                  wget -q -O - --no-check-certificate "https://localhost:8080$1"
+                fi
+              }
+
               # If wallet is already initialized, unlock it and exit
               if [ -f "$MACAROON_PATH" ]; then
-                until [ "$(curl --silent --insecure https://localhost:8080/v1/unlockwallet --data "{\"wallet_password\":\"AAAAAAAAAAA=\"}")" == "{}" ]; do
+                until [ "$(rest /v1/unlockwallet "{\"wallet_password\":\"AAAAAAAAAAA=\"}")" == "{}" ]; do
                   sleep 5
                 done
                 exit 0
               fi
 
-              until curl --silent --insecure https://localhost:8080/v1/genseed > /tmp/genseed.json; do
+              until rest /v1/genseed > /tmp/genseed.json; do
                 sleep 5
               done
 
               PHRASE=$(cat /tmp/genseed.json | grep -o '\[[^]]*\]')
 
-              until curl --fail --insecure https://localhost:8080/v1/initwallet --data {{ include "lnd.initwalletData" . }}; do
+              until rest /v1/initwallet {{ include "lnd.initwalletData" . }}; do
                 sleep 5
               done
       resources:
