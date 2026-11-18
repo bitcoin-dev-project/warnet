@@ -16,6 +16,7 @@ from ln_framework.ln import (
     GOSSIP_STALL_TIMEOUT,
     LDK_ANCHOR_RESERVE,
     MAX_FUNDING_TXS,
+    OPEN_FAILING_TIMEOUT,
     OPEN_REFUSED_TIMEOUT,
     PENDING_LIMIT_ERRORS,
     PendingChannels,
@@ -486,6 +487,8 @@ class LNInit(Commander):
                 log = f"  {ch['source']} -> {ch['target']}\n  {ch['id']} fee: {fee_rate}"
                 # When the target started refusing because of its pending channels
                 refused_since = None
+                # When the open started failing
+                failing_since = None
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
@@ -515,6 +518,12 @@ class LNInit(Commander):
                                 ) from e
                         else:
                             refused_since = None
+                        failing_since = failing_since or time()
+                        if time() - failing_since > OPEN_FAILING_TIMEOUT:
+                            raise Exception(
+                                f"Channel {ch['id']} {ch['source']} -> {ch['target']} failed "
+                                f"for {OPEN_FAILING_TIMEOUT} seconds, last error: {e}"
+                            ) from e
                         self.log.info(
                             f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
                         )
