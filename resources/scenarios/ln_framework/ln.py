@@ -727,6 +727,9 @@ class ECLAIR(LNNode):
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by ECLAIR yet!")
 
+    def disconnect(self, pk):
+        self.post("/disconnect", {"nodeId": pk})
+
     def reconnect_channel_peers(self, uris_by_pubkey: dict, only=None):
         # Eclair only runs a full gossip sync with a channel peer when the
         # connection is established, so reconnecting fetches what it missed.
@@ -926,6 +929,9 @@ class LDK(LNNode):
 
     def update(self, txid_hex: str, policy: dict, capacity: int, output_index=0) -> dict:
         raise Exception("Channel Policy Updates not supported by LDK yet!")
+
+    def disconnect(self, pk):
+        self.cli("disconnect-peer", pk)
 
     def reconnect_channel_peers(self, uris_by_pubkey: dict, only=None):
         # Reconnecting makes both sides resend announcement_signatures for
