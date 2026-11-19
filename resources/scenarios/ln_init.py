@@ -31,6 +31,11 @@ from test_framework.messages import (
     CTxOut,
 )
 
+# Seconds between starting the threads that connect LN peers (thousands of
+# them on large networks) and that open channels or send policy updates
+CONNECT_INTERVAL = 0.02
+THREAD_START_INTERVAL = 0.05
+
 
 def plan_funding(channels, impls):
     """
@@ -447,7 +452,7 @@ class LNInit(Commander):
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
-            sleep(0.25)
+            sleep(CONNECT_INTERVAL)
             thread.start()
 
         all(thread.join() is None for thread in p2p_threads)
@@ -561,7 +566,7 @@ class LNInit(Commander):
                     ldk_opens.setdefault(ch["source"], []).append(ch)
                     continue
                 t = threading.Thread(target=open_channel, args=(self, ch, CHANNEL_OPEN_FEE_RATE))
-                sleep(0.25)
+                sleep(THREAD_START_INTERVAL)
                 t.start()
                 ch_threads.append(t)
             for chs in ldk_opens.values():
@@ -689,7 +694,7 @@ class LNInit(Commander):
 
         ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in gossip_lns]
         for thread in ch_ann_threads:
-            sleep(0.25)
+            sleep(THREAD_START_INTERVAL)
             thread.start()
 
         # When gossip stalls, reconnect the peers of channels that may be stuck:
@@ -827,7 +832,7 @@ class LNInit(Commander):
                         ch["capacity"],
                     ),
                 )
-                sleep(0.25)
+                sleep(THREAD_START_INTERVAL)
                 ts.start()
                 update_threads.append(ts)
             if "target_policy" in ch:
@@ -841,7 +846,7 @@ class LNInit(Commander):
                         ch["capacity"],
                     ),
                 )
-                sleep(0.25)
+                sleep(THREAD_START_INTERVAL)
                 tt.start()
                 update_threads.append(tt)
         count = len(update_threads)
@@ -922,7 +927,7 @@ class LNInit(Commander):
             threading.Thread(target=matching_graph, args=(self, ln)) for ln in policy_lns
         ]
         for thread in policy_threads:
-            sleep(0.25)
+            sleep(THREAD_START_INTERVAL)
             thread.start()
 
         wait_for_phase(
