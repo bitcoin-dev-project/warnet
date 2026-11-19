@@ -433,17 +433,19 @@ class CLN(LNNode):
         )
         # Stream output, otherwise we get a timeout error
         res = conn.getresponse()
-        stream = ""
+        # Read whatever has arrived in chunks: listchannels of a large network
+        # is megabytes, and reading it a byte at a time from many threads at
+        # once took minutes per call.
+        stream = bytearray()
         while True:
             try:
-                data = res.read(1)
+                data = res.read1(65536)
                 if len(data) == 0:
                     break
-                else:
-                    stream += data.decode("utf8")
+                stream += data
             except Exception:
                 break
-        return stream
+        return stream.decode("utf8")
 
     def createrune(self):
         while True:
