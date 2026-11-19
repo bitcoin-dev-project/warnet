@@ -19,6 +19,7 @@ from ln_framework.ln import (
     OPEN_FAILING_TIMEOUT,
     OPEN_REFUSED_TIMEOUT,
     PENDING_LIMIT_ERRORS,
+    ChannelOpenStuck,
     PendingChannels,
     Policy,
 )
@@ -535,6 +536,9 @@ class LNInit(Commander):
                             f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}"
                         )
                         break
+                    except ChannelOpenStuck:
+                        # The channel exists, opening it again would add another
+                        raise
                     except Exception as e:
                         if any(error in str(e).lower() for error in PENDING_LIMIT_ERRORS):
                             refused_since = refused_since or time()

@@ -161,11 +161,21 @@ OPEN_REFUSED_TIMEOUT = 600
 # Seconds ln_init retries a channel open that keeps failing for any other reason
 # before it gives up, e.g. an incompatibility between the two implementations
 OPEN_FAILING_TIMEOUT = 1800
+# Seconds a channel() call waits, after its node created the channel, for the
+# funding transaction and outpoint
+CHANNEL_COMPLETION_TIMEOUT = 1800
 # Seconds without any node's graph growing before ln_init tries to recover gossip
 GOSSIP_STALL_TIMEOUT = 60
 # Seconds pay() waits for a payment to succeed or fail, below the 60 second
 # HTTP timeout of the clients
 PAYMENT_TIMEOUT = 50
+
+
+class ChannelOpenStuck(Exception):
+    """
+    A node created a channel but it didn't complete in time. Opening it again
+    could create a second channel, so callers must not retry.
+    """
 
 
 # https://github.com/lightningcn/lightning-rfc/blob/master/07-routing-gossip.md#the-channel_update-message
@@ -681,13 +691,20 @@ class ECLAIR(LNNode):
         channel_id, txid = match.groups()
         # Funding output index is not in the response. Bitcoin Core picks the
         # position of the change output so it could be either 0 or 1.
-        # The channel is already open so don't raise and let the caller retry.
+        # The channel is already open, raise ChannelOpenStuck so the caller
+        # doesn't open it again.
+        deadline = time() + CHANNEL_COMPLETION_TIMEOUT
         while True:
             try:
                 info = self.post("/channel", {"channelId": channel_id})
                 outpoint = info["data"]["commitments"]["active"][0]["fundingInput"]
                 return {"txid": txid, "outpoint": outpoint}
             except Exception as e:
+                if time() > deadline:
+                    raise ChannelOpenStuck(
+                        f"Couldn't get outpoint of channel {channel_id} (funding tx {txid}) "
+                        f"for {CHANNEL_COMPLETION_TIMEOUT} seconds: {e}"
+                    ) from e
                 self.log.warning(f"Couldn't get outpoint of channel {channel_id}: {e}")
                 sleep(1)
 
@@ -762,6 +779,9 @@ class LDK(LNNode):
     # Seconds to wait for the wallet to see a funding transaction before restarting
     # ldk-server, the wallet polls bitcoind's mempool every 2 seconds
     WALLET_SYNC_TIMEOUT = 20
+    # Seconds ldk-server can be unreachable while waiting for a funding tx
+    # before it's restarted
+    UNREACHABLE_RESTART_TIMEOUT = 120
 
     def __init__(self, pod_name, pod_namespace, ip_address, sclient):
         super().__init__(pod_name, pod_namespace, ip_address)
@@ -843,30 +863,38 @@ class LDK(LNNode):
         with self.open_lock:
             balance = int(self.cli("get-balances")["total_onchain_balance_sats"])
             res = self._open_channel(pk, capacity, push_amt, fee_rate)
+            # The channel is already open, raise ChannelOpenStuck so the caller
+            # doesn't open it again.
+            deadline = time() + CHANNEL_COMPLETION_TIMEOUT
             waiting_since = time()
-            # The channel is already open so don't raise and let the caller retry
             while True:
+                if time() > deadline:
+                    raise ChannelOpenStuck(
+                        f"Wallet didn't see funding tx {res['txid']} within "
+                        f"{CHANNEL_COMPLETION_TIMEOUT} seconds"
+                    )
                 try:
                     if int(self.cli("get-balances")["total_onchain_balance_sats"]) <= (
                         balance - capacity
                     ):
                         return res
-                    # ldk-node skips mempool transactions that entered bitcoind's
-                    # mempool in the same second as one it already processed, until
-                    # they confirm. A restart makes it process the whole mempool again.
-                    if time() - waiting_since > self.WALLET_SYNC_TIMEOUT:
-                        self.log.warning(
-                            f"Wallet hasn't seen funding tx {res['txid']} after "
-                            f"{self.WALLET_SYNC_TIMEOUT} seconds, restarting ldk-server"
-                        )
-                        self.restart()
-                        waiting_since = time()
-                    else:
-                        self.log.info(f"Waiting for wallet to see funding tx {res['txid']}")
+                    self.log.info(f"Waiting for wallet to see funding tx {res['txid']}")
+                    restart_after = self.WALLET_SYNC_TIMEOUT
                 except Exception as e:
-                    # Don't count time ldk-server is unreachable, e.g. restarting
-                    waiting_since = time()
                     self.log.warning(f"Couldn't get balance: {e}")
+                    # Give a restarting ldk-server time to come back
+                    restart_after = self.UNREACHABLE_RESTART_TIMEOUT
+                # ldk-node skips mempool transactions that entered bitcoind's
+                # mempool in the same second as one it already processed, until
+                # they confirm. A restart makes it process the whole mempool again,
+                # and brings back an ldk-server that stopped answering.
+                if time() - waiting_since > restart_after:
+                    self.log.warning(
+                        f"Wallet hasn't seen funding tx {res['txid']} after "
+                        f"{restart_after} seconds, restarting ldk-server"
+                    )
+                    self.restart()
+                    waiting_since = time()
                 sleep(1)
 
     def _open_channel(self, pk, capacity, push_amt, fee_rate) -> dict:
@@ -884,7 +912,13 @@ class LDK(LNNode):
         user_channel_id = res["user_channel_id"]
         # The funding transaction is created asynchronously after the
         # channel open is negotiated with the peer.
+        deadline = time() + CHANNEL_COMPLETION_TIMEOUT
         while True:
+            if time() > deadline:
+                raise ChannelOpenStuck(
+                    f"Channel {user_channel_id} to {pk} has no funding tx after "
+                    f"{CHANNEL_COMPLETION_TIMEOUT} seconds"
+                )
             try:
                 channels = self.cli("list-channels")["channels"]
             except Exception as e:
