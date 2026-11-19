@@ -391,9 +391,12 @@ class CLN(LNNode):
         self.impl = "cln"
 
     # A new connection per request, so one node can be used from many threads
-    def new_connection(self):
+    def new_connection(self, timeout=60):
         return http.client.HTTPSConnection(
-            host=f"{self.name}.{self.namespace}", port=3010, timeout=60, context=INSECURE_CONTEXT
+            host=f"{self.name}.{self.namespace}",
+            port=3010,
+            timeout=timeout,
+            context=INSECURE_CONTEXT,
         )
 
     def setRune(self, rune):
@@ -410,7 +413,7 @@ class CLN(LNNode):
         )
         return conn.getresponse().read().decode("utf8")
 
-    def post(self, uri, data=None):
+    def post(self, uri, data=None, timeout=60):
         if "Rune" not in self.headers:
             self.createrune()
         if not data:
@@ -421,7 +424,7 @@ class CLN(LNNode):
             "Content-Length": str(len(body)),
             "Content-Type": "application/json",
         }
-        conn = self.new_connection()
+        conn = self.new_connection(timeout)
         conn.request(
             method="POST",
             url=uri,
@@ -498,7 +501,9 @@ class CLN(LNNode):
         }
         if utxo:
             data["utxos"] = [utxo]
-        response = self.post("/v1/fundchannel", data)
+        # Negotiating with a busy peer (e.g. eclair opening many channels) can take
+        # minutes. A timed out fundchannel keeps going with its UTXO reserved.
+        response = self.post("/v1/fundchannel", data, timeout=300)
         res = json.loads(response)
         if "txid" not in res:
             raise Exception(res)
