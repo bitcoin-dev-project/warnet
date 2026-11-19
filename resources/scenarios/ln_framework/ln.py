@@ -1072,9 +1072,11 @@ class LND(LNNode):
         if utxo:
             txid, vout = utxo.split(":")
             data["outpoints"] = [{"txid_str": txid, "output_index": int(vout)}]
-        response = self.post("/v1/channels/stream", data=data)
+        # The stream sends chan_pending once the funding transaction is broadcast,
+        # then stays open until the channel confirms: only read the first update
+        response = self.post("/v1/channels/stream", data=data, wait_for_completion=False)
         res = json.loads(response)
-        if "result" not in res:
+        if "result" not in res or "chan_pending" not in res["result"]:
             raise Exception(res)
         res["txid"] = self.b64_to_hex(res["result"]["chan_pending"]["txid"], reverse=True)
         res["outpoint"] = f"{res['txid']}:{res['result']['chan_pending']['output_index']}"
