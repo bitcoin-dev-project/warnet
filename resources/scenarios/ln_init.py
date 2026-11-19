@@ -494,6 +494,8 @@ class LNInit(Commander):
                 refused_since = None
                 # When the open started failing
                 failing_since = None
+                # When the target started rejecting it as concurrent with another open
+                concurrent_since = None
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
@@ -533,12 +535,23 @@ class LNInit(Commander):
                             f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
                         )
                         sleep(5)
-                        # A CLN fundchannel that timed out keeps negotiating with the
-                        # peer, and keeps its funding UTXO reserved: retries fail with
-                        # "already reserved". Disconnecting aborts the negotiation.
-                        if src.impl == "cln" and (
-                            "already reserved" in str(e) or "timed out" in str(e)
-                        ):
+                        # An open the peers never finished blocks the next ones:
+                        # - A CLN fundchannel that timed out keeps negotiating with the
+                        #   peer and keeps its funding UTXO reserved, retries fail with
+                        #   "already reserved".
+                        # - eclair handles one incoming open per peer at a time and can
+                        #   get stuck on one, rejecting all others as concurrent. Two
+                        #   opens of the same block can collide too, so give it a minute.
+                        # Disconnecting aborts the negotiation.
+                        if "concurrent request rejected" in str(e):
+                            concurrent_since = concurrent_since or time()
+                        else:
+                            concurrent_since = None
+                        if (
+                            src.impl == "cln"
+                            and ("already reserved" in str(e) or "timed out" in str(e))
+                        ) or (concurrent_since and time() - concurrent_since > 60):
+                            concurrent_since = None
                             try:
                                 src.disconnect(tgt_pk)
                             except Exception as e:
