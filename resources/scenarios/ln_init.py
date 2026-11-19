@@ -533,6 +533,18 @@ class LNInit(Commander):
                             f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
                         )
                         sleep(5)
+                        # A CLN fundchannel that timed out keeps negotiating with the
+                        # peer, and keeps its funding UTXO reserved: retries fail with
+                        # "already reserved". Disconnecting aborts the negotiation.
+                        if src.impl == "cln" and (
+                            "already reserved" in str(e) or "timed out" in str(e)
+                        ):
+                            try:
+                                src.disconnect(tgt_pk)
+                            except Exception as e:
+                                self.log.info(
+                                    f"Couldn't disconnect {ch['source']} -> {ch['target']}: {e}"
+                                )
                         # The peers may have been disconnected, e.g. by a restart. Peers
                         # don't reconnect to nodes they didn't dial themselves.
                         try:
