@@ -15,7 +15,7 @@ There are four ways to produce them. All result in the same YAML files — the c
 
 For the full list of options available in those files, see:
 - [Tank Options](tank-options.md) — all Bitcoin Core node keys
-- [LN Options](ln-options.md) — LND and CLN configuration
+- [LN Options](ln-options.md) — LND, CLN, Eclair and LDK configuration
 - [Plugin Options](plugins.md) — hooks, built-in plugins, writing your own
 
 ---
@@ -305,6 +305,43 @@ For example:
 warnet import-network test/data/LN_10.json networks/my_ln_net
 ```
 
+### Mixing lightning implementations
+
+By default every node runs LND. Pass `--ln-impls` to assign each node one of several implementations at random instead:
+
+```sh
+warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,eclair,ldk
+```
+
+`--ln-impls ALL` is short for all of them.
+
+The importer prints the random seed it used and how many nodes got each implementation. Pass the seed back with `--seed` to recreate exactly the same network, e.g. to reproduce an `ln_init` failure:
+
+```sh
+warnet import-network test/data/LN_100.json networks/mixed --ln-impls lnd,cln,eclair,ldk --seed 42
+```
+
+`ln_init` funds every channel an eclair node opens with a UTXO big enough for the node's largest channel, because eclair's Bitcoin Core wallet can't be told which UTXO to use for which channel. An eclair hub with many channels and one large one would need far more coins than its channels hold, so a node that would need more than 10 BTC on top of its channels' capacity gets one of the other implementations instead. The importer lists these nodes. With the same seed only these nodes differ from a plain random assignment.
+
+Only LND can apply channel policies, so each side's policy is only imported when that side is an LND node. See [LN Options](ln-options.md) for how `ln_init` handles each implementation.
+
+### Importing part of a large graph
+
+A dump of the mainnet graph has tens of thousands of nodes. Pass `--max-nodes` to import a smaller network that is still connected, without islands:
+
+```sh
+warnet import-network mainnet.json networks/mainnet_100 --max-nodes 100 --max-channels 300
+```
+
+- The importer starts from the node with the most channels and repeatedly adds the node with the most channels to the nodes already selected. It needs no seed: the same file and options always import the same network (`--seed` still picks the implementations).
+- Every channel between the selected nodes is imported. Channels between the busiest nodes of the real network make this core far denser than the network as a whole, e.g. 100 mainnet nodes share over 3,000 channels. `--max-channels` limits that: it keeps the channel each node was added through, which connects all of them, then adds the largest remaining channels up to the limit. It must be at least `--max-nodes` - 1.
+- Tanks are numbered in the order they were selected, so `tank-0000` is the best connected node.
+
+Every import, truncated or not, also adjusts the graph to what warnet can recreate:
+
+- Channels without both policies are dropped. Most of them have no updates from either side, which usually means the channel is no longer used.
+- Capacities are clamped to between 20,000 sats and 10 BTC, the smallest and largest channels LND accepts.
+
 This writes `network.yaml` and `node-defaults.yaml` into the output directory (creating it if it doesn't exist) and prints a summary:
 
 ```
@@ -321,11 +358,11 @@ warnet deploy networks/my_ln_net
 
 ### What the importer does
 
-- Each node in the JSON becomes a `tank-NNNN` with `ln.lnd: true` enabled
+- Each node in the JSON becomes a `tank-NNNN` with `ln.lnd: true` enabled (or a random implementation from `--ln-impls`)
 - Nodes are wired into a ring topology via `addnode` so that Bitcoin P2P connectivity is established
 - Edges are sorted by `channel_id` and assigned sequential block/index positions starting at `CHANNEL_OPEN_START_HEIGHT` (defined in `resources/scenarios/ln_framework/ln.py`), with up to `CHANNEL_OPENS_PER_BLOCK` channel-open transactions per block
 - Channel capacity and push amount (half of capacity) are taken from the edge's `capacity` field
-- Both `node1_policy` and `node2_policy` are translated into Warnet `Policy` objects, preserving fee rates, time-lock deltas, HTLC limits, and other routing parameters
+- Both `node1_policy` and `node2_policy` are translated into Warnet `Policy` objects, preserving fee rates, time-lock deltas, HTLC limits, and other routing parameters (for LND nodes only)
 
 **Best for:** reproducing real Lightning Network topologies, testing routing behaviour against known channel policies, integration testing with SimLN or other payment-activity tools.
 

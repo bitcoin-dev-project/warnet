@@ -47,6 +47,7 @@ options:
 | debug        | Bool   |            | False     |
 | namespace    | String |            |           |
 | to_all_users | Bool   |            | False     |
+| jobs         | Int    |            | 16        |
 
 ### `warnet down`
 Bring down a running warnet carefully.
@@ -69,6 +70,10 @@ options:
 |-----------------|--------|------------|-----------|
 | graph_file_path | Path   | yes        |           |
 | output_path     | Path   | yes        |           |
+| ln_impls        | String |            | "lnd"     |
+| seed            | Int    |            |           |
+| max_nodes       | Int    |            |           |
+| max_channels    | Int    |            |           |
 
 ### `warnet init`
 Initialize a warnet project in the current directory
@@ -94,6 +99,22 @@ options:
 | name      | type   | required   | default   |
 |-----------|--------|------------|-----------|
 | directory | Path   | yes        |           |
+
+### `warnet plan`
+Estimate the Kubernetes cluster (node count and size) a network needs
+
+Counts the pods `warnet deploy` creates for the network and lists DigitalOcean
+clusters (node size and count) with enough pod slots (110 per node on DigitalOcean),
+CPU to start every pod at once and memory to run the network. Idle usage per pod was
+measured, startup CPU and memory are estimates.
+
+options:
+| name        | type   | required   | default   |
+|-------------|--------|------------|-----------|
+| directory   | Path   | yes        |           |
+| max_pods    | Int    |            | 110       |
+| system_pods | Int    |            | 25        |
+| max_nodes   | Int    |            | 100       |
 
 ### `warnet run`
 Run a scenario from a file.
@@ -135,6 +156,16 @@ options:
 ### `warnet status`
 Display the unified status of the Warnet network and active scenarios
 
+
+### `warnet top`
+Show cluster resource usage, to judge if the cluster fits the network and scenarios
+
+options:
+| name     | type   | required   | default   |
+|----------|--------|------------|-----------|
+| watch    | Float  |            |           |
+| num_pods | Int    |            | 10        |
+| yes      | Bool   |            | False     |
 
 ### `warnet stop`
 Stop a running scenario or all scenarios.

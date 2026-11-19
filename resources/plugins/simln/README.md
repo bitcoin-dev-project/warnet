@@ -30,7 +30,19 @@ SimLN plugin also supports Core Lightning (CLN).  CLN nodes connection details a
 }
 ````
 
-Since SimLN already has access to those LND and CLN connection details, it means you can focus on the "activity" definitions.
+SimLN plugin also supports Eclair. Eclair nodes are accessed through their REST API using the password set in the eclair chart.
+```` JSON
+{
+  "id": <node_id>,
+  "base_url": http://<domain:port>,
+  "api_username": "",
+  "api_password": "21satoshi"
+}
+````
+
+Since SimLN already has access to those LND, CLN and Eclair connection details, it means you can focus on the "activity" definitions.
+
+LDK nodes are not supported yet and are left out of the SimLN node list. No SimLN release supports [LDK Server](https://github.com/lightningdevkit/ldk-server), and SimLN's unreleased LDK Server backend uses API key authentication, which LDK Server has since replaced with macaroons.
 
 ### Launch activity definitions from the command line
 The SimLN plugin takes "activity" definitions like so:
@@ -61,7 +73,7 @@ nodes:
     addnode:
       - tank-0000
     ln:
-      lnd: true
+      eclair: true
 
   - name: tank-0003
     addnode:

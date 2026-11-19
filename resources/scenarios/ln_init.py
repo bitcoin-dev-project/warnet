@@ -1,21 +1,223 @@
 #!/usr/bin/env python3
 
 import threading
-from time import sleep
+from collections import Counter, defaultdict
+from decimal import Decimal
+from time import sleep, time
 
 from commander import Commander
 from ln_framework.ln import (
+    CHANNEL_FUNDING_BUFFER,
     CHANNEL_OPEN_FEE_RATE,
     CHANNEL_OPEN_START_HEIGHT,
     CHANNEL_OPENS_PER_BLOCK,
+    FUNDING_OUTPUTS_PER_TX,
+    FUNDING_TX_FEE,
+    GOSSIP_STALL_TIMEOUT,
+    LDK_ANCHOR_RESERVE,
+    MAX_FUNDING_TXS,
+    OPEN_FAILING_TIMEOUT,
+    OPEN_REFUSED_TIMEOUT,
+    PENDING_LIMIT_ERRORS,
+    ChannelOpenStuck,
+    PendingChannels,
     Policy,
 )
 from test_framework.address import address_to_scriptpubkey
 from test_framework.messages import (
     COIN,
+    COutPoint,
     CTransaction,
+    CTxIn,
     CTxOut,
 )
+
+# Errors of a channel open that an earlier, unfinished open of the same channel
+# blocks: disconnecting the peers aborts it
+OPEN_ABANDONED_ERRORS = (
+    "timed out",
+    "already reserved",
+    "locked by another subsystem",
+)
+# Seconds between starting the threads that connect LN peers (thousands of
+# them on large networks) and that open channels or send policy updates
+CONNECT_INTERVAL = 0.02
+THREAD_START_INTERVAL = 0.05
+
+
+def plan_funding(channels, impls):
+    """
+    UTXOs to fund LN nodes with, just enough for the channels they open.
+    Multiple UTXOs per LN wallet so multiple channels can be opened per block.
+    Returns a list of (LN node name, amount in sats, channel the UTXO must fund or None)
+    """
+    funding = []  # (LN node name, amount in sats, channel the UTXO is for or None)
+    opens = defaultdict(list)
+    for ch in channels:
+        opens[ch["source"]].append(ch)
+    for name, chs in opens.items():
+        impl = impls[name]
+        if impl == "eclair":
+            # Eclair opens its channels concurrently and its Bitcoin Core wallet
+            # picks the coins, spending unconfirmed change if no confirmed coin is
+            # big enough. Make each UTXO big enough for any of its channels.
+            amount = max(ch["capacity"] for ch in chs) + CHANNEL_FUNDING_BUFFER
+            funding += [(name, amount, None) for _ in chs]
+            continue
+        for ch in chs:
+            # LND and CLN are told which UTXO funds each channel. LND sorts the
+            # funding transaction outputs by amount, so the change must be larger
+            # than the channel to put the channel at output 0. CLN always puts
+            # the channel first. LDK opens one channel at a time and can spend
+            # change from its previous opens.
+            amount = (2 if impl == "lnd" else 1) * ch["capacity"] + CHANNEL_FUNDING_BUFFER
+            funding.append((name, amount, ch if impl in ("lnd", "cln") else None))
+    # LDK rejects inbound anchor channels unless it has an on-chain
+    # reserve to fee-bump a force close.
+    ldk_inbound = Counter(ch["target"] for ch in channels if impls[ch["target"]] == "ldk")
+    for name, count in ldk_inbound.items():
+        funding.append((name, LDK_ANCHOR_RESERVE * count + CHANNEL_FUNDING_BUFFER, None))
+    return funding
+
+
+def pending_channel_problems(channels, impls):
+    """
+    Channels their targets would refuse because of the channels pending when they
+    are opened (see PendingChannels). ln_init would retry them forever.
+    """
+    problems = []
+    pending = PendingChannels(impls)
+    by_block = defaultdict(list)
+    for ch in channels:
+        by_block[ch["id"]["block"]].append(ch)
+    for block in sorted(by_block):
+        pending.start_block(block)
+        for ch in sorted(by_block[block], key=lambda ch: ch["id"]["index"]):
+            reason = pending.refusal(ch["source"], ch["target"])
+            if reason:
+                problems.append(f"{ch['id']} {ch['source']} -> {ch['target']}: {reason}")
+            pending.add(ch["source"], ch["target"])
+    return problems
+
+
+def distribute_funds(miner, gen, ln_addrs, funding, log):
+    """
+    Send the UTXOs of plan_funding() from the miner's wallet to the LN wallets and
+    confirm them in the next block. Records the UTXO of each channel that must be
+    funded with a specific one as ch["funding_utxo"].
+    """
+    if not funding:
+        return
+    # Split the outputs over transactions below the standard weight limit. They
+    # must all be confirmed in the block before the first channel opens.
+    batches = [
+        funding[first : first + FUNDING_OUTPUTS_PER_TX]
+        for first in range(0, len(funding), FUNDING_OUTPUTS_PER_TX)
+    ]
+    if len(batches) > MAX_FUNDING_TXS:
+        raise Exception(
+            f"{len(funding)} funding outputs don't fit in one block, the maximum is "
+            f"{MAX_FUNDING_TXS * FUNDING_OUTPUTS_PER_TX}. Use fewer channels."
+        )
+    total = sum(amount for _, amount, _ in funding)
+    # Only coinbases with 100 confirmations are spendable
+    miner_balance = int(miner.getbalance())
+    nodes = len({name for name, _, _ in funding})
+    log.info(
+        f"Funding {nodes} LN nodes with {total / COIN:.8f} BTC in {len(funding)} UTXOs "
+        f"from {len(batches)} transactions, miner has {miner_balance} BTC"
+    )
+    if total + len(batches) * FUNDING_TX_FEE > (miner_balance - 1) * COIN:
+        raise Exception(
+            f"The miner only has {miner_balance} BTC to fund {total / COIN:.8f} BTC "
+            f"of channels. Use smaller or fewer channels."
+        )
+    # Consolidate the miner's coins into one coin per funding transaction, to
+    # reduce their weight. They can't spend each other's unconfirmed change,
+    # Bitcoin Core limits clusters of unconfirmed transactions to 101 kvB.
+    batch_amounts = {}
+    for batch in batches:
+        amount = sum(amount for _, amount, _ in batch) + FUNDING_TX_FEE
+        batch_amounts[miner.getnewaddress()] = Decimal(amount) / COIN
+    consolidation_txid = miner.sendmany("", batch_amounts)
+    gen(1)
+    consolidation = miner.decoderawtransaction(miner.gettransaction(consolidation_txid)["hex"])
+    # sendmany shuffles the outputs
+    batch_vouts = {vout["scriptPubKey"].get("address"): vout["n"] for vout in consolidation["vout"]}
+
+    for address, batch in zip(batch_amounts, batches):
+        helicopter = CTransaction()
+        prevout = COutPoint(int(consolidation_txid, 16), batch_vouts[address])
+        helicopter.vin.append(CTxIn(prevout))
+        for name, amount, _ in batch:
+            helicopter.vout.append(CTxOut(amount, address_to_scriptpubkey(ln_addrs[name])))
+        # Add the change after our outputs so their indexes don't change
+        rawtx = miner.fundrawtransaction(
+            helicopter.serialize().hex(),
+            {"changePosition": len(batch), "add_inputs": False},
+        )
+        signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
+        txid = miner.sendrawtransaction(signed_tx)
+        for vout, (_, _, ch) in enumerate(batch):
+            if ch is not None:
+                ch["funding_utxo"] = f"{txid}:{vout}"
+        log.info(f"Funding tx {txid} with {len(batch)} outputs")
+    # confirm funds in last block before channel opens
+    gen(1)
+    log.info(f"Funds distributed, remaining miner balance: {miner.getbalance()}")
+
+
+def good_enough(progress, names, total, min_nodes, min_channels):
+    """
+    Gossip is never perfect on large networks: accept when enough nodes are
+    complete and every node is close.
+    """
+    if not names:
+        return True
+    done = sum(progress.get(name, 0) >= total for name in names)
+    worst = min(progress.get(name, 0) for name in names)
+    return done >= min_nodes * len(names) and worst >= min_channels * total
+
+
+def wait_for_phase(log, options, phase, threads, progress, names, total, stop, on_stall=None):
+    """
+    Wait for the threads of a phase, one per LN node, each reporting its node's
+    progress out of total in progress. When nothing progresses for
+    GOSSIP_STALL_TIMEOUT seconds, run on_stall to repair, and after at least
+    one repair accept the phase if it is good enough.
+    """
+    last = None
+    last_progress = time()
+    stalls = 0
+    while any(thread.is_alive() for thread in threads):
+        sleep(5)
+        snapshot = dict(progress)
+        if snapshot != last:
+            last = snapshot
+            last_progress = time()
+            continue
+        if time() - last_progress < GOSSIP_STALL_TIMEOUT:
+            continue
+        stalls += 1
+        if stalls > (1 if on_stall else 0) and good_enough(
+            snapshot, names, total, options.gossip_min_nodes, options.gossip_min_channels
+        ):
+            incomplete = {
+                name: total - snapshot.get(name, 0)
+                for name in names
+                if snapshot.get(name, 0) < total
+            }
+            log.warning(
+                f"{phase} stalled, continuing with {len(names) - len(incomplete)} of "
+                f"{len(names)} nodes complete. Missing per node: {incomplete}"
+            )
+            stop.set()
+            break
+        log.info(f"{phase} stalled for {GOSSIP_STALL_TIMEOUT} seconds")
+        if on_stall:
+            on_stall(snapshot)
+        last_progress = time()
+    all(thread.join() is None for thread in threads)
 
 
 class LNInit(Commander):
@@ -26,6 +228,22 @@ class LNInit(Commander):
         parser.description = "Fund LN wallets and open channels"
         parser.usage = "warnet run /path/to/ln_init.py"
         parser.add_argument(
+            "--gossip-min-nodes",
+            dest="gossip_min_nodes",
+            type=float,
+            default=0.9,
+            help="When gossip stalls, continue if this fraction of LN nodes has the complete "
+            "graph (and policies) (default 0.9, 1 waits for all)",
+        )
+        parser.add_argument(
+            "--gossip-min-channels",
+            dest="gossip_min_channels",
+            type=float,
+            default=0.99,
+            help="When gossip stalls, continue if every LN node has this fraction of the "
+            "channels (and policies) (default 0.99)",
+        )
+        parser.add_argument(
             "--miner",
             dest="miner",
             type=str,
@@ -33,6 +251,16 @@ class LNInit(Commander):
         )
 
     def run_test(self):
+        # Exceptions in worker threads are only printed, collect them so
+        # ln_init fails instead of reporting success.
+        thread_errors = []
+
+        def excepthook(args):
+            thread_errors.append(args.exc_value)
+            threading.__excepthook__(args)
+
+        threading.excepthook = excepthook
+
         ##
         # L1 P2P
         ##
@@ -70,6 +298,14 @@ class LNInit(Commander):
         if mining_tank.getblockcount() > 0:
             self.log.info("Chain already exists, exiting")
             return
+
+        impls = {name: ln.impl for name, ln in self.lns.items()}
+        problems = pending_channel_problems(self.channels, impls)
+        if problems:
+            raise Exception(
+                "Channels that would be refused, move them to later blocks "
+                "(warnet import-network does):\n  " + "\n  ".join(problems)
+            )
 
         self.log.info("Locking out of IBD...")
         gen(1)
@@ -111,40 +347,10 @@ class LNInit(Commander):
         # One next block to confirm the distributed coins
         # Then the channel open TXs go in the expected block height
         gen(CHANNEL_OPEN_START_HEIGHT - 4)
-        # divvy up the goods, except fee.
-        # Multiple UTXOs per LN wallet so multiple channels can be opened per block
-        miner_balance = int(miner.getbalance())
-        # To reduce individual TX weight, consolidate all outputs before distribution
-        miner.sendtoaddress(miner_addr, miner_balance - 1)
-        gen(1)
-        helicopter = CTransaction()
+        funding = plan_funding(self.channels, impls)
+        channel_openers = list(dict.fromkeys(name for name, _, _ in funding))
 
-        # Provide the source LN node for each channel with a UTXO just big enough
-        # to open that channel with its capacity plus fee.
-        channel_openers = []
-        for ch in self.channels:
-            if ch["source"] not in channel_openers:
-                channel_openers.append(ch["source"])
-            addr = ln_addrs[ch["source"]]
-            # More than enough to open the channel plus fee and cover LND's "maxFeeRatio"
-            # As long as all channel capacities are < 4 BTC the change output will be
-            # larger and occupy tx output 1, leaving the actual channel open at output 0
-            sat_amt = 10 * COIN
-            helicopter.vout.append(CTxOut(sat_amt, address_to_scriptpubkey(addr)))
-        rawtx = miner.fundrawtransaction(helicopter.serialize().hex())
-        signed_tx = miner.signrawtransactionwithwallet(rawtx["hex"])["hex"]
-        txid = miner.sendrawtransaction(signed_tx)
-        # confirm funds in last block before channel opens
-        gen(1)
-
-        txstats = miner.gettransaction(txid)
-        self.log.info(
-            "Funds distribution from miner:\n  "
-            + f"txid: {txid}\n  "
-            + f"# outputs: {len(txstats['details'])}\n  "
-            + f"total amount: {txstats['amount']}\n  "
-            + f"remaining miner balance: {miner.getbalance()}"
-        )
+        distribute_funds(miner, gen, ln_addrs, funding, self.log)
 
         self.log.info("Waiting for funds to be spendable by channel-openers")
 
@@ -153,7 +359,8 @@ class LNInit(Commander):
             while True:
                 try:
                     bal = ln.walletbalance()
-                    if bal >= 0:
+                    # LDK won't open or accept channels before its wallet sees the funds
+                    if bal > 0 or ln.impl != "ldk":
                         self.log.info(f"LN node {ln_name} confirmed funds")
                         break
                     else:
@@ -253,7 +460,7 @@ class LNInit(Commander):
             threading.Thread(target=connect_ln, args=(self, pair)) for pair in connections
         ]
         for thread in p2p_threads:
-            sleep(0.25)
+            sleep(CONNECT_INTERVAL)
             thread.start()
 
         all(thread.join() is None for thread in p2p_threads)
@@ -276,6 +483,21 @@ class LNInit(Commander):
                 ch_by_block[block].append(ch)
         blocks = list(ch_by_block.keys())
         blocks = sorted(blocks)
+        # Send one open at a time between two nodes: CLN refuses a second open
+        # from a peer with "Multiple simultaneous opens not supported" and eclair
+        # rejects it as concurrent. Send eclair nodes one open at a time from any
+        # peer: eclair's rate limiter for incoming opens loses the answer to one
+        # of two opens from different peers it handles at once, and that peer's
+        # opens are then rejected as concurrent until eclair restarts.
+        open_locks = defaultdict(threading.Lock)
+        open_locks_lock = threading.Lock()
+
+        def open_lock(ch):
+            key = ch["target"]
+            if self.lns[key].impl != "eclair":
+                key = (ch["source"], ch["target"])
+            with open_locks_lock:
+                return open_locks[key]
 
         for target_block in blocks:
             # First make sure the target block is the next block
@@ -291,45 +513,133 @@ class LNInit(Commander):
                 tgt_uri = ln_uris[ch["target"]]
                 tgt_pk, _ = tgt_uri.split("@")
                 log = f"  {ch['source']} -> {ch['target']}\n  {ch['id']} fee: {fee_rate}"
+                # When the target started refusing because of its pending channels
+                refused_since = None
+                # When the open started failing
+                failing_since = None
+                # When the target started rejecting it as concurrent with another open
+                concurrent_since = None
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
-                        res = src.channel(
-                            pk=tgt_pk,
-                            capacity=ch["capacity"],
-                            push_amt=ch["push_amt"],
-                            fee_rate=fee_rate,
-                        )
+                        with open_lock(ch):
+                            res = src.channel(
+                                pk=tgt_pk,
+                                capacity=ch["capacity"],
+                                push_amt=ch["push_amt"],
+                                fee_rate=fee_rate,
+                                utxo=ch.get("funding_utxo"),
+                            )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]
                         self.log.info(
                             f"Channel open success:\n{log}\n  outpoint: {res['outpoint']}"
                         )
                         break
+                    except ChannelOpenStuck:
+                        # The channel exists, opening it again would add another
+                        raise
                     except Exception as e:
+                        if any(error in str(e).lower() for error in PENDING_LIMIT_ERRORS):
+                            refused_since = refused_since or time()
+                            if time() - refused_since > OPEN_REFUSED_TIMEOUT:
+                                raise Exception(
+                                    f"{ch['target']} refused channel {ch['id']} from "
+                                    f"{ch['source']} for {OPEN_REFUSED_TIMEOUT} seconds: {e}. "
+                                    "It has too many pending channels, and ln_init can't "
+                                    "mine the block without this channel. Re-import the "
+                                    "network to spread its channels over more blocks."
+                                ) from e
+                        else:
+                            refused_since = None
+                        failing_since = failing_since or time()
+                        if time() - failing_since > OPEN_FAILING_TIMEOUT:
+                            raise Exception(
+                                f"Channel {ch['id']} {ch['source']} -> {ch['target']} failed "
+                                f"for {OPEN_FAILING_TIMEOUT} seconds, last error: {e}"
+                            ) from e
                         self.log.info(
                             f"Couldn't open channel:\n{log}\n  {e}\n  Retrying in 5 seconds..."
                         )
                         sleep(5)
+                        # An open the peers never finished blocks the next ones:
+                        # - An open that timed out (e.g. the peer never answered) keeps
+                        #   its funding UTXO reserved by CLN or locked by LND, retries
+                        #   fail with "already reserved" or "locked by another subsystem".
+                        # - eclair handles one incoming open per peer at a time and
+                        #   rejects others as concurrent while one is in progress, give
+                        #   it a minute.
+                        # Disconnecting aborts the negotiation.
+                        if "concurrent request rejected" in str(e):
+                            concurrent_since = concurrent_since or time()
+                        else:
+                            concurrent_since = None
+                        if any(error in str(e) for error in OPEN_ABANDONED_ERRORS) or (
+                            concurrent_since and time() - concurrent_since > 60
+                        ):
+                            concurrent_since = None
+                            try:
+                                src.disconnect(tgt_pk)
+                            except Exception as e:
+                                self.log.info(
+                                    f"Couldn't disconnect {ch['source']} -> {ch['target']}: {e}"
+                                )
+                        # The peers may have been disconnected, e.g. by a restart. Peers
+                        # don't reconnect to nodes they didn't dial themselves.
+                        try:
+                            src.connect(tgt_uri)
+                        except Exception as e:
+                            self.log.info(
+                                f"Couldn't reconnect {ch['source']} -> {ch['target']}: {e}"
+                            )
 
             channels = sorted(ch_by_block[target_block], key=lambda ch: ch["id"]["index"])
             if len(channels) > CHANNEL_OPENS_PER_BLOCK:
                 raise Exception(
                     f"Too many channels in block {target_block}: {len(channels)} / Maximum: {CHANNEL_OPENS_PER_BLOCK}"
                 )
+
+            # LDK funds channels with unconfirmed change from its earlier opens, and
+            # a child transaction can't be mined ahead of its parent. Open each LDK
+            # node's channels one at a time in index order, so a parent always has
+            # a lower index (higher rank below) than its children.
+            def open_channels_in_order(self, chs, fee_rate):
+                for ch in chs:
+                    open_channel(self, ch, fee_rate)
+
             index = 0
+            ldk_opens = {}
             ch_threads = []
             for ch in channels:
                 index += 1  # noqa
                 assert index == ch["id"]["index"], "Channel ID indexes are not consecutive"
+                if self.lns[ch["source"]].impl == "ldk":
+                    ldk_opens.setdefault(ch["source"], []).append(ch)
+                    continue
                 t = threading.Thread(target=open_channel, args=(self, ch, CHANNEL_OPEN_FEE_RATE))
-                sleep(0.25)
+                sleep(THREAD_START_INTERVAL)
+                t.start()
+                ch_threads.append(t)
+            for chs in ldk_opens.values():
+                t = threading.Thread(
+                    target=open_channels_in_order, args=(self, chs, CHANNEL_OPEN_FEE_RATE)
+                )
                 t.start()
                 ch_threads.append(t)
 
             all(thread.join() is None for thread in ch_threads)
+            if thread_errors:
+                raise Exception(
+                    f"Couldn't open the channels of block {target_block}: {thread_errors}"
+                )
             for ch in channels:
                 if ch["outpoint"][-2:] != ":0":
+                    if self.lns[ch["source"]].impl in ("eclair", "ldk"):
+                        # Eclair funds channels from its Bitcoin Core wallet and
+                        # LDK from its BDK wallet, both randomize the position
+                        # of the change output.
+                        self.log.warning(f"Channel open outpoint not tx output index 0\n  {ch}")
+                        continue
                     self.log.error(f"Channel open outpoint not tx output index 0\n  {ch}")
                     raise Exception("Channel determinism ruined, abort!")
 
@@ -349,9 +659,9 @@ class LNInit(Commander):
                 paid = round(entry["fees"]["base"] * COIN)
                 rank_fee_rate = (len(channels) - ch["id"]["index"] + 1) * 1000
                 delta = rank_fee_rate * entry["vsize"] - paid
-                self.log.debug(
+                self.log.info(
                     f"Channel {ch['id']} paid {paid / entry['vsize']:.2f} s/vB, "
-                    f"ranked at {rank_fee_rate} s/vB"
+                    f"ranked at {rank_fee_rate} s/vB. Applying delta: {delta}"
                 )
                 mining_tank.prioritisetransaction(ch["txid"], 0, delta)
             block_hash = gen(1)[0]
@@ -371,14 +681,54 @@ class LNInit(Commander):
         gen(5)
         self.log.info(f"Confirmed {len(self.channels)} total channel opens")
 
+        # Eclair only syncs gossip from the (at most 5) channel peers with the
+        # largest capacity. It syncs with query_short_channel_ids, which LDK
+        # doesn't answer, and asks for no backlog of older gossip. An eclair
+        # node without channels to other implementations only receives gossip
+        # broadcast after it connected, so it may never learn the complete graph.
+        def syncs_gossip(ln):
+            if ln.impl != "eclair":
+                return True
+            peers = []
+            for ch in self.channels:
+                if ln.name in (ch["source"], ch["target"]):
+                    peer = ch["target"] if ch["source"] == ln.name else ch["source"]
+                    peers.append((ch["capacity"], peer))
+            sync_peers = sorted(peers, reverse=True)[:5]
+            return any(self.lns[peer].impl != "ldk" for _, peer in sync_peers)
+
+        gossip_lns = [ln for ln in self.lns.values() if syncs_gossip(ln)]
+        for ln in self.lns.values():
+            if ln not in gossip_lns:
+                self.log.info(
+                    f"Not checking graph of eclair node {ln.name} without channels "
+                    "to a node it can sync gossip from (any but LDK)"
+                )
+
         self.log.info("Waiting for channel announcement gossip...")
+
+        # Channel count in each node's graph, to detect when gossip stalls
+        graph_counts = {}
+        # (short channel id, direction) of every channel_update any node has
+        known_directions = set()
+        directions_lock = threading.Lock()
+        gossip_stop = threading.Event()
 
         def ln_all_chs(self, ln):
             expected = len(self.channels)
             actual = 0
-            while actual != expected:
+            while actual != expected and not gossip_stop.is_set():
                 try:
-                    actual = len(ln.graph()["edges"])
+                    directions = ln.channel_directions()
+                    if directions is None:
+                        actual = len(ln.graph()["edges"])
+                    else:
+                        # Only count channels with the updates of both directions
+                        scids = Counter(scid for scid, _ in directions)
+                        actual = sum(count == 2 for count in scids.values())
+                        with directions_lock:
+                            known_directions.update(directions)
+                    graph_counts[ln.name] = actual
                     if actual == expected:
                         self.log.info(f"LN {ln.name} has graph with all {expected} channels")
                         break
@@ -393,33 +743,126 @@ class LNInit(Commander):
                     )
                     sleep(5)
 
-        ch_ann_threads = [
-            threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in self.lns.values()
-        ]
+        ch_ann_threads = [threading.Thread(target=ln_all_chs, args=(self, ln)) for ln in gossip_lns]
         for thread in ch_ann_threads:
-            sleep(0.25)
+            sleep(THREAD_START_INTERVAL)
             thread.start()
 
-        all(thread.join() is None for thread in ch_ann_threads)
-        self.log.info("All LN nodes have complete graph")
+        # When gossip stalls, reconnect the peers of channels that may be stuck:
+        # - Channels no node has announced: their peers can wait for each other's
+        #   channel_ready or announcement_signatures forever, e.g. CLN waiting for
+        #   LND's channel_reestablish. A new connection makes both resend them.
+        # - Channels whose LDK side update no node has: LDK sometimes never sends
+        #   it, it does on reconnection.
+        # - Incomplete eclair nodes: eclair only runs a full gossip sync with a
+        #   channel peer on connection.
+        # Only reconnect those, every reconnection disrupts the gossip of both nodes.
+        # CLN doesn't fetch gossip it missed again, copy it from a complete CLN node.
+        uris_by_pubkey = {uri.split("@")[0]: uri for uri in ln_uris.values()}
+        pubkeys = {name: uri.split("@")[0] for name, uri in ln_uris.items()}
+
+        def stuck_channel_peers():
+            """{LN node: peers} to reconnect, see above"""
+            peers = defaultdict(set)
+            with directions_lock:
+                known = set(known_directions)
+            # Without LND or CLN nodes, nothing is known about announcements
+            known_scids = {scid for scid, _ in known}
+            for ch in self.channels:
+                scid = f"{ch['id']['block']}x{ch['id']['index']}x{ch['outpoint'].split(':')[1]}"
+                if known_scids and scid not in known_scids:
+                    peers[ch["source"]].add(pubkeys[ch["target"]])
+                    continue
+                for node, peer in ((ch["source"], ch["target"]), (ch["target"], ch["source"])):
+                    if self.lns[node].impl != "ldk":
+                        continue
+                    direction = 0 if pubkeys[node] < pubkeys[peer] else 1
+                    if (scid, direction) not in known:
+                        peers[node].add(pubkeys[peer])
+            return peers
+
+        def copy_cln_gossip(counts):
+            expected = len(self.channels)
+            clns = [ln for ln in gossip_lns if ln.impl == "cln"]
+            incomplete = [ln for ln in clns if counts.get(ln.name, 0) < expected]
+            donor = next((ln for ln in clns if counts.get(ln.name) == expected), None)
+            if not incomplete:
+                return
+            if donor is None:
+                self.log.info("No CLN node has the complete graph to copy gossip from yet")
+                return
+
+            def copy(ln):
+                try:
+                    added = ln.copy_gossip_from(donor)
+                    self.log.info(f"Added {added} gossip messages from {donor.name} to {ln.name}")
+                except Exception as e:
+                    self.log.warning(f"Couldn't copy gossip from {donor.name} to {ln.name}: {e}")
+
+            copy_threads = [threading.Thread(target=copy, args=(ln,)) for ln in incomplete]
+            for thread in copy_threads:
+                thread.start()
+            all(thread.join() is None for thread in copy_threads)
+
+        def repair_gossip(counts):
+            stuck = stuck_channel_peers()
+            self.log.info(
+                f"Reconnecting {sum(len(p) for p in stuck.values())} channel peers of {len(stuck)} "
+                "nodes (channels no node has announced, LDK updates no node has) and "
+                "incomplete eclair nodes to their channel peers..."
+            )
+            reconnect_threads = []
+            for ln in self.lns.values():
+                incomplete = counts.get(ln.name, 0) < len(self.channels)
+                if ln.impl == "eclair" and ln in gossip_lns and incomplete:
+                    args = (uris_by_pubkey,)
+                elif ln.name in stuck:
+                    args = (uris_by_pubkey, stuck[ln.name])
+                else:
+                    continue
+                t = threading.Thread(target=ln.reconnect_channel_peers, args=args)
+                t.start()
+                reconnect_threads.append(t)
+            all(thread.join() is None for thread in reconnect_threads)
+            copy_cln_gossip(counts)
+
+        wait_for_phase(
+            self.log,
+            self.options,
+            "Channel gossip",
+            ch_ann_threads,
+            graph_counts,
+            [ln.name for ln in gossip_lns],
+            len(self.channels),
+            gossip_stop,
+            repair_gossip,
+        )
+        self.log.info("LN nodes have the channel graph")
 
         ##
         # UPDATE CHANNEL POLICIES
         ##
         self.log.info("Updating channel policies...")
 
-        def update_policy(self, ln, txid_hex, policy, capacity):
-            self.log.info(f"Sending update from {ln.name} for channel with outpoint: {txid_hex}:0")
+        def update_policy(self, ln, outpoint, policy, capacity):
+            self.log.info(f"Sending update from {ln.name} for channel with outpoint: {outpoint}")
+            txid_hex, output_index = outpoint.split(":")
             res = None
             while res is None:
                 try:
-                    res = ln.update(txid_hex, policy, capacity)
+                    res = ln.update(txid_hex, policy, capacity, int(output_index))
                     if len(res["failed_updates"]) != 0:
                         self.log.info(
                             f" Failed updates: {res['failed_updates']}\n txid: {txid_hex}\n policy:{policy}\n retrying in 5 seconds..."
                         )
                         sleep(5)
                         continue
+                    # Expect the max htlc LND applied, it caps it to what the peer allows
+                    if res["max_htlc_msat"] < policy["htlc_maximum_msat"]:
+                        self.log.info(
+                            f"{ln.name} capped max htlc of {outpoint} to {res['max_htlc_msat']} msat"
+                        )
+                        policy["htlc_maximum_msat"] = res["max_htlc_msat"]
                     break
                 except Exception as e:
                     self.log.info(
@@ -435,12 +878,12 @@ class LNInit(Commander):
                     args=(
                         self,
                         self.lns[ch["source"]],
-                        ch["txid"],
+                        ch["outpoint"],
                         ch["source_policy"],
                         ch["capacity"],
                     ),
                 )
-                sleep(0.25)
+                sleep(THREAD_START_INTERVAL)
                 ts.start()
                 update_threads.append(ts)
             if "target_policy" in ch:
@@ -449,12 +892,12 @@ class LNInit(Commander):
                     args=(
                         self,
                         self.lns[ch["target"]],
-                        ch["txid"],
+                        ch["outpoint"],
                         ch["target_policy"],
                         ch["capacity"],
                     ),
                 )
-                sleep(0.25)
+                sleep(THREAD_START_INTERVAL)
                 tt.start()
                 update_threads.append(tt)
         count = len(update_threads)
@@ -467,9 +910,17 @@ class LNInit(Commander):
         def policy_equal(pol1, pol2, capacity):
             return pol1.to_lnd_chanpolicy(capacity) == pol2.to_lnd_chanpolicy(capacity)
 
-        def matching_graph(self, expected, ln):
-            done = False
-            while not done:
+        # Only LND reports both channel policies in its graph
+        expected_policies = {
+            (ch["id"]["block"], ch["id"]["index"]): ch
+            for ch in self.channels
+            if "source_policy" in ch and "target_policy" in ch
+        }
+        policy_counts = {}
+        policy_stop = threading.Event()
+
+        def matching_graph(self, ln):
+            while not policy_stop.is_set():
                 try:
                     actual = ln.graph()["edges"]
                 except Exception as e:
@@ -478,57 +929,71 @@ class LNInit(Commander):
                     )
                     sleep(5)
                     continue
-
-                self.log.debug(f"LN {ln.name} channel graph edges: {actual}")
-                if len(actual) > 0:
-                    done = True
-                    assert len(expected) == len(actual), (
-                        f"Expected edges {len(expected)}, actual edges {len(actual)}\n{actual}"
-                    )
-                for i, actual_ch in enumerate(actual):
-                    expected_ch = expected[i]
+                matched = 0
+                present = 0
+                for actual_ch in actual:
+                    chan_id = int(actual_ch["channel_id"])
+                    expected_ch = expected_policies.get((chan_id >> 40, (chan_id >> 16) & 0xFFFFFF))
+                    if expected_ch is None:
+                        continue
+                    present += 1
                     capacity = expected_ch["capacity"]
                     # We assert this because it isn't updated as part of policy.
-                    # If this fails we have a bigger issue
+                    # If this fails we have a bigger issue.
                     assert int(actual_ch["capacity"]) == capacity, (
                         f"LN {ln.name} graph capacity mismatch:\n actual: {actual_ch['capacity']}\n expected: {capacity}"
                     )
-
-                    # Policies were not defined in network.yaml
-                    if "source_policy" not in expected_ch or "target_policy" not in expected_ch:
+                    if not actual_ch.get("node1_policy") or not actual_ch.get("node2_policy"):
                         continue
-
                     # policy actual/expected source/target
                     polas = Policy.from_lnd_describegraph(actual_ch["node1_policy"])
                     polat = Policy.from_lnd_describegraph(actual_ch["node2_policy"])
                     poles = Policy(**expected_ch["source_policy"])
                     polet = Policy(**expected_ch["target_policy"])
                     # Allow policy swap when comparing channels
-                    if policy_equal(polas, poles, capacity) and policy_equal(
-                        polat, polet, capacity
+                    if (
+                        policy_equal(polas, poles, capacity)
+                        and policy_equal(polat, polet, capacity)
+                    ) or (
+                        policy_equal(polas, polet, capacity)
+                        and policy_equal(polat, poles, capacity)
                     ):
-                        continue
-                    if policy_equal(polas, polet, capacity) and policy_equal(
-                        polat, poles, capacity
-                    ):
-                        continue
-                    done = False
-                if done:
-                    self.log.info(f"LN {ln.name} graph channel policies all match expected source")
-                else:
-                    sleep(5)
+                        matched += 1
+                # Channels missing from this node's graph were accepted in the
+                # gossip phase, only check the policies of the others
+                policy_counts[ln.name] = matched + len(expected_policies) - present
+                if matched == present:
+                    self.log.info(
+                        f"LN {ln.name} graph channel policies all match expected source "
+                        f"({present} of {len(expected_policies)} channels in its graph)"
+                    )
+                    return
+                self.log.info(
+                    f"LN {ln.name} has {matched} of {present} expected policies in its graph"
+                )
+                sleep(5)
 
-        expected = sorted(self.channels, key=lambda ch: (ch["id"]["block"], ch["id"]["index"]))
+        policy_lns = [ln for ln in gossip_lns if ln.impl == "lnd"]
         policy_threads = [
-            threading.Thread(target=matching_graph, args=(self, expected, ln))
-            for ln in self.lns.values()
+            threading.Thread(target=matching_graph, args=(self, ln)) for ln in policy_lns
         ]
         for thread in policy_threads:
-            sleep(0.25)
+            sleep(THREAD_START_INTERVAL)
             thread.start()
 
-        all(thread.join() is None for thread in policy_threads)
-        self.log.info("All LN nodes have matching graph!")
+        wait_for_phase(
+            self.log,
+            self.options,
+            "Channel policy gossip",
+            policy_threads,
+            policy_counts,
+            [ln.name for ln in policy_lns],
+            len(expected_policies),
+            policy_stop,
+        )
+        if thread_errors:
+            raise Exception(f"{len(thread_errors)} ln_init thread(s) failed: {thread_errors}")
+        self.log.info("LN nodes have matching graph!")
 
 
 def main():

@@ -9,8 +9,10 @@ from .graph import create, import_network
 from .image import image
 from .ln import ln
 from .namespaces import namespaces
+from .plan import plan
 from .project import init, new, setup
 from .status import status
+from .top import top
 from .users import auth
 
 
@@ -76,10 +78,12 @@ cli.add_command(logs)
 cli.add_command(ln)
 cli.add_command(namespaces)
 cli.add_command(new)
+cli.add_command(plan)
 cli.add_command(run)
 cli.add_command(setup)
 cli.add_command(snapshot)
 cli.add_command(status)
+cli.add_command(top)
 cli.add_command(stop)
 cli.add_command(create)
 cli.add_command(version)

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ldk.fullname" . }}
+  labels:
+    {{- include "ldk.labels" . | nindent 4 }}
+data:
+  # Read by ldk-server
+  config.toml: |
+    {{- .Values.baseConfig | nindent 4 }}
+    {{- .Values.defaultConfig | nindent 4 }}
+    {{- .Values.config | nindent 4 }}
+  # Read by ldk-server-cli from its default location to find the admin
+  # macaroon and TLS certificate. The self-signed certificate is valid
+  # for localhost and 127.0.0.1.
+  cli.toml: |
+    [node]
+    network = "{{ .Values.global.chain }}"
+    grpc_service_address = "127.0.0.1:{{ .Values.RPCPort }}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ldk.fullname" . }}-channels
+  labels:
+    channels: "true"
+    {{- include "ldk.labels" . | nindent 4 }}
+data:
+  source: {{ include "ldk.fullname" . }}
+  channels: |
+    {{ .Values.channels | toJson }}
