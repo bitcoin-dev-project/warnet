@@ -11,6 +11,7 @@ data:
     {{ template "bitcoincore.check_semver" . }}
     {{- .Values.baseConfig | nindent 4 }}
     rpcport={{ index .Values.global .Values.global.chain "RPCPort" }}
+    rpcuser={{ .Values.global.rpcuser }}
     rpcpassword={{ .Values.global.rpcpassword }}
     zmqpubrawblock=tcp://0.0.0.0:{{ .Values.global.ZMQBlockPort }}
     zmqpubrawtx=tcp://0.0.0.0:{{ .Values.global.ZMQTxPort }}

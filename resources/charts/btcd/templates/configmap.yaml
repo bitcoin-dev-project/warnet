@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "btcd.fullname" . }}
+  labels:
+    {{- include "btcd.labels" . | nindent 4 }}
+data:
+  btcd.conf: |
+    {{ include "btcd.chainFlag" . }}
+    rpclisten=0.0.0.0:{{ index .Values.global .Values.global.chain "RPCListenPort" }}
+    rpcuser={{ .Values.global.rpcuser }}
+    rpcpass={{ .Values.global.rpcpassword }}
+    listen=0.0.0.0:{{ index .Values.global .Values.global.chain "P2PPort" }}
+    debuglevel=info
+    txindex=1
+    {{- $p2pPort := index .Values.global .Values.global.chain "P2PPort" }}
+    {{- range .Values.addnode }}
+      {{- printf "addpeer=%s:%v" . $p2pPort | nindent 4 }}
+    {{- end }}
+    {{- .Values.config | nindent 4 }}

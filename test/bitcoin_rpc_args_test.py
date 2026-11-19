@@ -122,7 +122,10 @@ class BitcoinRPCRPCArgsTest(TestBase):
             # Extract the method from the expected suffix
             method = expected_suffix[0]
 
-            with patch("warnet.bitcoin.run_command") as mock_run_command:
+            with (
+                patch("warnet.bitcoin._get_node_container", return_value="bitcoincore"),
+                patch("warnet.bitcoin.run_command") as mock_run_command,
+            ):
                 mock_run_command.return_value = "MOCKED"
                 try:
                     _rpc(self.tank, method, params, self.namespace)
