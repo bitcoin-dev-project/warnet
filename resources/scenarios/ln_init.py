@@ -482,6 +482,21 @@ class LNInit(Commander):
                 ch_by_block[block].append(ch)
         blocks = list(ch_by_block.keys())
         blocks = sorted(blocks)
+        # Send one open at a time between two nodes: CLN refuses a second open
+        # from a peer with "Multiple simultaneous opens not supported" and eclair
+        # rejects it as concurrent. Send eclair nodes one open at a time from any
+        # peer: eclair's rate limiter for incoming opens loses the answer to one
+        # of two opens from different peers it handles at once, and that peer's
+        # opens are then rejected as concurrent until eclair restarts.
+        open_locks = defaultdict(threading.Lock)
+        open_locks_lock = threading.Lock()
+
+        def open_lock(ch):
+            key = ch["target"]
+            if self.lns[key].impl != "eclair":
+                key = (ch["source"], ch["target"])
+            with open_locks_lock:
+                return open_locks[key]
 
         for target_block in blocks:
             # First make sure the target block is the next block
@@ -506,13 +521,14 @@ class LNInit(Commander):
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
-                        res = src.channel(
-                            pk=tgt_pk,
-                            capacity=ch["capacity"],
-                            push_amt=ch["push_amt"],
-                            fee_rate=fee_rate,
-                            utxo=ch.get("funding_utxo"),
-                        )
+                        with open_lock(ch):
+                            res = src.channel(
+                                pk=tgt_pk,
+                                capacity=ch["capacity"],
+                                push_amt=ch["push_amt"],
+                                fee_rate=fee_rate,
+                                utxo=ch.get("funding_utxo"),
+                            )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]
                         self.log.info(
@@ -546,9 +562,9 @@ class LNInit(Commander):
                         # - An open that timed out (e.g. the peer never answered) keeps
                         #   its funding UTXO reserved by CLN or locked by LND, retries
                         #   fail with "already reserved" or "locked by another subsystem".
-                        # - eclair handles one incoming open per peer at a time and can
-                        #   get stuck on one, rejecting all others as concurrent. Two
-                        #   opens of the same block can collide too, so give it a minute.
+                        # - eclair handles one incoming open per peer at a time and
+                        #   rejects others as concurrent while one is in progress, give
+                        #   it a minute.
                         # Disconnecting aborts the negotiation.
                         if "concurrent request rejected" in str(e):
                             concurrent_since = concurrent_since or time()
