@@ -2,7 +2,6 @@
 
 import threading
 from collections import Counter, defaultdict
-from contextlib import nullcontext
 from decimal import Decimal
 from time import sleep, time
 
@@ -483,13 +482,21 @@ class LNInit(Commander):
                 ch_by_block[block].append(ch)
         blocks = list(ch_by_block.keys())
         blocks = sorted(blocks)
-        # eclair's rate limiter for incoming opens loses the answer to one of two
-        # opens from different peers it handles at once, and that peer's opens
-        # are then rejected as concurrent until eclair restarts. Send eclair
-        # nodes one open at a time.
-        eclair_open_locks = {
-            name: threading.Lock() for name, ln in self.lns.items() if ln.impl == "eclair"
-        }
+        # Send one open at a time between two nodes: CLN refuses a second open
+        # from a peer with "Multiple simultaneous opens not supported" and eclair
+        # rejects it as concurrent. Send eclair nodes one open at a time from any
+        # peer: eclair's rate limiter for incoming opens loses the answer to one
+        # of two opens from different peers it handles at once, and that peer's
+        # opens are then rejected as concurrent until eclair restarts.
+        open_locks = defaultdict(threading.Lock)
+        open_locks_lock = threading.Lock()
+
+        def open_lock(ch):
+            key = ch["target"]
+            if self.lns[key].impl != "eclair":
+                key = (ch["source"], ch["target"])
+            with open_locks_lock:
+                return open_locks[key]
 
         for target_block in blocks:
             # First make sure the target block is the next block
@@ -514,7 +521,7 @@ class LNInit(Commander):
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
-                        with eclair_open_locks.get(ch["target"], nullcontext()):
+                        with open_lock(ch):
                             res = src.channel(
                                 pk=tgt_pk,
                                 capacity=ch["capacity"],
