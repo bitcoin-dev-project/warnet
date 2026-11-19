@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
+import pexpect
 from scenarios_test import ScenariosTest
 from test_base import TestBase
 
@@ -41,6 +42,8 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         self.blue_users = ["carol-warnettest", "default", "mallory-warnettest"]
         self.red_users = ["alice-warnettest", self.bob_user, "default"]
 
+        self.bitcoin_version_slug = "Bitcoin Core version v27.0.0"
+
     def run_test(self):
         try:
             os.chdir(self.tmpdir)
@@ -49,7 +52,9 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
             self.setup_namespaces()
             self.setup_service_accounts()
             self.setup_network()
+            self.admin_checks_logs()
             self.authenticate_and_become_bob()
+            self.bob_checks_logs()
             self.bob_runs_scenario_tests()
         finally:
             self.return_to_initial_context()
@@ -175,6 +180,72 @@ class NamespaceAdminTest(ScenariosTest, TestBase):
         super().run_test()
         assert self.this_is_the_current_context(self.bob_context)
 
+    def bob_checks_logs(self):
+        assert self.this_is_the_current_context(self.bob_context)
+        self.log.info("Bob will check the logs")
+
+        sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn(
+            f"warnet logs tank-0008 --namespace {self.red_namespace}", maxread=4096 * 10
+        )
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
+        assert expect_without_traceback("Could not find pod in any namespaces", sut)
+        sut.close()
+
+        self.log.info("Bob has checked the logs")
+        assert self.this_is_the_current_context(self.bob_context)
+
+    def admin_checks_logs(self):
+        assert self.this_is_the_current_context(self.initial_context)
+        self.log.info("The admin will check the logs")
+
+        sut = pexpect.spawn("warnet logs", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn(f"warnet logs --namespace {self.red_namespace}", maxread=4096 * 10)
+        assert expect_without_traceback("Please choose a pod", sut)
+        sut.sendline("")
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs tank-0008", maxread=4096 * 10)
+        assert expect_without_traceback("The pod 'tank-0008' is found in these namespaces", sut)
+        sut.close()
+
+        sut = pexpect.spawn(
+            f"warnet logs tank-0008 --namespace {self.red_namespace}", maxread=4096 * 10
+        )
+        assert expect_without_traceback(self.bitcoin_version_slug, sut)
+        sut.close()
+
+        sut = pexpect.spawn("warnet logs this_does_not_exist", maxread=4096 * 10)
+        assert expect_without_traceback("Could not find pod in any namespaces", sut)
+        sut.close()
+
+        self.log.info("The admin has checked the logs")
+        assert self.this_is_the_current_context(self.initial_context)
+
 
 def remove_user(kubeconfig_data: dict, username: str) -> dict:
     kubeconfig_data["users"] = [
@@ -188,6 +259,27 @@ def remove_context(kubeconfig_data: dict, context_name: str) -> dict:
         context for context in kubeconfig_data["contexts"] if context["name"] != context_name
     ]
     return kubeconfig_data
+
+
+class StackTraceFoundException(Exception):
+    """Custom exception raised when a stack trace is found in the output."""
+
+    pass
+
+
+def expect_without_traceback(expectation: str, sut: pexpect.spawn, timeout: int = 2) -> bool:
+    expectation_found = False
+    while True:
+        try:
+            sut.expect(["\r", "\n"], timeout=timeout)  # inquirer uses \r
+            line = sut.before.decode("utf-8")
+            if "Traceback (" in line:
+                raise StackTraceFoundException
+            if expectation in line:
+                expectation_found = True
+        except (pexpect.exceptions.EOF, pexpect.exceptions.TIMEOUT):
+            break
+    return expectation_found
 
 
 if __name__ == "__main__":
