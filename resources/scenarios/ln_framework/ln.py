@@ -48,6 +48,8 @@ CHANNEL_OPEN_FEE_RATE = 10  # s/vB
 CHANNEL_FUNDING_BUFFER = 100_000  # sats
 # On-chain reserve LDK requires for each anchor channel, including inbound ones
 LDK_ANCHOR_RESERVE = 25_000  # sats
+# Dust limit of a P2PKH output, the largest standard one (CLN's dust limit)
+MAX_DUST_LIMIT = 546  # sats
 # Outputs per transaction distributing the miner's coins to LN wallets, keeping
 # each one below the 400,000 WU standard weight limit (a P2TR output is 172 WU)
 FUNDING_OUTPUTS_PER_TX = 1500
@@ -1119,6 +1121,14 @@ class LND(LNNode):
         if utxo:
             txid, vout = utxo.split(":")
             data["outpoints"] = [{"txid_str": txid, "output_index": int(vout)}]
+        # LND asks its peer for a reserve of 1% of the channel, at least its own
+        # dust limit (354 sats), and refuses the channel if that is below the
+        # peer's dust limit: CLN's is 546 sats, so channels below 54,600 sats to
+        # CLN failed with "channel reserve of 354 sat is too small, min is 546
+        # sat". Ask for at least 546 sats, the largest standard dust limit. Only
+        # when needed: LND before v0.16 doesn't have remote_chan_reserve_sat.
+        if capacity // 100 < MAX_DUST_LIMIT:
+            data["remote_chan_reserve_sat"] = MAX_DUST_LIMIT
         # The stream sends chan_pending once the funding transaction is broadcast,
         # then stays open until the channel confirms: only read the first update
         response = self.post("/v1/channels/stream", data=data, wait_for_completion=False)
