@@ -275,9 +275,11 @@ def collect() -> dict:
 def totals(snapshot) -> dict:
     nodes = snapshot["nodes"].values()
 
+    # Unknown unless every node reports it: usage of some nodes against the
+    # capacity of all would understate the cluster's usage
     def total(key):
-        values = [n[key] for n in nodes if n[key] is not None]
-        return sum(values) if values else None
+        values = [n[key] for n in nodes]
+        return sum(values) if values and None not in values else None
 
     return {
         key: total(key)
@@ -339,6 +341,15 @@ def assess(snapshot) -> tuple[str, list[str]]:
         notes.append(f"{snapshot['starting']} pods are still starting")
     if not snapshot["metrics"]:
         notes.append("CPU and memory usage unknown without metrics-server")
+    else:
+        reported = sum(
+            n["cpu_used"] is not None and n["memory_used"] is not None for n in nodes.values()
+        )
+        if reported < len(nodes):
+            notes.append(
+                f"CPU and memory usage only known for {reported} of {len(nodes)} nodes, "
+                "can't size the cluster"
+            )
 
     if under:
         return "UNDER-PROVISIONED", under + notes
@@ -356,7 +367,7 @@ def assess(snapshot) -> tuple[str, list[str]]:
             f"only {cpu:.0%} CPU, {memory:.0%} memory and {pods:.0%} of pod slots used. "
             "Fewer or smaller nodes would do, if the network and scenarios are running"
         ] + notes
-    if not snapshot["metrics"]:
+    if cpu is None or memory is None:
         return "UNKNOWN", notes
     return "SUFFICIENT", notes
 
