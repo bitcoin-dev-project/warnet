@@ -238,9 +238,9 @@ class LNInit(Commander):
             "--gossip-min-channels",
             dest="gossip_min_channels",
             type=float,
-            default=0.995,
+            default=0.99,
             help="When gossip stalls, continue if every LN node has this fraction of the "
-            "channels (and policies) (default 0.995)",
+            "channels (and policies) (default 0.99)",
         )
         parser.add_argument(
             "--miner",
