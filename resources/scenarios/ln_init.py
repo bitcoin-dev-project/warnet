@@ -31,6 +31,13 @@ from test_framework.messages import (
     CTxOut,
 )
 
+# Errors of a channel open that an earlier, unfinished open of the same channel
+# blocks: disconnecting the peers aborts it
+OPEN_ABANDONED_ERRORS = (
+    "timed out",
+    "already reserved",
+    "locked by another subsystem",
+)
 # Seconds between starting the threads that connect LN peers (thousands of
 # them on large networks) and that open channels or send policy updates
 CONNECT_INTERVAL = 0.02
@@ -536,9 +543,9 @@ class LNInit(Commander):
                         )
                         sleep(5)
                         # An open the peers never finished blocks the next ones:
-                        # - A CLN fundchannel that timed out keeps negotiating with the
-                        #   peer and keeps its funding UTXO reserved, retries fail with
-                        #   "already reserved".
+                        # - An open that timed out (e.g. the peer never answered) keeps
+                        #   its funding UTXO reserved by CLN or locked by LND, retries
+                        #   fail with "already reserved" or "locked by another subsystem".
                         # - eclair handles one incoming open per peer at a time and can
                         #   get stuck on one, rejecting all others as concurrent. Two
                         #   opens of the same block can collide too, so give it a minute.
@@ -547,10 +554,9 @@ class LNInit(Commander):
                             concurrent_since = concurrent_since or time()
                         else:
                             concurrent_since = None
-                        if (
-                            src.impl == "cln"
-                            and ("already reserved" in str(e) or "timed out" in str(e))
-                        ) or (concurrent_since and time() - concurrent_since > 60):
+                        if any(error in str(e) for error in OPEN_ABANDONED_ERRORS) or (
+                            concurrent_since and time() - concurrent_since > 60
+                        ):
                             concurrent_since = None
                             try:
                                 src.disconnect(tgt_pk)
