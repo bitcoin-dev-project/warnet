@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .constants import DEFAULTS_FILE, NETWORK_FILE
+from .deploy import init_scenarios, logging_required
 
 LN_IMPLS = ("lnd", "cln", "eclair", "ldk")
 
@@ -190,19 +191,13 @@ def count_pods(network, defaults) -> dict:
     impls = [node_impl(node, defaults) for node in nodes]
     for impl in LN_IMPLS:
         counts[impl] = impls.count(impl)
-    has_channels = any(
-        (node.get(impl) or {}).get("channels") for node, impl in zip(nodes, impls) if impl
-    )
-    # ln_init
-    counts["commander"] = 1 if has_channels else 0
+    # addconnection_init and ln_init, which run one after the other
+    needs_ln_init, addconnections = init_scenarios(network, defaults)
+    counts["commander"] = 1 if needs_ln_init or addconnections else 0
     counts["service"] = sum(
         1 for name in ("caddy", "fork_observer") if (network.get(name) or {}).get("enabled")
     )
-    if (
-        defaults.get("collectLogs")
-        or defaults.get("metricsExport")
-        or any(node.get("collectLogs") or node.get("metricsExport") for node in nodes)
-    ):
+    if logging_required(network, defaults):
         # loki, grafana and the prometheus stack (promtail runs on every node)
         counts["service"] += 8
     return {kind: n for kind, n in counts.items() if n}
