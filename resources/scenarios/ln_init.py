@@ -2,6 +2,7 @@
 
 import threading
 from collections import Counter, defaultdict
+from contextlib import nullcontext
 from decimal import Decimal
 from time import sleep, time
 
@@ -482,6 +483,13 @@ class LNInit(Commander):
                 ch_by_block[block].append(ch)
         blocks = list(ch_by_block.keys())
         blocks = sorted(blocks)
+        # eclair's rate limiter for incoming opens loses the answer to one of two
+        # opens from different peers it handles at once, and that peer's opens
+        # are then rejected as concurrent until eclair restarts. Send eclair
+        # nodes one open at a time.
+        eclair_open_locks = {
+            name: threading.Lock() for name, ln in self.lns.items() if ln.impl == "eclair"
+        }
 
         for target_block in blocks:
             # First make sure the target block is the next block
@@ -506,13 +514,14 @@ class LNInit(Commander):
                 while True:
                     self.log.info(f"Sending channel open:\n{log}")
                     try:
-                        res = src.channel(
-                            pk=tgt_pk,
-                            capacity=ch["capacity"],
-                            push_amt=ch["push_amt"],
-                            fee_rate=fee_rate,
-                            utxo=ch.get("funding_utxo"),
-                        )
+                        with eclair_open_locks.get(ch["target"], nullcontext()):
+                            res = src.channel(
+                                pk=tgt_pk,
+                                capacity=ch["capacity"],
+                                push_amt=ch["push_amt"],
+                                fee_rate=fee_rate,
+                                utxo=ch.get("funding_utxo"),
+                            )
                         ch["txid"] = res["txid"]
                         ch["outpoint"] = res["outpoint"]
                         self.log.info(
@@ -546,9 +555,9 @@ class LNInit(Commander):
                         # - An open that timed out (e.g. the peer never answered) keeps
                         #   its funding UTXO reserved by CLN or locked by LND, retries
                         #   fail with "already reserved" or "locked by another subsystem".
-                        # - eclair handles one incoming open per peer at a time and can
-                        #   get stuck on one, rejecting all others as concurrent. Two
-                        #   opens of the same block can collide too, so give it a minute.
+                        # - eclair handles one incoming open per peer at a time and
+                        #   rejects others as concurrent while one is in progress, give
+                        #   it a minute.
                         # Disconnecting aborts the negotiation.
                         if "concurrent request rejected" in str(e):
                             concurrent_since = concurrent_since or time()
